@@ -4,49 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fixture Research</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+:root{
+  --navy:#0b1628;
+  --gold:#c9a84c;
+  --white:#ffffff;
+  --bg:#ffffff;
+  --soft:#f5f7fb;
+  --border:#e4e8f0;
+  --text:#0b1628;
+  --mid:#5a6478;
+  --muted:#9aa3b5;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#080f1e;min-height:100vh;color:#fff;padding:32px 20px}
-.shell{max-width:900px;margin:0 auto}
-.greeting{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.3);margin-bottom:6px}
-.title{font-size:36px;font-weight:700;letter-spacing:-1px;margin-bottom:28px}
-.title span{color:#c9a84c}
-.date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;background:#0e1e38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px}
-.date-arrow{background:none;border:none;color:rgba(255,255,255,0.4);font-size:24px;cursor:pointer;padding:0 8px;font-family:inherit;transition:color .15s}
-.date-arrow:hover{color:#c9a84c}
+body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:40px 24px 80px}
+.shell{max-width:980px;margin:0 auto}
+
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--gold);margin-bottom:10px}
+.title{font-size:40px;font-weight:800;letter-spacing:-1.5px;color:var(--navy);line-height:1;margin-bottom:32px}
+.title span{color:var(--gold)}
+
+/* Date nav */
+.date-nav{display:flex;align-items:center;background:var(--navy);border-radius:16px;padding:16px 20px;margin-bottom:32px;gap:16px}
+.date-arrow{background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.5);width:38px;height:38px;border-radius:10px;font-size:18px;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.date-arrow:hover{background:var(--gold);color:var(--navy)}
 .date-arrow:disabled{opacity:0.2;cursor:default}
 .date-center{text-align:center;flex:1}
-.date-display{font-size:17px;font-weight:700;color:#fff;display:block}
-.date-sub{font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;display:block}
-.league-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
-.ltab{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-family:inherit;transition:all .15s}
-.ltab:hover{border-color:rgba(201,168,76,0.4);color:rgba(201,168,76,0.8)}
-.ltab.active{background:#c9a84c;color:#080f1e;border-color:#c9a84c}
-.section-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.2);margin-bottom:14px}
-.fixtures-list{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
-.fixture-card{background:#0e1e38;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.fixture-card:hover{border-color:rgba(201,168,76,0.3)}
-.fixture-teams{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
-.team{font-size:15px;font-weight:600;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.date-display{font-size:19px;font-weight:700;color:#fff;display:block;letter-spacing:-.3px}
+.date-sub{font-size:12px;color:rgba(255,255,255,0.35);margin-top:4px;display:block;font-weight:500}
+
+/* Country flag buttons — horizontal row */
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);margin-bottom:12px}
+.country-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.cflag{display:flex;align-items:center;gap:9px;padding:9px 16px;border-radius:12px;cursor:pointer;border:1.5px solid var(--border);background:var(--white);transition:all .2s;font-family:inherit}
+.cflag img{width:28px;height:19px;border-radius:3px;object-fit:cover;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.12)}
+.cflag span{font-size:13px;font-weight:600;color:var(--mid)}
+.cflag:hover{border-color:var(--gold);background:#fffbf2}
+.cflag.active{border-color:var(--navy);background:var(--navy)}
+.cflag.active span{color:var(--gold)}
+
+/* League tabs */
+.league-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:28px;min-height:32px}
+.ltab{padding:7px 15px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-family:inherit;transition:all .18s}
+.ltab:hover{border-color:var(--gold);color:var(--gold)}
+.ltab.active{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:700}
+
+/* Fixtures */
+.results-count{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:18px}
+.league-block{margin-bottom:24px}
+.league-header{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:2px solid var(--navy);margin-bottom:10px}
+.league-name{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
+.count-badge{font-size:10px;font-weight:700;background:var(--navy);color:var(--gold);border-radius:20px;padding:2px 9px}
+
+.fixture-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:all .18s;margin-bottom:6px}
+.fixture-card:hover{border-color:var(--navy);box-shadow:0 4px 16px rgba(11,22,40,0.08);transform:translateY(-1px)}
+.fixture-teams{display:flex;align-items:center;flex:1;min-width:0}
+.team{font-size:14px;font-weight:700;color:var(--navy);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .team.away{text-align:right}
-.vs{font-size:12px;color:rgba(255,255,255,0.25);font-weight:600;flex-shrink:0;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;min-width:40px;text-align:center}
-.vs.live{color:#4caf8a;background:rgba(76,175,138,0.1)}
-.fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-.kickoff{font-size:13px;color:#c9a84c;font-weight:600}
-.kickoff.live{color:#4caf8a}
-.venue{font-size:11px;color:rgba(255,255,255,0.25)}
-.loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,0.3);font-size:15px}
-.empty{text-align:center;padding:40px;color:rgba(255,255,255,0.25);font-size:14px;line-height:1.8}
-.league-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:24px}
-.league-name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.4)}
-.count-badge{display:inline-block;font-size:10px;font-weight:700;background:rgba(201,168,76,0.2);color:#c9a84c;border-radius:20px;padding:2px 8px;margin-left:8px}
-.error-msg{background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.2);border-radius:10px;padding:16px 20px;color:rgba(255,120,120,0.9);font-size:13px;line-height:1.6}
+.vs-wrap{width:50px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.vs{font-size:11px;color:var(--muted);font-weight:700;background:var(--soft);border:1px solid var(--border);padding:4px 8px;border-radius:6px;text-align:center;width:100%}
+.vs.live{color:#1e9e6b;background:#edfbf5;border-color:#b8edd6}
+.fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:68px}
+.kickoff{font-size:14px;color:var(--gold);font-weight:800}
+.kickoff.live{color:#1e9e6b}
+.venue{font-size:10px;color:var(--muted);text-align:right;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+
+.prompt{text-align:center;padding:60px 20px}
+.prompt-text{font-size:14px;color:var(--muted);font-weight:500}
+.loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;font-weight:500}
+.empty{text-align:center;padding:48px;color:var(--muted);font-size:14px;line-height:1.9;font-weight:500}
+.error-msg{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;color:#b02020;font-size:13px;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="shell">
-  <div class="greeting">Acca Research Tool</div>
+
+  <div class="eyebrow">Acca Research Tool</div>
   <div class="title">Fixture <span>Browser</span></div>
+
   <div class="date-nav">
     <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#8592;</button>
     <div class="date-center">
@@ -55,32 +91,96 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#8594;</button>
   </div>
-  <div class="league-tabs">
-    <button class="ltab active" onclick="filterLeague('all',this)">All Leagues</button>
-    <button class="ltab" onclick="filterLeague('4328',this)">Premier League</button>
-    <button class="ltab" onclick="filterLeague('4329',this)">Championship</button>
-    <button class="ltab" onclick="filterLeague('4396',this)">League One</button>
-    <button class="ltab" onclick="filterLeague('4397',this)">League Two</button>
-    <button class="ltab" onclick="filterLeague('4330',this)">Scottish Prem</button>
-    <button class="ltab" onclick="filterLeague('4395',this)">Scottish Champ</button>
-    <button class="ltab" onclick="filterLeague('4669',this)">Scottish L1</button>
-    <button class="ltab" onclick="filterLeague('4670',this)">Scottish L2</button>
+
+  <div class="section-label">Select Country</div>
+  <div class="country-row" id="country-row"></div>
+  <div class="league-tabs" id="league-tabs"></div>
+  <div id="fixtures-container">
+    <div class="prompt"><div class="prompt-text">Select a country above to browse fixtures</div></div>
   </div>
-  <div id="fixtures-container"><div class="loading">Loading fixtures...</div></div>
+
 </div>
 <script>
+var COUNTRIES=[
+  {id:'england',     code:'gb-eng', name:'England'},
+  {id:'scotland',    code:'gb-sct', name:'Scotland'},
+  {id:'spain',       code:'es',     name:'Spain'},
+  {id:'germany',     code:'de',     name:'Germany'},
+  {id:'france',      code:'fr',     name:'France'},
+  {id:'italy',       code:'it',     name:'Italy'},
+  {id:'netherlands', code:'nl',     name:'Netherlands'},
+  {id:'portugal',    code:'pt',     name:'Portugal'}
+];
+
 var LEAGUES={
-  '4328':{name:'Premier League'},
-  '4329':{name:'Championship'},
-  '4396':{name:'League One'},
-  '4397':{name:'League Two'},
-  '4330':{name:'Scottish Premiership'},
-  '4395':{name:'Scottish Championship'},
-  '4669':{name:'Scottish League One'},
-  '4670':{name:'Scottish League Two'}
+  '4328':{name:'Premier League',  country:'england'},
+  '4329':{name:'Championship',    country:'england'},
+  '4396':{name:'League One',      country:'england'},
+  '4397':{name:'League Two',      country:'england'},
+  '4590':{name:'National League', country:'england'},
+  '4681':{name:'NL North',        country:'england'},
+  '4682':{name:'NL South',        country:'england'},
+  '4330':{name:'Premiership',     country:'scotland'},
+  '4395':{name:'Championship',    country:'scotland'},
+  '4669':{name:'League One',      country:'scotland'},
+  '4670':{name:'League Two',      country:'scotland'},
+  '4335':{name:'La Liga',         country:'spain'},
+  '4400':{name:'La Liga 2',       country:'spain'},
+  '4331':{name:'Bundesliga',      country:'germany'},
+  '4406':{name:'Bundesliga 2',    country:'germany'},
+  '4413':{name:'3. Liga',         country:'germany'},
+  '4334':{name:'Ligue 1',         country:'france'},
+  '4401':{name:'Ligue 2',         country:'france'},
+  '4332':{name:'Serie A',         country:'italy'},
+  '4404':{name:'Serie B',         country:'italy'},
+  '4337':{name:'Eredivisie',      country:'netherlands'},
+  '4402':{name:'Eerste Divisie',  country:'netherlands'},
+  '4344':{name:'Primeira Liga',   country:'portugal'},
+  '4403':{name:'Liga Portugal 2', country:'portugal'}
 };
 
-var allFixtures=[],currentLeague='all',currentDate=new Date(),isLoading=false,pendingDate=null;
+var allFixtures=[],currentLeague='all',currentCountry=null,currentDate=new Date(),isLoading=false,pendingDate=null,dataLoaded=false;
+
+function buildCountryRow(){
+  document.getElementById('country-row').innerHTML=COUNTRIES.map(function(c){
+    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)">'
+      +'<img src="https://flagcdn.com/w40/'+c.code+'.png" alt="'+c.name+'">'
+      +'<span>'+c.name+'</span>'
+      +'</button>';
+  }).join('');
+}
+
+function selectCountry(country,btn){
+  if(currentCountry===country){
+    btn.classList.remove('active');
+    currentCountry=null;currentLeague='all';
+    document.getElementById('league-tabs').innerHTML='';
+    document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-text">Select a country above to browse fixtures</div></div>';
+    return;
+  }
+  if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
+  currentCountry=country;currentLeague='all';
+  btn.classList.add('active');
+  buildLeagueTabs();
+  if(dataLoaded){renderFixtures();}else{loadFixtures();}
+}
+
+function buildLeagueTabs(){
+  var html='<button class="ltab active" onclick="filterLeague(\'all\',this)">All</button>';
+  Object.keys(LEAGUES).forEach(function(id){
+    var l=LEAGUES[id];
+    if(l.country===currentCountry)
+      html+='<button class="ltab" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
+  });
+  document.getElementById('league-tabs').innerHTML=html;
+}
+
+function filterLeague(code,btn){
+  currentLeague=code;
+  document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  renderFixtures();
+}
 
 function formatDate(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -99,127 +199,105 @@ function updateDateDisplay(){
   document.getElementById('date-sub').textContent=sub;
 }
 
-function setNavEnabled(enabled){
-  document.getElementById('btn-prev').disabled=!enabled;
-  document.getElementById('btn-next').disabled=!enabled;
+function setNavEnabled(en){
+  document.getElementById('btn-prev').disabled=!en;
+  document.getElementById('btn-next').disabled=!en;
 }
 
 function changeDate(days){
-  var newDate=new Date(currentDate);
-  newDate.setDate(newDate.getDate()+days);
-  if(isLoading){pendingDate=newDate;return;}
-  currentDate=newDate;
-  loadFixtures();
-}
-
-function filterLeague(code,btn){
-  currentLeague=code;
-  document.querySelectorAll('.ltab').forEach(function(b){b.classList.remove('active')});
-  btn.classList.add('active');
-  renderFixtures();
+  var d=new Date(currentDate);d.setDate(d.getDate()+days);
+  if(isLoading){pendingDate=d;return;}
+  currentDate=d;dataLoaded=false;
+  if(currentCountry){loadFixtures();}else{updateDateDisplay();}
 }
 
 function formatKickoff(dateStr,timeStr){
   if(!timeStr||timeStr==='00:00:00'||!timeStr.trim()) return '';
-  try{
-    var dt=new Date(dateStr+'T'+timeStr+'Z');
-    return dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){return '';}
+  try{return new Date(dateStr+'T'+timeStr+'Z').toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+  catch(e){return '';}
 }
 
-function isLive(status){
-  return status==='1H'||status==='2H'||status==='HT'||status==='ET'||status==='PEN';
-}
+function isLive(s){return s==='1H'||s==='2H'||s==='HT'||s==='ET'||s==='PEN';}
 
 async function loadFixtures(){
   if(isLoading) return;
-  isLoading=true;
-  pendingDate=null;
-  setNavEnabled(false);
-  updateDateDisplay();
+  isLoading=true;pendingDate=null;dataLoaded=false;
+  setNavEnabled(false);updateDateDisplay();
   document.getElementById('fixtures-container').innerHTML='<div class="loading">Loading fixtures...</div>';
-  var dateStr=formatDate(currentDate);
   allFixtures=[];
-
   try{
-    var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
+    var res=await fetch('/.netlify/functions/fixtures?date='+formatDate(currentDate));
     var data=await res.json();
     if(data.error){
-      document.getElementById('fixtures-container').innerHTML=
-        '<div class="error-msg">API error: '+data.error+'</div>';
-    } else {
-      allFixtures=data.events||[];
-      allFixtures.sort(function(a,b){
+      document.getElementById('fixtures-container').innerHTML='<div class="error-msg">API error: '+data.error+'</div>';
+    }else{
+      allFixtures=(data.events||[]).sort(function(a,b){
         if(!a.time||a.time==='00:00:00') return 1;
         if(!b.time||b.time==='00:00:00') return -1;
         return a.time.localeCompare(b.time);
       });
+      dataLoaded=true;
       renderFixtures();
     }
   }catch(e){
-    document.getElementById('fixtures-container').innerHTML=
-      '<div class="error-msg">Failed to load fixtures. Check your connection and try again.</div>';
+    document.getElementById('fixtures-container').innerHTML='<div class="error-msg">Failed to load fixtures. Check connection and try again.</div>';
   }
-
-  isLoading=false;
-  setNavEnabled(true);
-  if(pendingDate){
-    currentDate=pendingDate;
-    pendingDate=null;
-    loadFixtures();
-  }
+  isLoading=false;setNavEnabled(true);
+  if(pendingDate){currentDate=pendingDate;pendingDate=null;loadFixtures();}
 }
 
 function renderFixtures(){
-  var container=document.getElementById('fixtures-container');
-  var filtered=currentLeague==='all'
-    ?allFixtures
-    :allFixtures.filter(function(f){return f.leagueId===currentLeague;});
-
-  if(!filtered.length){
-    container.innerHTML='<div class="empty">No fixtures on this date.<br>Use the arrows to find the next matchday.</div>';
+  if(!currentCountry){
+    document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-text">Select a country above to browse fixtures</div></div>';
     return;
   }
-
-  var grouped={};var leagueOrder=[];
+  var container=document.getElementById('fixtures-container');
+  var filtered=allFixtures.filter(function(f){
+    var l=LEAGUES[f.leagueId];
+    if(!l||l.country!==currentCountry) return false;
+    if(currentLeague!=='all'&&f.leagueId!==currentLeague) return false;
+    return true;
+  });
+  if(!filtered.length){
+    container.innerHTML='<div class="empty">No fixtures found for this date.<br>Try another date or league.</div>';
+    return;
+  }
+  var grouped={},order=[];
   filtered.forEach(function(f){
-    if(!grouped[f.leagueId]){grouped[f.leagueId]=[];leagueOrder.push(f.leagueId);}
+    if(!grouped[f.leagueId]){grouped[f.leagueId]=[];order.push(f.leagueId);}
     grouped[f.leagueId].push(f);
   });
-
-  var html='<div class="section-lbl">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
-
-  leagueOrder.forEach(function(id){
-    var name=(LEAGUES[id]&&LEAGUES[id].name)||grouped[id][0].leagueName||id;
-    var fixtures=grouped[id];
-    html+='<div class="league-header">';
-    html+='<span class="league-name">'+name+'</span>';
-    html+='<span class="count-badge">'+fixtures.length+'</span>';
-    html+='</div><div class="fixtures-list">';
-    fixtures.forEach(function(f){
-      var live=isLive(f.status);
-      var ft=f.status==='FT';
+  var html='<div class="results-count">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
+  order.forEach(function(id){
+    var l=LEAGUES[id];
+    var name=l?l.name:(grouped[id][0].leagueName||id);
+    var list=grouped[id];
+    html+='<div class="league-block">';
+    html+='<div class="league-header"><span class="league-name">'+name+'</span><span class="count-badge">'+list.length+'</span></div>';
+    list.forEach(function(f){
+      var live=isLive(f.status),ft=f.status==='FT';
       var hasScore=f.homeScore!==null&&f.homeScore!==undefined&&f.homeScore!==''&&f.awayScore!==null&&f.awayScore!==undefined&&f.awayScore!=='';
-      var scoreDisplay=(live||ft)&&hasScore?f.homeScore+'-'+f.awayScore:'vs';
-      var kickoffDisplay=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
-      html+='<div class="fixture-card">';
-      html+='<div class="fixture-teams">';
-      html+='<div class="team">'+f.home+'</div>';
-      html+='<div class="vs'+(live?' live':'')+'">'+scoreDisplay+'</div>';
-      html+='<div class="team away">'+f.away+'</div>';
-      html+='</div><div class="fixture-meta">';
-      if(kickoffDisplay) html+='<div class="kickoff'+(live?' live':'')+'">'+kickoffDisplay+'</div>';
-      if(f.venue) html+='<div class="venue">'+f.venue+'</div>';
-      html+='</div></div>';
+      var score=(live||ft)&&hasScore?f.homeScore+'-'+f.awayScore:'vs';
+      var ko=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
+      html+='<div class="fixture-card">'
+        +'<div class="fixture-teams">'
+        +'<div class="team">'+f.home+'</div>'
+        +'<div class="vs-wrap"><div class="vs'+(live?' live':'')+'">'+score+'</div></div>'
+        +'<div class="team away">'+f.away+'</div>'
+        +'</div>'
+        +'<div class="fixture-meta">'
+        +(ko?'<div class="kickoff'+(live?' live':'')+'">'+ko+'</div>':'')
+        +(f.venue?'<div class="venue">'+f.venue+'</div>':'')
+        +'</div></div>';
     });
     html+='</div>';
   });
-
   container.innerHTML=html;
 }
 
 window.addEventListener('DOMContentLoaded',function(){
-  loadFixtures();
+  buildCountryRow();
+  updateDateDisplay();
 });
 </script>
 </body>
