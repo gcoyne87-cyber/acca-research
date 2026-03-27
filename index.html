@@ -31,7 +31,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .vs{font-size:12px;color:rgba(255,255,255,0.25);font-weight:600;flex-shrink:0;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;min-width:40px;text-align:center}
 .fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .kickoff{font-size:13px;color:#c9a84c;font-weight:600}
-.live{color:#ff6b6b}
 .venue{font-size:11px;color:rgba(255,255,255,0.25)}
 .loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,0.3);font-size:15px}
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,0.25);font-size:14px;line-height:1.8}
@@ -68,14 +67,69 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <script>
 var LEAGUES={'39':{name:'Premier League',flag:'🏴'},'40':{name:'Championship',flag:'🏴'},'41':{name:'League One',flag:'🏴'},'42':{name:'League Two',flag:'🏴'},'179':{name:'Scottish Premiership',flag:'🏴'},'180':{name:'Scottish Championship',flag:'🏴'},'181':{name:'Scottish League One',flag:'🏴'}};
 var allFixtures=[],currentLeague='all',currentDate=new Date();
+
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function updateDateDisplay(){var today=new Date();today.setHours(0,0,0,0);var dc=new Date(currentDate);dc.setHours(0,0,0,0);var day=dc.toLocaleDateString('en-GB',{weekday:'long'});var dt=dc.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});var main=day,sub=dt;if(dc.getTime()===today.getTime()){main='Today';sub=day+', '+dt;}document.getElementById('date-display').textContent=main;document.getElementById('date-sub').textContent=sub;}
+
+function updateDateDisplay(){
+  var today=new Date();today.setHours(0,0,0,0);
+  var dc=new Date(currentDate);dc.setHours(0,0,0,0);
+  var day=dc.toLocaleDateString('en-GB',{weekday:'long'});
+  var dt=dc.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  var main=day,sub=dt;
+  if(dc.getTime()===today.getTime()){main='Today';sub=day+', '+dt;}
+  var tom=new Date(today);tom.setDate(today.getDate()+1);
+  if(dc.getTime()===tom.getTime()){main='Tomorrow';sub=day+', '+dt;}
+  document.getElementById('date-display').textContent=main;
+  document.getElementById('date-sub').textContent=sub;
+}
+
 function changeDate(days){currentDate=new Date(currentDate);currentDate.setDate(currentDate.getDate()+days);loadFixtures();}
 function filterLeague(code,btn){currentLeague=code;document.querySelectorAll('.ltab').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderFixtures();}
-async function fetchLeagueFixtures(id,date){try{var res=await fetch('/.netlify/functions/fixtures?league='+id+'&date='+date+'&season=2025');var data=await res.json();return data.response||[];}catch(e){return[];}}
-async function loadFixtures(){updateDateDisplay();document.getElementById('fixtures-container').innerHTML='<div class="loading">Loading fixtures...</div>';var dateStr=formatDate(currentDate);var ids=Object.keys(LEAGUES);var results=await Promise.all(ids.map(function(id){return fetchLeagueFixtures(id,dateStr);}));allFixtures=[];ids.forEach(function(id,i){results[i].forEach(function(f){allFixtures.push({leagueId:id,home:f.teams.home.name,away:f.teams.away.name,kickoff:f.fixture.date,status:f.fixture.status.short,homeGoals:f.goals.home,awayGoals:f.goals.away,venue:f.fixture.venue?f.fixture.venue.name:''});});});allFixtures.sort(function(a,b){return new Date(a.kickoff)-new Date(b.kickoff);});renderFixtures();}
+
+async function loadFixtures(){
+  updateDateDisplay();
+  document.getElementById('fixtures-container').innerHTML='<div class="loading">Loading fixtures...</div>';
+  var dateStr=formatDate(currentDate);
+  allFixtures=[];
+  var ids=Object.keys(LEAGUES);
+  for(var i=0;i<ids.length;i++){
+    try{
+      var res=await fetch('/.netlify/functions/fixtures?league='+ids[i]+'&date='+dateStr+'&season=2025');
+      var data=await res.json();
+      if(data.response){
+        data.response.forEach(function(f){
+          allFixtures.push({leagueId:ids[i],home:f.teams.home.name,away:f.teams.away.name,kickoff:f.fixture.date,status:f.fixture.status.short,homeGoals:f.goals.home,awayGoals:f.goals.away,venue:f.fixture.venue?f.fixture.venue.name:''});
+        });
+      }
+    }catch(e){}
+  }
+  allFixtures.sort(function(a,b){return new Date(a.kickoff)-new Date(b.kickoff);});
+  renderFixtures();
+}
+
 function formatKickoff(d){if(!d)return'';return new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
-function renderFixtures(){var container=document.getElementById('fixtures-container');var filtered=currentLeague==='all'?allFixtures:allFixtures.filter(function(f){return f.leagueId===currentLeague;});if(!filtered.length){container.innerHTML='<div class="empty">No fixtures on this date. Try the arrows to find the next matchday.</div>';return;}var grouped={};filtered.forEach(function(f){if(!grouped[f.leagueId])grouped[f.leagueId]=[];grouped[f.leagueId].push(f);});var html='<div class="section-lbl">'+filtered.length+' fixtures found</div>';Object.keys(grouped).forEach(function(id){var league=LEAGUES[id];var fixtures=grouped[id];html+='<div class="league-header"><span class="league-flag">'+league.flag+'</span><span class="league-name">'+league.name+'</span><span class="count-badge">'+fixtures.length+'</span></div><div class="fixtures-list">';fixtures.forEach(function(f){var isLive=f.status==='1H'||f.status==='2H'||f.status==='HT';var isFT=f.status==='FT';var score=isLive||isFT?(f.homeGoals!==null?f.homeGoals:0)+'-'+(f.awayGoals!==null?f.awayGoals:0):'vs';html+='<div class="fixture-card"><div class="fixture-teams"><div class="team">'+f.home+'</div><div class="vs">'+score+'</div><div class="team away">'+f.away+'</div></div><div class="fixture-meta"><div class="kickoff'+(isLive?' live':'')+'">'+( isLive?'LIVE':isFT?'FT':formatKickoff(f.kickoff))+'</div></div></div>';});html+='</div>';});container.innerHTML=html;}
+
+function renderFixtures(){
+  var container=document.getElementById('fixtures-container');
+  var filtered=currentLeague==='all'?allFixtures:allFixtures.filter(function(f){return f.leagueId===currentLeague;});
+  if(!filtered.length){container.innerHTML='<div class="empty">No fixtures on this date.<br>Use the arrows to find the next matchday.</div>';return;}
+  var grouped={};
+  filtered.forEach(function(f){if(!grouped[f.leagueId])grouped[f.leagueId]=[];grouped[f.leagueId].push(f);});
+  var html='<div class="section-lbl">'+filtered.length+' fixtures found</div>';
+  Object.keys(grouped).forEach(function(id){
+    var league=LEAGUES[id];var fixtures=grouped[id];
+    html+='<div class="league-header"><span class="league-flag">'+league.flag+'</span><span class="league-name">'+league.name+'</span><span class="count-badge">'+fixtures.length+'</span></div><div class="fixtures-list">';
+    fixtures.forEach(function(f){
+      var isLive=f.status==='1H'||f.status==='2H'||f.status==='HT';
+      var isFT=f.status==='FT';
+      var score=isLive||isFT?(f.homeGoals!==null?f.homeGoals:0)+'-'+(f.awayGoals!==null?f.awayGoals:0):'vs';
+      html+='<div class="fixture-card"><div class="fixture-teams"><div class="team">'+f.home+'</div><div class="vs">'+score+'</div><div class="team away">'+f.away+'</div></div><div class="fixture-meta"><div class="kickoff">'+(isLive?'LIVE':isFT?'FT':formatKickoff(f.kickoff))+'</div>'+(f.venue?'<div class="venue">'+f.venue+'</div>':'')+'</div></div>';
+    });
+    html+='</div>';
+  });
+  container.innerHTML=html;
+}
+
 loadFixtures();
 </script>
 </body>
