@@ -70,17 +70,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 <script>
 var LEAGUES={
-  '4328':{name:'Premier League',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
-  '4329':{name:'Championship',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
-  '4396':{name:'League One',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
-  '4397':{name:'League Two',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
-  '4330':{name:'Scottish Premiership',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'},
-  '4395':{name:'Scottish Championship',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'},
-  '4669':{name:'Scottish League One',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'},
-  '4670':{name:'Scottish League Two',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'}
+  '4328':{name:'Premier League',flag:'🏴'},
+  '4329':{name:'Championship',flag:'🏴'},
+  '4396':{name:'League One',flag:'🏴'},
+  '4397':{name:'League Two',flag:'🏴'},
+  '4330':{name:'Scottish Premiership',flag:'🏴'},
+  '4395':{name:'Scottish Championship',flag:'🏴'},
+  '4669':{name:'Scottish League One',flag:'🏴'},
+  '4670':{name:'Scottish League Two',flag:'🏴'}
 };
 
-var allFixtures=[],currentLeague='all',currentDate=new Date();
+var allFixtures=[],currentLeague='all',currentDate=new Date(),fetchId=0;
 
 function formatDate(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -112,9 +112,8 @@ function filterLeague(code,btn){
   renderFixtures();
 }
 
-// TheSportsDB strTime is UTC "HH:MM:SS" — convert to local time
-function formatKickoff(dateStr, timeStr){
-  if(!timeStr || timeStr==='00:00:00') return '';
+function formatKickoff(dateStr,timeStr){
+  if(!timeStr||timeStr==='00:00:00') return '';
   try{
     var dt=new Date(dateStr+'T'+timeStr+'Z');
     return dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
@@ -131,9 +130,14 @@ async function loadFixtures(){
   var dateStr=formatDate(currentDate);
   allFixtures=[];
 
+  // Stamp this fetch — if a newer one starts before this resolves, discard the stale result
+  var myId=++fetchId;
+
   try{
     var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
     var data=await res.json();
+
+    if(myId!==fetchId) return; // newer fetch already running — discard this
 
     if(data.error){
       document.getElementById('fixtures-container').innerHTML=
@@ -143,13 +147,13 @@ async function loadFixtures(){
 
     allFixtures=data.events||[];
     allFixtures.sort(function(a,b){
-      // Sort by time, put NS (not started) events with no time at end
       if(!a.time||a.time==='00:00:00') return 1;
       if(!b.time||b.time==='00:00:00') return -1;
       return a.time.localeCompare(b.time);
     });
 
   }catch(e){
+    if(myId!==fetchId) return;
     document.getElementById('fixtures-container').innerHTML=
       '<div class="error-msg">Failed to load fixtures. Check your connection or try again.</div>';
     return;
@@ -169,7 +173,6 @@ function renderFixtures(){
     return;
   }
 
-  // Group by league, preserving order of first appearance
   var grouped={};var leagueOrder=[];
   filtered.forEach(function(f){
     if(!grouped[f.leagueId]){grouped[f.leagueId]=[];leagueOrder.push(f.leagueId);}
@@ -179,7 +182,7 @@ function renderFixtures(){
   var html='<div class="section-lbl">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
 
   leagueOrder.forEach(function(id){
-    var league=LEAGUES[id]||{name:grouped[id][0].leagueName||id,flag:'⚽'};
+    var league=LEAGUES[id]||{name:grouped[id][0].leagueName||id,flag:'&#x26BD;'};
     var fixtures=grouped[id];
     html+='<div class="league-header">';
     html+='<span class="league-flag">'+league.flag+'</span>';
@@ -190,10 +193,8 @@ function renderFixtures(){
     fixtures.forEach(function(f){
       var live=isLive(f.status);
       var ft=f.status==='FT';
-      var hasScore=f.homeScore!==null&&f.homeScore!==''&&f.awayScore!==null&&f.awayScore!=='';
-      var scoreDisplay=(live||ft)&&hasScore
-        ?f.homeScore+'-'+f.awayScore
-        :'vs';
+      var hasScore=f.homeScore!==null&&f.homeScore!==''&&f.homeScore!==undefined&&f.awayScore!==null&&f.awayScore!==''&&f.awayScore!==undefined;
+      var scoreDisplay=(live||ft)&&hasScore?f.homeScore+'-'+f.awayScore:'vs';
       var kickoffDisplay=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
 
       html+='<div class="fixture-card">';
@@ -203,7 +204,7 @@ function renderFixtures(){
       html+='<div class="team away">'+f.away+'</div>';
       html+='</div>';
       html+='<div class="fixture-meta">';
-      html+='<div class="kickoff'+(live?' live':'')+'">'+kickoffDisplay+'</div>';
+      if(kickoffDisplay) html+='<div class="kickoff'+(live?' live':'')+'">'+kickoffDisplay+'</div>';
       if(f.venue) html+='<div class="venue">'+f.venue+'</div>';
       html+='</div>';
       html+='</div>';
