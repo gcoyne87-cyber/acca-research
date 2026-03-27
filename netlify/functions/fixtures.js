@@ -11,73 +11,45 @@ const LEAGUES = {
   '4670': 'Scottish League Two'
 };
 
-function fetchLeague(leagueId, date) {
+function fetchLeague(leagueId, date, usePast) {
   return new Promise((resolve) => {
-    // eventsnextleague returns next 15 events for a league - free tier supported
-    const url = 'https://www.thesportsdb.com/api/v1/json/123/eventsnextleague.php?id=' + leagueId;
-    const req = https.get(url, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          const events = (data.events || [])
-            .filter(e => e.dateEvent === date)
-            .map(e => ({
-              id: e.idEvent,
-              leagueId: leagueId,
-              leagueName: e.strLeague,
-              home: e.strHomeTeam,
-              away: e.strAwayTeam,
-              date: e.dateEvent,
-              time: e.strTime || '',
-              homeScore: e.intHomeScore,
-              awayScore: e.intAwayScore,
-              status: e.strStatus || 'NS',
-              venue: e.strVenue || ''
-            }));
-          resolve(events);
-        } catch (e) {
-          resolve([]);
-        }
-      });
-    });
-    req.on('error', () => resolve([]));
-  });
-}
+    const endpoint = usePast ? 'eventspastleague' : 'eventsnextleague';
+    const url = 'https://www.thesportsdb.com/api/v1/json/123/' + endpoint + '.php?id=' + leagueId;
 
-function fetchLeaguePast(leagueId, date) {
-  return new Promise((resolve) => {
-    // eventspastleague returns last 15 events - used as fallback for past dates
-    const url = 'https://www.thesportsdb.com/api/v1/json/123/eventspastleague.php?id=' + leagueId;
     const req = https.get(url, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
         try {
           const data = JSON.parse(body);
-          const events = (data.events || [])
-            .filter(e => e.dateEvent === date)
-            .map(e => ({
-              id: e.idEvent,
-              leagueId: leagueId,
-              leagueName: e.strLeague,
-              home: e.strHomeTeam,
-              away: e.strAwayTeam,
-              date: e.dateEvent,
-              time: e.strTime || '',
-              homeScore: e.intHomeScore,
-              awayScore: e.intAwayScore,
-              status: e.strStatus || 'FT',
-              venue: e.strVenue || ''
-            }));
-          resolve(events);
+          const allEvents = data.events || [];
+          console.log('League', leagueId, '- total events returned:', allEvents.length, '- dates:', [...new Set(allEvents.map(e => e.dateEvent))].join(', '));
+          const filtered = allEvents.filter(e => e.dateEvent === date);
+          console.log('League', leagueId, '- matching', date, ':', filtered.length);
+          const mapped = filtered.map(e => ({
+            id: e.idEvent,
+            leagueId: leagueId,
+            leagueName: e.strLeague,
+            home: e.strHomeTeam,
+            away: e.strAwayTeam,
+            date: e.dateEvent,
+            time: e.strTime || '',
+            homeScore: e.intHomeScore,
+            awayScore: e.intAwayScore,
+            status: e.strStatus || (usePast ? 'FT' : 'NS'),
+            venue: e.strVenue || ''
+          }));
+          resolve(mapped);
         } catch (e) {
+          console.log('League', leagueId, '- parse error:', e.message);
           resolve([]);
         }
       });
     });
-    req.on('error', () => resolve([]));
+    req.on('error', (e) => {
+      console.log('League', leagueId, '- request error:', e.message);
+      resolve([]);
+    });
   });
 }
 
@@ -94,19 +66,20 @@ exports.handler = async function(event) {
 
   const today = new Date().toISOString().split('T')[0];
   const isPast = date < today;
+  console.log('Fetching date:', date, '- isPast:', isPast, '- today:', today);
 
   const leagueIds = Object.keys(LEAGUES);
 
-  // Fetch all leagues in parallel
   const results = await Promise.all(
-    leagueIds.map(id => isPast ? fetchLeaguePast(id, date) : fetchLeague(id, date))
+    leagueIds.map(id => fetchLeague(id, date, isPast))
   );
 
   const allEvents = results.flat();
+  console.log('Total events for', date, ':', allEvents.length);
 
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ events: allEvents })
+    body: JSON.stringify({ events: allEvents, debug: { date, isPast, totalFound: allEvents.length } })
   };
 };
