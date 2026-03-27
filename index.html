@@ -39,7 +39,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,0.25);font-size:14px;line-height:1.8}
 .league-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:24px}
 .league-name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.4)}
-.league-flag{font-size:18px}
 .count-badge{display:inline-block;font-size:10px;font-weight:700;background:rgba(201,168,76,0.2);color:#c9a84c;border-radius:20px;padding:2px 8px;margin-left:8px}
 .error-msg{background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.2);border-radius:10px;padding:16px 20px;color:rgba(255,120,120,0.9);font-size:13px;line-height:1.6}
 </style>
@@ -70,22 +69,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div id="fixtures-container"><div class="loading">Loading fixtures...</div></div>
 </div>
 <script>
-var LEAGUES={
-  '4328':{name:'Premier League',flag:'&#127988;'},
-  '4329':{name:'Championship',flag:'&#127988;'},
-  '4396':{name:'League One',flag:'&#127988;'},
-  '4397':{name:'League Two',flag:'&#127988;'},
-  '4330':{name:'Scottish Premiership',flag:'&#127988;'},
-  '4395':{name:'Scottish Championship',flag:'&#127988;'},
-  '4669':{name:'Scottish League One',flag:'&#127988;'},
-  '4670':{name:'Scottish League Two',flag:'&#127988;'}
+// TheSportsDB league IDs — used for filtering the eventsday response
+var TRACKED_LEAGUES = {
+  '4328': 'Premier League',
+  '4329': 'Championship',
+  '4396': 'League One',
+  '4397': 'League Two',
+  '4330': 'Scottish Premiership',
+  '4395': 'Scottish Championship',
+  '4669': 'Scottish League One',
+  '4670': 'Scottish League Two'
 };
 
 var allFixtures = [];
 var currentLeague = 'all';
 var currentDate = new Date();
-var isLoading = false;  // hard lock - only one fetch at a time
-var pendingDate = null; // if a date change arrives while loading, queue it
+var isLoading = false;
+var pendingDate = null;
 
 function formatDate(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -112,11 +112,7 @@ function setNavEnabled(enabled){
 function changeDate(days){
   var newDate=new Date(currentDate);
   newDate.setDate(newDate.getDate()+days);
-  if(isLoading){
-    // queue this — will be picked up when current load finishes
-    pendingDate=newDate;
-    return;
-  }
+  if(isLoading){pendingDate=newDate;return;}
   currentDate=newDate;
   loadFixtures();
 }
@@ -129,7 +125,7 @@ function filterLeague(code,btn){
 }
 
 function formatKickoff(dateStr,timeStr){
-  if(!timeStr||timeStr==='00:00:00') return '';
+  if(!timeStr||timeStr==='00:00:00'||!timeStr.trim()) return '';
   try{
     var dt=new Date(dateStr+'T'+timeStr+'Z');
     return dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
@@ -141,7 +137,7 @@ function isLive(status){
 }
 
 async function loadFixtures(){
-  if(isLoading) return; // hard guard — don't allow concurrent fetches
+  if(isLoading) return;
   isLoading=true;
   pendingDate=null;
   setNavEnabled(false);
@@ -151,29 +147,49 @@ async function loadFixtures(){
   allFixtures=[];
 
   try{
-    var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
+    // Call TheSportsDB directly — no proxy needed, CORS is open on free tier
+    var url='https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d='+dateStr+'&s=Soccer';
+    var res=await fetch(url);
     var data=await res.json();
-    if(data.error){
-      document.getElementById('fixtures-container').innerHTML=
-        '<div class="error-msg">API error: '+data.error+'</div>';
-    } else {
-      allFixtures=data.events||[];
-      allFixtures.sort(function(a,b){
-        if(!a.time||a.time==='00:00:00') return 1;
-        if(!b.time||b.time==='00:00:00') return -1;
-        return a.time.localeCompare(b.time);
+    var events=data.events||[];
+
+    // Filter to only our tracked leagues
+    allFixtures=events
+      .filter(function(e){ return TRACKED_LEAGUES[e.idLeague]; })
+      .map(function(e){
+        return {
+          id: e.idEvent,
+          leagueId: e.idLeague,
+          leagueName: e.strLeague,
+          home: e.strHomeTeam,
+          away: e.strAwayTeam,
+          date: e.dateEvent,
+          time: e.strTime||'',
+          homeScore: e.intHomeScore,
+          awayScore: e.intAwayScore,
+          status: e.strStatus||'NS',
+          venue: e.strVenue||''
+        };
       });
-      renderFixtures();
-    }
+
+    allFixtures.sort(function(a,b){
+      if(!a.time||a.time==='00:00:00') return 1;
+      if(!b.time||b.time==='00:00:00') return -1;
+      return a.time.localeCompare(b.time);
+    });
+
   }catch(e){
     document.getElementById('fixtures-container').innerHTML=
       '<div class="error-msg">Failed to load fixtures. Check your connection and try again.</div>';
+    isLoading=false;
+    setNavEnabled(true);
+    return;
   }
 
+  renderFixtures();
   isLoading=false;
   setNavEnabled(true);
 
-  // If user clicked arrows while loading, execute the queued navigation now
   if(pendingDate){
     currentDate=pendingDate;
     pendingDate=null;
@@ -201,11 +217,10 @@ function renderFixtures(){
   var html='<div class="section-lbl">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
 
   leagueOrder.forEach(function(id){
-    var league=LEAGUES[id]||{name:grouped[id][0].leagueName||id,flag:'&#9917;'};
+    var name=TRACKED_LEAGUES[id]||grouped[id][0].leagueName||id;
     var fixtures=grouped[id];
     html+='<div class="league-header">';
-    html+='<span class="league-flag">'+league.flag+'</span>';
-    html+='<span class="league-name">'+league.name+'</span>';
+    html+='<span class="league-name">'+name+'</span>';
     html+='<span class="count-badge">'+fixtures.length+'</span>';
     html+='</div><div class="fixtures-list">';
     fixtures.forEach(function(f){
@@ -230,8 +245,7 @@ function renderFixtures(){
   container.innerHTML=html;
 }
 
-// Single clean call on page load
-window.addEventListener('DOMContentLoaded', function(){
+window.addEventListener('DOMContentLoaded',function(){
   loadFixtures();
 });
 </script>
