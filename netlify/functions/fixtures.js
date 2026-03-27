@@ -1,16 +1,85 @@
 const https = require('https');
 
-// TheSportsDB league IDs mapped to their names for server-side filtering
-const LEAGUE_IDS = {
-  '4328': 'English Premier League',
-  '4329': 'English League Championship',
-  '4396': 'English League 1',
-  '4397': 'English League 2',
-  '4330': 'Scottish Premier League',
+const LEAGUES = {
+  '4328': 'Premier League',
+  '4329': 'Championship',
+  '4396': 'League One',
+  '4397': 'League Two',
+  '4330': 'Scottish Premiership',
   '4395': 'Scottish Championship',
-  '4669': 'Scottish League 1',
-  '4670': 'Scottish League 2'
+  '4669': 'Scottish League One',
+  '4670': 'Scottish League Two'
 };
+
+function fetchLeague(leagueId, date) {
+  return new Promise((resolve) => {
+    // eventsnextleague returns next 15 events for a league - free tier supported
+    const url = 'https://www.thesportsdb.com/api/v1/json/123/eventsnextleague.php?id=' + leagueId;
+    const req = https.get(url, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          const events = (data.events || [])
+            .filter(e => e.dateEvent === date)
+            .map(e => ({
+              id: e.idEvent,
+              leagueId: leagueId,
+              leagueName: e.strLeague,
+              home: e.strHomeTeam,
+              away: e.strAwayTeam,
+              date: e.dateEvent,
+              time: e.strTime || '',
+              homeScore: e.intHomeScore,
+              awayScore: e.intAwayScore,
+              status: e.strStatus || 'NS',
+              venue: e.strVenue || ''
+            }));
+          resolve(events);
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    });
+    req.on('error', () => resolve([]));
+  });
+}
+
+function fetchLeaguePast(leagueId, date) {
+  return new Promise((resolve) => {
+    // eventspastleague returns last 15 events - used as fallback for past dates
+    const url = 'https://www.thesportsdb.com/api/v1/json/123/eventspastleague.php?id=' + leagueId;
+    const req = https.get(url, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          const events = (data.events || [])
+            .filter(e => e.dateEvent === date)
+            .map(e => ({
+              id: e.idEvent,
+              leagueId: leagueId,
+              leagueName: e.strLeague,
+              home: e.strHomeTeam,
+              away: e.strAwayTeam,
+              date: e.dateEvent,
+              time: e.strTime || '',
+              homeScore: e.intHomeScore,
+              awayScore: e.intAwayScore,
+              status: e.strStatus || 'FT',
+              venue: e.strVenue || ''
+            }));
+          resolve(events);
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    });
+    req.on('error', () => resolve([]));
+  });
+}
 
 exports.handler = async function(event) {
   const { date } = event.queryStringParameters || {};
@@ -23,55 +92,21 @@ exports.handler = async function(event) {
     };
   }
 
-  const url = 'https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=' + date + '&s=Soccer';
+  const today = new Date().toISOString().split('T')[0];
+  const isPast = date < today;
 
-  return new Promise((resolve) => {
-    const req = https.get(url, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          const events = data.events || [];
+  const leagueIds = Object.keys(LEAGUES);
 
-          // Filter to only our tracked leagues, map to a clean shape
-          const filtered = events
-            .filter(e => LEAGUE_IDS[e.idLeague])
-            .map(e => ({
-              id: e.idEvent,
-              leagueId: e.idLeague,
-              leagueName: e.strLeague,
-              home: e.strHomeTeam,
-              away: e.strAwayTeam,
-              date: e.dateEvent,
-              time: e.strTime,         // UTC time e.g. "15:00:00"
-              homeScore: e.intHomeScore,
-              awayScore: e.intAwayScore,
-              status: e.strStatus,     // "NS", "FT", "1H", "2H", "HT" etc.
-              venue: e.strVenue || ''
-            }));
+  // Fetch all leagues in parallel
+  const results = await Promise.all(
+    leagueIds.map(id => isPast ? fetchLeaguePast(id, date) : fetchLeague(id, date))
+  );
 
-          resolve({
-            statusCode: 200,
-            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ events: filtered })
-          });
-        } catch (parseErr) {
-          resolve({
-            statusCode: 500,
-            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'Failed to parse response', raw: body.substring(0, 200) })
-          });
-        }
-      });
-    });
+  const allEvents = results.flat();
 
-    req.on('error', (e) => {
-      resolve({
-        statusCode: 500,
-        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: e.message })
-      });
-    });
-  });
+  return {
+    statusCode: 200,
+    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ events: allEvents })
+  };
 };
