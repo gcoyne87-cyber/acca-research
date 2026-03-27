@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture Research</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#080f1e;min-height:100vh;color:#fff;padding:32px 20px}
+.shell{max-width:900px;margin:0 auto}
+.greeting{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.3);margin-bottom:6px}
+.title{font-size:36px;font-weight:700;letter-spacing:-1px;margin-bottom:28px}
+.title span{color:#c9a84c}
+.date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;background:#0e1e38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px}
+.date-arrow{background:none;border:none;color:rgba(255,255,255,0.4);font-size:24px;cursor:pointer;padding:0 8px;font-family:inherit;transition:color .15s}
+.date-arrow:hover{color:#c9a84c}
+.date-center{text-align:center;flex:1}
+.date-display{font-size:17px;font-weight:700;color:#fff;display:block}
+.date-sub{font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;display:block}
+.league-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.ltab{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-family:inherit;transition:all .15s}
+.ltab:hover{border-color:rgba(201,168,76,0.4);color:rgba(201,168,76,0.8)}
+.ltab.active{background:#c9a84c;color:#080f1e;border-color:#c9a84c}
+.section-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.2);margin-bottom:14px}
+.fixtures-list{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
+.fixture-card{background:#0e1e38;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.fixture-card:hover{border-color:rgba(201,168,76,0.3)}
+.fixture-teams{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.team{font-size:15px;font-weight:600;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team.away{text-align:right}
+.vs{font-size:12px;color:rgba(255,255,255,0.25);font-weight:600;flex-shrink:0;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;min-width:40px;text-align:center}
+.fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.kickoff{font-size:13px;color:#c9a84c;font-weight:600}
+.live{color:#ff6b6b}
+.venue{font-size:11px;color:rgba(255,255,255,0.25)}
+.loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,0.3);font-size:15px}
+.empty{text-align:center;padding:40px;color:rgba(255,255,255,0.25);font-size:14px;line-height:1.8}
+.league-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:24px}
+.league-name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.4)}
+.league-flag{font-size:18px}
+.count-badge{display:inline-block;font-size:10px;font-weight:700;background:rgba(201,168,76,0.2);color:#c9a84c;border-radius:20px;padding:2px 8px;margin-left:8px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="greeting">Acca Research Tool</div>
+  <div class="title">Fixture <span>Browser</span></div>
+  <div class="date-nav">
+    <button class="date-arrow" onclick="changeDate(-1)">&#8592;</button>
+    <div class="date-center">
+      <span class="date-display" id="date-display">Today</span>
+      <span class="date-sub" id="date-sub"></span>
+    </div>
+    <button class="date-arrow" onclick="changeDate(1)">&#8594;</button>
+  </div>
+  <div class="league-tabs">
+    <button class="ltab active" onclick="filterLeague('all',this)">All Leagues</button>
+    <button class="ltab" onclick="filterLeague('39',this)">Premier League</button>
+    <button class="ltab" onclick="filterLeague('40',this)">Championship</button>
+    <button class="ltab" onclick="filterLeague('41',this)">League One</button>
+    <button class="ltab" onclick="filterLeague('42',this)">League Two</button>
+    <button class="ltab" onclick="filterLeague('179',this)">Scottish Prem</button>
+    <button class="ltab" onclick="filterLeague('180',this)">Scottish Champ</button>
+    <button class="ltab" onclick="filterLeague('181',this)">Scottish L1</button>
+  </div>
+  <div id="fixtures-container"><div class="loading">Loading fixtures...</div></div>
+</div>
+<script>
+var LEAGUES={'39':{name:'Premier League',flag:'🏴'},'40':{name:'Championship',flag:'🏴'},'41':{name:'League One',flag:'🏴'},'42':{name:'League Two',flag:'🏴'},'179':{name:'Scottish Premiership',flag:'🏴'},'180':{name:'Scottish Championship',flag:'🏴'},'181':{name:'Scottish League One',flag:'🏴'}};
+var allFixtures=[],currentLeague='all',currentDate=new Date();
+function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function updateDateDisplay(){var today=new Date();today.setHours(0,0,0,0);var dc=new Date(currentDate);dc.setHours(0,0,0,0);var day=dc.toLocaleDateString('en-GB',{weekday:'long'});var dt=dc.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});var main=day,sub=dt;if(dc.getTime()===today.getTime()){main='Today';sub=day+', '+dt;}document.getElementById('date-display').textContent=main;document.getElementById('date-sub').textContent=sub;}
+function changeDate(days){currentDate=new Date(currentDate);currentDate.setDate(currentDate.getDate()+days);loadFixtures();}
+function filterLeague(code,btn){currentLeague=code;document.querySelectorAll('.ltab').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderFixtures();}
+async function fetchLeagueFixtures(id,date){try{var res=await fetch('/.netlify/functions/fixtures?league='+id+'&date='+date+'&season=2025');var data=await res.json();return data.response||[];}catch(e){return[];}}
+async function loadFixtures(){updateDateDisplay();document.getElementById('fixtures-container').innerHTML='<div class="loading">Loading fixtures...</div>';var dateStr=formatDate(currentDate);var ids=Object.keys(LEAGUES);var results=await Promise.all(ids.map(function(id){return fetchLeagueFixtures(id,dateStr);}));allFixtures=[];ids.forEach(function(id,i){results[i].forEach(function(f){allFixtures.push({leagueId:id,home:f.teams.home.name,away:f.teams.away.name,kickoff:f.fixture.date,status:f.fixture.status.short,homeGoals:f.goals.home,awayGoals:f.goals.away,venue:f.fixture.venue?f.fixture.venue.name:''});});});allFixtures.sort(function(a,b){return new Date(a.kickoff)-new Date(b.kickoff);});renderFixtures();}
+function formatKickoff(d){if(!d)return'';return new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function renderFixtures(){var container=document.getElementById('fixtures-container');var filtered=currentLeague==='all'?allFixtures:allFixtures.filter(function(f){return f.leagueId===currentLeague;});if(!filtered.length){container.innerHTML='<div class="empty">No fixtures on this date. Try the arrows to find the next matchday.</div>';return;}var grouped={};filtered.forEach(function(f){if(!grouped[f.leagueId])grouped[f.leagueId]=[];grouped[f.leagueId].push(f);});var html='<div class="section-lbl">'+filtered.length+' fixtures found</div>';Object.keys(grouped).forEach(function(id){var league=LEAGUES[id];var fixtures=grouped[id];html+='<div class="league-header"><span class="league-flag">'+league.flag+'</span><span class="league-name">'+league.name+'</span><span class="count-badge">'+fixtures.length+'</span></div><div class="fixtures-list">';fixtures.forEach(function(f){var isLive=f.status==='1H'||f.status==='2H'||f.status==='HT';var isFT=f.status==='FT';var score=isLive||isFT?(f.homeGoals!==null?f.homeGoals:0)+'-'+(f.awayGoals!==null?f.awayGoals:0):'vs';html+='<div class="fixture-card"><div class="fixture-teams"><div class="team">'+f.home+'</div><div class="vs">'+score+'</div><div class="team away">'+f.away+'</div></div><div class="fixture-meta"><div class="kickoff'+(isLive?' live':'')+'">'+( isLive?'LIVE':isFT?'FT':formatKickoff(f.kickoff))+'</div></div></div>';});html+='</div>';});container.innerHTML=html;}
+loadFixtures();
+</script>
+</body>
+</html>
