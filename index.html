@@ -14,6 +14,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;background:#0e1e38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px}
 .date-arrow{background:none;border:none;color:rgba(255,255,255,0.4);font-size:24px;cursor:pointer;padding:0 8px;font-family:inherit;transition:color .15s}
 .date-arrow:hover{color:#c9a84c}
+.date-arrow:disabled{opacity:0.2;cursor:default}
 .date-center{text-align:center;flex:1}
 .date-display{font-size:17px;font-weight:700;color:#fff;display:block}
 .date-sub{font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;display:block}
@@ -48,12 +49,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="greeting">Acca Research Tool</div>
   <div class="title">Fixture <span>Browser</span></div>
   <div class="date-nav">
-    <button class="date-arrow" onclick="changeDate(-1)">&#8592;</button>
+    <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#8592;</button>
     <div class="date-center">
       <span class="date-display" id="date-display">Today</span>
       <span class="date-sub" id="date-sub"></span>
     </div>
-    <button class="date-arrow" onclick="changeDate(1)">&#8594;</button>
+    <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#8594;</button>
   </div>
   <div class="league-tabs">
     <button class="ltab active" onclick="filterLeague('all',this)">All Leagues</button>
@@ -70,17 +71,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 <script>
 var LEAGUES={
-  '4328':{name:'Premier League',flag:'🏴'},
-  '4329':{name:'Championship',flag:'🏴'},
-  '4396':{name:'League One',flag:'🏴'},
-  '4397':{name:'League Two',flag:'🏴'},
-  '4330':{name:'Scottish Premiership',flag:'🏴'},
-  '4395':{name:'Scottish Championship',flag:'🏴'},
-  '4669':{name:'Scottish League One',flag:'🏴'},
-  '4670':{name:'Scottish League Two',flag:'🏴'}
+  '4328':{name:'Premier League',flag:'&#127988;'},
+  '4329':{name:'Championship',flag:'&#127988;'},
+  '4396':{name:'League One',flag:'&#127988;'},
+  '4397':{name:'League Two',flag:'&#127988;'},
+  '4330':{name:'Scottish Premiership',flag:'&#127988;'},
+  '4395':{name:'Scottish Championship',flag:'&#127988;'},
+  '4669':{name:'Scottish League One',flag:'&#127988;'},
+  '4670':{name:'Scottish League Two',flag:'&#127988;'}
 };
 
-var allFixtures=[],currentLeague='all',currentDate=new Date(),fetchId=0;
+var allFixtures = [];
+var currentLeague = 'all';
+var currentDate = new Date();
+var isLoading = false;  // hard lock - only one fetch at a time
+var pendingDate = null; // if a date change arrives while loading, queue it
 
 function formatDate(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -99,9 +104,20 @@ function updateDateDisplay(){
   document.getElementById('date-sub').textContent=sub;
 }
 
+function setNavEnabled(enabled){
+  document.getElementById('btn-prev').disabled=!enabled;
+  document.getElementById('btn-next').disabled=!enabled;
+}
+
 function changeDate(days){
-  currentDate=new Date(currentDate);
-  currentDate.setDate(currentDate.getDate()+days);
+  var newDate=new Date(currentDate);
+  newDate.setDate(newDate.getDate()+days);
+  if(isLoading){
+    // queue this — will be picked up when current load finishes
+    pendingDate=newDate;
+    return;
+  }
+  currentDate=newDate;
   loadFixtures();
 }
 
@@ -125,41 +141,44 @@ function isLive(status){
 }
 
 async function loadFixtures(){
+  if(isLoading) return; // hard guard — don't allow concurrent fetches
+  isLoading=true;
+  pendingDate=null;
+  setNavEnabled(false);
   updateDateDisplay();
   document.getElementById('fixtures-container').innerHTML='<div class="loading">Loading fixtures...</div>';
   var dateStr=formatDate(currentDate);
   allFixtures=[];
 
-  // Stamp this fetch — if a newer one starts before this resolves, discard the stale result
-  var myId=++fetchId;
-
   try{
     var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
     var data=await res.json();
-
-    if(myId!==fetchId) return; // newer fetch already running — discard this
-
     if(data.error){
       document.getElementById('fixtures-container').innerHTML=
         '<div class="error-msg">API error: '+data.error+'</div>';
-      return;
+    } else {
+      allFixtures=data.events||[];
+      allFixtures.sort(function(a,b){
+        if(!a.time||a.time==='00:00:00') return 1;
+        if(!b.time||b.time==='00:00:00') return -1;
+        return a.time.localeCompare(b.time);
+      });
+      renderFixtures();
     }
-
-    allFixtures=data.events||[];
-    allFixtures.sort(function(a,b){
-      if(!a.time||a.time==='00:00:00') return 1;
-      if(!b.time||b.time==='00:00:00') return -1;
-      return a.time.localeCompare(b.time);
-    });
-
   }catch(e){
-    if(myId!==fetchId) return;
     document.getElementById('fixtures-container').innerHTML=
-      '<div class="error-msg">Failed to load fixtures. Check your connection or try again.</div>';
-    return;
+      '<div class="error-msg">Failed to load fixtures. Check your connection and try again.</div>';
   }
 
-  renderFixtures();
+  isLoading=false;
+  setNavEnabled(true);
+
+  // If user clicked arrows while loading, execute the queued navigation now
+  if(pendingDate){
+    currentDate=pendingDate;
+    pendingDate=null;
+    loadFixtures();
+  }
 }
 
 function renderFixtures(){
@@ -182,41 +201,39 @@ function renderFixtures(){
   var html='<div class="section-lbl">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
 
   leagueOrder.forEach(function(id){
-    var league=LEAGUES[id]||{name:grouped[id][0].leagueName||id,flag:'&#x26BD;'};
+    var league=LEAGUES[id]||{name:grouped[id][0].leagueName||id,flag:'&#9917;'};
     var fixtures=grouped[id];
     html+='<div class="league-header">';
     html+='<span class="league-flag">'+league.flag+'</span>';
     html+='<span class="league-name">'+league.name+'</span>';
     html+='<span class="count-badge">'+fixtures.length+'</span>';
     html+='</div><div class="fixtures-list">';
-
     fixtures.forEach(function(f){
       var live=isLive(f.status);
       var ft=f.status==='FT';
-      var hasScore=f.homeScore!==null&&f.homeScore!==''&&f.homeScore!==undefined&&f.awayScore!==null&&f.awayScore!==''&&f.awayScore!==undefined;
+      var hasScore=f.homeScore!==null&&f.homeScore!==undefined&&f.homeScore!==''&&f.awayScore!==null&&f.awayScore!==undefined&&f.awayScore!=='';
       var scoreDisplay=(live||ft)&&hasScore?f.homeScore+'-'+f.awayScore:'vs';
       var kickoffDisplay=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
-
       html+='<div class="fixture-card">';
       html+='<div class="fixture-teams">';
       html+='<div class="team">'+f.home+'</div>';
       html+='<div class="vs'+(live?' live':'')+'">'+scoreDisplay+'</div>';
       html+='<div class="team away">'+f.away+'</div>';
-      html+='</div>';
-      html+='<div class="fixture-meta">';
+      html+='</div><div class="fixture-meta">';
       if(kickoffDisplay) html+='<div class="kickoff'+(live?' live':'')+'">'+kickoffDisplay+'</div>';
       if(f.venue) html+='<div class="venue">'+f.venue+'</div>';
-      html+='</div>';
-      html+='</div>';
+      html+='</div></div>';
     });
-
     html+='</div>';
   });
 
   container.innerHTML=html;
 }
 
-loadFixtures();
+// Single clean call on page load
+window.addEventListener('DOMContentLoaded', function(){
+  loadFixtures();
+});
 </script>
 </body>
 </html>
