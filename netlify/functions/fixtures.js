@@ -11,6 +11,10 @@ const LEAGUES = {
   '4670': 'Scottish League Two'
 };
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function fetchLeague(leagueId, date, usePast) {
   return new Promise((resolve) => {
     const endpoint = usePast ? 'eventspastleague' : 'eventsnextleague';
@@ -23,31 +27,31 @@ function fetchLeague(leagueId, date, usePast) {
         try {
           const data = JSON.parse(body);
           const allEvents = data.events || [];
-          console.log('League', leagueId, '- total events returned:', allEvents.length, '- dates:', [...new Set(allEvents.map(e => e.dateEvent))].join(', '));
-          const filtered = allEvents.filter(e => e.dateEvent === date);
-          console.log('League', leagueId, '- matching', date, ':', filtered.length);
-          const mapped = filtered.map(e => ({
-            id: e.idEvent,
-            leagueId: leagueId,
-            leagueName: e.strLeague,
-            home: e.strHomeTeam,
-            away: e.strAwayTeam,
-            date: e.dateEvent,
-            time: e.strTime || '',
-            homeScore: e.intHomeScore,
-            awayScore: e.intAwayScore,
-            status: e.strStatus || (usePast ? 'FT' : 'NS'),
-            venue: e.strVenue || ''
-          }));
-          resolve(mapped);
+          const filtered = allEvents
+            .filter(e => e.dateEvent === date)
+            .map(e => ({
+              id: e.idEvent,
+              leagueId: leagueId,
+              leagueName: e.strLeague,
+              home: e.strHomeTeam,
+              away: e.strAwayTeam,
+              date: e.dateEvent,
+              time: e.strTime || '',
+              homeScore: e.intHomeScore,
+              awayScore: e.intAwayScore,
+              status: e.strStatus || (usePast ? 'FT' : 'NS'),
+              venue: e.strVenue || ''
+            }));
+          console.log('League', leagueId, '| returned:', allEvents.length, '| matched', date + ':', filtered.length);
+          resolve(filtered);
         } catch (e) {
-          console.log('League', leagueId, '- parse error:', e.message);
+          console.log('League', leagueId, '| parse error:', e.message);
           resolve([]);
         }
       });
     });
     req.on('error', (e) => {
-      console.log('League', leagueId, '- request error:', e.message);
+      console.log('League', leagueId, '| request error:', e.message);
       resolve([]);
     });
   });
@@ -66,20 +70,21 @@ exports.handler = async function(event) {
 
   const today = new Date().toISOString().split('T')[0];
   const isPast = date < today;
-  console.log('Fetching date:', date, '- isPast:', isPast, '- today:', today);
-
   const leagueIds = Object.keys(LEAGUES);
+  const allEvents = [];
 
-  const results = await Promise.all(
-    leagueIds.map(id => fetchLeague(id, date, isPast))
-  );
+  // Sequential with 250ms gap between each — stays well within 30 req/min free limit
+  for (let i = 0; i < leagueIds.length; i++) {
+    if (i > 0) await delay(250);
+    const events = await fetchLeague(leagueIds[i], date, isPast);
+    allEvents.push(...events);
+  }
 
-  const allEvents = results.flat();
-  console.log('Total events for', date, ':', allEvents.length);
+  console.log('Total for', date, ':', allEvents.length);
 
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ events: allEvents, debug: { date, isPast, totalFound: allEvents.length } })
+    body: JSON.stringify({ events: allEvents })
   };
 };
