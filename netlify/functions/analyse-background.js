@@ -109,7 +109,7 @@ function callClaude(fixtures, date, label) {
           if (parsed.error) { reject(new Error(parsed.error.message)); return; }
           const allText = (parsed.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
           let text = allText.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-          const s = text.lastIndexOf('['), e = text.lastIndexOf(']');
+          const s = text.indexOf('['), e = text.lastIndexOf(']');
           if (s === -1 || e === -1 || e < s) { console.error('No array found'); resolve([]); return; }
           const cards = JSON.parse(text.substring(s, e+1));
           console.log('Cards:', cards.length);
