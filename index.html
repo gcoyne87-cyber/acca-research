@@ -52,22 +52,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* Fixtures */
 .results-count{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:18px}
-.league-block{margin-bottom:24px}
-.league-header{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:2px solid var(--navy);margin-bottom:10px}
-.league-name{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
-.count-badge{font-size:10px;font-weight:700;background:var(--navy);color:var(--gold);border-radius:20px;padding:2px 9px}
 
-.fixture-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:all .18s;margin-bottom:6px}
-.fixture-card:hover{border-color:var(--navy);box-shadow:0 4px 16px rgba(11,22,40,0.08);transform:translateY(-1px)}
-.fixture-teams{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center;flex:1;min-width:0;gap:0}
-.team{font-size:14px;font-weight:700;color:var(--navy);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.team.away{text-align:right}
-.vs-wrap{display:flex;align-items:center;justify-content:center}
-.vs{font-size:11px;color:var(--muted);font-weight:700;background:var(--soft);border:1px solid var(--border);padding:4px 0;border-radius:6px;text-align:center;width:100%}
-.vs.live{color:#1e9e6b;background:#edfbf5;border-color:#b8edd6}
-.fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:68px}
-.kickoff{font-size:14px;color:var(--gold);font-weight:800}
-.kickoff.live{color:#1e9e6b}
+/* League block - Paddy Power style */
+.league-block{margin-bottom:20px;border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.league-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--navy);border-bottom:1px solid rgba(255,255,255,0.08)}
+.league-header-left{display:flex;align-items:center;gap:10px}
+.league-name{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#fff}
+.count-badge{font-size:10px;font-weight:700;background:var(--gold);color:var(--navy);border-radius:20px;padding:2px 9px}
+.analyse-btn{font-size:11px;font-weight:700;background:var(--gold);color:var(--navy);border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;letter-spacing:.03em;transition:all .18s}
+.analyse-btn:hover{background:#e0bc5a;transform:translateY(-1px)}
+
+/* Col headers */
+.fixture-col-header{display:grid;grid-template-columns:1fr 60px;align-items:center;padding:6px 16px;background:var(--soft);border-bottom:1px solid var(--border)}
+.col-h-time{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.col-h-ko{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:right}
+
+/* Fixture rows */
+.fixture-card{display:grid;grid-template-columns:1fr 60px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--white);transition:background .15s;cursor:default}
+.fixture-card:last-child{border-bottom:none}
+.fixture-card:hover{background:#fafbff}
+.fixture-teams{display:flex;flex-direction:column;gap:2px}
+.team{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kickoff{font-size:12px;color:var(--gold);font-weight:700;text-align:right}
+.kickoff.live{color:#1e9e6b;font-weight:800}
+.status-ft{font-size:12px;color:var(--muted);font-weight:600;text-align:right}
+.score{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px}
 
 .prompt{text-align:center;padding:60px 20px}
 .prompt-text{font-size:14px;color:var(--muted);font-weight:500}
@@ -279,25 +288,40 @@ function renderFixtures(){
     var name=l?l.name:(grouped[id][0].leagueName||id);
     var list=grouped[id];
     html+='<div class="league-block">';
-    html+='<div class="league-header"><span class="league-name">'+name+'</span><span class="count-badge">'+list.length+'</span></div>';
+    html+='<div class="league-header">'
+      +'<div class="league-header-left">'
+      +'<span class="league-name">'+name+'</span>'
+      +'<span class="count-badge">'+list.length+'</span>'
+      +'</div>'
+      +'<button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">🔍 Analyse</button>'
+      +'</div>';
     list.forEach(function(f){
       var live=isLive(f.status),ft=f.status==='FT';
       var hasScore=f.homeScore!==null&&f.homeScore!==undefined&&f.homeScore!==''&&f.awayScore!==null&&f.awayScore!==undefined&&f.awayScore!=='';
-      var score=(live||ft)&&hasScore?f.homeScore+'-'+f.awayScore:'vs';
       var ko=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
+      var scoreStr=(live||ft)&&hasScore?' '+f.homeScore+'-'+f.awayScore:'';
       html+='<div class="fixture-card">'
         +'<div class="fixture-teams">'
-        +'<div class="team">'+f.home+'</div>'
-        +'<div class="vs-wrap"><div class="vs'+(live?' live':'')+'">'+score+'</div></div>'
-        +'<div class="team away">'+f.away+'</div>'
+        +'<div class="team">'+f.home+scoreStr+'</div>'
+        +'<div class="team">'+f.away+'</div>'
         +'</div>'
-        +'<div class="fixture-meta">'
-        +(ko?'<div class="kickoff'+(live?' live':'')+'">'+ko+'</div>':'')
-        +'</div></div>';
+        +(live?'<div class="kickoff live">LIVE</div>'
+          :ft?'<div class="status-ft">FT</div>'
+          :'<div class="kickoff">'+ko+'</div>')
+        +'</div>';
     });
     html+='</div>';
   });
   container.innerHTML=html;
+}
+
+function analyseLeague(leagueId){
+  var l=LEAGUES[leagueId];
+  var name=l?l.name:leagueId;
+  var fixtures=allFixtures.filter(function(f){return f.leagueId===leagueId;});
+  if(!fixtures.length){alert('No fixtures loaded for '+name+' on this date.');return;}
+  // Research panel will go here - for now confirm scope
+  alert('Analyse '+name+': '+fixtures.length+' fixtures on '+formatDate(currentDate)+' - research engine coming next.');
 }
 
 window.addEventListener('DOMContentLoaded',function(){
