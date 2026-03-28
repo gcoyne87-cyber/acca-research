@@ -78,11 +78,30 @@ function callClaude(fixtures, date, label) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) { reject(new Error(parsed.error.message)); return; }
-          const textBlock = (parsed.content || []).find(b => b.type === 'text');
-          if (!textBlock) { resolve([]); return; }
-          let text = textBlock.text.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-          const s = text.indexOf('['), e = text.lastIndexOf(']');
-          if (s === -1 || e === -1) { console.error('No array:', text.substring(0,200)); resolve([]); return; }
+          // Get ALL text blocks and combine them
+          const allText = (parsed.content || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('\n');
+          
+          if (!allText) { 
+            console.error('No text in response. Block types:', (parsed.content||[]).map(b=>b.type).join(','));
+            resolve([]); 
+            return; 
+          }
+          
+          let text = allText.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+          
+          // Find the LAST [ to ] in case there's preamble text
+          const s = text.lastIndexOf('[');
+          const e = text.lastIndexOf(']');
+          
+          if (s === -1 || e === -1 || e < s) { 
+            console.error('No JSON array found. Full text:', text.substring(0,500)); 
+            resolve([]); 
+            return; 
+          }
+          
           const cards = JSON.parse(text.substring(s, e+1));
           console.log('Cards returned:', cards.length);
           resolve(Array.isArray(cards) ? cards : []);
