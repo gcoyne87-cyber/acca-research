@@ -93,20 +93,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ac-head{background:var(--navy2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 
 /* Left side — both team names, picked one is big */
-.ac-teams{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
-.ac-team{font-size:12px;font-weight:400;color:rgba(255,255,255,0.32);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
-.ac-team--pick{font-size:18px;font-weight:600;color:#ffffff;letter-spacing:-0.2px}
-.ac-team-vs{font-size:9px;font-weight:400;color:rgba(255,255,255,0.2);letter-spacing:.05em;line-height:1;padding-left:1px}
+/* ── ANALYSIS CARD — light, clean, no navy block ── */
+.analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--white)}
 
-/* Right side — PICK label, team name in gold, odds */
-.ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:3px}
-.ac-pick-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);opacity:.65}
-.ac-pick-team{font-size:14px;font-weight:600;color:var(--gold);text-align:right;max-width:160px;line-height:1.2}
-.ac-pick-odds{font-size:20px;font-weight:500;color:#ffffff;text-align:right;letter-spacing:-0.3px}
+/* Header: white background, navy text, pick in green on right */
+.ac-head{background:var(--white);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1.5px solid var(--border)}
+.ac-teams{display:flex;align-items:baseline;gap:7px;flex:1;min-width:0;flex-wrap:wrap}
+.ac-team{font-size:13px;font-weight:400;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-team--pick{font-size:16px;font-weight:600;color:var(--navy);letter-spacing:-0.1px}
+.ac-team-vs{font-size:10px;font-weight:300;color:var(--border);letter-spacing:.05em;flex-shrink:0}
 
-/* Slim time + confidence row */
-.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:400;color:var(--muted)}
-.ac-meta-conf{color:var(--gold);font-weight:500}
+/* Right side — Pick label, team in green, odds in navy */
+.ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:2px}
+.ac-pick-label{font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:.15em;color:var(--green);opacity:.7}
+.ac-pick-team{font-size:14px;font-weight:600;color:var(--green);text-align:right;max-width:160px;line-height:1.2}
+.ac-pick-odds{font-size:13px;font-weight:500;color:var(--navy);text-align:right;letter-spacing:.02em}
+
+/* Slim meta row */
+.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:5px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:400;color:var(--muted)}
+.ac-meta-conf{color:var(--green);font-weight:500}
 
 .ac-body{padding:13px 15px}
 .conf-row{margin-bottom:11px}
@@ -599,9 +604,9 @@ function buildCardHTML(c){
 
   // RIGHT: PICK label, team in gold, odds big
   var pickRight='<div class="ac-pick-block">'
-    +'<div class="ac-pick-label">&#9989; Pick</div>'
+    +'<div class="ac-pick-label">Pick</div>'
     +'<div class="ac-pick-team">'+selTeam+'</div>'
-    +(c.odds?'<div class="ac-pick-odds">'+escHtml(c.odds)+'</div>':'')
+    +(c.odds?'<div class="ac-pick-odds">Odds: '+escHtml(c.odds)+'</div>':'')
     +'</div>';
 
   return '<div class="analysis-card">'
