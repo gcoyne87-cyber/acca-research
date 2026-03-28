@@ -69,8 +69,37 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .analyse-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
 .analyse-btn--done{font-size:11px;font-weight:400;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:6px;padding:4px 12px;cursor:default;font-family:inherit;opacity:.6}
 
-/* Upcoming section */
-.upcoming-section{margin-bottom:24px}
+/* ── LEADERBOARD ── */
+.widget-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:600px){.widget-row{grid-template-columns:1fr}}
+.widget-box{background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.widget-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.widget-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
+.widget-sub{font-size:10px;color:var(--muted);font-weight:400}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.lb-row:last-child{border-bottom:none}
+.lb-pos{font-size:11px;font-weight:600;color:var(--muted);width:16px;text-align:center;flex-shrink:0}
+.lb-pos.top{color:var(--green)}
+.lb-avatar{width:28px;height:28px;border-radius:50%;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.lb-info{flex:1;min-width:0}
+.lb-name{font-size:12px;font-weight:500;color:var(--navy)}
+.lb-meta{font-size:10px;color:var(--muted);font-weight:400}
+.lb-score{font-size:12px;font-weight:600;color:var(--green);flex-shrink:0}
+.lb-streak{font-size:10px;color:var(--muted);font-weight:400;flex-shrink:0}
+
+/* ── POPULAR PICKS ── */
+.pop-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.pop-row:last-child{border-bottom:none}
+.pop-info{flex:1;min-width:0}
+.pop-team{font-size:13px;font-weight:500;color:var(--navy)}
+.pop-league{font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.pop-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pop-pct{font-size:11px;font-weight:600;color:var(--green)}
+.pop-bar-wrap{width:48px;height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.pop-bar{height:100%;background:var(--green);border-radius:99px}
+.pop-add{font-size:11px;font-weight:500;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.pop-add:hover{background:var(--green)}
+.pop-add.added{background:var(--green)}
 .upcoming-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:10px}
 .upcoming-grid{display:flex;flex-direction:column;gap:8px}
 .upcoming-card{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .18s}
@@ -231,9 +260,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </button>
   </div>
   <div id="tab-fixtures-content">
-    <div class="upcoming-section" id="upcoming-section" style="display:none">
-      <div class="upcoming-label">Upcoming fixtures</div>
-      <div class="upcoming-grid" id="upcoming-grid"></div>
+    <div class="widget-row" id="home-widgets">
+      <!-- Leaderboard -->
+      <div class="widget-box">
+        <div class="widget-head">
+          <span class="widget-title">🏆 This Week's Leaders</span>
+          <span class="widget-sub">Top accas</span>
+        </div>
+        <div id="leaderboard-body"></div>
+      </div>
+      <!-- Most Popular Picks -->
+      <div class="widget-box">
+        <div class="widget-head">
+          <span class="widget-title">🔥 Most Picked</span>
+          <span class="widget-sub">This weekend</span>
+        </div>
+        <div id="popular-body"></div>
+      </div>
     </div>
     <div class="league-tabs" id="league-tabs"></div>
     <div id="fixtures-container">
@@ -347,12 +390,14 @@ function selectCountry(country,btn){
     btn.classList.remove('active');
     currentCountry=null;currentLeague='all';
     document.getElementById('league-tabs').innerHTML='';
+    document.getElementById('home-widgets').style.display='';
     document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
     return;
   }
   if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
   currentCountry=country;currentLeague='all';
   btn.classList.add('active');
+  document.getElementById('home-widgets').style.display='none';
   var cobj=COUNTRIES.find(function(c){return c.id===country;});
   buildLeagueTabs();
   if(dataLoaded){renderFixtures();}else{loadFixtures();}
@@ -423,7 +468,10 @@ async function loadFixtures(){
     if(data.error){
       document.getElementById('fixtures-container').innerHTML='<div class="error-msg">API error: '+data.error+'</div>';
     }else{
-      allFixtures=(data.events||[]).sort(function(a,b){
+      allFixtures=(data.events||[]).filter(function(f){
+        // Only keep future fixtures — drop past and live
+        return getKoMs(f)>Date.now();
+      }).sort(function(a,b){
         if(!a.time||a.time==='00:00:00') return 1;
         if(!b.time||b.time==='00:00:00') return -1;
         return a.time.localeCompare(b.time);
@@ -889,10 +937,76 @@ function goToFixture(leagueId,dateStr,countryId){
   });
 }
 
+// ── LEADERBOARD DATA (seeded) ──
+var LEADERBOARD=[
+  {name:'GarethM',avatar:'🦁',wins:14,picks:17,roi:'+340%',streak:'🔥 6'},
+  {name:'AccaKing',avatar:'👑',wins:12,picks:15,roi:'+218%',streak:'🔥 4'},
+  {name:'SharpBet',avatar:'⚡',wins:11,picks:14,roi:'+195%',streak:'🔥 3'},
+  {name:'PaulD',avatar:'🎯',wins:10,picks:13,roi:'+162%',streak:'2'},
+  {name:'TomR',avatar:'🍀',wins:9,picks:13,roi:'+141%',streak:'2'},
+];
+
+// ── POPULAR PICKS DATA (seeded) ──
+var POPULAR_PICKS=[
+  {team:'Burnley',league:'Championship',pct:78,fid:'pop1',odds:'4/7'},
+  {team:'Leeds United',league:'Championship',pct:71,fid:'pop2',odds:'8/11'},
+  {team:'Lincoln City',league:'League One',pct:65,fid:'pop3',odds:'4/6'},
+  {team:'Bromley',league:'League Two',pct:61,fid:'pop4',odds:'1/2'},
+  {team:'Benfica',league:'Primeira Liga',pct:58,fid:'pop5',odds:'2/5'},
+];
+
+function renderLeaderboard(){
+  var el=document.getElementById('leaderboard-body');
+  if(!el) return;
+  el.innerHTML=LEADERBOARD.map(function(p,i){
+    return '<div class="lb-row">'
+      +'<span class="lb-pos'+(i<3?' top':'')+'">'+( i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1))+'</span>'
+      +'<div class="lb-avatar">'+p.avatar+'</div>'
+      +'<div class="lb-info"><div class="lb-name">'+p.name+'</div><div class="lb-meta">'+p.wins+'/'+p.picks+' won</div></div>'
+      +'<div style="text-align:right"><div class="lb-score">'+p.roi+'</div><div class="lb-streak">'+p.streak+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function renderPopularPicks(){
+  var el=document.getElementById('popular-body');
+  if(!el) return;
+  el.innerHTML=POPULAR_PICKS.map(function(p){
+    var added=slipLegs.some(function(s){return s.legId==='leg_'+p.fid;});
+    return '<div class="pop-row">'
+      +'<div class="pop-info"><div class="pop-team">'+p.team+'</div><div class="pop-league">'+p.league+'</div></div>'
+      +'<div class="pop-right">'
+      +'<div><div class="pop-pct">'+p.pct+'%</div><div class="pop-bar-wrap"><div class="pop-bar" style="width:'+p.pct+'%"></div></div></div>'
+      +'<button class="pop-add'+(added?' added':'')+'" id="popadd_'+p.fid+'" onclick="addPopularToSlip(this)" '
+      +'data-fid="'+p.fid+'" data-team="'+p.team+'" data-league="'+p.league+'" data-odds="'+p.odds+'">'
+      +(added?'✓':'+ Add')
+      +'</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function addPopularToSlip(btn){
+  var fid=btn.dataset.fid,team=btn.dataset.team,league=btn.dataset.league,odds=btn.dataset.odds;
+  var legId='leg_'+fid;
+  if(slipLegs.some(function(s){return s.legId===legId;})){
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+    btn.textContent='+ Add';btn.classList.remove('added');
+    renderSlip();return;
+  }
+  var parts=odds.split('/');
+  slipLegs.push({legId:legId,team:team,match:league,odds:odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+  btn.textContent='✓';btn.classList.add('added');
+  renderSlip();
+  if(slipLegs.length===1&&!slipOpen) toggleSlip();
+}
+
 window.addEventListener('DOMContentLoaded',function(){
   buildCountryRow();
   updateDateDisplay();
   initSlider();
+  renderLeaderboard();
+  renderPopularPicks();
   loadUpcoming();
 });
 </script>
