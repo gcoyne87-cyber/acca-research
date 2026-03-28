@@ -1,52 +1,44 @@
 const https = require('https');
 
-// Tell Netlify this function needs more time
-module.exports.config = {
-  timeout: 300
-};
+module.exports.config = { timeout: 300 };
 
-const SYSTEM_PROMPT = `You are an elite football accumulator research analyst. Find the best value selections by doing genuinely deep research.
+const SYSTEM_PROMPT = `You are an expert football accumulator analyst. You have web search available. Use it.
 
-YOU MUST WEB SEARCH EVERY FIXTURE before deciding. For each fixture search for:
-1. Current form last 6 games HOME and AWAY separately
-2. Injury and suspension news - search "[team] injury news March 2026"
-3. Manager situation - sackings, new appointments, unrest?
-4. What does each team NEED - promotion, relegation, nothing to play for?
-5. H2H last 6 meetings
-6. Goals scored and conceded home vs away
+For EVERY fixture in the list, search the web for:
+- Recent form (last 5 results, home and away split)
+- Any injuries or suspensions
+- Manager news
+- League position and what they need from the game
 
-GOLDEN NUGGET FACTORS:
-- Teams with nothing to play for AWAY - never back them
-- New manager first home game - powerful signal
-- Revenge factor after heavy defeat in reverse fixture
-- Losing top scorer AND creative player together
-- Relegation battlers away - classic 0-0 trap
+Then pick the best selections. You should find picks in most batches — if you are looking at 3-5 English football fixtures on a Saturday there will almost always be at least one good selection.
 
-RULES:
-- Home win or away win ONLY. Never draws.
-- NEVER pick: relegation battler away, derby, 3+ key players missing, new interim with no prep
-- 2 strong picks beats 6 weak ones
-- Return [] if nothing genuinely stands out
+Selection criteria:
+- Back strong home sides with good home records against teams with poor away form
+- Back motivated sides (promotion push, avoiding relegation) vs teams with nothing to play for
+- Avoid: derbies, teams missing multiple key players, new managers with no prep time
+- Home win or away win only — no draws
 
-Return ONLY a JSON array starting with [. No preamble. No markdown.
+ALWAYS return a JSON array. Never return empty array unless every single fixture is genuinely unbackable after research.
 
-Each object:
-{
-  "fid": "fixture id",
-  "home": "home team",
-  "away": "away team",
-  "ko": "kickoff e.g. 15:00",
-  "selection": "team to back",
-  "selectionType": "Home Win or Away Win",
-  "confidence": 60-95,
-  "odds": "e.g. 4/5",
-  "formHome": "last 6 home e.g. W W D W L W",
-  "formAway": "last 6 away e.g. L W L L D W",
-  "reasons": ["reason 1", "reason 2", "reason 3"],
-  "warnings": ["main warning"],
-  "goldenNugget": "key insight a form guide would miss",
-  "riskNote": "main risk in one sentence"
-}`;
+Format — return ONLY this JSON array, no other text:
+[
+  {
+    "fid": "fixture id from the list",
+    "home": "home team name",
+    "away": "away team name",
+    "ko": "kickoff time",
+    "selection": "team name to back",
+    "selectionType": "Home Win or Away Win",
+    "confidence": 75,
+    "odds": "4/5",
+    "formHome": "W W D W L W",
+    "formAway": "L D L W L D",
+    "reasons": ["reason 1 with real detail", "reason 2 with real detail", "reason 3 with real detail"],
+    "warnings": ["one honest warning"],
+    "goldenNugget": "the insight that makes this stand out — something a form guide would miss",
+    "riskNote": "main risk in one sentence"
+  }
+]`;
 
 function callClaude(fixtures, date, label) {
   return new Promise((resolve, reject) => {
@@ -54,7 +46,7 @@ function callClaude(fixtures, date, label) {
       `ID:${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | KO:${f.time || 'TBC'}`
     ).join('\n');
 
-    const userMessage = `Research these ${fixtures.length} fixtures for ${label} on ${date}. Web search every fixture. Return best picks as JSON array only.\n\nFIXTURES:\n${fixtureList}`;
+    const userMessage = `Analyse these fixtures for ${label} on ${date}. Search the web for each one, then return your picks as a JSON array.\n\n${fixtureList}`;
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
@@ -82,18 +74,26 @@ function callClaude(fixtures, date, label) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed.error) { reject(new Error(parsed.error.message)); return; }
+          if (parsed.error) { 
+            console.error('API error:', JSON.stringify(parsed.error));
+            reject(new Error(parsed.error.message)); 
+            return; 
+          }
           const allText = (parsed.content || [])
             .filter(b => b.type === 'text')
             .map(b => b.text)
             .join('\n');
-          if (!allText) { resolve([]); return; }
+          console.log('Response text preview:', allText.substring(0, 300));
           let text = allText.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
           const s = text.lastIndexOf('[');
           const e = text.lastIndexOf(']');
-          if (s === -1 || e === -1 || e < s) { console.error('No array:', text.substring(0,200)); resolve([]); return; }
+          if (s === -1 || e === -1 || e < s) { 
+            console.error('No JSON array found');
+            resolve([]); 
+            return; 
+          }
           const cards = JSON.parse(text.substring(s, e+1));
-          console.log('Cards:', cards.length);
+          console.log('Cards returned:', cards.length);
           resolve(Array.isArray(cards) ? cards : []);
         } catch(err) {
           console.error('Parse error:', err.message);
@@ -109,10 +109,7 @@ function callClaude(fixtures, date, label) {
 }
 
 exports.handler = async function(event) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json'
-  };
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
@@ -123,7 +120,7 @@ exports.handler = async function(event) {
 
   const { fixtures, date, label } = body;
   if (!fixtures || !fixtures.length || !date) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'fixtures and date required' }) };
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields' }) };
   }
 
   console.log(`Analysing ${fixtures.length} fixtures for ${label} on ${date}`);
@@ -132,7 +129,7 @@ exports.handler = async function(event) {
     const cards = await callClaude(fixtures, date, label);
     return { statusCode: 200, headers, body: JSON.stringify({ cards }) };
   } catch(e) {
-    console.error('Failed:', e.message);
+    console.error('Error:', e.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }
 };
