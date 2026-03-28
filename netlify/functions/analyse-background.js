@@ -76,55 +76,44 @@ function callClaude(fixtures, date, label) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-
           if (parsed.error) {
             console.error('Claude API error:', parsed.error.message);
             reject(new Error(parsed.error.message));
             return;
           }
-
           const allText = (parsed.content || [])
             .filter(b => b.type === 'text')
             .map(b => b.text)
             .join('\n');
-
           console.log('Raw response length:', allText.length);
           console.log('Response preview:', allText.substring(0, 300));
-
           let text = allText
             .replace(/```json\s*/gi, '')
             .replace(/```\s*/gi, '')
             .trim();
-
           const start = text.indexOf('[');
           const end = text.lastIndexOf(']');
-
           if (start === -1 || end === -1 || end <= start) {
             console.error('No JSON array found — returning empty');
             resolve([]);
             return;
           }
-
           const jsonStr = text.substring(start, end + 1);
           console.log('Extracted JSON length:', jsonStr.length);
-
           try {
             const cards = JSON.parse(jsonStr);
             console.log('Cards parsed:', cards.length);
             resolve(Array.isArray(cards) ? cards : []);
           } catch(parseErr) {
             console.error('JSON parse error:', parseErr.message);
-            console.error('JSON string preview:', jsonStr.substring(0, 500));
             resolve([]);
           }
-
         } catch(err) {
           console.error('Response parse error:', err.message);
           resolve([]);
         }
       });
     });
-
     req.on('error', reject);
     req.setTimeout(840000);
     req.write(body);
@@ -140,15 +129,12 @@ exports.handler = async function(event) {
     console.error('Bad request body');
     return;
   }
-
   const { jobId, fixtures, date, label } = body;
   if (!jobId || !fixtures || !date) {
     console.error('Missing fields');
     return;
   }
-
   console.log(`Job ${jobId}: ${fixtures.length} fixtures for ${label}`);
-
   try {
     await redisSet(jobId, { status: 'loading' });
     const cards = await callClaude(fixtures, date, label);
