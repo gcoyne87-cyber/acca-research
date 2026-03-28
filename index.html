@@ -607,9 +607,9 @@ function renderResearchTab(){
       +'</div>';
 
     if(sec.status==='loading'){
-      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Web searching form, injuries, H2H and key factors — this takes 60-90 seconds</small></div>';
+      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Researching form, injuries, H2H and key factors for every fixture</small></div>';
     } else if(sec.status==='error'){
-      html+='<div class="analyse-error">'+(sec.errorMsg||'Analysis failed. Check your connection and try again.')+'</div>';
+      html+='<div class="analyse-error">Analysis failed. Check your connection and try again.</div>';
     } else if(!sec.cards.length){
       html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">After researching every fixture in '+sec.label+', there are no picks that meet the standard today.<br>Try a different league or date.</div></div>';
     } else {
