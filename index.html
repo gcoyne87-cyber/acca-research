@@ -561,7 +561,7 @@ async function triggerAnalysis(cobj, label, fixtures){
   var attempts=0;
   var interval=setInterval(async function(){
     attempts++;
-    if(attempts>200){
+    if(attempts>300){
       clearInterval(interval);
       var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
       if(sec&&sec.status==='loading'){sec.status='error';renderResearchTab();}
