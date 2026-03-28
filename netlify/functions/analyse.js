@@ -1,97 +1,73 @@
 const https = require('https');
 
-const SYSTEM_PROMPT = `You are an elite football accumulator research analyst. Your job is to research football fixtures in depth and identify the strongest selections worth backing.
+const SYSTEM_PROMPT = `You are an elite football accumulator research analyst with access to web search. Your entire purpose is to find the best value selections from football fixtures by doing genuinely deep research — not surface-level form guides.
 
-CORE PHILOSOPHY:
-- You MUST web search every fixture before deciding. Do not skip this step.
-- You MUST return your best picks — even if confidence is moderate. Never return an empty array unless every single fixture is genuinely unresearchable.
-- Home win or away win ONLY. No draws.
-- Quality over quantity but always find SOMETHING to recommend.
-- Aim for 3-5 picks from any set of fixtures.
+YOU MUST WEB SEARCH EVERY SINGLE FIXTURE before making any decision. No exceptions. Search for:
+1. Current form last 6 games HOME and AWAY separately
+2. Injury and suspension news (search "[team] injury news [current month]")
+3. Manager situation — any sackings, new appointments, unrest?
+4. What does each team NEED from this game — promotion push, relegation battle, nothing to play for?
+5. H2H last 6 meetings with home/away breakdown
+6. Recent goals scored and conceded patterns
+7. Any midweek fatigue, fixture congestion, international call-ups?
+8. Referee assigned if known — booking/card tendencies
 
-FOR EVERY FIXTURE YOU MUST RESEARCH AND CONSIDER:
+GOLDEN NUGGET FACTORS (what separates you from any form guide website):
+- Teams with nothing to play for AWAY from home — classic 0-0 trap, never back them
+- New manager bounce — first home game under new manager is powerful
+- Revenge factor — were they hammered 4-0 in the reverse fixture?
+- Teams where the ODDS do not reflect the true probability (value bets)
+- Specific absences — not just "injuries" but losing the top scorer AND creative player together
+- Teams on a long unbeaten run that are due a slip vs a genuinely strong opponent
+- Away sides with exceptional away records that are being underestimated by the market
+- Relegation six-pointer dynamics — both teams desperate, unpredictable
 
-FORM & MOMENTUM:
-- Last 6 results split HOME and AWAY separately (critical — combined form masks the truth)
-- Goals scored and conceded at home vs away
-- Current streak (winning run, unbeaten run, losing run)
-- Trend: is form improving or declining over last 3 vs last 6?
+SELECTION RULES:
+- Home win or away win ONLY. Never draws.
+- NEVER select: relegation battler away from home, derby matches, teams missing 3+ key players in their selection, sides with new interim managers with no preparation time
+- Short prices (under evens) only with overwhelming justification
+- Always flag the single biggest risk to each selection honestly
 
-SQUAD & AVAILABILITY:
-- Injuries to key players (especially striker, creative midfielder, first-choice goalkeeper)
-- Suspensions
-- International call-ups and travel fatigue post-break
-- Manager situation — sacked recently? New interim? Dressing room unrest?
-- Players returning from injury who may not be match sharp
+OUTPUT: Return a JSON array of your picks. Include every fixture you are recommending. If after thorough research you genuinely have no confident picks, return []. But you must search every fixture first.
 
-HEAD TO HEAD:
-- Last 6 meetings
-- Home/away split in H2H — does one side always win at this venue regardless of form?
-- Psychological edge or bogey team factor
-
-CONTEXTUAL FACTORS (the ones sites miss):
-- What does each team NEED from this game? Promotion push, relegation battle, nothing to play for
-- Fixture congestion — did they play midweek?
-- Long travel for away side
-- Teams with nothing to play for away from home — classic 0-0 trap, avoid
-- New manager bounce (home or away — can go either way)
-- Revenge factor — were they hammered in the reverse fixture?
-- Teams just promoted/relegated still adjusting psychologically
-
-VALUE:
-- Does the price reflect the true probability?
-- Short prices (under evens) — only include with overwhelming justification
-- Flag genuinely good value where odds underestimate the probability
-
-NEVER RECOMMEND when:
-- 3+ key players missing for the side you'd back, no adequate cover
-- Relegation battler away from home (classic 0-0 trap)
-- Derby or rivalry match — always unpredictable
-- New interim manager in charge with no time to implement ideas
-- Team missing top scorer AND creative player simultaneously for an away win
-- You are not genuinely confident. Better to return fewer picks than pad with weak ones.
-
-OUTPUT FORMAT:
-Return a JSON array of selected fixtures only. Do not include skips, watches or maybes — ONLY picks.
 Each object must have exactly these fields:
 {
-  "fid": "the fixture id string passed to you",
+  "fid": "fixture id string",
   "home": "home team name",
-  "away": "away team name",
-  "ko": "kickoff time string e.g. 15:00",
+  "away": "away team name", 
+  "ko": "kickoff time e.g. 15:00",
   "selection": "team name to back",
   "selectionType": "Home Win or Away Win",
-  "confidence": number between 60 and 95,
-  "odds": "fractional odds e.g. 4/5 or 6/4 — your assessment of fair value",
-  "formHome": "e.g. W W D W L W",
-  "formAway": "e.g. L W L L D W",
-  "reasons": ["reason 1", "reason 2", "reason 3"],
-  "warnings": ["warning 1"],
-  "goldenNugget": "the single most important factor that makes this a selection — the thing a normal form guide would miss",
-  "riskNote": "one sentence on the main risk to this selection"
+  "confidence": number 60-95,
+  "odds": "your fair value odds e.g. 4/5",
+  "formHome": "home team last 6 home results e.g. W W D W L W",
+  "formAway": "away team last 6 away results e.g. L W L L D W",
+  "reasons": ["detailed reason 1", "detailed reason 2", "detailed reason 3"],
+  "warnings": ["main warning or risk factor"],
+  "goldenNugget": "the single factor a standard form guide would miss that makes this a pick",
+  "riskNote": "the main risk to this selection in one honest sentence"
 }
 
-IMPORTANT: Return ONLY a valid JSON array. No markdown. No explanation. No preamble. Just the raw JSON array starting with [ and ending with ].
-If there are no strong selections, return an empty array: []`;
+Return ONLY the JSON array. No preamble. No explanation. Start with [ and end with ].`;
 
-function callClaudeAPI(fixtures, date, label) {
+function callClaude(fixtures, date, label) {
   return new Promise((resolve, reject) => {
-    const fixtureList = fixtures.map(f => 
-      `ID: ${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | ${f.time || 'TBC'}`
+    const fixtureList = fixtures.map(f =>
+      `ID:${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | KO:${f.time || 'TBC'}`
     ).join('\n');
 
-    const userMessage = `You must web search and research these ${fixtures.length} fixtures for ${label} on ${date}. 
+    const userMessage = `Research and analyse these ${fixtures.length} football fixtures for ${label} on ${date}.
 
-Search for current form, injuries, H2H, manager news for each game. Then return your best 3-5 picks as a JSON array.
+You must use web_search to look up current form, injuries, manager news and context for EVERY fixture before deciding.
 
-FIXTURES:
+FIXTURES TO RESEARCH:
 ${fixtureList}
 
-CRITICAL: You must search the web for each fixture. You must return picks — do not return an empty array. Return the JSON array only, starting with [.`;
+Search each fixture. Take your time. Then return your best picks as a JSON array only.`;
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 8000,
       tools: [{
         type: 'web_search_20250305',
         name: 'web_search'
@@ -108,7 +84,7 @@ CRITICAL: You must search the web for each fixture. You must return picks — do
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
         'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2023-06-01'
       }
     };
 
@@ -118,49 +94,46 @@ CRITICAL: You must search the web for each fixture. You must return picks — do
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          // Extract text content from response
+          if (parsed.error) {
+            console.error('API error:', parsed.error);
+            reject(new Error(parsed.error.message || 'API error'));
+            return;
+          }
           const textBlock = (parsed.content || []).find(b => b.type === 'text');
           if (!textBlock) {
+            console.error('No text block in response. Content types:', (parsed.content||[]).map(b=>b.type));
             resolve([]);
             return;
           }
-          // Parse JSON from the text response
           let text = textBlock.text.trim();
-          // Strip markdown fences
           text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          // Extract JSON array even if Claude adds preamble text
           const arrayStart = text.indexOf('[');
           const arrayEnd = text.lastIndexOf(']');
           if (arrayStart === -1 || arrayEnd === -1) {
-            console.error('No JSON array found in response');
+            console.error('No JSON array in response. Text preview:', text.substring(0, 300));
             resolve([]);
             return;
           }
-          const jsonStr = text.substring(arrayStart, arrayEnd + 1);
-          const cards = JSON.parse(jsonStr);
+          const cards = JSON.parse(text.substring(arrayStart, arrayEnd + 1));
+          console.log('Analysis complete. Cards returned:', cards.length);
           resolve(Array.isArray(cards) ? cards : []);
-        } catch(e) {
-          console.error('Parse error:', e.message); console.error('Raw response:', data.substring(0, 1000));
+        } catch (e) {
+          console.error('Parse error:', e.message);
+          console.error('Raw:', data.substring(0, 500));
           resolve([]);
         }
       });
     });
 
     req.on('error', reject);
+    req.setTimeout(600000); // 10 minute socket timeout
     req.write(body);
     req.end();
   });
 }
 
+// Background function handler — runs async, no timeout constraint
 exports.handler = async function(event) {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
-
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -174,19 +147,26 @@ exports.handler = async function(event) {
     };
   }
 
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
   let body;
   try {
     body = JSON.parse(event.body);
-  } catch(e) {
+  } catch (e) {
     return {
       statusCode: 400,
       headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON body' })
+      body: JSON.stringify({ error: 'Invalid JSON' })
     };
   }
 
   const { fixtures, date, label } = body;
-
   if (!fixtures || !fixtures.length || !date) {
     return {
       statusCode: 400,
@@ -195,15 +175,17 @@ exports.handler = async function(event) {
     };
   }
 
+  console.log(`Starting analysis: ${fixtures.length} fixtures for ${label} on ${date}`);
+
   try {
-    const cards = await callClaudeAPI(fixtures, date, label || 'selected fixtures');
+    const cards = await callClaude(fixtures, date, label);
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
       body: JSON.stringify({ cards })
     };
-  } catch(e) {
-    console.error('Analysis error:', e.message);
+  } catch (e) {
+    console.error('Analysis failed:', e.message);
     return {
       statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
