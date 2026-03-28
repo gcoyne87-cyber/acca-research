@@ -6,7 +6,7 @@ const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 async function redisGet(key) {
   return new Promise((resolve, reject) => {
     const url = new URL(UPSTASH_URL);
-    const path = `/get/${encodeURIComponent(key)}`;
+    const path = `/get/${key}`;
     const req = https.request({
       hostname: url.hostname,
       path,
