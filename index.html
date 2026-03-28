@@ -87,58 +87,62 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .rch-clear:hover{color:#e53935;border-color:#e53935}
 
 /* ── ANALYSIS CARD ── */
-.analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--white)}
+.analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;background:var(--white)}
 
-/* Header: teams left, pick right */
-.ac-head{background:var(--navy2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* Header: white, fixture left, pick right */
+.ac-head{background:var(--white);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border)}
+.ac-teams{flex:1;min-width:0}
+.ac-fixture-line{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.ac-team{font-size:13px;font-weight:400;color:var(--muted)}
+.ac-team--pick{font-size:17px;font-weight:600;color:var(--navy)}
+.ac-team-vs{font-size:10px;font-weight:300;color:var(--border)}
+.ac-ko{font-size:11px;color:var(--muted);margin-top:3px}
 
-/* Left side — both team names, picked one is big */
-/* ── ANALYSIS CARD — light, clean, no navy block ── */
-.analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--white)}
+/* Right: pick */
+.ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0}
+.ac-pick-label{font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:.14em;color:var(--green);opacity:.75}
+.ac-pick-team{font-size:15px;font-weight:600;color:var(--green);text-align:right}
+.ac-pick-odds{font-size:12px;font-weight:400;color:var(--mid);text-align:right}
 
-/* Header: white background, navy text, pick in green on right */
-.ac-head{background:var(--white);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1.5px solid var(--border)}
-.ac-teams{display:flex;align-items:baseline;gap:7px;flex:1;min-width:0;flex-wrap:wrap}
-.ac-team{font-size:13px;font-weight:400;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ac-team--pick{font-size:16px;font-weight:600;color:var(--navy);letter-spacing:-0.1px}
-.ac-team-vs{font-size:10px;font-weight:300;color:var(--border);letter-spacing:.05em;flex-shrink:0}
+/* Confidence bar */
+.ac-conf-row{padding:7px 16px;background:var(--soft);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.ac-conf-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+.ac-conf-bar{flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden}
+.ac-conf-fill{height:100%;border-radius:99px;background:var(--green)}
+.ac-conf-pct{font-size:11px;font-weight:500;color:var(--green);white-space:nowrap}
 
-/* Right side — Pick label, team in green, odds in navy */
-.ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:2px}
-.ac-pick-label{font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:.15em;color:var(--green);opacity:.7}
-.ac-pick-team{font-size:14px;font-weight:600;color:var(--green);text-align:right;max-width:160px;line-height:1.2}
-.ac-pick-odds{font-size:13px;font-weight:500;color:var(--navy);text-align:right;letter-spacing:.02em}
+/* 4-box stat grid */
+.ac-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.ac-stat-box{background:var(--soft);border-radius:8px;padding:9px 11px}
+.ac-stat-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
+.ac-stat-val{font-size:12px;font-weight:600;color:var(--navy)}
+.ac-stat-sub{font-size:11px;font-weight:400;color:var(--mid);display:block;margin-top:1px}
 
-/* Slim meta row */
-.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:5px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:400;color:var(--muted)}
-.ac-meta-conf{color:var(--green);font-weight:500}
+/* Body: reasons */
+.ac-body{padding:12px 16px}
+.reasons{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.reason{font-size:12px;color:var(--mid);display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.reason .ri{flex-shrink:0;font-size:11px;margin-top:1px}
 
-.ac-body{padding:13px 15px}
-.conf-row{margin-bottom:11px}
-.conf-bar{height:6px;background:#e4e8f0;border-radius:99px;overflow:hidden}
-.conf-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
-.reasons{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
-.reason{font-size:12px;color:var(--mid);display:flex;gap:6px;align-items:flex-start;line-height:1.45}
-.reason .ri{flex-shrink:0;font-size:12px}
-.risk-note{background:var(--soft);border-radius:7px;padding:7px 11px;font-size:11px;color:var(--mid);font-style:italic}
-.ac-foot{padding:10px 15px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:flex-end}
-.add-btn{font-size:12px;font-weight:500;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+/* Key factor */
+.nugget{background:#fffbf0;border:1.5px solid rgba(201,168,76,0.3);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--mid);line-height:1.55}
+.nugget strong{color:var(--navy)}
+
+/* Risk note */
+.risk-note{background:var(--soft);border-radius:7px;padding:8px 12px;font-size:11px;color:var(--mid);font-style:italic;line-height:1.55}
+
+/* Footer */
+.ac-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end}
+.add-btn{font-size:12px;font-weight:500;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 16px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .add-btn:hover{background:var(--gold);color:var(--navy)}
 .add-btn.added{background:var(--green);color:#fff}
 
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.form-block{background:var(--soft);border-radius:7px;padding:8px 10px}
-.form-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
-.form-str{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.08em}
-.nugget{background:#fffbf0;border:1.5px solid rgba(201,168,76,0.35);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--mid);line-height:1.5}
-.nugget strong{color:var(--navy)}
 .no-picks{text-align:center;padding:40px 20px;border:1.5px solid var(--border);border-radius:12px;background:var(--white);margin-bottom:12px}
 .no-picks-icon{font-size:32px;margin-bottom:10px;opacity:.5}
 .no-picks-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .no-picks-sub{font-size:12px;color:var(--muted);line-height:1.7}
 .analyse-error{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;font-size:13px;color:#b02020;margin-bottom:12px}
 
-/* Analysing spinner block */
 .analysing-block{border:1.5px solid var(--border);border-radius:12px;padding:32px;text-align:center;margin-bottom:12px;background:var(--white)}
 .analysing-block .spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -582,39 +586,52 @@ function buildCardHTML(c){
   var awayTeam=escHtml(c.away||'');
   var selTeam=escHtml(c.selection||'');
 
-  var reasons=(c.reasons||[]).map(function(r){return '<div class="reason"><span class="ri">&#9989;</span>'+escHtml(r)+'</div>';}).join('');
-  var warnings=(c.warnings||[]).map(function(r){return '<div class="reason"><span class="ri">&#9888;</span>'+escHtml(r)+'</div>';}).join('');
-
-  var formRow='';
-  if(c.formHome||c.formAway){
-    formRow='<div class="form-row">'
-      +(c.formHome?'<div class="form-block"><span class="form-lbl">'+homeTeam+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')
-      +(c.formAway?'<div class="form-block"><span class="form-lbl">'+awayTeam+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')
-      +'</div>';
-  }
-
-  var nugget=c.goldenNugget?'<div class="nugget">&#128081; <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
-
-  // LEFT: both teams, picked one is big white, other is small faded, "vs" in between
-  var teamsLeft='<div class="ac-teams">'
-    +'<div class="ac-team'+(isHomePick?' ac-team--pick':'')+'">'+homeTeam+'</div>'
-    +'<div class="ac-team-vs">vs</div>'
-    +'<div class="ac-team'+(isHomePick?'':' ac-team--pick')+'">'+awayTeam+'</div>'
+  // Header left: fixture line with picked team bigger
+  var fixtureLeft='<div class="ac-teams">'
+    +'<div class="ac-fixture-line">'
+    +'<span class="ac-team'+(isHomePick?' ac-team--pick':'')+'">'+homeTeam+'</span>'
+    +'<span class="ac-team-vs">vs</span>'
+    +'<span class="ac-team'+(isHomePick?'':' ac-team--pick')+'">'+awayTeam+'</span>'
+    +'</div>'
+    +(c.ko?'<div class="ac-ko">'+escHtml(c.ko)+'</div>':'')
     +'</div>';
 
-  // RIGHT: PICK label, team in gold, odds big
+  // Header right: pick
   var pickRight='<div class="ac-pick-block">'
     +'<div class="ac-pick-label">Pick</div>'
     +'<div class="ac-pick-team">'+selTeam+'</div>'
     +(c.odds?'<div class="ac-pick-odds">Odds: '+escHtml(c.odds)+'</div>':'')
     +'</div>';
 
+  // Confidence bar
+  var confRow='<div class="ac-conf-row">'
+    +'<span class="ac-conf-label">Confidence</span>'
+    +'<div class="ac-conf-bar"><div class="ac-conf-fill" style="width:'+conf+'%"></div></div>'
+    +'<span class="ac-conf-pct">'+conf+'%</span>'
+    +'</div>';
+
+  // 2 stat boxes: home form + away form
+  var statsRow='<div class="ac-stats">'
+    +'<div class="ac-stat-box"><span class="ac-stat-lbl">'+homeTeam+' (Home)</span><span class="ac-stat-val">'+escHtml(c.formHome||'—')+'</span></div>'
+    +'<div class="ac-stat-box"><span class="ac-stat-lbl">'+awayTeam+' (Away)</span><span class="ac-stat-val">'+escHtml(c.formAway||'—')+'</span></div>'
+    +'</div>';
+
+  // Reasons: green ticks, orange exclamation for warnings
+  var reasons=(c.reasons||[]).map(function(r){
+    return '<div class="reason"><span class="ri" style="color:var(--green);">✓</span>'+escHtml(r)+'</div>';
+  }).join('');
+  var warnings=(c.warnings||[]).map(function(r){
+    return '<div class="reason"><span class="ri" style="color:#e8890c;">!</span>'+escHtml(r)+'</div>';
+  }).join('');
+
+  var nugget=c.goldenNugget
+    ?'<div class="nugget">👑 <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
+
   return '<div class="analysis-card">'
-    +'<div class="ac-head">'+teamsLeft+pickRight+'</div>'
-    +'<div class="ac-meta-row">'+(c.ko?escHtml(c.ko)+' &nbsp;·&nbsp; ':'')+' <span class="ac-meta-conf">'+conf+'% confidence</span></div>'
+    +'<div class="ac-head">'+fixtureLeft+pickRight+'</div>'
+    +confRow
+    +statsRow
     +'<div class="ac-body">'
-    +'<div class="conf-row"><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'
-    +formRow
     +'<div class="reasons">'+reasons+warnings+'</div>'
     +nugget
     +(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')
@@ -624,7 +641,7 @@ function buildCardHTML(c){
     +'data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" '
     +'data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" '
     +'data-odds="'+escHtml(c.odds||'EVS')+'">'
-    +(added?'&#10003; Added':'+ Add to Slip')
+    +(added?'✓ Added':'+ Add to Slip')
     +'</button>'
     +'</div>'
     +'</div>';
