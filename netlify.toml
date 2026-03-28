@@ -1,5 +1,2 @@
 [functions]
   timeout = 300
-
-[functions.analyse]
-  timeout = 300
