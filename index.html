@@ -100,8 +100,88 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .pop-add{font-size:11px;font-weight:500;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .pop-add:hover{background:var(--green)}
 .pop-add.added{background:var(--green)}
-.upcoming-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:10px}
-.upcoming-grid{display:flex;flex-direction:column;gap:8px}
+/* ── BACK NAV ── */
+.back-nav{display:none;align-items:center;gap:6px;margin-bottom:14px;cursor:pointer;width:fit-content;padding:5px 0}
+.back-nav.visible{display:flex}
+.back-nav:hover .back-nav-text{color:var(--navy)}
+.back-nav-arrow{font-size:14px;color:var(--muted)}
+.back-nav-text{font-size:12px;font-weight:500;color:var(--mid)}
+
+/* ── HOME SECTION ── */
+.home-section{margin-bottom:20px}
+.home-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.home-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--navy)}
+.home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
+
+/* ── POPULAR ACCAS ── */
+.pacca-scroll{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.pacca-scroll::-webkit-scrollbar{display:none}
+.pacca-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;min-width:188px;max-width:188px;flex-shrink:0;transition:all .18s}
+.pacca-card:hover{border-color:var(--navy)}
+.pacca-badge{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:7px}
+.pacca-teams{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.pacca-team{font-size:12px;font-weight:500;color:var(--navy);display:flex;align-items:center}
+.pacca-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;margin-right:6px;display:inline-block}
+.pacca-meta{font-size:10px;color:var(--muted);margin-bottom:9px}
+.pacca-foot{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.pacca-pickers{font-size:10px;color:var(--muted)}
+.pacca-btn{font-size:11px;font-weight:500;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.pacca-btn:hover{background:var(--green)}
+.pacca-btn.added{background:var(--green)}
+
+/* ── LIVE FEED ── */
+.feed-wrap{max-height:210px;overflow-y:auto;scrollbar-width:none}
+.feed-wrap::-webkit-scrollbar{display:none}
+.feed-item{display:flex;align-items:center;gap:9px;padding:8px 14px;border-bottom:1px solid var(--border);animation:feedIn .35s ease}
+.feed-item:last-child{border-bottom:none}
+@keyframes feedIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.feed-avatar{width:28px;height:28px;border-radius:50%;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.feed-info{flex:1;min-width:0}
+.feed-name{font-size:12px;font-weight:500;color:var(--navy);display:flex;align-items:center;gap:5px}
+.feed-tier{font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;letter-spacing:.04em}
+.tier-gold{background:#fef3c7;color:#b45309}
+.tier-silver{background:#f1f5f9;color:#64748b}
+.tier-bronze{background:#fdf4ec;color:#c2713a}
+.feed-picks{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-time{font-size:10px;color:var(--muted);flex-shrink:0}
+.feed-view{font-size:10px;font-weight:500;color:var(--green);background:none;border:none;cursor:pointer;font-family:inherit;flex-shrink:0;padding:0}
+.feed-view:hover{text-decoration:underline}
+
+/* ── UPCOMING FIXTURE BOXES ── */
+.ufx-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:500px){.ufx-grid{grid-template-columns:1fr}}
+.ufx-box{background:var(--white);border:1.5px solid var(--border);border-radius:11px;overflow:hidden;cursor:pointer;transition:all .18s}
+.ufx-box:hover{border-color:var(--navy)}
+.ufx-box-head{padding:9px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ufx-league{font-size:11px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.07em}
+.ufx-date{font-size:10px;color:var(--muted);font-weight:400}
+.ufx-fixtures{padding:7px 12px;display:flex;flex-direction:column;gap:3px}
+.ufx-fx{font-size:11px;color:var(--mid);font-weight:400}
+.ufx-more{font-size:10px;color:var(--muted);padding:2px 12px 7px;font-style:italic}
+.ufx-foot{padding:7px 12px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:space-between}
+.ufx-count{font-size:10px;color:var(--muted);font-weight:400}
+.ufx-analyse{font-size:11px;font-weight:500;color:var(--green)}
+
+/* ── DRAWER ── */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:500}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-radius:18px 18px 0 0;z-index:501;max-height:75vh;overflow:hidden;transform:translateY(100%);transition:transform .3s ease}
+.drawer.open{transform:translateY(0)}
+.drawer-handle{width:36px;height:4px;background:var(--border);border-radius:99px;margin:12px auto 0}
+.drawer-head{padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.drawer-title{font-size:13px;font-weight:600;color:var(--navy)}
+.drawer-close{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;line-height:1;padding:0}
+.drawer-body{padding:12px 18px;overflow-y:auto;max-height:calc(75vh - 90px)}
+.drawer-leg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.drawer-leg:last-child{border-bottom:none}
+.drawer-leg-left{flex:1;min-width:0}
+.drawer-leg-team{font-size:13px;font-weight:500;color:var(--navy)}
+.drawer-leg-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.drawer-leg-add{font-size:11px;font-weight:500;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:5px 11px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.drawer-leg-add:hover,.drawer-leg-add.added{background:var(--green)}
+.drawer-copy-all{width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:14px;transition:opacity .18s}
+.drawer-copy-all:hover{opacity:.88}
+
 .upcoming-card{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .18s}
 .upcoming-card:hover{border-color:var(--navy);background:var(--soft)}
 .upcoming-left{flex:1;min-width:0}
@@ -260,24 +340,67 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </button>
   </div>
   <div id="tab-fixtures-content">
-    <div class="widget-row" id="home-widgets">
-      <!-- Leaderboard -->
-      <div class="widget-box">
-        <div class="widget-head">
-          <span class="widget-title">🏆 This Week's Leaders</span>
-          <span class="widget-sub">Top accas</span>
-        </div>
-        <div id="leaderboard-body"></div>
-      </div>
-      <!-- Most Popular Picks -->
-      <div class="widget-box">
-        <div class="widget-head">
-          <span class="widget-title">🔥 Most Picked</span>
-          <span class="widget-sub">This weekend</span>
-        </div>
-        <div id="popular-body"></div>
-      </div>
+
+    <!-- Back nav — shown when country selected -->
+    <div class="back-nav" id="back-nav" onclick="goHome()">
+      <span class="back-nav-arrow">←</span>
+      <span class="back-nav-text">Back to Home</span>
     </div>
+
+    <!-- Home widgets — hidden when country selected -->
+    <div id="home-widgets">
+
+      <!-- Live Activity Feed + Leaderboard side by side -->
+      <div class="widget-row">
+        <div class="widget-box">
+          <div class="widget-head">
+            <span class="widget-title">⚡ Live Activity</span>
+            <span class="widget-sub">What people are picking</span>
+          </div>
+          <div class="feed-wrap" id="feed-wrap"></div>
+        </div>
+        <div class="widget-box">
+          <div class="widget-head">
+            <span class="widget-title">🏆 This Week's Leaders</span>
+            <span class="widget-sub">Top accas</span>
+          </div>
+          <div id="leaderboard-body"></div>
+        </div>
+      </div>
+
+      <!-- Most Picked + Popular Accas -->
+      <div class="widget-row">
+        <div class="widget-box">
+          <div class="widget-head">
+            <span class="widget-title">🔥 Most Picked</span>
+            <span class="widget-sub">This weekend</span>
+          </div>
+          <div id="popular-body"></div>
+        </div>
+        <div class="widget-box">
+          <div class="widget-head">
+            <span class="widget-title">📋 Popular Accas</span>
+            <span class="widget-sub">Copy a winning combo</span>
+          </div>
+          <div style="padding:10px 14px">
+            <div class="pacca-scroll" id="pacca-scroll"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Fixtures -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">📅 Upcoming Fixtures</span>
+          <span class="home-section-sub">Click any league to analyse</span>
+        </div>
+        <div class="ufx-grid" id="ufx-grid">
+          <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;grid-column:1/-1">Loading upcoming fixtures...</div>
+        </div>
+      </div>
+
+    </div>
+
     <div class="league-tabs" id="league-tabs"></div>
     <div id="fixtures-container">
       <div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>
@@ -388,16 +511,14 @@ function buildCountryRow(){
 function selectCountry(country,btn){
   if(currentCountry===country){
     btn.classList.remove('active');
-    currentCountry=null;currentLeague='all';
-    document.getElementById('league-tabs').innerHTML='';
-    document.getElementById('home-widgets').style.display='';
-    document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
+    goHome();
     return;
   }
   if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
   currentCountry=country;currentLeague='all';
   btn.classList.add('active');
   document.getElementById('home-widgets').style.display='none';
+  document.getElementById('back-nav').classList.add('visible');
   var cobj=COUNTRIES.find(function(c){return c.id===country;});
   buildLeagueTabs();
   if(dataLoaded){renderFixtures();}else{loadFixtures();}
@@ -835,8 +956,233 @@ function startAnalysisAnimation(animId, fixtures){
   _animTimers[animId]=setInterval(next,1800);
 }
 
-// Top leagues to feature in upcoming (tier 1 + 2 only, priority order)
-var UPCOMING_LEAGUES=['4329','4330','4335','4331','4334','4332','4337','4344','4396','4397','4400','4401','4406','4402','4403','4395','4590'];
+// ── GO HOME ──
+function goHome(){
+  if(currentCountry){
+    var btn=document.getElementById('cf-'+currentCountry);
+    if(btn) btn.classList.remove('active');
+  }
+  currentCountry=null;currentLeague='all';
+  document.getElementById('league-tabs').innerHTML='';
+  document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
+  document.getElementById('home-widgets').style.display='';
+  document.getElementById('back-nav').classList.remove('visible');
+}
+
+// ── POPULAR ACCAS DATA ──
+var POPULAR_ACCAS=[
+  {legs:['Burnley','Leeds United','Lincoln City'],badge:'3-Leg Acca',odds:'9/1',pickers:243},
+  {legs:['Burnley','Bromley','Benfica','Leeds United'],badge:'4-Leg Acca',odds:'22/1',pickers:187},
+  {legs:['Burnley','Leeds United','Lincoln City','Bromley','Benfica'],badge:'5-Leg Acca',odds:'58/1',pickers:134},
+  {legs:['Lincoln City','Bromley','Benfica'],badge:'3-Leg Acca',odds:'7/1',pickers:198},
+  {legs:['Leeds United','Benfica','Burnley','Lincoln City'],badge:'4-Leg Acca',odds:'18/1',pickers:156},
+];
+
+function renderPopularAccas(){
+  var el=document.getElementById('pacca-scroll');
+  if(!el) return;
+  el.innerHTML=POPULAR_ACCAS.map(function(a,i){
+    return '<div class="pacca-card">'
+      +'<div class="pacca-badge">'+a.badge+'</div>'
+      +'<div class="pacca-teams">'+a.legs.map(function(t){return '<div class="pacca-team"><span class="pacca-dot"></span>'+escHtml(t)+'</div>';}).join('')+'</div>'
+      +'<div class="pacca-meta">Combined odds: ~'+a.odds+'</div>'
+      +'<div class="pacca-foot">'
+      +'<span class="pacca-pickers">👥 '+a.pickers+' picked</span>'
+      +'<button class="pacca-btn" onclick="copyAcca('+i+',this)">Copy Acca</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function copyAcca(idx,btn){
+  var a=POPULAR_ACCAS[idx];
+  a.legs.forEach(function(team,li){
+    var legId='leg_pacca'+idx+'_'+li;
+    if(!slipLegs.some(function(s){return s.legId===legId;})){
+      slipLegs.push({legId:legId,team:team,match:'Popular Acca',odds:'EVS',num:1,den:1});
+    }
+  });
+  btn.textContent='✓ Added';btn.classList.add('added');
+  renderSlip();
+  if(!slipOpen) toggleSlip();
+}
+
+// ── LIVE FEED DATA ──
+var FEED_USERS=[
+  {name:'GarethM',emoji:'🦁',tier:'gold',picks:['Burnley','Leeds United','Lincoln City']},
+  {name:'AccaKing',emoji:'👑',tier:'gold',picks:['Benfica','Bromley','Burnley','Leeds United']},
+  {name:'SharpBet',emoji:'⚡',tier:'silver',picks:['Lincoln City','Bromley']},
+  {name:'PaulD',emoji:'🎯',tier:'silver',picks:['Burnley','Benfica','Leeds United']},
+  {name:'TomR',emoji:'🍀',tier:'bronze',picks:['Bromley','Lincoln City','Burnley']},
+  {name:'DaveK',emoji:'🔥',tier:'silver',picks:['Leeds United','Benfica']},
+  {name:'SeanF',emoji:'⭐',tier:'bronze',picks:['Burnley','Lincoln City','Bromley','Benfica']},
+  {name:'MikeH',emoji:'🎲',tier:'bronze',picks:['Burnley','Leeds United']},
+  {name:'RyanP',emoji:'💪',tier:'silver',picks:['Benfica','Lincoln City','Burnley']},
+  {name:'JohnB',emoji:'🏹',tier:'gold',picks:['Burnley','Leeds United','Bromley','Benfica','Lincoln City']},
+  {name:'ChrisW',emoji:'🌟',tier:'bronze',picks:['Lincoln City','Leeds United']},
+  {name:'KevinM',emoji:'🦊',tier:'silver',picks:['Burnley','Benfica','Bromley']},
+];
+var TIER_LABELS={gold:'🥇 Gold',silver:'⚪ Silver',bronze:'🥉 Bronze'};
+var TIER_CLASSES={gold:'tier-gold',silver:'tier-silver',bronze:'tier-bronze'};
+var _feedIdx=0;
+var _feedInterval=null;
+
+function renderFeedItem(u,prepend){
+  var mins=Math.floor(Math.random()*45)+1;
+  var tierHtml='<span class="feed-tier '+TIER_CLASSES[u.tier]+'">'+TIER_LABELS[u.tier]+'</span>';
+  var picksStr=u.picks.join(', ');
+  return '<div class="feed-item" data-picks="'+escHtml(JSON.stringify(u.picks))+'" data-name="'+escHtml(u.name)+'">'
+    +'<div class="feed-avatar">'+u.emoji+'</div>'
+    +'<div class="feed-info">'
+    +'<div class="feed-name">'+escHtml(u.name)+' '+tierHtml+'</div>'
+    +'<div class="feed-picks">'+escHtml(u.picks.length)+' picks: '+escHtml(picksStr)+'</div>'
+    +'</div>'
+    +'<span class="feed-time">'+mins+'m</span>'
+    +'<button class="feed-view" onclick="openDrawerForUser(this)">View →</button>'
+    +'</div>';
+}
+
+function startFeed(){
+  var wrap=document.getElementById('feed-wrap');
+  if(!wrap) return;
+  // Seed initial items
+  var initial=FEED_USERS.slice(0,5);
+  wrap.innerHTML=initial.map(function(u){return renderFeedItem(u);}).join('');
+  _feedIdx=5;
+  // Add new item every 4s
+  _feedInterval=setInterval(function(){
+    var u=FEED_USERS[_feedIdx%FEED_USERS.length];_feedIdx++;
+    var div=document.createElement('div');
+    div.innerHTML=renderFeedItem(u);
+    var item=div.firstChild;
+    wrap.insertBefore(item,wrap.firstChild);
+    // Keep max 8 items
+    while(wrap.children.length>8) wrap.removeChild(wrap.lastChild);
+  },4000);
+}
+
+function openDrawerForUser(btn){
+  var item=btn.closest('.feed-item');
+  var name=item.dataset.name;
+  var picks=JSON.parse(item.dataset.picks);
+  openDrawer(name+"'s Selections",picks.map(function(t){return {team:t,meta:'Win',odds:'EVS',fid:'feed_'+Math.random().toString(36).slice(2)};}));
+}
+
+// ── DRAWER ──
+function openDrawer(title,legs){
+  document.getElementById('drawer-title').textContent=title;
+  var body=document.getElementById('drawer-body');
+  body.innerHTML=legs.map(function(leg){
+    var legId='leg_dr_'+leg.fid;
+    var added=slipLegs.some(function(s){return s.legId===legId;});
+    return '<div class="drawer-leg">'
+      +'<div class="drawer-leg-left"><div class="drawer-leg-team">'+escHtml(leg.team)+'</div><div class="drawer-leg-meta">'+escHtml(leg.meta||'Win')+'</div></div>'
+      +'<button class="drawer-leg-add'+(added?' added':'')+'" onclick="drawerAddLeg(this)" data-legid="'+legId+'" data-team="'+escHtml(leg.team)+'" data-odds="'+escHtml(leg.odds||'EVS')+'">'+(added?'✓ Added':'+ Add')+'</button>'
+      +'</div>';
+  }).join('')
+  +'<button class="drawer-copy-all" onclick="drawerCopyAll(this)">Copy Entire Acca to Slip</button>';
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+
+function closeDrawer(){
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+}
+
+function drawerAddLeg(btn){
+  var legId=btn.dataset.legid,team=btn.dataset.team,odds=btn.dataset.odds;
+  if(slipLegs.some(function(s){return s.legId===legId;})){return;}
+  var parts=odds.split('/');
+  slipLegs.push({legId:legId,team:team,match:'Community Pick',odds:odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+  btn.textContent='✓ Added';btn.classList.add('added');
+  renderSlip();
+  if(!slipOpen) toggleSlip();
+}
+
+function drawerCopyAll(btn){
+  var legs=document.querySelectorAll('#drawer-body .drawer-leg-add');
+  legs.forEach(function(b){if(!b.classList.contains('added')) drawerAddLeg(b);});
+  btn.textContent='✓ Added to Slip';
+}
+
+// ── UPCOMING FIXTURE BOXES ──
+var UFX_LEAGUES=[
+  {id:'4329',name:'Championship',country:'england',countryId:'england',flag:'gb-eng'},
+  {id:'4396',name:'League One',country:'england',countryId:'england',flag:'gb-eng'},
+  {id:'4330',name:'Premiership',country:'scotland',countryId:'scotland',flag:'gb-sct'},
+  {id:'4335',name:'La Liga',country:'spain',countryId:'spain',flag:'es'},
+  {id:'4331',name:'Bundesliga',country:'germany',countryId:'germany',flag:'de'},
+  {id:'4332',name:'Serie A',country:'italy',countryId:'italy',flag:'it'},
+];
+
+async function loadUpcomingBoxes(){
+  var grid=document.getElementById('ufx-grid');
+  if(!grid) return;
+  var days=[];
+  for(var i=1;i<=5;i++){var d=new Date();d.setDate(d.getDate()+i);days.push(formatDate(d));}
+
+  var byLeague={};
+  await Promise.all(days.map(async function(dateStr){
+    try{
+      var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
+      var data=await res.json();
+      (data.events||[]).forEach(function(f){
+        if(!byLeague[f.leagueId]) byLeague[f.leagueId]={dateStr:dateStr,fixtures:[]};
+        if(byLeague[f.leagueId].fixtures.length<4) byLeague[f.leagueId].fixtures.push(f);
+        byLeague[f.leagueId].total=(byLeague[f.leagueId].total||0)+1;
+      });
+    }catch(e){}
+  }));
+
+  var boxes=UFX_LEAGUES.map(function(l){
+    var data=byLeague[l.id];
+    if(!data) return null;
+    var d=new Date(data.dateStr+'T12:00:00Z');
+    var dayLabel=getDayLabel(data.dateStr);
+    var fxHtml=data.fixtures.slice(0,3).map(function(f){
+      return '<div class="ufx-fx">'+escHtml(f.home)+' vs '+escHtml(f.away)+'</div>';
+    }).join('');
+    var moreCount=data.total-3;
+    return '<div class="ufx-box" onclick="goToFixtureBox(\''+l.id+'\',\''+data.dateStr+'\',\''+l.countryId+'\')">'
+      +'<div class="ufx-box-head"><span class="ufx-league">'+l.name+'</span><span class="ufx-date">'+dayLabel+'</span></div>'
+      +'<div class="ufx-fixtures">'+fxHtml+'</div>'
+      +(moreCount>0?'<div class="ufx-more">+'+moreCount+' more fixtures</div>':'')
+      +'<div class="ufx-foot"><span class="ufx-count">'+data.total+' fixture'+(data.total===1?'':'s')+'</span><span class="ufx-analyse">Analyse →</span></div>'
+      +'</div>';
+  }).filter(Boolean);
+
+  grid.innerHTML=boxes.length?boxes.join(''):'<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted);font-size:12px">No upcoming fixtures found</div>';
+}
+
+function getDayLabel(dateStr){
+  var today=new Date();today.setHours(0,0,0,0);
+  var tom=new Date(today);tom.setDate(today.getDate()+1);
+  var dc=new Date(dateStr+'T12:00:00Z');dc.setHours(0,0,0,0);
+  if(dc.getTime()===today.getTime()) return 'Today';
+  if(dc.getTime()===tom.getTime()) return 'Tomorrow';
+  var d=new Date(dateStr+'T12:00:00Z');
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+
+function goToFixtureBox(leagueId,dateStr,countryId){
+  var parts=dateStr.split('-');
+  currentDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  dataLoaded=false;researchSections=[];
+  if(currentCountry&&currentCountry!==countryId){
+    var oldBtn=document.getElementById('cf-'+currentCountry);
+    if(oldBtn) oldBtn.classList.remove('active');
+  }
+  currentCountry=countryId;currentLeague=leagueId;
+  var btn=document.getElementById('cf-'+countryId);
+  if(btn) btn.classList.add('active');
+  document.getElementById('home-widgets').style.display='none';
+  document.getElementById('back-nav').classList.add('visible');
+  updateDateDisplay();buildLeagueTabs();switchTab('fixtures');
+  loadFixtures().then(function(){analyseLeague(leagueId);});
+}
+
+
 
 async function loadUpcoming(){
   var sec=document.getElementById('upcoming-section');
@@ -1007,8 +1353,21 @@ window.addEventListener('DOMContentLoaded',function(){
   initSlider();
   renderLeaderboard();
   renderPopularPicks();
-  loadUpcoming();
+  renderPopularAccas();
+  startFeed();
+  loadUpcomingBoxes();
 });
 </script>
+<!-- Drawer for viewing selections -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-head">
+    <span class="drawer-title" id="drawer-title">Selections</span>
+    <button class="drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
 </body>
 </html>
