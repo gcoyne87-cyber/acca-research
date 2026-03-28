@@ -538,40 +538,36 @@ function analyseLeague(leagueId){
 
 async function triggerAnalysis(cobj, label, fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
-
   var sectionId='section_'+Date.now();
-
   researchSections.unshift({
-    sectionId: sectionId,
-    countryId: cobj.id,
-    countryName: cobj.name,
-    flagCode: cobj.code,
-    label: label,
-    status: 'loading',
-    cards: []
+    sectionId:sectionId,countryId:cobj.id,countryName:cobj.name,
+    flagCode:cobj.code,label:label,status:'loading',cards:[]
   });
-
   switchTab('research');
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
+  var BATCH=5;
+  var batches=[];
+  for(var i=0;i<fixtures.length;i+=BATCH) batches.push(fixtures.slice(i,i+BATCH));
+  var allCards=[];
+
   try{
-    var res=await fetch('/.netlify/functions/analyse-background',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        fixtures:fixtures,
-        date:formatDate(currentDate),
-        label:label
-      })
-    });
-    var data=await res.json();
-    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-    if(sec){
-      sec.status='done';
-      sec.cards=data.cards||[];
-      renderResearchTab();
+    for(var b=0;b<batches.length;b++){
+      var res=await fetch('/.netlify/functions/analyse-background',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fixtures:batches[b],date:formatDate(currentDate),label:label})
+      });
+      var data=await res.json();
+      if(data.cards&&data.cards.length){
+        allCards=allCards.concat(data.cards);
+        var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+        if(sec){sec.cards=allCards.slice();renderResearchTab();}
+      }
     }
+    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+    if(sec){sec.status='done';sec.cards=allCards;renderResearchTab();}
   }catch(e){
     var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
     if(sec){sec.status='error';renderResearchTab();}
