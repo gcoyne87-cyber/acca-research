@@ -82,7 +82,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .fixture-row:last-child{border-bottom:none}
 .fixture-row:hover{background:var(--soft)}
 .fx-teams{display:flex;flex-direction:column;gap:1px}
-.fx-team{font-size:13px;font-weight:600;color:var(--navy)}
+.fx-team{font-size:13px;font-weight:500;color:var(--mid)}
 .fx-ko{font-size:11px;color:var(--gold);font-weight:700;text-align:right;white-space:nowrap}
 .fx-ko.live{color:var(--green)}
 .fx-ft{font-size:11px;color:var(--muted);font-weight:600;text-align:right}
@@ -190,6 +190,26 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ret-sub{font-size:9px;color:rgba(255,255,255,0.16);margin-top:2px}
 .clear-btn{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.28);border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
 .clear-btn:hover{background:rgba(255,80,80,0.15);color:#ff6b6b;border-color:rgba(255,80,80,0.3)}
+
+/* Form rows */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.form-block{background:var(--soft);border-radius:7px;padding:8px 10px}
+.form-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
+.form-str{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.08em}
+
+/* Golden nugget */
+.nugget{background:#fffbf0;border:1.5px solid rgba(201,168,76,0.35);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--mid);line-height:1.5}
+.nugget strong{color:var(--navy)}
+.nugget-icon{font-size:13px;margin-right:4px}
+
+/* No picks state */
+.no-picks{text-align:center;padding:40px 20px;border:1.5px solid var(--border);border-radius:12px;background:var(--white);margin-bottom:12px}
+.no-picks-icon{font-size:32px;margin-bottom:10px;opacity:.5}
+.no-picks-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.no-picks-sub{font-size:12px;color:var(--muted);line-height:1.7}
+
+/* Error state */
+.analyse-error{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;font-size:13px;color:#b02020;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -516,13 +536,11 @@ function analyseLeague(leagueId){
   triggerAnalysis(cobj, l?l.name:leagueId, fixtures);
 }
 
-function triggerAnalysis(cobj, label, fixtures){
+async function triggerAnalysis(cobj, label, fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
 
-  // Create a section ID so we can identify it
   var sectionId='section_'+Date.now();
 
-  // Add a "analysing" placeholder section at the top of research
   researchSections.unshift({
     sectionId: sectionId,
     countryId: cobj.id,
@@ -533,22 +551,31 @@ function triggerAnalysis(cobj, label, fixtures){
     cards: []
   });
 
-  // Switch to research tab
   switchTab('research');
   renderResearchTab();
-
-  // Scroll to top of research
   window.scrollTo({top:0,behavior:'smooth'});
 
-  // Build cards after delay (real AI engine replaces this)
-  setTimeout(function(){
+  try{
+    var res=await fetch('/.netlify/functions/analyse',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        fixtures:fixtures,
+        date:formatDate(currentDate),
+        label:label
+      })
+    });
+    var data=await res.json();
     var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
     if(sec){
       sec.status='done';
-      sec.cards=buildDummyCards(fixtures);
+      sec.cards=data.cards||[];
       renderResearchTab();
     }
-  }, 2200);
+  }catch(e){
+    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+    if(sec){sec.status='error';renderResearchTab();}
+  }
 }
 
 // ── RESEARCH TAB RENDER ───────────────────────────────────────────────────────
@@ -580,7 +607,11 @@ function renderResearchTab(){
       +'</div>';
 
     if(sec.status==='loading'){
-      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Studying form, home/away records and key stats</small></div>';
+      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Researching form, injuries, H2H and key factors for every fixture</small></div>';
+    } else if(sec.status==='error'){
+      html+='<div class="analyse-error">Analysis failed. Check your connection and try again.</div>';
+    } else if(!sec.cards.length){
+      html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">After researching every fixture in '+sec.label+', there are no picks that meet the standard today.<br>Try a different league or date.</div></div>';
     } else {
       sec.cards.forEach(function(card){
         html+=buildCardHTML(card);
@@ -596,68 +627,42 @@ function removeSection(sectionId){
   renderResearchTab();
 }
 
-// ── DUMMY CARD BUILDER (replaced by real AI later) ────────────────────────────
-var ODDS_POOL=['4/6','10/11','5/6','8/11','4/5','11/10','6/4','7/4','2/1','9/4','5/2','11/4','3/1'];
-var VERDICTS=['pick','pick','pick','risk','watch','skip'];
-var REASONS_GOOD=['Strong home record — unbeaten in last 6','Opposition yet to win away in 7 attempts','Top scorer fully fit and in goalscoring form','Won last 3 home games to nil','Home side averaging 2.1 goals per game this month'];
-var REASONS_WARN=['International break may have disrupted rhythm','H2H shows this fixture is historically tight','Key midfielder doubt for home side'];
-var RISK_NOTES=['Manager may rotate given fixture congestion.','Both sides returning from international duty.','Weather conditions could affect a tight game.','Referee averages most cards in the division.'];
-
-function rnd(a){return a[Math.floor(Math.random()*a.length)];}
-function rndInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
-
-function buildDummyCards(fixtures){
-  return fixtures.slice(0,10).map(function(f){
-    var verdict=rnd(VERDICTS);
-    var conf=rndInt(52,91);
-    var odds=rnd(ODDS_POOL);
-    var pickHome=Math.random()>0.4;
-    var pickTeam=pickHome?f.home:f.away;
-    var pickType=pickHome?'Home Win':'Away Win';
-    var ko=f.time&&f.time!=='00:00:00'?formatKickoff(f.date,f.time):'';
-    return {
-      fid:f.id, home:f.home, away:f.away, ko:ko,
-      verdict:verdict, conf:conf, odds:odds,
-      pickTeam:pickTeam, pickType:pickType,
-      reasonGood:rnd(REASONS_GOOD), reasonGood2:rnd(REASONS_GOOD),
-      reasonWarn:rnd(REASONS_WARN), risk:rnd(RISK_NOTES),
-      w5:rndInt(2,5), goals5:rndInt(6,18), cs:rndInt(1,3), inj:rndInt(0,3)
-    };
-  });
-}
+// ── CARD BUILDER (real AI output) ───────────────────────────────────────────
 
 function buildCardHTML(c){
   var added=slipLegs.some(function(s){return s.legId==='leg_'+c.fid;});
+  var conf=c.confidence||75;
+  var reasons=(c.reasons||[]).map(function(r){return '<div class="reason"><span class="ri">&#9989;</span>'+escHtml(r)+'</div>';}).join('');
+  var warnings=(c.warnings||[]).map(function(r){return '<div class="reason"><span class="ri">&#9888;</span>'+escHtml(r)+'</div>';}).join('');
+  var formRow='';
+  if(c.formHome||c.formAway){
+    formRow='<div class="form-row">'
+      +(c.formHome?'<div class="form-block"><span class="form-lbl">'+escHtml(c.home)+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')
+      +(c.formAway?'<div class="form-block"><span class="form-lbl">'+escHtml(c.away)+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')
+      +'</div>';
+  }
+  var nugget=c.goldenNugget?'<div class="nugget"><span class="nugget-icon">&#128081;</span> <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
   return '<div class="analysis-card">'
     +'<div class="ac-head">'
-    +'<div><div class="ac-match">'+c.home+' vs '+c.away+'</div>'+(c.ko?'<div class="ac-time">'+c.ko+'</div>':'')+'</div>'
-    +'<div class="verdict '+c.verdict+'">'+(c.verdict==='pick'?'✅ PICK':c.verdict==='risk'?'⚠️ RISK':c.verdict==='skip'?'❌ SKIP':'👁 WATCH')+'</div>'
+    +'<div><div class="ac-match">'+escHtml(c.home)+' vs '+escHtml(c.away)+'</div>'+(c.ko?'<div class="ac-time">'+escHtml(c.ko)+'</div>':'')+'</div>'
+    +'<div class="verdict pick">&#9989; PICK</div>'
     +'</div>'
     +'<div class="ac-body">'
-    +'<div class="conf-row"><div class="conf-label"><span>Confidence</span><span>'+c.conf+'%</span></div><div class="conf-bar"><div class="conf-fill" style="width:'+c.conf+'%"></div></div></div>'
-    +'<div class="stat-row">'
-    +'<div class="stat-box"><div class="stat-val">'+c.w5+'W</div><div class="stat-lbl">Last 5</div></div>'
-    +'<div class="stat-box"><div class="stat-val">'+c.goals5+'</div><div class="stat-lbl">Goals (5)</div></div>'
-    +'<div class="stat-box"><div class="stat-val">'+c.cs+'</div><div class="stat-lbl">Clean Sheets</div></div>'
-    +'<div class="stat-box"><div class="stat-val">'+c.inj+'</div><div class="stat-lbl">Injuries</div></div>'
-    +'</div>'
-    +'<div class="reasons">'
-    +'<div class="reason"><span class="ri">✅</span>'+c.reasonGood+'</div>'
-    +'<div class="reason"><span class="ri">✅</span>'+c.reasonGood2+'</div>'
-    +'<div class="reason"><span class="ri">⚠️</span>'+c.reasonWarn+'</div>'
-    +'</div>'
-    +'<div class="risk-note">'+c.risk+'</div>'
+    +'<div class="conf-row"><div class="conf-label"><span>Confidence</span><span>'+conf+'%</span></div><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'
+    +formRow
+    +'<div class="reasons">'+reasons+warnings+'</div>'
+    +nugget
+    +(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')
     +'</div>'
     +'<div class="ac-foot">'
-    +'<div class="sel-info">Selection: <strong>'+c.pickTeam+'</strong> ('+c.pickType+') · Odds: <strong>'+c.odds+'</strong></div>'
-    +(c.verdict!=='skip'
-      ?'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(\''+c.fid+'\',\''+escJs(c.pickTeam)+'\',\''+escJs(c.home)+' vs '+escJs(c.away)+'\',\''+c.odds+'\')">'+(added?'✓ Added':'+ Add to Slip')+'</button>'
-      :'<span style="font-size:11px;color:var(--muted)">Not recommended</span>')
+    +'<div class="sel-info">Selection: <strong>'+escHtml(c.selection||'')+'</strong>'+(c.selectionType?' ('+escHtml(c.selectionType)+')':'')+(c.odds?' &nbsp;&middot;&nbsp; Odds: <strong>'+escHtml(c.odds)+'</strong>':'')+'</div>'
+    +'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(''+c.fid+'',''+escJs(c.selection||'')+'',''+escJs(c.home)+' vs '+escJs(c.away)+'',''+escJs(c.odds||'EVS')+'')">'+(added?'&#10003; Added':'+ Add to Slip')+'</button>'
     +'</div>'
     +'</div>';
 }
 
-function escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+unction escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 
 // ── BETSLIP ───────────────────────────────────────────────────────────────────
 function toggleSlip(){
