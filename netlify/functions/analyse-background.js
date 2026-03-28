@@ -51,8 +51,8 @@ function callClaude(fixtures, date, label) {
     const userMessage = `Research these fixtures for ${label} on ${date} and return your picks as a JSON array. Remember: your response MUST end with a valid JSON array starting with [ and ending with ].\n\n${fixtureList}`;
 
     const body = JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 8000,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 16000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }]
