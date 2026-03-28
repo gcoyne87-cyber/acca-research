@@ -539,7 +539,8 @@ function analyseLeague(leagueId){
 async function triggerAnalysis(cobj, label, fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
   var sectionId='section_'+Date.now();
-  var jobId='job_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
+  var jobId='job'+Date.now();
+
 
   researchSections.unshift({
     sectionId:sectionId,countryId:cobj.id,countryName:cobj.name,
