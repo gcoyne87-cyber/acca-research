@@ -540,11 +540,9 @@ async function triggerAnalysis(cobj, label, fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
 
   var sectionId='section_'+Date.now();
-  var jobId='job_'+Date.now()+'_'+Math.random().toString(36).substr(2,9);
 
   researchSections.unshift({
     sectionId: sectionId,
-    jobId: jobId,
     countryId: cobj.id,
     countryName: cobj.name,
     flagCode: cobj.code,
@@ -557,64 +555,27 @@ async function triggerAnalysis(cobj, label, fixtures){
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
-  // Fire background function — returns 202 immediately
   try{
-    await fetch('/.netlify/functions/analyse-background',{
+    var res=await fetch('/.netlify/functions/analyse-background',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        jobId: jobId,
-        fixtures: fixtures,
-        date: formatDate(currentDate),
-        label: label
+        fixtures:fixtures,
+        date:formatDate(currentDate),
+        label:label
       })
     });
+    var data=await res.json();
+    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+    if(sec){
+      sec.status='done';
+      sec.cards=data.cards||[];
+      renderResearchTab();
+    }
   }catch(e){
-    console.log('Background function started (202 expected)');
+    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+    if(sec){sec.status='error';renderResearchTab();}
   }
-
-  // Poll for results every 8 seconds
-  pollForResults(sectionId, jobId);
-}
-
-async function pollForResults(sectionId, jobId){
-  var maxAttempts=90; // 90 x 8s = 12 minutes max polling
-  var attempt=0;
-
-  var interval=setInterval(async function(){
-    attempt++;
-    if(attempt>maxAttempts){
-      clearInterval(interval);
-      var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-      if(sec&&sec.status==='loading'){
-        sec.status='error';
-        sec.errorMsg='Analysis took too long. Try a single league.';
-        renderResearchTab();
-      }
-      return;
-    }
-
-    try{
-      var res=await fetch('/.netlify/functions/poll-analysis?jobId='+jobId);
-      var data=await res.json();
-      var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-      if(!sec) { clearInterval(interval); return; }
-
-      if(data.status==='done'){
-        clearInterval(interval);
-        sec.status='done';
-        sec.cards=data.cards||[];
-        renderResearchTab();
-      } else if(data.status==='error'){
-        clearInterval(interval);
-        sec.status='error';
-        renderResearchTab();
-      }
-      // else still loading — keep polling
-    }catch(e){
-      console.log('Poll attempt '+attempt+' failed, retrying...');
-    }
-  }, 8000);
 }
 
 // ── RESEARCH TAB RENDER ───────────────────────────────────────────────────────
