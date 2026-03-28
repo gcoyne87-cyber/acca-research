@@ -27,29 +27,20 @@ async function redisSet(key, value) {
   });
 }
 
-const SYSTEM_PROMPT = `You are an expert football accumulator tipster. Use web search to research every fixture before making selections.
+const SYSTEM_PROMPT = `You are a football accumulator analyst. Your ONLY job is to output a JSON array of picks.
 
-RESEARCH PROCESS for every fixture:
-1. Search "[home team] [away team] form 2026"
-2. Search "[home team] injuries March 2026"
-3. Check league position and what each team needs
-4. Check H2H record
+RULES:
+- You MUST return a JSON array even if empty: []
+- NEVER write any text outside the JSON array
+- NEVER explain your reasoning outside the JSON
+- NEVER refuse to return JSON
+- If you have no picks, return: []
+- If you have picks, return them in the array
 
-WHAT TO LOOK FOR:
-- Home sides with strong home records against teams with poor away form
-- Teams fighting for promotion vs teams with nothing to play for away
-- New manager bounce at home
-- Away teams who never win away
+For each fixture you want to pick, add an object to the array:
+{"fid":"ID from input","home":"home team","away":"away team","ko":"kickoff time","selection":"team name","selectionType":"Home Win or Away Win","confidence":75,"odds":"4/5","formHome":"W W L W D W","formAway":"L L D L W L","reasons":["reason 1","reason 2","reason 3"],"warnings":["warning"],"goldenNugget":"key insight","riskNote":"main risk"}
 
-WHAT TO AVOID:
-- Local derbies
-- Teams missing top scorer and main creative player simultaneously
-- Very short prices under 4/6
-
-Return ONLY a valid JSON array with no text before or after. No markdown. No explanation. Just the raw JSON array starting with [ and ending with ].
-
-Each object in the array:
-{"fid":"fixture id","home":"home team","away":"away team","ko":"kickoff","selection":"team to back","selectionType":"Home Win or Away Win","confidence":75,"odds":"4/5","formHome":"W W L W D W","formAway":"L L D L W L","reasons":["reason 1","reason 2","reason 3"],"warnings":["one warning"],"goldenNugget":"key insight","riskNote":"main risk"}`;
+Use web search to research form and injuries before picking. Only pick fixtures where you see clear value. Skip fixtures with no clear edge. But ALWAYS end your response with the JSON array — even if it is just [].`;
 
 function callClaude(fixtures, date, label) {
   return new Promise((resolve, reject) => {
@@ -57,7 +48,7 @@ function callClaude(fixtures, date, label) {
       `ID:${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | KO:${f.time || 'TBC'}`
     ).join('\n');
 
-    const userMessage = `Analyse these ${fixtures.length} fixtures for ${label} on ${date}. Search the web for each one. Return ONLY a JSON array, nothing else.\n\n${fixtureList}`;
+    const userMessage = `Research these fixtures for ${label} on ${date} and return your picks as a JSON array. Remember: your response MUST end with a valid JSON array starting with [ and ending with ].\n\n${fixtureList}`;
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
@@ -85,35 +76,31 @@ function callClaude(fixtures, date, label) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          
+
           if (parsed.error) {
             console.error('Claude API error:', parsed.error.message);
             reject(new Error(parsed.error.message));
             return;
           }
 
-          // Get all text blocks
           const allText = (parsed.content || [])
             .filter(b => b.type === 'text')
             .map(b => b.text)
             .join('\n');
 
           console.log('Raw response length:', allText.length);
-          console.log('Response preview:', allText.substring(0, 500));
+          console.log('Response preview:', allText.substring(0, 300));
 
-          // Strip any markdown code fences
           let text = allText
             .replace(/```json\s*/gi, '')
             .replace(/```\s*/gi, '')
             .trim();
 
-          // Find the JSON array - look for first [ and last ]
           const start = text.indexOf('[');
           const end = text.lastIndexOf(']');
 
           if (start === -1 || end === -1 || end <= start) {
-            console.error('No JSON array found in response');
-            console.error('Full text:', text);
+            console.error('No JSON array found — returning empty');
             resolve([]);
             return;
           }
@@ -121,13 +108,18 @@ function callClaude(fixtures, date, label) {
           const jsonStr = text.substring(start, end + 1);
           console.log('Extracted JSON length:', jsonStr.length);
 
-          const cards = JSON.parse(jsonStr);
-          console.log('Cards parsed:', cards.length);
-          resolve(Array.isArray(cards) ? cards : []);
+          try {
+            const cards = JSON.parse(jsonStr);
+            console.log('Cards parsed:', cards.length);
+            resolve(Array.isArray(cards) ? cards : []);
+          } catch(parseErr) {
+            console.error('JSON parse error:', parseErr.message);
+            console.error('JSON string preview:', jsonStr.substring(0, 500));
+            resolve([]);
+          }
 
         } catch(err) {
-          console.error('Parse error:', err.message);
-          console.error('Data received length:', data.length);
+          console.error('Response parse error:', err.message);
           resolve([]);
         }
       });
