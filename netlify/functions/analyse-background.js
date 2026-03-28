@@ -27,50 +27,29 @@ async function redisSet(key, value) {
   });
 }
 
-const SYSTEM_PROMPT = `You are an expert football accumulator tipster with years of experience finding value in English and European football leagues. You must use web search to research every fixture properly before making selections.
+const SYSTEM_PROMPT = `You are an expert football accumulator tipster. Use web search to research every fixture before making selections.
 
-RESEARCH PROCESS — do this for every fixture:
-1. Search "[home team] [away team] form 2026" — get last 5-6 results for each
-2. Search "[home team] injuries March 2026" — check for missing players
-3. Check league table position and what each team needs from the game
-4. Check H2H record at this venue
+RESEARCH PROCESS for every fixture:
+1. Search "[home team] [away team] form 2026"
+2. Search "[home team] injuries March 2026"
+3. Check league position and what each team needs
+4. Check H2H record
 
 WHAT TO LOOK FOR:
-- Home sides with strong home records (4+ wins in last 6 at home) against teams with poor away form
-- Teams fighting for promotion vs teams with nothing to play for away — massive edge
-- New manager bounce at home — first few games under new manager at home ground
-- Revenge factor — were they hammered in the reverse fixture?
-- Teams just below the playoff spots who are desperate for points
-- Away teams who never win away — some sides genuinely cannot win on the road
+- Home sides with strong home records against teams with poor away form
+- Teams fighting for promotion vs teams with nothing to play for away
+- New manager bounce at home
+- Away teams who never win away
 
 WHAT TO AVOID:
-- Local derbies — always unpredictable regardless of form
-- Teams missing their top scorer and main creative player simultaneously
-- Genuine relegation battlers playing away — tend to park the bus and nick a draw
-- Very short prices under 4/6 — not worth including in an acca
+- Local derbies
+- Teams missing top scorer and main creative player simultaneously
+- Very short prices under 4/6
 
-SELECTION STANDARD:
-You are looking for the same quality selections that win accumulators regularly. On any given Saturday with 10+ English football fixtures there are typically 3-5 strong selections. Be confident. Back your research. The user trusts your judgement.
+Return ONLY a valid JSON array with no text before or after. No markdown. No explanation. Just the raw JSON array starting with [ and ending with ].
 
-Return ONLY a valid JSON array. Start with [. End with ]. No text before or after.
-
-Each pick:
-{
-  "fid": "exact fixture ID from input",
-  "home": "home team",
-  "away": "away team",
-  "ko": "kickoff time",
-  "selection": "full team name to back",
-  "selectionType": "Home Win or Away Win",
-  "confidence": 65-92,
-  "odds": "e.g. 4/5",
-  "formHome": "last 6 home e.g. W W L W D W",
-  "formAway": "last 6 away e.g. L L D L W L",
-  "reasons": ["specific reason 1", "specific reason 2", "specific reason 3"],
-  "warnings": ["one honest warning"],
-  "goldenNugget": "the insight a standard form guide would miss",
-  "riskNote": "main risk in one sentence"
-}`;
+Each object in the array:
+{"fid":"fixture id","home":"home team","away":"away team","ko":"kickoff","selection":"team to back","selectionType":"Home Win or Away Win","confidence":75,"odds":"4/5","formHome":"W W L W D W","formAway":"L L D L W L","reasons":["reason 1","reason 2","reason 3"],"warnings":["one warning"],"goldenNugget":"key insight","riskNote":"main risk"}`;
 
 function callClaude(fixtures, date, label) {
   return new Promise((resolve, reject) => {
@@ -78,11 +57,11 @@ function callClaude(fixtures, date, label) {
       `ID:${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | KO:${f.time || 'TBC'}`
     ).join('\n');
 
-    const userMessage = `Analyse these fixtures for ${label} on ${date}. Search the web for each one then return picks as JSON array.\n\n${fixtureList}`;
+    const userMessage = `Analyse these ${fixtures.length} fixtures for ${label} on ${date}. Search the web for each one. Return ONLY a JSON array, nothing else.\n\n${fixtureList}`;
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 8000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }]
@@ -106,20 +85,54 @@ function callClaude(fixtures, date, label) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed.error) { reject(new Error(parsed.error.message)); return; }
-          const allText = (parsed.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-          let text = allText.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-          const s = text.indexOf('['), e = text.lastIndexOf(']');
-          if (s === -1 || e === -1 || e < s) { console.error('No array found'); resolve([]); return; }
-          const cards = JSON.parse(text.substring(s, e+1));
-          console.log('Cards:', cards.length);
+          
+          if (parsed.error) {
+            console.error('Claude API error:', parsed.error.message);
+            reject(new Error(parsed.error.message));
+            return;
+          }
+
+          // Get all text blocks
+          const allText = (parsed.content || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('\n');
+
+          console.log('Raw response length:', allText.length);
+          console.log('Response preview:', allText.substring(0, 500));
+
+          // Strip any markdown code fences
+          let text = allText
+            .replace(/```json\s*/gi, '')
+            .replace(/```\s*/gi, '')
+            .trim();
+
+          // Find the JSON array - look for first [ and last ]
+          const start = text.indexOf('[');
+          const end = text.lastIndexOf(']');
+
+          if (start === -1 || end === -1 || end <= start) {
+            console.error('No JSON array found in response');
+            console.error('Full text:', text);
+            resolve([]);
+            return;
+          }
+
+          const jsonStr = text.substring(start, end + 1);
+          console.log('Extracted JSON length:', jsonStr.length);
+
+          const cards = JSON.parse(jsonStr);
+          console.log('Cards parsed:', cards.length);
           resolve(Array.isArray(cards) ? cards : []);
+
         } catch(err) {
           console.error('Parse error:', err.message);
+          console.error('Data received length:', data.length);
           resolve([]);
         }
       });
     });
+
     req.on('error', reject);
     req.setTimeout(840000);
     req.write(body);
@@ -129,11 +142,21 @@ function callClaude(fixtures, date, label) {
 
 exports.handler = async function(event) {
   let body;
-  try { body = JSON.parse(event.body); } catch(e) { return; }
+  try {
+    body = JSON.parse(event.body);
+  } catch(e) {
+    console.error('Bad request body');
+    return;
+  }
+
   const { jobId, fixtures, date, label } = body;
-  if (!jobId || !fixtures || !date) return;
+  if (!jobId || !fixtures || !date) {
+    console.error('Missing fields');
+    return;
+  }
 
   console.log(`Job ${jobId}: ${fixtures.length} fixtures for ${label}`);
+
   try {
     await redisSet(jobId, { status: 'loading' });
     const cards = await callClaude(fixtures, date, label);
