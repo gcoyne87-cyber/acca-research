@@ -539,6 +539,8 @@ function analyseLeague(leagueId){
 async function triggerAnalysis(cobj, label, fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
   var sectionId='section_'+Date.now();
+  var jobId='job_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
+
   researchSections.unshift({
     sectionId:sectionId,countryId:cobj.id,countryName:cobj.name,
     flagCode:cobj.code,label:label,status:'loading',cards:[]
@@ -547,31 +549,37 @@ async function triggerAnalysis(cobj, label, fixtures){
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
-  var BATCH=3;
-  var batches=[];
-  for(var i=0;i<fixtures.length;i+=BATCH) batches.push(fixtures.slice(i,i+BATCH));
-  var allCards=[];
+  // Fire background function — runs for as long as needed
+  fetch('/.netlify/functions/analyse-background',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({jobId:jobId,fixtures:fixtures,date:formatDate(currentDate),label:label})
+  }).catch(function(){});
 
-  try{
-    for(var b=0;b<batches.length;b++){
-      var res=await fetch('/.netlify/functions/analyse',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({fixtures:batches[b],date:formatDate(currentDate),label:label})
-      });
-      var data=await res.json();
-      if(data.cards&&data.cards.length){
-        allCards=allCards.concat(data.cards);
-        var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-        if(sec){sec.cards=allCards.slice();renderResearchTab();}
-      }
+  // Poll every 6 seconds for results
+  var attempts=0;
+  var interval=setInterval(async function(){
+    attempts++;
+    if(attempts>120){
+      clearInterval(interval);
+      var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+      if(sec&&sec.status==='loading'){sec.status='error';renderResearchTab();}
+      return;
     }
-    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-    if(sec){sec.status='done';sec.cards=allCards;renderResearchTab();}
-  }catch(e){
-    var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-    if(sec){sec.status='error';renderResearchTab();}
-  }
+    try{
+      var res=await fetch('/.netlify/functions/poll-analysis?jobId='+jobId);
+      var data=await res.json();
+      var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
+      if(!sec){clearInterval(interval);return;}
+      if(data.status==='done'){
+        clearInterval(interval);
+        sec.status='done';sec.cards=data.cards||[];
+        renderResearchTab();
+      } else if(data.status==='error'){
+        clearInterval(interval);sec.status='error';renderResearchTab();
+      }
+    }catch(e){}
+  },6000);
 }
 
 // ── RESEARCH TAB RENDER ───────────────────────────────────────────────────────
