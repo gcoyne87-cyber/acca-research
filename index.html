@@ -93,19 +93,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ac-head{background:var(--navy2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 
 /* Left side — both team names, picked one is big */
-.ac-teams{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
-.ac-team{font-size:12px;font-weight:500;color:rgba(255,255,255,0.38);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
-.ac-team--pick{font-size:19px;font-weight:800;color:#ffffff;letter-spacing:-0.3px}
+.ac-teams{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.ac-team{font-size:12px;font-weight:400;color:rgba(255,255,255,0.32);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
+.ac-team--pick{font-size:18px;font-weight:600;color:#ffffff;letter-spacing:-0.2px}
+.ac-team-vs{font-size:9px;font-weight:400;color:rgba(255,255,255,0.2);letter-spacing:.05em;line-height:1;padding-left:1px}
 
 /* Right side — PICK label, team name in gold, odds */
 .ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:3px}
-.ac-pick-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);opacity:.75}
-.ac-pick-team{font-size:15px;font-weight:800;color:var(--gold);text-align:right;max-width:160px;line-height:1.2}
-.ac-pick-odds{font-size:18px;font-weight:800;color:#ffffff;text-align:right;letter-spacing:-0.5px}
+.ac-pick-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);opacity:.65}
+.ac-pick-team{font-size:14px;font-weight:600;color:var(--gold);text-align:right;max-width:160px;line-height:1.2}
+.ac-pick-odds{font-size:20px;font-weight:500;color:#ffffff;text-align:right;letter-spacing:-0.3px}
 
 /* Slim time + confidence row */
-.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
-.ac-meta-conf{color:var(--gold);font-weight:700}
+.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;font-weight:400;color:var(--muted)}
+.ac-meta-conf{color:var(--gold);font-weight:500}
 
 .ac-body{padding:13px 15px}
 .conf-row{margin-bottom:11px}
@@ -116,7 +117,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .reason .ri{flex-shrink:0;font-size:12px}
 .risk-note{background:var(--soft);border-radius:7px;padding:7px 11px;font-size:11px;color:var(--mid);font-style:italic}
 .ac-foot{padding:10px 15px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:flex-end}
-.add-btn{font-size:12px;font-weight:700;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.add-btn{font-size:12px;font-weight:500;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .add-btn:hover{background:var(--gold);color:var(--navy)}
 .add-btn.added{background:var(--green);color:#fff}
 
@@ -543,16 +544,14 @@ function renderResearchTab(){
     html+='<div class="research-section"><div class="research-country-header"><div class="rch-left"><img class="rch-flag" src="https://flagcdn.com/w40/'+sec.flagCode+'.png" alt="'+sec.countryName+'"><div><div class="rch-country">'+sec.countryName+'</div><div class="rch-league">'+sec.label+'</div></div></div><button class="rch-clear" onclick="removeSection(\''+sec.sectionId+'\')">Remove</button></div>';
 
     if(sec.status==='loading'){
-      // Show fixture names while loading
-      var fxList='';
-      if(sec.fixtures&&sec.fixtures.length){
-        fxList='<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">';
-        sec.fixtures.forEach(function(f){
-          fxList+='<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;flex-shrink:0;"></span>'+escHtml(f.home)+' vs '+escHtml(f.away)+'</div>';
-        });
-        fxList+='</div>';
-      }
-      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+escHtml(sec.label)+'...</p><small>Researching form, injuries &amp; key factors for each fixture</small>'+fxList+'</div>';
+      var animId='anim_'+sec.sectionId;
+      html+='<div class="analysing-block">'
+        +'<div class="spinner"></div>'
+        +'<p id="'+animId+'_title">Analysing '+escHtml(sec.label)+'...</p>'
+        +'<small id="'+animId+'_sub" style="min-height:16px;">Gathering fixture data...</small>'
+        +'</div>';
+      // Start the animation after render
+      setTimeout(function(){startAnalysisAnimation(animId, sec.fixtures||[]);},50);
     }else if(sec.status==='error'){
       html+='<div class="analyse-error">Analysis failed. Please try again.</div>';
     }else if(!sec.cards.length){
@@ -591,9 +590,10 @@ function buildCardHTML(c){
 
   var nugget=c.goldenNugget?'<div class="nugget">&#128081; <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
 
-  // LEFT: both teams, picked one is big white, other is small faded
+  // LEFT: both teams, picked one is big white, other is small faded, "vs" in between
   var teamsLeft='<div class="ac-teams">'
     +'<div class="ac-team'+(isHomePick?' ac-team--pick':'')+'">'+homeTeam+'</div>'
+    +'<div class="ac-team-vs">vs</div>'
     +'<div class="ac-team'+(isHomePick?'':' ac-team--pick')+'">'+awayTeam+'</div>'
     +'</div>';
 
@@ -706,6 +706,31 @@ function initSlider(){
   window.addEventListener('touchmove',function(e){if(dragging){setStake(raw(e));e.preventDefault();}},{passive:false});
   window.addEventListener('touchend',function(){dragging=false;});
   positionBall(pctFromStake(stake));
+}
+
+var _animTimers={};
+function startAnalysisAnimation(animId, fixtures){
+  if(_animTimers[animId]) return;
+  var phases=['home form','away form','injuries & suspensions','head-to-head record','table position','goals scored & conceded','manager situation','key player availability','value assessment'];
+  var fxIndex=0, phaseIndex=0;
+
+  function next(){
+    var titleEl=document.getElementById(animId+'_title');
+    var subEl=document.getElementById(animId+'_sub');
+    if(!titleEl||!subEl){clearInterval(_animTimers[animId]);delete _animTimers[animId];return;}
+
+    var fx=fixtures[fxIndex]||null;
+    var matchName=fx?(fx.home+' vs '+fx.away):'fixtures';
+    var phase=phases[phaseIndex];
+
+    titleEl.textContent='Analysing '+matchName+'...';
+    subEl.textContent='Checking '+phase+'...';
+
+    phaseIndex++;
+    if(phaseIndex>=phases.length){phaseIndex=0;fxIndex=(fxIndex+1)%Math.max(fixtures.length,1);}
+  }
+  next();
+  _animTimers[animId]=setInterval(next,1800);
 }
 
 window.addEventListener('DOMContentLoaded',function(){
