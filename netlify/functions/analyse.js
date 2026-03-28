@@ -124,9 +124,18 @@ Remember: web search each fixture for current form, injuries, manager news and c
           }
           // Parse JSON from the text response
           let text = textBlock.text.trim();
-          // Strip any markdown code fences if present
+          // Strip markdown fences
           text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          const cards = JSON.parse(text);
+          // Extract JSON array even if Claude adds preamble text
+          const arrayStart = text.indexOf('[');
+          const arrayEnd = text.lastIndexOf(']');
+          if (arrayStart === -1 || arrayEnd === -1) {
+            console.error('No JSON array found in response');
+            resolve([]);
+            return;
+          }
+          const jsonStr = text.substring(arrayStart, arrayEnd + 1);
+          const cards = JSON.parse(jsonStr);
           resolve(Array.isArray(cards) ? cards : []);
         } catch(e) {
           console.error('Parse error:', e.message); console.error('Raw response:', data.substring(0, 1000));
