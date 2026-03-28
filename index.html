@@ -656,13 +656,13 @@ function buildCardHTML(c){
     +'</div>'
     +'<div class="ac-foot">'
     +'<div class="sel-info">Selection: <strong>'+escHtml(c.selection||'')+'</strong>'+(c.selectionType?' ('+escHtml(c.selectionType)+')':'')+(c.odds?' &nbsp;&middot;&nbsp; Odds: <strong>'+escHtml(c.odds)+'</strong>':'')+'</div>'
-    +'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(''+c.fid+'',''+escJs(c.selection||'')+'',''+escJs(c.home)+' vs '+escJs(c.away)+'',''+escJs(c.odds||'EVS')+'')">'+(added?'&#10003; Added':'+ Add to Slip')+'</button>'
+    +'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(this)" data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" data-odds="'+escHtml(c.odds||'EVS')+'">'+(added?'&#10003; Added':'+ Add to Slip')+'</button>'
     +'</div>'
     +'</div>';
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-unction escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function escJs(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 
 // ── BETSLIP ───────────────────────────────────────────────────────────────────
 function toggleSlip(){
@@ -670,7 +670,8 @@ function toggleSlip(){
   document.getElementById('slip-panel').classList.toggle('open',slipOpen);
 }
 
-function addToSlip(fid,team,match,odds){
+function addToSlip(btn){
+  var fid=btn.dataset.fid,team=btn.dataset.sel,match=btn.dataset.match,odds=btn.dataset.odds;
   var legId='leg_'+fid;
   if(slipLegs.some(function(s){return s.legId===legId;})){removeFromSlip(legId);return;}
   var parts=odds.split('/');
