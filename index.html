@@ -113,21 +113,39 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .home-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--navy)}
 .home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
 
-/* ── POPULAR ACCAS ── */
-.pacca-scroll{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
-.pacca-scroll::-webkit-scrollbar{display:none}
-.pacca-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;min-width:188px;max-width:188px;flex-shrink:0;transition:all .18s}
-.pacca-card:hover{border-color:var(--navy)}
-.pacca-badge{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:7px}
-.pacca-teams{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
-.pacca-team{font-size:12px;font-weight:500;color:var(--navy);display:flex;align-items:center}
-.pacca-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;margin-right:6px;display:inline-block}
-.pacca-meta{font-size:10px;color:var(--muted);margin-bottom:9px}
-.pacca-foot{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.pacca-pickers{font-size:10px;color:var(--muted)}
-.pacca-btn{font-size:11px;font-weight:500;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+/* ── POPULAR ACCAS — full width swipeable carousel ── */
+.pacca-outer{position:relative;margin-bottom:4px}
+.pacca-viewport{overflow:hidden;border-radius:12px}
+.pacca-track{display:flex;transition:transform .3s ease;will-change:transform}
+.pacca-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:20px;min-width:100%;max-width:100%;flex-shrink:0;box-sizing:border-box}
+.pacca-card-inner{display:flex;flex-direction:column;gap:0}
+.pacca-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.pacca-badge-pill{background:var(--soft);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:600;color:var(--mid)}
+.pacca-teams{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.pacca-team{display:flex;align-items:center;gap:10px}
+.pacca-num{width:22px;height:22px;border-radius:50%;background:var(--soft);font-size:11px;font-weight:600;color:var(--mid);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pacca-team-name{font-size:15px;font-weight:600;color:var(--navy)}
+.pacca-team-league{font-size:11px;color:var(--muted);font-weight:400}
+.pacca-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;padding:12px;background:var(--soft);border-radius:10px}
+.pacca-stat-val{font-size:18px;font-weight:700;color:var(--navy)}
+.pacca-stat-lbl{font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.pacca-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pacca-pickers{font-size:12px;color:var(--mid);font-weight:400}
+.pacca-btn{font-size:13px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .pacca-btn:hover{background:var(--green)}
 .pacca-btn.added{background:var(--green)}
+
+/* Carousel nav */
+.pacca-nav{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.pacca-dots{display:flex;gap:6px;align-items:center}
+.pacca-dot-item{width:6px;height:6px;border-radius:50%;background:var(--border);transition:all .2s;cursor:pointer}
+.pacca-dot-item.active{background:var(--navy);width:18px;border-radius:99px}
+.pacca-arrows{display:flex;gap:6px}
+.pacca-arrow{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:inherit}
+.pacca-arrow:hover{border-color:var(--navy);color:var(--navy)}
+.pacca-arrow:disabled{opacity:.3;cursor:default}
+
+
 
 /* ── LIVE FEED ── */
 .feed-wrap{max-height:210px;overflow-y:auto;scrollbar-width:none}
@@ -368,22 +386,32 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- Most Picked + Popular Accas -->
-      <div class="widget-row">
-        <div class="widget-box">
-          <div class="widget-head">
-            <span class="widget-title">🔥 Most Picked</span>
-            <span class="widget-sub">This weekend</span>
-          </div>
-          <div id="popular-body"></div>
+      <!-- Most Picked - full width -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">⚡ Most Picked This Weekend</span>
+          <span class="home-section-sub">Tap + Add to add to your slip</span>
         </div>
         <div class="widget-box">
-          <div class="widget-head">
-            <span class="widget-title">📋 Popular Accas</span>
-            <span class="widget-sub">Copy a winning combo</span>
+          <div id="popular-body"></div>
+        </div>
+      </div>
+      <!-- Popular Accas — full width carousel -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">🔥 Popular Accas</span>
+          <span class="home-section-sub">What the crowd is backing</span>
+        </div>
+        <div class="pacca-outer">
+          <div class="pacca-viewport">
+            <div class="pacca-track" id="pacca-track"></div>
           </div>
-          <div style="padding:10px 14px">
-            <div class="pacca-scroll" id="pacca-scroll"></div>
+          <div class="pacca-nav">
+            <div class="pacca-dots" id="pacca-dots"></div>
+            <div class="pacca-arrows">
+              <button class="pacca-arrow" id="pacca-prev" onclick="paccaMove(-1)">&#8592;</button>
+              <button class="pacca-arrow" id="pacca-next" onclick="paccaMove(1)">&#8594;</button>
+            </div>
           </div>
         </div>
       </div>
@@ -971,41 +999,85 @@ function goHome(){
 
 // ── POPULAR ACCAS DATA ──
 var POPULAR_ACCAS=[
-  {legs:['Burnley','Leeds United','Lincoln City'],badge:'3-Leg Acca',odds:'9/1',pickers:243},
-  {legs:['Burnley','Bromley','Benfica','Leeds United'],badge:'4-Leg Acca',odds:'22/1',pickers:187},
-  {legs:['Burnley','Leeds United','Lincoln City','Bromley','Benfica'],badge:'5-Leg Acca',odds:'58/1',pickers:134},
-  {legs:['Lincoln City','Bromley','Benfica'],badge:'3-Leg Acca',odds:'7/1',pickers:198},
-  {legs:['Leeds United','Benfica','Burnley','Lincoln City'],badge:'4-Leg Acca',odds:'18/1',pickers:156},
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'3-Leg Acca',odds:'9/1',pickers:243,winRate:'68%'},
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'},{team:'Leeds United',league:'Championship'}],badge:'4-Leg Acca',odds:'22/1',pickers:187,winRate:'54%'},
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'5-Leg Acca',odds:'58/1',pickers:134,winRate:'41%'},
+  {legs:[{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'3-Leg Acca',odds:'7/1',pickers:198,winRate:'71%'},
+  {legs:[{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Burnley',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'4-Leg Acca',odds:'18/1',pickers:156,winRate:'58%'},
 ];
 
+var _paccaIdx=0;
+
 function renderPopularAccas(){
-  var el=document.getElementById('pacca-scroll');
-  if(!el) return;
-  el.innerHTML=POPULAR_ACCAS.map(function(a,i){
-    return '<div class="pacca-card">'
-      +'<div class="pacca-badge">'+a.badge+'</div>'
-      +'<div class="pacca-teams">'+a.legs.map(function(t){return '<div class="pacca-team"><span class="pacca-dot"></span>'+escHtml(t)+'</div>';}).join('')+'</div>'
-      +'<div class="pacca-meta">Combined odds: ~'+a.odds+'</div>'
+  var track=document.getElementById('pacca-track');
+  var dots=document.getElementById('pacca-dots');
+  if(!track||!dots) return;
+
+  track.innerHTML=POPULAR_ACCAS.map(function(a,i){
+    return '<div class="pacca-card" id="pacca-card-'+i+'">'
+      +'<div class="pacca-badge"><span class="pacca-badge-pill">'+a.badge+'</span></div>'
+      +'<div class="pacca-teams">'+a.legs.map(function(l,li){
+        return '<div class="pacca-team">'
+          +'<div class="pacca-num">'+(li+1)+'</div>'
+          +'<div><div class="pacca-team-name">'+escHtml(l.team)+'</div>'
+          +'<div class="pacca-team-league">'+escHtml(l.league)+'</div></div>'
+          +'</div>';
+      }).join('')+'</div>'
+      +'<div class="pacca-stats">'
+      +'<div><div class="pacca-stat-val">'+a.odds+'</div><div class="pacca-stat-lbl">Combined odds</div></div>'
+      +'<div><div class="pacca-stat-val">'+a.winRate+'</div><div class="pacca-stat-lbl">Win rate</div></div>'
+      +'<div><div class="pacca-stat-val">'+a.pickers+'</div><div class="pacca-stat-lbl">Copied</div></div>'
+      +'</div>'
       +'<div class="pacca-foot">'
-      +'<span class="pacca-pickers">👥 '+a.pickers+' picked</span>'
-      +'<button class="pacca-btn" onclick="copyAcca('+i+',this)">Copy Acca</button>'
+      +'<span class="pacca-pickers">👥 '+a.pickers+' users backing this</span>'
+      +'<button class="pacca-btn" id="pacca-btn-'+i+'" onclick="copyAcca('+i+',this)">Copy Acca</button>'
       +'</div>'
       +'</div>';
   }).join('');
+
+  dots.innerHTML=POPULAR_ACCAS.map(function(_,i){
+    return '<div class="pacca-dot-item'+(i===0?' active':'')+'" onclick="paccaGoTo('+i+')"></div>';
+  }).join('');
+
+  paccaUpdateNav();
+}
+
+function paccaMove(dir){
+  _paccaIdx=Math.max(0,Math.min(POPULAR_ACCAS.length-1,_paccaIdx+dir));
+  paccaGoTo(_paccaIdx);
+}
+
+function paccaGoTo(idx){
+  _paccaIdx=idx;
+  var track=document.getElementById('pacca-track');
+  if(track) track.style.transform='translateX(-'+(_paccaIdx*100)+'%)';
+  document.querySelectorAll('.pacca-dot-item').forEach(function(d,i){
+    d.classList.toggle('active',i===_paccaIdx);
+  });
+  paccaUpdateNav();
+}
+
+function paccaUpdateNav(){
+  var prev=document.getElementById('pacca-prev');
+  var next=document.getElementById('pacca-next');
+  if(prev) prev.disabled=_paccaIdx===0;
+  if(next) next.disabled=_paccaIdx===POPULAR_ACCAS.length-1;
 }
 
 function copyAcca(idx,btn){
   var a=POPULAR_ACCAS[idx];
-  a.legs.forEach(function(team,li){
+  a.legs.forEach(function(leg,li){
     var legId='leg_pacca'+idx+'_'+li;
     if(!slipLegs.some(function(s){return s.legId===legId;})){
-      slipLegs.push({legId:legId,team:team,match:'Popular Acca',odds:'EVS',num:1,den:1});
+      slipLegs.push({legId:legId,team:leg.team,match:leg.league,odds:'EVS',num:1,den:1});
     }
   });
-  btn.textContent='✓ Added';btn.classList.add('added');
+  btn.textContent='✓ Copied!';btn.classList.add('added');
   renderSlip();
   if(!slipOpen) toggleSlip();
 }
+
+
 
 // ── LIVE FEED DATA ──
 var FEED_USERS=[
@@ -1356,6 +1428,17 @@ window.addEventListener('DOMContentLoaded',function(){
   renderPopularAccas();
   startFeed();
   loadUpcomingBoxes();
+
+  // Touch swipe on Popular Accas
+  var vp=document.querySelector('.pacca-viewport');
+  if(vp){
+    var startX=0;
+    vp.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;},{passive:true});
+    vp.addEventListener('touchend',function(e){
+      var dx=startX-e.changedTouches[0].clientX;
+      if(Math.abs(dx)>40) paccaMove(dx>0?1:-1);
+    },{passive:true});
+  }
 });
 </script>
 <!-- Drawer for viewing selections -->
