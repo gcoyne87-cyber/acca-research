@@ -27,7 +27,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* Date nav */
 .date-nav{display:flex;align-items:center;background:var(--navy);border-radius:16px;padding:16px 20px;margin-bottom:32px;gap:16px}
-.date-arrow{background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.5);width:38px;height:38px;border-radius:10px;font-size:18px;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.date-arrow{background:rgba(255,255,255,0.18);border:none;color:#fff;width:44px;height:44px;border-radius:10px;font-size:22px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .date-arrow:hover{background:var(--gold);color:var(--navy)}
 .date-arrow:disabled{opacity:0.2;cursor:default}
 .date-center{text-align:center;flex:1}
@@ -83,12 +83,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   <div class="title">Fixture <span>Browser</span></div>
 
   <div class="date-nav">
-    <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#8592;</button>
+    <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)"><button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#8592;</button>#9664;</button>
     <div class="date-center">
       <span class="date-display" id="date-display">Today</span>
       <span class="date-sub" id="date-sub"></span>
     </div>
-    <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#8594;</button>
+    <button class="date-arrow" id="btn-next" onclick="changeDate(1)"><button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#8594;</button>#9654;</button>
   </div>
 
   <div class="section-label">Select Country</div>
@@ -240,8 +240,9 @@ async function loadFixtures(){
     }
   }catch(e){
     document.getElementById('fixtures-container').innerHTML='<div class="error-msg">Failed to load fixtures. Check connection and try again.</div>';
+  }finally{
+    isLoading=false;setNavEnabled(true);
   }
-  isLoading=false;setNavEnabled(true);
   if(pendingDate){currentDate=pendingDate;pendingDate=null;loadFixtures();}
 }
 
