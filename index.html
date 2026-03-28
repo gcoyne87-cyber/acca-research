@@ -23,13 +23,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
 .main{max-width:900px;margin:0 auto;padding:32px 24px 140px}
-
-/* ── HEADER ── */
 .eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--gold);margin-bottom:6px}
 .title{font-size:34px;font-weight:800;letter-spacing:-1.5px;color:var(--navy);line-height:1;margin-bottom:24px}
 .title span{color:var(--gold)}
-
-/* ── DATE NAV ── */
 .date-nav{display:flex;align-items:center;background:var(--navy);border-radius:14px;padding:12px 16px;margin-bottom:20px;gap:12px}
 .date-arrow{background:rgba(255,255,255,0.12);border:none;color:#fff;width:38px;height:38px;border-radius:9px;font-size:18px;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .date-arrow:hover{background:var(--gold);color:var(--navy)}
@@ -37,8 +33,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .date-center{text-align:center;flex:1}
 .date-display{font-size:17px;font-weight:700;color:#fff;display:block}
 .date-sub{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px;display:block}
-
-/* ── FLAGS ── */
 .section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);margin-bottom:9px}
 .country-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
 .cflag{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);background:var(--white);transition:all .18s;font-family:inherit}
@@ -47,31 +41,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .cflag:hover{border-color:var(--gold);background:#fffbf2}
 .cflag.active{border-color:var(--navy);background:var(--navy)}
 .cflag.active span{color:var(--gold)}
-
-/* ── TABS ── */
 .tabs{display:flex;gap:0;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
 .tab{flex:1;padding:12px 20px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:transparent;font-family:inherit;color:var(--muted);transition:all .18s;text-align:center;position:relative}
 .tab:first-child{border-right:1px solid var(--border)}
 .tab.active{background:var(--navy);color:#fff}
 .tab .tab-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--gold);color:var(--navy);border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:800;margin-left:7px;vertical-align:middle}
 .tab.active .tab-badge{background:var(--gold)}
-
-/* ── COUNTRY CTA ── */
 .country-cta{display:none;background:var(--navy);border-radius:12px;padding:16px 20px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:14px}
 .country-cta.visible{display:flex}
-.cta-text{}
 .cta-heading{font-size:14px;font-weight:800;color:#fff;margin-bottom:2px}
 .cta-sub{font-size:11px;color:rgba(255,255,255,0.4)}
 .cta-btn{background:var(--gold);color:var(--navy);border:none;border-radius:9px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
 .cta-btn:hover{background:var(--gold2);transform:translateY(-1px)}
-
-/* ── LEAGUE TABS ── */
 .league-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;min-height:28px}
 .ltab{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-family:inherit;transition:all .18s}
 .ltab:hover{border-color:var(--gold);color:var(--gold)}
 .ltab.active{background:var(--gold);color:var(--navy);border-color:var(--gold)}
-
-/* ── FIXTURES ── */
 .results-count{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
 .league-block{margin-bottom:10px;border:1.5px solid var(--border);border-radius:11px;overflow:hidden;background:var(--white)}
 .league-header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--navy)}
@@ -86,16 +71,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .fx-ko{font-size:11px;color:var(--gold);font-weight:700;text-align:right;white-space:nowrap}
 .fx-ko.live{color:var(--green)}
 .fx-ft{font-size:11px;color:var(--muted);font-weight:600;text-align:right}
-
-/* ── STATE ── */
 .prompt{text-align:center;padding:56px 20px}
 .prompt-icon{font-size:40px;margin-bottom:12px;opacity:.4}
 .prompt-text{font-size:14px;color:var(--muted);font-weight:500;line-height:1.7}
 .loading{text-align:center;padding:56px 20px;color:var(--muted);font-size:14px}
 .empty{text-align:center;padding:44px;color:var(--muted);font-size:14px;line-height:1.9}
 .error-msg{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:14px 18px;color:#b02020;font-size:13px}
-
-/* ── RESEARCH TAB ── */
 .research-section{margin-bottom:28px}
 .research-country-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--navy)}
 .rch-left{display:flex;align-items:center;gap:10px}
@@ -103,63 +84,53 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .rch-country{font-size:13px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.08em}
 .rch-league{font-size:11px;color:var(--muted);font-weight:600}
 .rch-clear{font-size:11px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s}
-.rch-clear:hover{color:var(--red,#e53935);border-color:var(--red,#e53935)}
-
-/* ── ANALYSIS CARDS ── */
+.rch-clear:hover{color:#e53935;border-color:#e53935}
 .analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--white)}
 .ac-head{background:var(--navy2);padding:12px 15px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .ac-match{font-size:13px;font-weight:700;color:#fff}
 .ac-time{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px}
 .verdict{font-size:10px;font-weight:800;padding:4px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;margin-top:1px}
 .verdict.pick{background:#1a7a52;color:#fff}
-.verdict.risk{background:#b8600a;color:#fff}
-.verdict.skip{background:#6b1a1a;color:#fff}
-.verdict.watch{background:#1a3a7a;color:#fff}
-
 .ac-body{padding:13px 15px}
 .conf-row{margin-bottom:11px}
 .conf-label{display:flex;justify-content:space-between;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px}
 .conf-bar{height:6px;background:var(--soft);border-radius:99px;overflow:hidden}
 .conf-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
-
-.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:11px}
-.stat-box{background:var(--soft);border-radius:7px;padding:7px;text-align:center}
-.stat-val{font-size:13px;font-weight:800;color:var(--navy)}
-.stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
-
 .reasons{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .reason{font-size:12px;color:var(--mid);display:flex;gap:6px;align-items:flex-start;line-height:1.45}
 .reason .ri{flex-shrink:0;font-size:12px}
 .risk-note{background:var(--soft);border-radius:7px;padding:7px 11px;font-size:11px;color:var(--mid);font-style:italic}
-
 .ac-foot{padding:10px 15px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .sel-info{font-size:12px;color:var(--mid)}
 .sel-info strong{color:var(--navy);font-weight:700}
 .add-btn{font-size:12px;font-weight:700;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .add-btn:hover{background:var(--gold);color:var(--navy)}
 .add-btn.added{background:var(--green);color:#fff}
-
-/* ── ANALYSING SPINNER (in research tab) ── */
 .analysing-block{border:1.5px solid var(--border);border-radius:12px;padding:32px;text-align:center;margin-bottom:12px;background:var(--white)}
 .analysing-block .spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .analysing-block p{font-size:13px;color:var(--muted);font-weight:500}
 .analysing-block small{font-size:11px;color:var(--muted);display:block;margin-top:4px}
-
-/* ── FLOATING BETSLIP ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.form-block{background:var(--soft);border-radius:7px;padding:8px 10px}
+.form-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
+.form-str{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.08em}
+.nugget{background:#fffbf0;border:1.5px solid rgba(201,168,76,0.35);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--mid);line-height:1.5}
+.nugget strong{color:var(--navy)}
+.no-picks{text-align:center;padding:40px 20px;border:1.5px solid var(--border);border-radius:12px;background:var(--white);margin-bottom:12px}
+.no-picks-icon{font-size:32px;margin-bottom:10px;opacity:.5}
+.no-picks-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.no-picks-sub{font-size:12px;color:var(--muted);line-height:1.7}
+.analyse-error{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;font-size:13px;color:#b02020;margin-bottom:12px}
 .slip-bubble{position:fixed;bottom:22px;right:22px;z-index:400}
 .slip-toggle{background:var(--navy);color:var(--gold);border:none;border-radius:50px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:9px;box-shadow:0 4px 20px rgba(11,22,40,0.4);transition:all .2s;white-space:nowrap}
 .slip-toggle:hover{background:var(--gold);color:var(--navy)}
-.slip-badge{background:var(--gold);color:var(--navy);border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s}
-.slip-toggle.has-legs .slip-badge{animation:pop .3s ease}
-@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(1)}}
-
+.slip-badge{background:var(--gold);color:var(--navy);border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .slip-panel{display:none;position:fixed;bottom:70px;right:22px;width:310px;background:var(--navy);border-radius:16px;box-shadow:0 8px 40px rgba(11,22,40,0.55);z-index:400;overflow:hidden}
 .slip-panel.open{display:block}
 .slip-panel-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between}
 .slip-panel-title{font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.08em}
-.slip-panel-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:20px;cursor:pointer;line-height:1;padding:0;transition:color .15s}
-.slip-panel-close:hover{color:#fff}
+.slip-panel-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:20px;cursor:pointer;line-height:1;padding:0}
 .slip-body{padding:12px 14px;max-height:420px;overflow-y:auto}
 .slip-empty-msg{text-align:center;padding:20px 0;font-size:12px;color:rgba(255,255,255,0.2);line-height:1.8}
 .slip-leg-item{background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:7px;margin-bottom:6px}
@@ -167,7 +138,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .sli-team{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sli-match{font-size:10px;color:rgba(255,255,255,0.28);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sli-odds{font-size:12px;font-weight:800;color:var(--gold);flex-shrink:0}
-.sli-remove{background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;padding:0;transition:color .15s}
+.sli-remove{background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;padding:0}
 .sli-remove:hover{color:#ff6b6b}
 .slip-divider{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:10px 0}
 .stake-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
@@ -188,37 +159,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ret-box.gold .ret-lbl{color:rgba(201,168,76,0.5)}
 .ret-val{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
 .ret-sub{font-size:9px;color:rgba(255,255,255,0.16);margin-top:2px}
-.clear-btn{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.28);border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.clear-btn{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.28);border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
 .clear-btn:hover{background:rgba(255,80,80,0.15);color:#ff6b6b;border-color:rgba(255,80,80,0.3)}
-
-/* Form rows */
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.form-block{background:var(--soft);border-radius:7px;padding:8px 10px}
-.form-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
-.form-str{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.08em}
-
-/* Golden nugget */
-.nugget{background:#fffbf0;border:1.5px solid rgba(201,168,76,0.35);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--mid);line-height:1.5}
-.nugget strong{color:var(--navy)}
-.nugget-icon{font-size:13px;margin-right:4px}
-
-/* No picks state */
-.no-picks{text-align:center;padding:40px 20px;border:1.5px solid var(--border);border-radius:12px;background:var(--white);margin-bottom:12px}
-.no-picks-icon{font-size:32px;margin-bottom:10px;opacity:.5}
-.no-picks-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
-.no-picks-sub{font-size:12px;color:var(--muted);line-height:1.7}
-
-/* Error state */
-.analyse-error{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;font-size:13px;color:#b02020;margin-bottom:12px}
 </style>
 </head>
 <body>
 <div class="main">
-
   <div class="eyebrow">Acca Research Tool</div>
   <div class="title">Fixture <span>Browser</span></div>
-
-  <!-- Date -->
   <div class="date-nav">
     <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#9664;</button>
     <div class="date-center">
@@ -227,12 +175,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </div>
     <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#9654;</button>
   </div>
-
-  <!-- Flags -->
   <div class="section-label">Select Country</div>
   <div class="country-row" id="country-row"></div>
-
-  <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" id="tab-fixtures" onclick="switchTab('fixtures')">Fixtures</button>
     <button class="tab" id="tab-research" onclick="switchTab('research')">
@@ -240,10 +184,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
       <span class="tab-badge" id="research-badge" style="display:none">0</span>
     </button>
   </div>
-
-  <!-- FIXTURES TAB -->
   <div id="tab-fixtures-content">
-    <!-- CTA -->
     <div class="country-cta" id="country-cta">
       <div class="cta-text">
         <div class="cta-heading" id="cta-heading">Analyse all fixtures today</div>
@@ -253,26 +194,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </div>
     <div class="league-tabs" id="league-tabs"></div>
     <div id="fixtures-container">
-      <div class="prompt">
-        <div class="prompt-icon">⚽</div>
-        <div class="prompt-text">Select a country above to browse fixtures</div>
-      </div>
+      <div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>
     </div>
   </div>
-
-  <!-- RESEARCH TAB -->
   <div id="tab-research-content" style="display:none">
     <div id="research-container">
-      <div class="prompt">
-        <div class="prompt-icon">🔍</div>
-        <div class="prompt-text">No research yet.<br>Go to Fixtures, select a country and hit Analyse.</div>
-      </div>
+      <div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research yet.<br>Go to Fixtures, select a country and hit Analyse.</div></div>
     </div>
   </div>
-
 </div>
 
-<!-- FLOATING BETSLIP -->
 <div class="slip-bubble">
   <div class="slip-panel" id="slip-panel">
     <div class="slip-panel-head">
@@ -312,65 +243,59 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 </div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
 var COUNTRIES=[
-  {id:'england',     code:'gb-eng', name:'England'},
-  {id:'scotland',    code:'gb-sct', name:'Scotland'},
-  {id:'spain',       code:'es',     name:'Spain'},
-  {id:'germany',     code:'de',     name:'Germany'},
-  {id:'france',      code:'fr',     name:'France'},
-  {id:'italy',       code:'it',     name:'Italy'},
-  {id:'netherlands', code:'nl',     name:'Netherlands'},
-  {id:'portugal',    code:'pt',     name:'Portugal'}
+  {id:'england',code:'gb-eng',name:'England'},
+  {id:'scotland',code:'gb-sct',name:'Scotland'},
+  {id:'spain',code:'es',name:'Spain'},
+  {id:'germany',code:'de',name:'Germany'},
+  {id:'france',code:'fr',name:'France'},
+  {id:'italy',code:'it',name:'Italy'},
+  {id:'netherlands',code:'nl',name:'Netherlands'},
+  {id:'portugal',code:'pt',name:'Portugal'}
 ];
 var LEAGUES={
-  '4328':{name:'Premier League',        country:'england',    tier:1},
-  '4329':{name:'Championship',          country:'england',    tier:2},
-  '4396':{name:'League One',            country:'england',    tier:3},
-  '4397':{name:'League Two',            country:'england',    tier:4},
-  '4590':{name:'National League',       country:'england',    tier:5},
-  '4681':{name:'National League North', country:'england',    tier:6},
-  '4682':{name:'National League South', country:'england',    tier:6},
-  '4330':{name:'Premiership',           country:'scotland',   tier:1},
-  '4395':{name:'Championship',          country:'scotland',   tier:2},
-  '4669':{name:'League One',            country:'scotland',   tier:3},
-  '4670':{name:'League Two',            country:'scotland',   tier:4},
-  '4335':{name:'La Liga',               country:'spain',      tier:1},
-  '4400':{name:'La Liga 2',             country:'spain',      tier:2},
-  '4331':{name:'Bundesliga',            country:'germany',    tier:1},
-  '4406':{name:'Bundesliga 2',          country:'germany',    tier:2},
-  '4413':{name:'3. Liga',               country:'germany',    tier:3},
-  '4334':{name:'Ligue 1',               country:'france',     tier:1},
-  '4401':{name:'Ligue 2',               country:'france',     tier:2},
-  '4332':{name:'Serie A',               country:'italy',      tier:1},
-  '4404':{name:'Serie B',               country:'italy',      tier:2},
-  '4337':{name:'Eredivisie',            country:'netherlands',tier:1},
-  '4402':{name:'Eerste Divisie',        country:'netherlands',tier:2},
-  '4344':{name:'Primeira Liga',         country:'portugal',   tier:1},
-  '4403':{name:'Liga Portugal 2',       country:'portugal',   tier:2}
+  '4328':{name:'Premier League',country:'england',tier:1},
+  '4329':{name:'Championship',country:'england',tier:2},
+  '4396':{name:'League One',country:'england',tier:3},
+  '4397':{name:'League Two',country:'england',tier:4},
+  '4590':{name:'National League',country:'england',tier:5},
+  '4681':{name:'National League North',country:'england',tier:6},
+  '4682':{name:'National League South',country:'england',tier:6},
+  '4330':{name:'Premiership',country:'scotland',tier:1},
+  '4395':{name:'Championship',country:'scotland',tier:2},
+  '4669':{name:'League One',country:'scotland',tier:3},
+  '4670':{name:'League Two',country:'scotland',tier:4},
+  '4335':{name:'La Liga',country:'spain',tier:1},
+  '4400':{name:'La Liga 2',country:'spain',tier:2},
+  '4331':{name:'Bundesliga',country:'germany',tier:1},
+  '4406':{name:'Bundesliga 2',country:'germany',tier:2},
+  '4413':{name:'3. Liga',country:'germany',tier:3},
+  '4334':{name:'Ligue 1',country:'france',tier:1},
+  '4401':{name:'Ligue 2',country:'france',tier:2},
+  '4332':{name:'Serie A',country:'italy',tier:1},
+  '4404':{name:'Serie B',country:'italy',tier:2},
+  '4337':{name:'Eredivisie',country:'netherlands',tier:1},
+  '4402':{name:'Eerste Divisie',country:'netherlands',tier:2},
+  '4344':{name:'Primeira Liga',country:'portugal',tier:1},
+  '4403':{name:'Liga Portugal 2',country:'portugal',tier:2}
 };
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
 var allFixtures=[],currentLeague='all',currentCountry=null;
 var currentDate=new Date(),isLoading=false,pendingDate=null,dataLoaded=false;
 var slipLegs=[],stake=10,slipOpen=false;
-var researchSections=[]; // [{countryId, countryName, label, flagCode, cards:[]}]
+var researchSections=[];
 var MIN=5,MAX=50,STEP=5;
 
-// ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(tab){
-  document.getElementById('tab-fixtures').classList.toggle('active', tab==='fixtures');
-  document.getElementById('tab-research').classList.toggle('active', tab==='research');
-  document.getElementById('tab-fixtures-content').style.display = tab==='fixtures'?'':'none';
-  document.getElementById('tab-research-content').style.display = tab==='research'?'':'none';
+  document.getElementById('tab-fixtures').classList.toggle('active',tab==='fixtures');
+  document.getElementById('tab-research').classList.toggle('active',tab==='research');
+  document.getElementById('tab-fixtures-content').style.display=tab==='fixtures'?'':'none';
+  document.getElementById('tab-research-content').style.display=tab==='research'?'':'none';
 }
 
-// ── COUNTRY ───────────────────────────────────────────────────────────────────
 function buildCountryRow(){
   document.getElementById('country-row').innerHTML=COUNTRIES.map(function(c){
-    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)">'
-      +'<img src="https://flagcdn.com/w40/'+c.code+'.png" alt="'+c.name+'">'
-      +'<span>'+c.name+'</span></button>';
+    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)"><img src="https://flagcdn.com/w40/'+c.code+'.png" alt="'+c.name+'"><span>'+c.name+'</span></button>';
   }).join('');
 }
 
@@ -398,8 +323,7 @@ function buildLeagueTabs(){
   var html='<button class="ltab active" onclick="filterLeague(\'all\',this)">All</button>';
   Object.keys(LEAGUES).forEach(function(id){
     var l=LEAGUES[id];
-    if(l.country===currentCountry)
-      html+='<button class="ltab" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
+    if(l.country===currentCountry) html+='<button class="ltab" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
   });
   document.getElementById('league-tabs').innerHTML=html;
 }
@@ -411,8 +335,8 @@ function filterLeague(code,btn){
   renderFixtures();
 }
 
-// ── DATE ──────────────────────────────────────────────────────────────────────
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
 function updateDateDisplay(){
   var today=new Date();today.setHours(0,0,0,0);
   var dc=new Date(currentDate);dc.setHours(0,0,0,0);
@@ -425,27 +349,29 @@ function updateDateDisplay(){
   document.getElementById('date-display').textContent=main;
   document.getElementById('date-sub').textContent=sub;
 }
+
 function setNavEnabled(en){
   document.getElementById('btn-prev').disabled=!en;
   document.getElementById('btn-next').disabled=!en;
 }
+
 function changeDate(days){
   var d=new Date(currentDate);d.setDate(d.getDate()+days);
   if(isLoading){pendingDate=d;return;}
   currentDate=d;dataLoaded=false;
-  // Clear research when date changes
   researchSections=[];
   renderResearchTab();
   if(currentCountry){loadFixtures();}else{updateDateDisplay();}
 }
+
 function formatKickoff(dateStr,timeStr){
   if(!timeStr||timeStr==='00:00:00'||!timeStr.trim()) return '';
   try{return new Date(dateStr+'T'+timeStr+'Z').toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
   catch(e){return '';}
 }
+
 function isLive(s){return s==='1H'||s==='2H'||s==='HT'||s==='ET'||s==='PEN';}
 
-// ── LOAD ──────────────────────────────────────────────────────────────────────
 async function loadFixtures(){
   if(isLoading) return;
   isLoading=true;pendingDate=null;dataLoaded=false;
@@ -474,7 +400,6 @@ async function loadFixtures(){
   if(pendingDate){currentDate=pendingDate;pendingDate=null;loadFixtures();}
 }
 
-// ── RENDER FIXTURES ───────────────────────────────────────────────────────────
 function renderFixtures(){
   if(!currentCountry){
     document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
@@ -501,31 +426,23 @@ function renderFixtures(){
     var l=LEAGUES[id];
     var name=l?l.name:(grouped[id][0].leagueName||id);
     var list=grouped[id];
-    html+='<div class="league-block">'
-      +'<div class="league-header">'
-      +'<span class="league-name">'+name+'</span>'
-      +'<button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">Analyse Selections</button>'
-      +'</div>';
+    html+='<div class="league-block"><div class="league-header"><span class="league-name">'+name+'</span><button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">Analyse Selections</button></div>';
     list.forEach(function(f){
       var live=isLive(f.status),ft=f.status==='FT';
       var hasScore=f.homeScore!=null&&f.homeScore!==''&&f.awayScore!=null&&f.awayScore!=='';
       var ko=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
       var scoreStr=(live||ft)&&hasScore?' '+f.homeScore+'-'+f.awayScore:'';
-      html+='<div class="fixture-row">'
-        +'<div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'
-        +(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')
-        +'</div>';
+      html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
     });
     html+='</div>';
   });
   document.getElementById('fixtures-container').innerHTML=html;
 }
 
-// ── ANALYSE ───────────────────────────────────────────────────────────────────
 function analyseAll(){
   var fixtures=allFixtures.filter(function(f){var l=LEAGUES[f.leagueId];return l&&l.country===currentCountry;});
   var cobj=COUNTRIES.find(function(c){return c.id===currentCountry;});
-  triggerAnalysis(cobj, 'All '+cobj.name+' fixtures', fixtures);
+  triggerAnalysis(cobj,'All '+cobj.name+' fixtures',fixtures);
 }
 
 function analyseLeague(leagueId){
@@ -533,66 +450,93 @@ function analyseLeague(leagueId){
   var fixtures=allFixtures.filter(function(f){return f.leagueId===leagueId;});
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
   var cobj=COUNTRIES.find(function(c){return c.id===currentCountry;});
-  triggerAnalysis(cobj, l?l.name:leagueId, fixtures);
+  triggerAnalysis(cobj,l?l.name:leagueId,fixtures);
 }
 
-async function triggerAnalysis(cobj, label, fixtures){
+async function triggerAnalysis(cobj,label,fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
-  var sectionId='section_'+Date.now();
-  var jobId='job'+Date.now();
 
+  // Generate a clean simple jobId
+  var jobId='acca'+Date.now();
+  var sectionId='sec'+Date.now();
+
+  console.log('Starting analysis. JobId:', jobId);
 
   researchSections.unshift({
-    sectionId:sectionId,countryId:cobj.id,countryName:cobj.name,
-    flagCode:cobj.code,label:label,status:'loading',cards:[]
+    sectionId:sectionId,
+    jobId:jobId,
+    countryId:cobj.id,
+    countryName:cobj.name,
+    flagCode:cobj.code,
+    label:label,
+    status:'loading',
+    cards:[]
   });
+
   switchTab('research');
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
-  // Fire background function — runs for as long as needed
-  fetch('/.netlify/functions/analyse-background',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({jobId:jobId,fixtures:fixtures,date:formatDate(currentDate),label:label})
-  }).catch(function(){});
+  // Fire the background function
+  try {
+    var fireRes = await fetch('/.netlify/functions/analyse-background',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jobId:jobId,fixtures:fixtures,date:formatDate(currentDate),label:label})
+    });
+    console.log('Background function fired, status:', fireRes.status);
+  } catch(e) {
+    console.error('Failed to fire background function:', e.message);
+  }
 
-  // Poll every 6 seconds for results
+  // Poll for results — check every 5 seconds for up to 10 minutes
   var attempts=0;
+  var maxAttempts=120;
   var interval=setInterval(async function(){
     attempts++;
-    if(attempts>300){
+    console.log('Polling attempt', attempts, 'for jobId:', jobId);
+
+    if(attempts>maxAttempts){
       clearInterval(interval);
+      console.log('Polling timed out for jobId:', jobId);
       var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
       if(sec&&sec.status==='loading'){sec.status='error';renderResearchTab();}
       return;
     }
+
     try{
-      var res=await fetch('/.netlify/functions/poll-analysis?jobId='+jobId);
+      var pollUrl='/.netlify/functions/poll-analysis?jobId='+jobId;
+      console.log('Polling URL:', pollUrl);
+      var res=await fetch(pollUrl);
       var data=await res.json();
+      console.log('Poll response for', jobId, ':', data.status, data.cards ? data.cards.length+' cards' : '');
+
       var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
       if(!sec){clearInterval(interval);return;}
+
       if(data.status==='done'){
         clearInterval(interval);
-        sec.status='done';sec.cards=data.cards||[];
+        sec.status='done';
+        sec.cards=data.cards||[];
+        console.log('Analysis complete! Cards:', sec.cards.length);
         renderResearchTab();
       } else if(data.status==='error'){
-        clearInterval(interval);sec.status='error';renderResearchTab();
+        clearInterval(interval);
+        sec.status='error';
+        renderResearchTab();
       }
-    }catch(e){}
-  },4000);
+      // if 'loading', keep polling
+    }catch(e){
+      console.error('Poll error:', e.message);
+    }
+  },5000);
 }
 
-// ── RESEARCH TAB RENDER ───────────────────────────────────────────────────────
 function renderResearchTab(){
   var badge=document.getElementById('research-badge');
   var totalCards=researchSections.reduce(function(t,s){return t+s.cards.length;},0);
-  if(researchSections.length>0){
-    badge.style.display='inline-flex';
-    badge.textContent=totalCards;
-  } else {
-    badge.style.display='none';
-  }
+  if(researchSections.length>0){badge.style.display='inline-flex';badge.textContent=totalCards;}
+  else{badge.style.display='none';}
 
   if(!researchSections.length){
     document.getElementById('research-container').innerHTML='<div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research yet.<br>Go to Fixtures, select a country and hit Analyse.</div></div>';
@@ -601,26 +545,16 @@ function renderResearchTab(){
 
   var html='';
   researchSections.forEach(function(sec){
-    var flagCode=sec.flagCode;
-    html+='<div class="research-section">'
-      +'<div class="research-country-header">'
-      +'<div class="rch-left">'
-      +'<img class="rch-flag" src="https://flagcdn.com/w40/'+flagCode+'.png" alt="'+sec.countryName+'">'
-      +'<div><div class="rch-country">'+sec.countryName+'</div><div class="rch-league">'+sec.label+'</div></div>'
-      +'</div>'
-      +'<button class="rch-clear" onclick="removeSection(\''+sec.sectionId+'\')">Remove</button>'
-      +'</div>';
+    html+='<div class="research-section"><div class="research-country-header"><div class="rch-left"><img class="rch-flag" src="https://flagcdn.com/w40/'+sec.flagCode+'.png" alt="'+sec.countryName+'"><div><div class="rch-country">'+sec.countryName+'</div><div class="rch-league">'+sec.label+'</div></div></div><button class="rch-clear" onclick="removeSection(\''+sec.sectionId+'\')">Remove</button></div>';
 
     if(sec.status==='loading'){
       html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Researching form, injuries, H2H and key factors for every fixture</small></div>';
     } else if(sec.status==='error'){
-      html+='<div class="analyse-error">Analysis failed. Check your connection and try again.</div>';
+      html+='<div class="analyse-error">Analysis failed. Please try again.</div>';
     } else if(!sec.cards.length){
-      html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">After researching every fixture in '+sec.label+', there are no picks that meet the standard today.<br>Try a different league or date.</div></div>';
+      html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">No picks met the standard for '+sec.label+' today. Try another league or date.</div></div>';
     } else {
-      sec.cards.forEach(function(card){
-        html+=buildCardHTML(card);
-      });
+      sec.cards.forEach(function(card){html+=buildCardHTML(card);});
     }
     html+='</div>';
   });
@@ -632,8 +566,6 @@ function removeSection(sectionId){
   renderResearchTab();
 }
 
-// ── CARD BUILDER (real AI output) ───────────────────────────────────────────
-
 function buildCardHTML(c){
   var added=slipLegs.some(function(s){return s.legId==='leg_'+c.fid;});
   var conf=c.confidence||75;
@@ -641,39 +573,15 @@ function buildCardHTML(c){
   var warnings=(c.warnings||[]).map(function(r){return '<div class="reason"><span class="ri">&#9888;</span>'+escHtml(r)+'</div>';}).join('');
   var formRow='';
   if(c.formHome||c.formAway){
-    formRow='<div class="form-row">'
-      +(c.formHome?'<div class="form-block"><span class="form-lbl">'+escHtml(c.home)+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')
-      +(c.formAway?'<div class="form-block"><span class="form-lbl">'+escHtml(c.away)+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')
-      +'</div>';
+    formRow='<div class="form-row">'+(c.formHome?'<div class="form-block"><span class="form-lbl">'+escHtml(c.home)+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')+(c.formAway?'<div class="form-block"><span class="form-lbl">'+escHtml(c.away)+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')+'</div>';
   }
-  var nugget=c.goldenNugget?'<div class="nugget"><span class="nugget-icon">&#128081;</span> <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
-  return '<div class="analysis-card">'
-    +'<div class="ac-head">'
-    +'<div><div class="ac-match">'+escHtml(c.home)+' vs '+escHtml(c.away)+'</div>'+(c.ko?'<div class="ac-time">'+escHtml(c.ko)+'</div>':'')+'</div>'
-    +'<div class="verdict pick">&#9989; PICK</div>'
-    +'</div>'
-    +'<div class="ac-body">'
-    +'<div class="conf-row"><div class="conf-label"><span>Confidence</span><span>'+conf+'%</span></div><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'
-    +formRow
-    +'<div class="reasons">'+reasons+warnings+'</div>'
-    +nugget
-    +(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')
-    +'</div>'
-    +'<div class="ac-foot">'
-    +'<div class="sel-info">Selection: <strong>'+escHtml(c.selection||'')+'</strong>'+(c.selectionType?' ('+escHtml(c.selectionType)+')':'')+(c.odds?' &nbsp;&middot;&nbsp; Odds: <strong>'+escHtml(c.odds)+'</strong>':'')+'</div>'
-    +'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(this)" data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" data-odds="'+escHtml(c.odds||'EVS')+'">'+(added?'&#10003; Added':'+ Add to Slip')+'</button>'
-    +'</div>'
-    +'</div>';
+  var nugget=c.goldenNugget?'<div class="nugget">&#128081; <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
+  return '<div class="analysis-card"><div class="ac-head"><div><div class="ac-match">'+escHtml(c.home)+' vs '+escHtml(c.away)+'</div>'+(c.ko?'<div class="ac-time">'+escHtml(c.ko)+'</div>':'')+'</div><div class="verdict pick">&#9989; PICK</div></div><div class="ac-body"><div class="conf-row"><div class="conf-label"><span>Confidence</span><span>'+conf+'%</span></div><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'+formRow+'<div class="reasons">'+reasons+warnings+'</div>'+nugget+(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')+'</div><div class="ac-foot"><div class="sel-info">Selection: <strong>'+escHtml(c.selection||'')+'</strong>'+(c.selectionType?' ('+escHtml(c.selectionType)+')':'')+(c.odds?' &nbsp;&middot;&nbsp; Odds: <strong>'+escHtml(c.odds)+'</strong>':'')+'</div><button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(this)" data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" data-odds="'+escHtml(c.odds||'EVS')+'">'+(added?'&#10003; Added':'+ Add to Slip')+'</button></div></div>';
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function escJs(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 
-// ── BETSLIP ───────────────────────────────────────────────────────────────────
-function toggleSlip(){
-  slipOpen=!slipOpen;
-  document.getElementById('slip-panel').classList.toggle('open',slipOpen);
-}
+function toggleSlip(){slipOpen=!slipOpen;document.getElementById('slip-panel').classList.toggle('open',slipOpen);}
 
 function addToSlip(btn){
   var fid=btn.dataset.fid,team=btn.dataset.sel,match=btn.dataset.match,odds=btn.dataset.odds;
@@ -718,11 +626,7 @@ function renderSlip(){
     return;
   }
   con.innerHTML=slipLegs.map(function(s){
-    return '<div class="slip-leg-item">'
-      +'<div class="sli-info"><div class="sli-team">'+s.team+'</div><div class="sli-match">'+s.match+'</div></div>'
-      +'<div class="sli-odds">'+s.odds+'</div>'
-      +'<button class="sli-remove" onclick="removeFromSlip(\''+s.legId+'\')">&#215;</button>'
-      +'</div>';
+    return '<div class="slip-leg-item"><div class="sli-info"><div class="sli-team">'+s.team+'</div><div class="sli-match">'+s.match+'</div></div><div class="sli-odds">'+s.odds+'</div><button class="sli-remove" onclick="removeFromSlip(\''+s.legId+'\')">&#215;</button></div>';
   }).join('');
   var combined=1;
   slipLegs.forEach(function(s){combined*=toDecimal(s.num,s.den);});
@@ -733,7 +637,6 @@ function renderSlip(){
   document.getElementById('r-profit').textContent='€'+(stake*combined-stake).toFixed(2);
 }
 
-// ── SLIDER ────────────────────────────────────────────────────────────────────
 function snapToStep(v){return Math.round(v/STEP)*STEP;}
 function pctFromStake(s){return(s-MIN)/(MAX-MIN);}
 function positionBall(pct){
