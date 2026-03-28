@@ -4,22 +4,26 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 async function redisSet(key, value) {
-  const body = JSON.stringify(['SET', key, JSON.stringify(value), 'EX', 3600]);
+  const encodedKey = encodeURIComponent(key);
+  const body = JSON.stringify(value);
   return new Promise((resolve, reject) => {
     const url = new URL(UPSTASH_URL);
     const req = https.request({
       hostname: url.hostname,
-      path: '/',
+      path: '/set/' + encodedKey,
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+        'Authorization': 'Bearer ' + UPSTASH_TOKEN,
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body)
       }
     }, res => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => resolve(JSON.parse(data)));
+      res.on('end', () => {
+        console.log('Redis SET response:', data);
+        resolve(data);
+      });
     });
     req.on('error', reject);
     req.write(body);
