@@ -59,16 +59,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fixture-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:all .18s;margin-bottom:6px}
 .fixture-card:hover{border-color:var(--navy);box-shadow:0 4px 16px rgba(11,22,40,0.08);transform:translateY(-1px)}
-.fixture-teams{display:flex;align-items:center;flex:1;min-width:0}
-.team{font-size:14px;font-weight:700;color:var(--navy);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fixture-teams{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center;flex:1;min-width:0;gap:0}
+.team{font-size:14px;font-weight:700;color:var(--navy);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .team.away{text-align:right}
-.vs-wrap{width:50px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0 4px}
-.vs{font-size:11px;color:var(--muted);font-weight:700;background:var(--soft);border:1px solid var(--border);padding:4px 8px;border-radius:6px;text-align:center;width:100%}
+.vs-wrap{display:flex;align-items:center;justify-content:center}
+.vs{font-size:11px;color:var(--muted);font-weight:700;background:var(--soft);border:1px solid var(--border);padding:4px 0;border-radius:6px;text-align:center;width:100%}
 .vs.live{color:#1e9e6b;background:#edfbf5;border-color:#b8edd6}
 .fixture-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:68px}
 .kickoff{font-size:14px;color:var(--gold);font-weight:800}
 .kickoff.live{color:#1e9e6b}
-.venue{font-size:10px;color:var(--muted);text-align:right;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 
 .prompt{text-align:center;padding:60px 20px}
 .prompt-text{font-size:14px;color:var(--muted);font-weight:500}
@@ -113,30 +112,30 @@ var COUNTRIES=[
 ];
 
 var LEAGUES={
-  '4328':{name:'Premier League',  country:'england'},
-  '4329':{name:'Championship',    country:'england'},
-  '4396':{name:'League One',      country:'england'},
-  '4397':{name:'League Two',      country:'england'},
-  '4590':{name:'National League', country:'england'},
-  '4681':{name:'NL North',        country:'england'},
-  '4682':{name:'NL South',        country:'england'},
-  '4330':{name:'Premiership',     country:'scotland'},
-  '4395':{name:'Championship',    country:'scotland'},
-  '4669':{name:'League One',      country:'scotland'},
-  '4670':{name:'League Two',      country:'scotland'},
-  '4335':{name:'La Liga',         country:'spain'},
-  '4400':{name:'La Liga 2',       country:'spain'},
-  '4331':{name:'Bundesliga',      country:'germany'},
-  '4406':{name:'Bundesliga 2',    country:'germany'},
-  '4413':{name:'3. Liga',         country:'germany'},
-  '4334':{name:'Ligue 1',         country:'france'},
-  '4401':{name:'Ligue 2',         country:'france'},
-  '4332':{name:'Serie A',         country:'italy'},
-  '4404':{name:'Serie B',         country:'italy'},
-  '4337':{name:'Eredivisie',      country:'netherlands'},
-  '4402':{name:'Eerste Divisie',  country:'netherlands'},
-  '4344':{name:'Primeira Liga',   country:'portugal'},
-  '4403':{name:'Liga Portugal 2', country:'portugal'}
+  '4328':{name:'Premier League',  country:'england',    tier:1},
+  '4329':{name:'Championship',    country:'england',    tier:2},
+  '4396':{name:'League One',      country:'england',    tier:3},
+  '4397':{name:'League Two',      country:'england',    tier:4},
+  '4590':{name:'National League', country:'england',    tier:5},
+  '4681':{name:'NL North',        country:'england',    tier:6},
+  '4682':{name:'NL South',        country:'england',    tier:6},
+  '4330':{name:'Premiership',     country:'scotland',   tier:1},
+  '4395':{name:'Championship',    country:'scotland',   tier:2},
+  '4669':{name:'League One',      country:'scotland',   tier:3},
+  '4670':{name:'League Two',      country:'scotland',   tier:4},
+  '4335':{name:'La Liga',         country:'spain',      tier:1},
+  '4400':{name:'La Liga 2',       country:'spain',      tier:2},
+  '4331':{name:'Bundesliga',      country:'germany',    tier:1},
+  '4406':{name:'Bundesliga 2',    country:'germany',    tier:2},
+  '4413':{name:'3. Liga',         country:'germany',    tier:3},
+  '4334':{name:'Ligue 1',         country:'france',     tier:1},
+  '4401':{name:'Ligue 2',         country:'france',     tier:2},
+  '4332':{name:'Serie A',         country:'italy',      tier:1},
+  '4404':{name:'Serie B',         country:'italy',      tier:2},
+  '4337':{name:'Eredivisie',      country:'netherlands',tier:1},
+  '4402':{name:'Eerste Divisie',  country:'netherlands',tier:2},
+  '4344':{name:'Primeira Liga',   country:'portugal',   tier:1},
+  '4403':{name:'Liga Portugal 2', country:'portugal',   tier:2}
 };
 
 var allFixtures=[],currentLeague='all',currentCountry=null,currentDate=new Date(),isLoading=false,pendingDate=null,dataLoaded=false;
@@ -267,6 +266,12 @@ function renderFixtures(){
     if(!grouped[f.leagueId]){grouped[f.leagueId]=[];order.push(f.leagueId);}
     grouped[f.leagueId].push(f);
   });
+  // Sort league groups by tier (highest division first)
+  order.sort(function(a,b){
+    var ta=(LEAGUES[a]&&LEAGUES[a].tier)||99;
+    var tb=(LEAGUES[b]&&LEAGUES[b].tier)||99;
+    return ta-tb;
+  });
   var html='<div class="results-count">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+' found</div>';
   order.forEach(function(id){
     var l=LEAGUES[id];
@@ -287,7 +292,6 @@ function renderFixtures(){
         +'</div>'
         +'<div class="fixture-meta">'
         +(ko?'<div class="kickoff'+(live?' live':'')+'">'+ko+'</div>':'')
-        +(f.venue?'<div class="venue">'+f.venue+'</div>':'')
         +'</div></div>';
     });
     html+='</div>';
