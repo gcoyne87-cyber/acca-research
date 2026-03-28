@@ -88,7 +88,7 @@ ${fixtureList}
 Remember: web search each fixture for current form, injuries, manager news and context before deciding. Return raw JSON array only.`;
 
     const body = JSON.stringify({
-      model: 'claude-opus-4-5',
+      model: 'claude-sonnet-4-5',
       max_tokens: 4000,
       tools: [{
         type: 'web_search_20250305',
@@ -107,7 +107,6 @@ Remember: web search each fixture for current form, injuries, manager news and c
         'Content-Length': Buffer.byteLength(body),
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'interleaved-thinking-2025-05-14'
       }
     };
 
@@ -130,7 +129,7 @@ Remember: web search each fixture for current form, injuries, manager news and c
           const cards = JSON.parse(text);
           resolve(Array.isArray(cards) ? cards : []);
         } catch(e) {
-          console.error('Parse error:', e.message, data.substring(0, 500));
+          console.error('Parse error:', e.message); console.error('Raw response:', data.substring(0, 1000));
           resolve([]);
         }
       });
