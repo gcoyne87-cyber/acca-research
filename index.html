@@ -554,7 +554,7 @@ async function triggerAnalysis(cobj, label, fixtures){
 
   try{
     for(var b=0;b<batches.length;b++){
-      var res=await fetch('/.netlify/functions/analyse-background',{
+      var res=await fetch('/.netlify/functions/analyse',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({fixtures:batches[b],date:formatDate(currentDate),label:label})
