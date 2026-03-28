@@ -53,7 +53,7 @@ function callClaude(fixtures, date, label) {
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 8000,
+      max_tokens: 3000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }]
@@ -112,7 +112,7 @@ function callClaude(fixtures, date, label) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(25000);
+    req.setTimeout(22000);
     req.write(body);
     req.end();
   });
