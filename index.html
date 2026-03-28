@@ -85,32 +85,41 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .rch-league{font-size:11px;color:var(--muted);font-weight:600}
 .rch-clear{font-size:11px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s}
 .rch-clear:hover{color:#e53935;border-color:#e53935}
+
+/* ── ANALYSIS CARD ── */
 .analysis-card{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--white)}
-.ac-head{background:var(--navy2);padding:12px 15px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.ac-match{font-size:13px;font-weight:700;color:#fff}
-.ac-time{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px}
-.verdict{font-size:10px;font-weight:800;padding:4px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;margin-top:1px}
-.verdict.pick{background:#1a7a52;color:#fff}
+
+/* Header: teams left, pick right */
+.ac-head{background:var(--navy2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+
+/* Left side — both team names, picked one is big */
+.ac-teams{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+.ac-team{font-size:12px;font-weight:500;color:rgba(255,255,255,0.38);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
+.ac-team--pick{font-size:19px;font-weight:800;color:#ffffff;letter-spacing:-0.3px}
+
+/* Right side — PICK label, team name in gold, odds */
+.ac-pick-block{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:3px}
+.ac-pick-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:var(--gold);opacity:.75}
+.ac-pick-team{font-size:15px;font-weight:800;color:var(--gold);text-align:right;max-width:160px;line-height:1.2}
+.ac-pick-odds{font-size:18px;font-weight:800;color:#ffffff;text-align:right;letter-spacing:-0.5px}
+
+/* Slim time + confidence row */
+.ac-meta-row{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:var(--soft);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
+.ac-meta-conf{color:var(--gold);font-weight:700}
+
 .ac-body{padding:13px 15px}
 .conf-row{margin-bottom:11px}
-.conf-label{display:flex;justify-content:space-between;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px}
-.conf-bar{height:6px;background:var(--soft);border-radius:99px;overflow:hidden}
+.conf-bar{height:6px;background:#e4e8f0;border-radius:99px;overflow:hidden}
 .conf-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
 .reasons{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .reason{font-size:12px;color:var(--mid);display:flex;gap:6px;align-items:flex-start;line-height:1.45}
 .reason .ri{flex-shrink:0;font-size:12px}
 .risk-note{background:var(--soft);border-radius:7px;padding:7px 11px;font-size:11px;color:var(--mid);font-style:italic}
-.ac-foot{padding:10px 15px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.sel-info{font-size:12px;color:var(--mid)}
-.sel-info strong{color:var(--navy);font-weight:700}
+.ac-foot{padding:10px 15px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:flex-end}
 .add-btn{font-size:12px;font-weight:700;background:var(--navy);color:var(--gold);border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .add-btn:hover{background:var(--gold);color:var(--navy)}
 .add-btn.added{background:var(--green);color:#fff}
-.analysing-block{border:1.5px solid var(--border);border-radius:12px;padding:32px;text-align:center;margin-bottom:12px;background:var(--white)}
-.analysing-block .spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.analysing-block p{font-size:13px;color:var(--muted);font-weight:500}
-.analysing-block small{font-size:11px;color:var(--muted);display:block;margin-top:4px}
+
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .form-block{background:var(--soft);border-radius:7px;padding:8px 10px}
 .form-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
@@ -122,6 +131,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .no-picks-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .no-picks-sub{font-size:12px;color:var(--muted);line-height:1.7}
 .analyse-error{background:#fff5f5;border:1.5px solid #fcc;border-radius:12px;padding:16px 20px;font-size:13px;color:#b02020;margin-bottom:12px}
+
+/* Analysing spinner block */
+.analysing-block{border:1.5px solid var(--border);border-radius:12px;padding:32px;text-align:center;margin-bottom:12px;background:var(--white)}
+.analysing-block .spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.analysing-block p{font-size:13px;color:var(--muted);font-weight:500}
+.analysing-block small{font-size:11px;color:var(--muted);display:block;margin-top:4px}
+
+/* Slip */
 .slip-bubble{position:fixed;bottom:22px;right:22px;z-index:400}
 .slip-toggle{background:var(--navy);color:var(--gold);border:none;border-radius:50px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:9px;box-shadow:0 4px 20px rgba(11,22,40,0.4);transition:all .2s;white-space:nowrap}
 .slip-toggle:hover{background:var(--gold);color:var(--navy)}
@@ -454,12 +472,8 @@ function analyseLeague(leagueId){
 
 async function triggerAnalysis(cobj,label,fixtures){
   if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
-
-  // Generate a clean simple jobId
   var jobId='acca'+Date.now();
   var sectionId='sec'+Date.now();
-
-  console.log('Starting analysis. JobId:', jobId);
 
   researchSections.unshift({
     sectionId:sectionId,
@@ -469,65 +483,47 @@ async function triggerAnalysis(cobj,label,fixtures){
     flagCode:cobj.code,
     label:label,
     status:'loading',
-    cards:[]
+    cards:[],
+    fixtures:fixtures
   });
 
   switchTab('research');
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
-  // Fire the background function
-  try {
-    var fireRes = await fetch('/.netlify/functions/analyse-background',{
+  try{
+    await fetch('/.netlify/functions/analyse-background',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({jobId:jobId,fixtures:fixtures,date:formatDate(currentDate),label:label})
     });
-    console.log('Background function fired, status:', fireRes.status);
-  } catch(e) {
-    console.error('Failed to fire background function:', e.message);
-  }
+  }catch(e){console.error('Failed to fire background function:',e.message);}
 
-  // Poll for results — check every 5 seconds for up to 10 minutes
-  var attempts=0;
-  var maxAttempts=120;
+  var attempts=0,maxAttempts=120;
   var interval=setInterval(async function(){
     attempts++;
-    console.log('Polling attempt', attempts, 'for jobId:', jobId);
-
     if(attempts>maxAttempts){
       clearInterval(interval);
-      console.log('Polling timed out for jobId:', jobId);
       var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
       if(sec&&sec.status==='loading'){sec.status='error';renderResearchTab();}
       return;
     }
-
     try{
-      var pollUrl='/.netlify/functions/poll-analysis?jobId='+jobId;
-      console.log('Polling URL:', pollUrl);
-      var res=await fetch(pollUrl);
+      var res=await fetch('/.netlify/functions/poll-analysis?jobId='+jobId);
       var data=await res.json();
-      console.log('Poll response for', jobId, ':', data.status, data.cards ? data.cards.length+' cards' : '');
-
       var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
       if(!sec){clearInterval(interval);return;}
-
       if(data.status==='done'){
         clearInterval(interval);
         sec.status='done';
         sec.cards=data.cards||[];
-        console.log('Analysis complete! Cards:', sec.cards.length);
         renderResearchTab();
-      } else if(data.status==='error'){
+      }else if(data.status==='error'){
         clearInterval(interval);
         sec.status='error';
         renderResearchTab();
       }
-      // if 'loading', keep polling
-    }catch(e){
-      console.error('Poll error:', e.message);
-    }
+    }catch(e){console.error('Poll error:',e.message);}
   },5000);
 }
 
@@ -547,12 +543,21 @@ function renderResearchTab(){
     html+='<div class="research-section"><div class="research-country-header"><div class="rch-left"><img class="rch-flag" src="https://flagcdn.com/w40/'+sec.flagCode+'.png" alt="'+sec.countryName+'"><div><div class="rch-country">'+sec.countryName+'</div><div class="rch-league">'+sec.label+'</div></div></div><button class="rch-clear" onclick="removeSection(\''+sec.sectionId+'\')">Remove</button></div>';
 
     if(sec.status==='loading'){
-      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Researching form, injuries, H2H and key factors for every fixture</small></div>';
-    } else if(sec.status==='error'){
+      // Show fixture names while loading
+      var fxList='';
+      if(sec.fixtures&&sec.fixtures.length){
+        fxList='<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">';
+        sec.fixtures.forEach(function(f){
+          fxList+='<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;flex-shrink:0;"></span>'+escHtml(f.home)+' vs '+escHtml(f.away)+'</div>';
+        });
+        fxList+='</div>';
+      }
+      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+escHtml(sec.label)+'...</p><small>Researching form, injuries &amp; key factors for each fixture</small>'+fxList+'</div>';
+    }else if(sec.status==='error'){
       html+='<div class="analyse-error">Analysis failed. Please try again.</div>';
-    } else if(!sec.cards.length){
-      html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">No picks met the standard for '+sec.label+' today. Try another league or date.</div></div>';
-    } else {
+    }else if(!sec.cards.length){
+      html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">No picks met the standard for '+escHtml(sec.label)+' today. Try another league or date.</div></div>';
+    }else{
       sec.cards.forEach(function(card){html+=buildCardHTML(card);});
     }
     html+='</div>';
@@ -568,14 +573,56 @@ function removeSection(sectionId){
 function buildCardHTML(c){
   var added=slipLegs.some(function(s){return s.legId==='leg_'+c.fid;});
   var conf=c.confidence||75;
+  var isHomePick=(c.selectionType||'').toLowerCase().indexOf('home')>-1;
+  var homeTeam=escHtml(c.home||'');
+  var awayTeam=escHtml(c.away||'');
+  var selTeam=escHtml(c.selection||'');
+
   var reasons=(c.reasons||[]).map(function(r){return '<div class="reason"><span class="ri">&#9989;</span>'+escHtml(r)+'</div>';}).join('');
   var warnings=(c.warnings||[]).map(function(r){return '<div class="reason"><span class="ri">&#9888;</span>'+escHtml(r)+'</div>';}).join('');
+
   var formRow='';
   if(c.formHome||c.formAway){
-    formRow='<div class="form-row">'+(c.formHome?'<div class="form-block"><span class="form-lbl">'+escHtml(c.home)+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')+(c.formAway?'<div class="form-block"><span class="form-lbl">'+escHtml(c.away)+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')+'</div>';
+    formRow='<div class="form-row">'
+      +(c.formHome?'<div class="form-block"><span class="form-lbl">'+homeTeam+' (Home)</span><span class="form-str">'+escHtml(c.formHome)+'</span></div>':'')
+      +(c.formAway?'<div class="form-block"><span class="form-lbl">'+awayTeam+' (Away)</span><span class="form-str">'+escHtml(c.formAway)+'</span></div>':'')
+      +'</div>';
   }
+
   var nugget=c.goldenNugget?'<div class="nugget">&#128081; <strong>Key factor:</strong> '+escHtml(c.goldenNugget)+'</div>':'';
-  return '<div class="analysis-card"><div class="ac-head"><div><div class="ac-match">'+escHtml(c.home)+' vs '+escHtml(c.away)+'</div>'+(c.ko?'<div class="ac-time">'+escHtml(c.ko)+'</div>':'')+'</div><div class="verdict pick">&#9989; PICK</div></div><div class="ac-body"><div class="conf-row"><div class="conf-label"><span>Confidence</span><span>'+conf+'%</span></div><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'+formRow+'<div class="reasons">'+reasons+warnings+'</div>'+nugget+(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')+'</div><div class="ac-foot"><div class="sel-info">Selection: <strong>'+escHtml(c.selection||'')+'</strong>'+(c.selectionType?' ('+escHtml(c.selectionType)+')':'')+(c.odds?' &nbsp;&middot;&nbsp; Odds: <strong>'+escHtml(c.odds)+'</strong>':'')+'</div><button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(this)" data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" data-odds="'+escHtml(c.odds||'EVS')+'">'+(added?'&#10003; Added':'+ Add to Slip')+'</button></div></div>';
+
+  // LEFT: both teams, picked one is big white, other is small faded
+  var teamsLeft='<div class="ac-teams">'
+    +'<div class="ac-team'+(isHomePick?' ac-team--pick':'')+'">'+homeTeam+'</div>'
+    +'<div class="ac-team'+(isHomePick?'':' ac-team--pick')+'">'+awayTeam+'</div>'
+    +'</div>';
+
+  // RIGHT: PICK label, team in gold, odds big
+  var pickRight='<div class="ac-pick-block">'
+    +'<div class="ac-pick-label">&#9989; Pick</div>'
+    +'<div class="ac-pick-team">'+selTeam+'</div>'
+    +(c.odds?'<div class="ac-pick-odds">'+escHtml(c.odds)+'</div>':'')
+    +'</div>';
+
+  return '<div class="analysis-card">'
+    +'<div class="ac-head">'+teamsLeft+pickRight+'</div>'
+    +'<div class="ac-meta-row">'+(c.ko?escHtml(c.ko)+' &nbsp;·&nbsp; ':'')+' <span class="ac-meta-conf">'+conf+'% confidence</span></div>'
+    +'<div class="ac-body">'
+    +'<div class="conf-row"><div class="conf-bar"><div class="conf-fill" style="width:'+conf+'%"></div></div></div>'
+    +formRow
+    +'<div class="reasons">'+reasons+warnings+'</div>'
+    +nugget
+    +(c.riskNote?'<div class="risk-note">'+escHtml(c.riskNote)+'</div>':'')
+    +'</div>'
+    +'<div class="ac-foot">'
+    +'<button class="add-btn'+(added?' added':'')+'" id="abtn_'+c.fid+'" onclick="addToSlip(this)" '
+    +'data-fid="'+c.fid+'" data-sel="'+escHtml(c.selection||'')+'" '
+    +'data-match="'+escHtml((c.home||'')+' vs '+(c.away||''))+'" '
+    +'data-odds="'+escHtml(c.odds||'EVS')+'">'
+    +(added?'&#10003; Added':'+ Add to Slip')
+    +'</button>'
+    +'</div>'
+    +'</div>';
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -617,7 +664,6 @@ function toDisplayOdds(dec){var w=dec-1;if(w<=0)return'0/1';w=Math.round(w*10)/1
 function renderSlip(){
   var n=slipLegs.length;
   document.getElementById('slip-badge').textContent=n;
-  document.getElementById('slip-toggle').classList.toggle('has-legs',n>0);
   var con=document.getElementById('slip-legs-container');
   if(!n){
     con.innerHTML='<div class="slip-empty-msg">No selections yet.<br>Analyse &amp; add picks to build your slip.</div>';
