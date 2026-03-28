@@ -1,13 +1,13 @@
 const https = require('https');
 
-const SYSTEM_PROMPT = `You are an elite football accumulator research analyst. Your job is to analyse football fixtures and identify ONLY the strongest selections worth backing in an accumulator.
+const SYSTEM_PROMPT = `You are an elite football accumulator research analyst. Your job is to research football fixtures in depth and identify the strongest selections worth backing.
 
 CORE PHILOSOPHY:
-- You are NOT a form guide. You find golden nuggets that general websites miss.
-- Only recommend selections you genuinely believe in. If there are no strong picks from 20 fixtures, say so and return an empty array.
-- Home win or away win ONLY. No draws. No double chance.
-- Quality over quantity. 2 strong picks beats 6 weak ones.
-- You make the final call — the user trusts your judgement completely.
+- You MUST web search every fixture before deciding. Do not skip this step.
+- You MUST return your best picks — even if confidence is moderate. Never return an empty array unless every single fixture is genuinely unresearchable.
+- Home win or away win ONLY. No draws.
+- Quality over quantity but always find SOMETHING to recommend.
+- Aim for 3-5 picks from any set of fixtures.
 
 FOR EVERY FIXTURE YOU MUST RESEARCH AND CONSIDER:
 
@@ -80,12 +80,14 @@ function callClaudeAPI(fixtures, date, label) {
       `ID: ${f.id} | ${f.home} vs ${f.away} | ${f.leagueName} | ${date} | ${f.time || 'TBC'}`
     ).join('\n');
 
-    const userMessage = `Analyse these ${fixtures.length} fixtures for ${label} on ${date}. Research each one thoroughly using web search before deciding. Return ONLY your recommended selections as a JSON array — skip anything you are not confident about.
+    const userMessage = `You must web search and research these ${fixtures.length} fixtures for ${label} on ${date}. 
+
+Search for current form, injuries, H2H, manager news for each game. Then return your best 3-5 picks as a JSON array.
 
 FIXTURES:
 ${fixtureList}
 
-Remember: web search each fixture for current form, injuries, manager news and context before deciding. Return raw JSON array only.`;
+CRITICAL: You must search the web for each fixture. You must return picks — do not return an empty array. Return the JSON array only, starting with [.`;
 
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
