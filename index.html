@@ -547,7 +547,7 @@ async function triggerAnalysis(cobj, label, fixtures){
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
-  var BATCH=5;
+  var BATCH=3;
   var batches=[];
   for(var i=0;i<fixtures.length;i+=BATCH) batches.push(fixtures.slice(i,i+BATCH));
   var allCards=[];
