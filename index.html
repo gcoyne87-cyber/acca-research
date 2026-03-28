@@ -67,6 +67,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .league-name{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
 .analyse-btn{font-size:11px;font-weight:500;background:var(--white);color:var(--navy);border:1.5px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:inherit;transition:all .18s}
 .analyse-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.analyse-btn--done{font-size:11px;font-weight:400;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:6px;padding:4px 12px;cursor:default;font-family:inherit;opacity:.6}
+
+/* Upcoming section */
+.upcoming-section{margin-bottom:24px}
+.upcoming-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:10px}
+.upcoming-grid{display:flex;flex-direction:column;gap:8px}
+.upcoming-card{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .18s}
+.upcoming-card:hover{border-color:var(--navy);background:var(--soft)}
+.upcoming-left{flex:1;min-width:0}
+.upcoming-league{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
+.upcoming-fixture{font-size:13px;font-weight:500;color:var(--navy)}
+.upcoming-meta{font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
+.upcoming-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.upcoming-ko{font-size:12px;font-weight:500;color:var(--green);white-space:nowrap}
+.upcoming-arrow{font-size:14px;color:var(--muted)}
 .fixture-row{display:grid;grid-template-columns:1fr auto;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);transition:background .12s}
 .fixture-row:last-child{border-bottom:none}
 .fixture-row:hover{background:var(--soft)}
@@ -216,6 +231,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </button>
   </div>
   <div id="tab-fixtures-content">
+    <div class="upcoming-section" id="upcoming-section" style="display:none">
+      <div class="upcoming-label">Upcoming fixtures</div>
+      <div class="upcoming-grid" id="upcoming-grid"></div>
+    </div>
     <div class="league-tabs" id="league-tabs"></div>
     <div id="fixtures-container">
       <div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>
@@ -420,6 +439,19 @@ async function loadFixtures(){
   if(pendingDate){currentDate=pendingDate;pendingDate=null;loadFixtures();}
 }
 
+// Returns true if there are still upcoming (future) fixtures in this league
+function leagueHasUpcoming(list){
+  var now=Date.now();
+  return list.some(function(f){return getKoMs(f)>now;});
+}
+
+// Get kickoff as milliseconds UTC
+function getKoMs(f){
+  if(!f.time||f.time==='00:00:00') return Infinity;
+  try{return new Date(f.date+'T'+f.time+'Z').getTime();}
+  catch(e){return Infinity;}
+}
+
 function renderFixtures(){
   if(!currentCountry){
     document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
@@ -446,7 +478,11 @@ function renderFixtures(){
     var l=LEAGUES[id];
     var name=l?l.name:(grouped[id][0].leagueName||id);
     var list=grouped[id];
-    html+='<div class="league-block"><div class="league-header"><span class="league-name">'+name+'</span><button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">Analyse Selections</button></div>';
+    var canAnalyse=leagueHasUpcoming(list);
+    var btnHtml=canAnalyse
+      ?'<button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">Analyse Selections</button>'
+      :'<span class="analyse-btn analyse-btn--done">Results Only</span>';
+    html+='<div class="league-block"><div class="league-header"><span class="league-name">'+name+'</span>'+btnHtml+'</div>';
     list.forEach(function(f){
       var live=isLive(f.status),ft=f.status==='FT';
       var hasScore=f.homeScore!=null&&f.homeScore!==''&&f.awayScore!=null&&f.awayScore!=='';
@@ -467,8 +503,11 @@ function analyseAll(){
 
 function analyseLeague(leagueId){
   var l=LEAGUES[leagueId];
-  var fixtures=allFixtures.filter(function(f){return f.leagueId===leagueId;});
-  if(!fixtures.length){alert('No fixtures to analyse on this date.');return;}
+  var now=Date.now();
+  var fixtures=allFixtures.filter(function(f){
+    return f.leagueId===leagueId && getKoMs(f)>now;
+  });
+  if(!fixtures.length){alert('No upcoming fixtures to analyse.');return;}
   var cobj=COUNTRIES.find(function(c){return c.id===currentCountry;});
   triggerAnalysis(cobj,l?l.name:leagueId,fixtures);
 }
@@ -748,10 +787,113 @@ function startAnalysisAnimation(animId, fixtures){
   _animTimers[animId]=setInterval(next,1800);
 }
 
+// Top leagues to feature in upcoming (tier 1 + 2 only, priority order)
+var UPCOMING_LEAGUES=['4329','4330','4335','4331','4334','4332','4337','4344','4396','4397','4400','4401','4406','4402','4403','4395','4590'];
+
+async function loadUpcoming(){
+  var sec=document.getElementById('upcoming-section');
+  var grid=document.getElementById('upcoming-grid');
+  if(!sec||!grid) return;
+
+  // Fetch next 3 days
+  var days=[];
+  for(var i=1;i<=3;i++){
+    var d=new Date();d.setDate(d.getDate()+i);
+    days.push(formatDate(d));
+  }
+
+  var allUpcoming=[];
+  await Promise.all(days.map(async function(dateStr){
+    try{
+      var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
+      var data=await res.json();
+      (data.events||[]).forEach(function(f){
+        if(UPCOMING_LEAGUES.indexOf(f.leagueId)>-1){
+          f._dateStr=dateStr;
+          allUpcoming.push(f);
+        }
+      });
+    }catch(e){}
+  }));
+
+  // Sort by date then kickoff time, take top 6
+  allUpcoming.sort(function(a,b){
+    var da=a._dateStr+(a.time||'99:99');
+    var db=b._dateStr+(b.time||'99:99');
+    return da.localeCompare(db);
+  });
+
+  // Dedupe — one per league
+  var seen={};
+  var picks=[];
+  allUpcoming.forEach(function(f){
+    if(!seen[f.leagueId]&&picks.length<6){seen[f.leagueId]=true;picks.push(f);}
+  });
+
+  if(!picks.length){sec.style.display='none';return;}
+  sec.style.display='';
+
+  grid.innerHTML=picks.map(function(f){
+    var l=LEAGUES[f.leagueId];
+    var lname=l?l.name:(f.leagueName||'');
+    var c=COUNTRIES.find(function(x){return l&&x.id===l.country;})||{};
+    var koStr=formatKickoff(f._dateStr,f.time)||'TBC';
+    var dayStr=getDayLabel(f._dateStr);
+    return '<div class="upcoming-card" onclick="goToFixture(\''+f.leagueId+'\',\''+f._dateStr+'\',\''+c.id+'\')">'
+      +'<div class="upcoming-left">'
+      +'<div class="upcoming-league">'+escHtml(lname)+'</div>'
+      +'<div class="upcoming-fixture">'+escHtml(f.home)+' vs '+escHtml(f.away)+'</div>'
+      +'<div class="upcoming-meta">'+dayStr+' · '+koStr+'</div>'
+      +'</div>'
+      +'<div class="upcoming-right">'
+      +'<span class="upcoming-ko">Analyse →</span>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function getDayLabel(dateStr){
+  var d=new Date(dateStr+'T12:00:00Z');
+  var today=new Date();today.setHours(0,0,0,0);
+  var tom=new Date(today);tom.setDate(today.getDate()+1);
+  var dc=new Date(dateStr+'T12:00:00Z');dc.setHours(0,0,0,0);
+  if(dc.getTime()===today.getTime()) return 'Today';
+  if(dc.getTime()===tom.getTime()) return 'Tomorrow';
+  return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'});
+}
+
+function goToFixture(leagueId,dateStr,countryId){
+  // Set the date and country then trigger analysis
+  var parts=dateStr.split('-');
+  currentDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  dataLoaded=false;
+  researchSections=[];
+
+  // Select the country
+  if(currentCountry&&currentCountry!==countryId){
+    var oldBtn=document.getElementById('cf-'+currentCountry);
+    if(oldBtn) oldBtn.classList.remove('active');
+  }
+  currentCountry=countryId;
+  currentLeague=leagueId;
+  var btn=document.getElementById('cf-'+countryId);
+  if(btn) btn.classList.add('active');
+
+  updateDateDisplay();
+  buildLeagueTabs();
+  switchTab('fixtures');
+
+  loadFixtures().then(function(){
+    // Auto-trigger analysis on that league
+    analyseLeague(leagueId);
+  });
+}
+
 window.addEventListener('DOMContentLoaded',function(){
   buildCountryRow();
   updateDateDisplay();
   initSlider();
+  loadUpcoming();
 });
 </script>
 </body>
