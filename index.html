@@ -556,15 +556,19 @@ async function triggerAnalysis(cobj, label, fixtures){
   window.scrollTo({top:0,behavior:'smooth'});
 
   try{
+    var controller=new AbortController();
+    var timeoutId=setTimeout(function(){controller.abort();},280000); // 280 second browser timeout
     var res=await fetch('/.netlify/functions/analyse-background',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
+      signal:controller.signal,
       body:JSON.stringify({
         fixtures:fixtures,
         date:formatDate(currentDate),
         label:label
       })
     });
+    clearTimeout(timeoutId);
     var data=await res.json();
     var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
     if(sec){
@@ -574,7 +578,15 @@ async function triggerAnalysis(cobj, label, fixtures){
     }
   }catch(e){
     var sec=researchSections.find(function(s){return s.sectionId===sectionId;});
-    if(sec){sec.status='error';renderResearchTab();}
+    if(sec){
+      if(e.name==='AbortError'){
+        sec.status='error';
+        sec.errorMsg='Analysis timed out — try a single league instead of all fixtures.';
+      } else {
+        sec.status='error';
+      }
+      renderResearchTab();
+    }
   }
 }
 
@@ -607,9 +619,9 @@ function renderResearchTab(){
       +'</div>';
 
     if(sec.status==='loading'){
-      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Researching form, injuries, H2H and key factors for every fixture</small></div>';
+      html+='<div class="analysing-block"><div class="spinner"></div><p>Analysing '+sec.label+'...</p><small>Web searching form, injuries, H2H and key factors — this takes 60-90 seconds</small></div>';
     } else if(sec.status==='error'){
-      html+='<div class="analyse-error">Analysis failed. Check your connection and try again.</div>';
+      html+='<div class="analyse-error">'+(sec.errorMsg||'Analysis failed. Check your connection and try again.')+'</div>';
     } else if(!sec.cards.length){
       html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">After researching every fixture in '+sec.label+', there are no picks that meet the standard today.<br>Try a different league or date.</div></div>';
     } else {
