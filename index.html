@@ -658,6 +658,8 @@ function renderFixtures(){
     document.getElementById('fixtures-container').innerHTML='';
     return;
   }
+  // Debug: show total fixtures loaded and how many match
+  var total=allFixtures.length;
   var filtered=allFixtures.filter(function(f){
     var l=LEAGUES[f.leagueId];
     if(!l||l.country!==currentCountry) return false;
@@ -665,7 +667,9 @@ function renderFixtures(){
     return true;
   });
   if(!filtered.length){
-    document.getElementById('fixtures-container').innerHTML='<div class="empty">No fixtures on this date.<br>Try another date or league.</div>';
+    // Show debug info
+    var sampleIds=[...new Set(allFixtures.slice(0,5).map(function(f){return f.leagueId;}))].join(', ');
+    document.getElementById('fixtures-container').innerHTML='<div class="empty">No fixtures found for '+currentCountry+' on this date.<br><small style="font-size:10px;color:var(--muted)">Total loaded: '+total+' | Sample IDs: '+sampleIds+'</small></div>';
     return;
   }
   var grouped={},order=[];
