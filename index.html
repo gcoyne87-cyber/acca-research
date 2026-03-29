@@ -28,7 +28,10 @@
   --green:#1e9e6b;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:0;margin:0}
+body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:0;margin:0;font-size:16px}
+@media(max-width:600px){
+  html{font-size:18px}
+}
 .main{max-width:900px;margin:0 auto;padding:24px 24px 140px}
 
 /* ── HEADER ── */
@@ -371,23 +374,110 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:300;padding:6px 0 8px}
 @media(max-width:600px){
   .bottom-nav{display:flex}
-  .main{padding-bottom:100px}
+  .main{padding:16px 16px 110px}
+
   /* Slip bubble above bottom nav */
-  .slip-bubble{bottom:72px;right:12px}
-  .slip-toggle{font-size:12px;padding:9px 14px}
-  .slip-panel{bottom:130px;right:8px;left:8px;width:auto}
-  /* League tabs scroll horizontally */
-  .league-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-  .league-tabs::-webkit-scrollbar{display:none}
-  .ltab{flex-shrink:0}
-  /* Country row scrolls horizontally */
-  .country-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .slip-bubble{bottom:75px;right:12px}
+  .slip-toggle{font-size:14px;padding:12px 18px;gap:10px}
+  .slip-panel{bottom:135px;right:8px;left:8px;width:auto}
+
+  /* DATE NAV */
+  .date-nav{padding:14px 16px;margin-bottom:16px}
+  .date-display{font-size:20px;font-weight:700}
+  .date-sub{font-size:13px}
+  .date-arrow{width:44px;height:44px;font-size:20px}
+
+  /* COUNTRY ROW */
+  .section-label{font-size:12px;margin-bottom:10px}
+  .country-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:8px;margin-bottom:14px}
   .country-row::-webkit-scrollbar{display:none}
-  .cflag{flex-shrink:0}
-  /* Auth buttons smaller */
-  .auth-btn{padding:5px 10px;font-size:11px}
-  /* Date nav smaller */
-  .date-display{font-size:14px}
+  .cflag{flex-shrink:0;padding:10px 16px;border-radius:12px}
+  .cflag img{width:28px;height:20px}
+  .cflag span{font-size:14px;font-weight:600}
+
+  /* LEAGUE TABS */
+  .league-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;gap:8px;margin-bottom:14px}
+  .league-tabs::-webkit-scrollbar{display:none}
+  .ltab{flex-shrink:0;font-size:13px;padding:8px 16px;border-radius:9px}
+
+  /* TOP NAV */
+  .topnav-links{display:none}
+  .topnav-inner{height:60px;padding:0 16px}
+  .auth-btn{padding:8px 14px;font-size:13px}
+
+  /* HOME SECTIONS */
+  .home-section-title{font-size:14px}
+  .home-section-head{margin-bottom:12px}
+
+  /* WIDGET BOXES */
+  .widget-row{grid-template-columns:1fr}
+  .widget-head{padding:12px 16px}
+  .widget-title{font-size:13px}
+
+  /* MOST PICKED */
+  .pop-team{font-size:16px;font-weight:600}
+  .pop-league{font-size:12px}
+  .pop-row{padding:14px 16px}
+  .pop-pct{font-size:14px}
+  .pop-add{font-size:13px;padding:8px 14px}
+  .pop-bar-wrap{width:56px;height:5px}
+
+  /* LEADERBOARD */
+  .lb-row{padding:12px 16px}
+  .lb-name{font-size:14px}
+  .lb-meta{font-size:12px}
+  .lb-score{font-size:14px}
+  .lb-avatar{width:36px;height:36px;font-size:16px}
+
+  /* LIVE FEED */
+  .feed-item{padding:12px 16px}
+  .feed-name{font-size:14px}
+  .feed-picks{font-size:12px}
+  .feed-time{font-size:12px}
+  .feed-view{font-size:12px}
+  .feed-avatar{width:34px;height:34px;font-size:14px}
+
+  /* POPULAR ACCAS */
+  .pacca-card{width:calc(100% - 40px)}
+  .pacca-card-head{padding:14px 16px}
+  .pacca-card-title{font-size:12px}
+  .pacca-card-odds{font-size:24px}
+  .pacca-team-name{font-size:16px}
+  .pacca-team-league{font-size:12px}
+  .pacca-team-row{padding:10px 0}
+  .pacca-card-stat-val{font-size:16px}
+  .pacca-card-stat-lbl{font-size:10px}
+  .pacca-pickers{font-size:12px}
+  .pacca-btn{font-size:14px;padding:10px 18px}
+
+  /* UPCOMING FIXTURES */
+  .ufx-card-league{font-size:13px}
+  .ufx-card-date{font-size:12px}
+  .ufx-fixture-home{font-size:15px}
+  .ufx-fixture-away{font-size:14px}
+  .ufx-fixture-ko{font-size:13px}
+  .ufx-fixture-row{padding:12px 16px}
+  .ufx-card-analyse{font-size:13px;padding:8px 16px}
+
+  /* LEAGUE BLOCKS (fixtures) */
+  .league-name{font-size:13px}
+  .analyse-btn{font-size:13px;padding:6px 14px}
+  .fixture-row{padding:12px 14px}
+  .fx-team{font-size:15px}
+  .fx-ko{font-size:13px}
+
+  /* ANALYSIS CARDS */
+  .ac-team--pick{font-size:20px}
+  .ac-team{font-size:14px}
+  .ac-pick-team{font-size:16px}
+  .ac-pick-odds{font-size:14px}
+  .reason{font-size:13px}
+  .nugget{font-size:13px}
+
+  /* BOTTOM NAV */
+  .bnav-icon{font-size:24px}
+  .bnav-lbl{font-size:12px}
+  .bottom-nav{padding:8px 0 10px}
 }
 .bottom-nav-inner{display:flex;width:100%;max-width:500px;margin:0 auto}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 0;color:var(--muted);transition:all .18s}
