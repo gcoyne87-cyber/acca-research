@@ -113,37 +113,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .home-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--navy)}
 .home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
 
-/* ── POPULAR ACCAS — full width swipeable carousel ── */
-.pacca-outer{position:relative;margin-bottom:4px}
-.pacca-viewport{overflow:hidden;border-radius:12px}
-.pacca-track{display:flex;transition:transform .3s ease;will-change:transform}
-.pacca-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:20px;min-width:100%;max-width:100%;flex-shrink:0;box-sizing:border-box}
-.pacca-card-inner{display:flex;flex-direction:column;gap:0}
-.pacca-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
-.pacca-badge-pill{background:var(--soft);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:600;color:var(--mid)}
-.pacca-teams{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
-.pacca-team{display:flex;align-items:center;gap:10px}
-.pacca-num{width:22px;height:22px;border-radius:50%;background:var(--soft);font-size:11px;font-weight:600;color:var(--mid);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.pacca-team-name{font-size:15px;font-weight:600;color:var(--navy)}
-.pacca-team-league{font-size:11px;color:var(--muted);font-weight:400}
-.pacca-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;padding:12px;background:var(--soft);border-radius:10px}
-.pacca-stat-val{font-size:18px;font-weight:700;color:var(--navy)}
-.pacca-stat-lbl{font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
-.pacca-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.pacca-pickers{font-size:12px;color:var(--mid);font-weight:400}
-.pacca-btn{font-size:13px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
-.pacca-btn:hover{background:var(--green)}
-.pacca-btn.added{background:var(--green)}
-
-/* Carousel nav */
-.pacca-nav{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
-.pacca-dots{display:flex;gap:6px;align-items:center}
-.pacca-dot-item{width:6px;height:6px;border-radius:50%;background:var(--border);transition:all .2s;cursor:pointer}
-.pacca-dot-item.active{background:var(--navy);width:18px;border-radius:99px}
-.pacca-arrows{display:flex;gap:6px}
-.pacca-arrow{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:inherit}
-.pacca-arrow:hover{border-color:var(--navy);color:var(--navy)}
-.pacca-arrow:disabled{opacity:.3;cursor:default}
+/* ── POPULAR ACCAS — peek carousel ── */
+.pacca-carousel-wrap{overflow:hidden;margin:0 -24px;padding:0 24px}
+.pacca-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;padding-right:48px;align-items:flex-start}
+.pacca-carousel::-webkit-scrollbar{display:none}
+.pacca-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100% - 48px);max-width:320px;display:flex;flex-direction:column}
+@media(min-width:700px){.pacca-card{width:280px;max-width:280px}}
+.pacca-card-head{background:var(--navy);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pacca-card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.5)}
+.pacca-card-odds{font-size:20px;font-weight:700;color:var(--gold);letter-spacing:-0.5px}
+.pacca-card-body{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pacca-team-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.pacca-team-row:last-child{border-bottom:none}
+.pacca-team-num{width:18px;height:18px;border-radius:50%;background:var(--soft);font-size:10px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pacca-team-info{flex:1;min-width:0}
+.pacca-team-name{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pacca-team-league{font-size:10px;color:var(--muted);font-weight:400}
+.pacca-card-stats{display:grid;grid-template-columns:1fr 1fr 1fr;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--soft);flex-shrink:0}
+.pacca-card-stat-val{font-size:13px;font-weight:700;color:var(--navy)}
+.pacca-card-stat-lbl{font-size:9px;color:var(--muted);font-weight:400;text-transform:uppercase;letter-spacing:.07em;margin-top:1px}
+.pacca-card-foot{padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pacca-pickers{font-size:11px;color:var(--muted);font-weight:400}
+.pacca-btn{font-size:12px;font-weight:600;background:var(--green);color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.pacca-btn:hover{opacity:.88}
+.pacca-btn.added{background:var(--muted)}
 
 
 
@@ -166,11 +159,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .feed-view:hover{text-decoration:underline}
 
 /* ── UPCOMING FIXTURE BOXES ── */
-.ufx-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-@media(max-width:500px){.ufx-grid{grid-template-columns:1fr}}
-.ufx-box{background:var(--white);border:1.5px solid var(--border);border-radius:11px;overflow:hidden;cursor:pointer;transition:all .18s}
-.ufx-box:hover{border-color:var(--navy)}
-.ufx-box-head{padding:9px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+/* ── UPCOMING FIXTURE LEAGUE CARDS ── */
+.ufx-list{display:flex;flex-direction:column;gap:12px}
+.ufx-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.ufx-card-head{padding:10px 14px;background:var(--soft);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ufx-card-league{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
+.ufx-card-date{font-size:11px;color:var(--muted);font-weight:400}
+.ufx-card-fixtures{padding:0}
+.ufx-fixture-row{display:grid;grid-template-columns:1fr auto;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
+.ufx-fixture-row:last-child{border-bottom:none}
+.ufx-fixture-teams{display:flex;flex-direction:column;gap:2px}
+.ufx-fixture-home{font-size:13px;font-weight:500;color:var(--navy)}
+.ufx-fixture-away{font-size:12px;font-weight:400;color:var(--mid)}
+.ufx-fixture-ko{font-size:11px;font-weight:500;color:var(--green);text-align:right;white-space:nowrap}
+.ufx-card-foot{padding:9px 14px;border-top:1px solid var(--border);background:var(--soft);display:flex;align-items:center;justify-content:space-between}
+.ufx-card-count{font-size:11px;color:var(--muted);font-weight:400}
+.ufx-card-analyse{font-size:11px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .18s}
+.ufx-card-analyse:hover{background:var(--green)}
 .ufx-league{font-size:11px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.07em}
 .ufx-date{font-size:10px;color:var(--muted);font-weight:400}
 .ufx-fixtures{padding:7px 12px;display:flex;flex-direction:column;gap:3px}
@@ -353,40 +358,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   <div class="tabs">
     <button class="tab active" id="tab-fixtures" onclick="switchTab('fixtures')">Fixtures</button>
     <button class="tab" id="tab-research" onclick="switchTab('research')">
-      Research
+      My Research
       <span class="tab-badge" id="research-badge" style="display:none">0</span>
     </button>
   </div>
   <div id="tab-fixtures-content">
 
-    <!-- Back nav — shown when country selected -->
-    <div class="back-nav" id="back-nav" onclick="goHome()">
-      <span class="back-nav-arrow">←</span>
-      <span class="back-nav-text">Back to Home</span>
-    </div>
-
-    <!-- Home widgets — hidden when country selected -->
+    <!-- Home widgets — always visible -->
     <div id="home-widgets">
 
-      <!-- Live Activity Feed + Leaderboard side by side -->
-      <div class="widget-row">
-        <div class="widget-box">
-          <div class="widget-head">
-            <span class="widget-title">⚡ Live Activity</span>
-            <span class="widget-sub">What people are picking</span>
-          </div>
-          <div class="feed-wrap" id="feed-wrap"></div>
-        </div>
-        <div class="widget-box">
-          <div class="widget-head">
-            <span class="widget-title">🏆 This Week's Leaders</span>
-            <span class="widget-sub">Top accas</span>
-          </div>
-          <div id="leaderboard-body"></div>
-        </div>
-      </div>
-
-      <!-- Most Picked - full width -->
+      <!-- 1. Most Picked This Weekend -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">⚡ Most Picked This Weekend</span>
@@ -396,35 +377,47 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
           <div id="popular-body"></div>
         </div>
       </div>
-      <!-- Popular Accas — full width carousel -->
+
+      <!-- 2. This Week's Leaders -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">🏆 This Week's Leaders</span>
+          <span class="home-section-sub">Top accas this week</span>
+        </div>
+        <div class="widget-box">
+          <div id="leaderboard-body"></div>
+        </div>
+      </div>
+
+      <!-- 3. Live Activity -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">🔴 Live Activity</span>
+          <span class="home-section-sub">What people are picking right now</span>
+        </div>
+        <div class="widget-box">
+          <div class="feed-wrap" id="feed-wrap"></div>
+        </div>
+      </div>
+
+      <!-- 4. Popular Accas — swipeable carousel -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">🔥 Popular Accas</span>
           <span class="home-section-sub">What the crowd is backing</span>
         </div>
-        <div class="pacca-outer">
-          <div class="pacca-viewport">
-            <div class="pacca-track" id="pacca-track"></div>
-          </div>
-          <div class="pacca-nav">
-            <div class="pacca-dots" id="pacca-dots"></div>
-            <div class="pacca-arrows">
-              <button class="pacca-arrow" id="pacca-prev" onclick="paccaMove(-1)">&#8592;</button>
-              <button class="pacca-arrow" id="pacca-next" onclick="paccaMove(1)">&#8594;</button>
-            </div>
-          </div>
+        <div class="pacca-carousel-wrap">
+          <div class="pacca-carousel" id="pacca-carousel"></div>
         </div>
       </div>
 
-      <!-- Upcoming Fixtures -->
+      <!-- 5. Upcoming Fixtures — full league cards -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">📅 Upcoming Fixtures</span>
-          <span class="home-section-sub">Click any league to analyse</span>
+          <span class="home-section-sub">Select a league to analyse</span>
         </div>
-        <div class="ufx-grid" id="ufx-grid">
-          <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;grid-column:1/-1">Loading upcoming fixtures...</div>
-        </div>
+        <div id="ufx-list"></div>
       </div>
 
     </div>
@@ -436,7 +429,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   </div>
   <div id="tab-research-content" style="display:none">
     <div id="research-container">
-      <div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research yet.<br>Go to Fixtures, select a country and hit Analyse.</div></div>
+      <div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research saved yet.<br>Select a country, pick a league and hit Analyse.</div></div>
     </div>
   </div>
 </div>
@@ -444,7 +437,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 <div class="slip-bubble">
   <div class="slip-panel" id="slip-panel">
     <div class="slip-panel-head">
-      <div class="slip-panel-title">Acca Slip</div>
+      <div class="slip-panel-title">My Selections</div>
       <button class="slip-panel-close" onclick="toggleSlip()">&#215;</button>
     </div>
     <div class="slip-body">
@@ -474,7 +467,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     </div>
   </div>
   <button class="slip-toggle" id="slip-toggle" onclick="toggleSlip()">
-    &#128196; Acca Slip
+    &#128196; Selections
     <span class="slip-badge" id="slip-badge">0</span>
   </button>
 </div>
@@ -545,8 +538,8 @@ function selectCountry(country,btn){
   if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
   currentCountry=country;currentLeague='all';
   btn.classList.add('active');
-  document.getElementById('home-widgets').style.display='none';
-  document.getElementById('back-nav').classList.add('visible');
+  // Keep home widgets visible — just show league tabs + fixtures below
+  document.getElementById('back-nav').classList.remove('visible');
   var cobj=COUNTRIES.find(function(c){return c.id===country;});
   buildLeagueTabs();
   if(dataLoaded){renderFixtures();}else{loadFixtures();}
@@ -651,7 +644,7 @@ function getKoMs(f){
 
 function renderFixtures(){
   if(!currentCountry){
-    document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
+    document.getElementById('fixtures-container').innerHTML='';
     return;
   }
   var filtered=allFixtures.filter(function(f){
@@ -992,8 +985,7 @@ function goHome(){
   }
   currentCountry=null;currentLeague='all';
   document.getElementById('league-tabs').innerHTML='';
-  document.getElementById('fixtures-container').innerHTML='<div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>';
-  document.getElementById('home-widgets').style.display='';
+  document.getElementById('fixtures-container').innerHTML='';
   document.getElementById('back-nav').classList.remove('visible');
 }
 
@@ -1009,59 +1001,35 @@ var POPULAR_ACCAS=[
 var _paccaIdx=0;
 
 function renderPopularAccas(){
-  var track=document.getElementById('pacca-track');
-  var dots=document.getElementById('pacca-dots');
-  if(!track||!dots) return;
-
-  track.innerHTML=POPULAR_ACCAS.map(function(a,i){
-    return '<div class="pacca-card" id="pacca-card-'+i+'">'
-      +'<div class="pacca-badge"><span class="pacca-badge-pill">'+a.badge+'</span></div>'
-      +'<div class="pacca-teams">'+a.legs.map(function(l,li){
-        return '<div class="pacca-team">'
-          +'<div class="pacca-num">'+(li+1)+'</div>'
-          +'<div><div class="pacca-team-name">'+escHtml(l.team)+'</div>'
-          +'<div class="pacca-team-league">'+escHtml(l.league)+'</div></div>'
-          +'</div>';
-      }).join('')+'</div>'
-      +'<div class="pacca-stats">'
-      +'<div><div class="pacca-stat-val">'+a.odds+'</div><div class="pacca-stat-lbl">Combined odds</div></div>'
-      +'<div><div class="pacca-stat-val">'+a.winRate+'</div><div class="pacca-stat-lbl">Win rate</div></div>'
-      +'<div><div class="pacca-stat-val">'+a.pickers+'</div><div class="pacca-stat-lbl">Copied</div></div>'
+  var el=document.getElementById('pacca-carousel');
+  if(!el) return;
+  el.innerHTML=POPULAR_ACCAS.map(function(a,i){
+    return '<div class="pacca-card">'
+      +'<div class="pacca-card-head">'
+      +'<span class="pacca-card-title">'+a.badge+'</span>'
+      +'<span class="pacca-card-odds">'+a.odds+'</span>'
       +'</div>'
-      +'<div class="pacca-foot">'
-      +'<span class="pacca-pickers">👥 '+a.pickers+' users backing this</span>'
+      +'<div class="pacca-card-body">'
+      +a.legs.map(function(l,li){
+        return '<div class="pacca-team-row">'
+          +'<div class="pacca-team-num">'+(li+1)+'</div>'
+          +'<div class="pacca-team-info">'
+          +'<div class="pacca-team-name">'+escHtml(l.team)+'</div>'
+          +'<div class="pacca-team-league">'+escHtml(l.league)+'</div>'
+          +'</div></div>';
+      }).join('')
+      +'</div>'
+      +'<div class="pacca-card-stats">'
+      +'<div><div class="pacca-card-stat-val">'+a.winRate+'</div><div class="pacca-card-stat-lbl">Win Rate</div></div>'
+      +'<div><div class="pacca-card-stat-val">'+a.pickers+'</div><div class="pacca-card-stat-lbl">Copied</div></div>'
+      +'<div><div class="pacca-card-stat-val">'+a.odds+'</div><div class="pacca-card-stat-lbl">Odds</div></div>'
+      +'</div>'
+      +'<div class="pacca-card-foot">'
+      +'<span class="pacca-pickers">👥 '+a.pickers+' backing this</span>'
       +'<button class="pacca-btn" id="pacca-btn-'+i+'" onclick="copyAcca('+i+',this)">Copy Acca</button>'
       +'</div>'
       +'</div>';
   }).join('');
-
-  dots.innerHTML=POPULAR_ACCAS.map(function(_,i){
-    return '<div class="pacca-dot-item'+(i===0?' active':'')+'" onclick="paccaGoTo('+i+')"></div>';
-  }).join('');
-
-  paccaUpdateNav();
-}
-
-function paccaMove(dir){
-  _paccaIdx=Math.max(0,Math.min(POPULAR_ACCAS.length-1,_paccaIdx+dir));
-  paccaGoTo(_paccaIdx);
-}
-
-function paccaGoTo(idx){
-  _paccaIdx=idx;
-  var track=document.getElementById('pacca-track');
-  if(track) track.style.transform='translateX(-'+(_paccaIdx*100)+'%)';
-  document.querySelectorAll('.pacca-dot-item').forEach(function(d,i){
-    d.classList.toggle('active',i===_paccaIdx);
-  });
-  paccaUpdateNav();
-}
-
-function paccaUpdateNav(){
-  var prev=document.getElementById('pacca-prev');
-  var next=document.getElementById('pacca-next');
-  if(prev) prev.disabled=_paccaIdx===0;
-  if(next) next.disabled=_paccaIdx===POPULAR_ACCAS.length-1;
 }
 
 function copyAcca(idx,btn){
@@ -1189,42 +1157,79 @@ var UFX_LEAGUES=[
 ];
 
 async function loadUpcomingBoxes(){
-  var grid=document.getElementById('ufx-grid');
-  if(!grid) return;
+  var list=document.getElementById('ufx-list');
+  if(!list) return;
+  list.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Loading upcoming fixtures...</div>';
+
   var days=[];
   for(var i=1;i<=5;i++){var d=new Date();d.setDate(d.getDate()+i);days.push(formatDate(d));}
 
-  var byLeague={};
+  // Fetch all days in parallel
+  var allEvents=[];
   await Promise.all(days.map(async function(dateStr){
     try{
       var res=await fetch('/.netlify/functions/fixtures?date='+dateStr);
       var data=await res.json();
       (data.events||[]).forEach(function(f){
-        if(!byLeague[f.leagueId]) byLeague[f.leagueId]={dateStr:dateStr,fixtures:[]};
-        if(byLeague[f.leagueId].fixtures.length<4) byLeague[f.leagueId].fixtures.push(f);
-        byLeague[f.leagueId].total=(byLeague[f.leagueId].total||0)+1;
+        if(UFX_LEAGUES.some(function(l){return l.id===f.leagueId;})){
+          f._dateStr=dateStr;
+          allEvents.push(f);
+        }
       });
     }catch(e){}
   }));
 
-  var boxes=UFX_LEAGUES.map(function(l){
+  // Group by league, pick earliest date per league
+  var byLeague={};
+  allEvents.forEach(function(f){
+    if(!byLeague[f.leagueId]){
+      byLeague[f.leagueId]={dateStr:f._dateStr,fixtures:[]};
+    }
+    // Only add fixtures from the earliest date for this league
+    if(f._dateStr===byLeague[f.leagueId].dateStr){
+      byLeague[f.leagueId].fixtures.push(f);
+    }
+  });
+
+  // Sort leagues by UFX_LEAGUES priority order
+  var cards=UFX_LEAGUES.map(function(l){
     var data=byLeague[l.id];
-    if(!data) return null;
-    var d=new Date(data.dateStr+'T12:00:00Z');
+    if(!data||!data.fixtures.length) return null;
+
     var dayLabel=getDayLabel(data.dateStr);
-    var fxHtml=data.fixtures.slice(0,3).map(function(f){
-      return '<div class="ufx-fx">'+escHtml(f.home)+' vs '+escHtml(f.away)+'</div>';
+    var fixtures=data.fixtures.sort(function(a,b){
+      if(!a.time||a.time==='00:00:00') return 1;
+      if(!b.time||b.time==='00:00:00') return -1;
+      return a.time.localeCompare(b.time);
+    });
+
+    var fixtureRows=fixtures.map(function(f){
+      var ko=formatKickoff(f._dateStr,f.time)||'TBC';
+      return '<div class="ufx-fixture-row">'
+        +'<div class="ufx-fixture-teams">'
+        +'<div class="ufx-fixture-home">'+escHtml(f.home)+'</div>'
+        +'<div class="ufx-fixture-away">'+escHtml(f.away)+'</div>'
+        +'</div>'
+        +'<div class="ufx-fixture-ko">'+ko+'</div>'
+        +'</div>';
     }).join('');
-    var moreCount=data.total-3;
-    return '<div class="ufx-box" onclick="goToFixtureBox(\''+l.id+'\',\''+data.dateStr+'\',\''+l.countryId+'\')">'
-      +'<div class="ufx-box-head"><span class="ufx-league">'+l.name+'</span><span class="ufx-date">'+dayLabel+'</span></div>'
-      +'<div class="ufx-fixtures">'+fxHtml+'</div>'
-      +(moreCount>0?'<div class="ufx-more">+'+moreCount+' more fixtures</div>':'')
-      +'<div class="ufx-foot"><span class="ufx-count">'+data.total+' fixture'+(data.total===1?'':'s')+'</span><span class="ufx-analyse">Analyse →</span></div>'
+
+    return '<div class="ufx-card">'
+      +'<div class="ufx-card-head">'
+      +'<span class="ufx-card-league">'+escHtml(l.name)+'</span>'
+      +'<span class="ufx-card-date">'+dayLabel+'</span>'
+      +'</div>'
+      +'<div class="ufx-card-fixtures">'+fixtureRows+'</div>'
+      +'<div class="ufx-card-foot">'
+      +'<span class="ufx-card-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</span>'
+      +'<button class="ufx-card-analyse" onclick="goToFixtureBox(\''+l.id+'\',\''+data.dateStr+'\',\''+l.countryId+'\')">Analyse →</button>'
+      +'</div>'
       +'</div>';
   }).filter(Boolean);
 
-  grid.innerHTML=boxes.length?boxes.join(''):'<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted);font-size:12px">No upcoming fixtures found</div>';
+  list.innerHTML=cards.length
+    ?cards.join('')
+    :'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">No upcoming fixtures found</div>';
 }
 
 function getDayLabel(dateStr){
@@ -1428,17 +1433,6 @@ window.addEventListener('DOMContentLoaded',function(){
   renderPopularAccas();
   startFeed();
   loadUpcomingBoxes();
-
-  // Touch swipe on Popular Accas
-  var vp=document.querySelector('.pacca-viewport');
-  if(vp){
-    var startX=0;
-    vp.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;},{passive:true});
-    vp.addEventListener('touchend',function(e){
-      var dx=startX-e.changedTouches[0].clientX;
-      if(Math.abs(dx)>40) paccaMove(dx>0?1:-1);
-    },{passive:true});
-  }
 });
 </script>
 <!-- Drawer for viewing selections -->
