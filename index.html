@@ -755,28 +755,10 @@ function buildLeagueTabs(){
   document.getElementById('league-tabs').innerHTML=html;
 }
 
-// Called after fixtures load — pick first league that has data
+// Called after fixtures load — just show tabs, wait for user to pick
 function autoSelectLeague(){
-  var leagueIds=Object.keys(LEAGUES).filter(function(id){return LEAGUES[id].country===currentCountry;});
-  for(var i=0;i<leagueIds.length;i++){
-    var id=leagueIds[i];
-    var hasFixtures=allFixtures.some(function(f){return f.leagueId===id;});
-    if(hasFixtures){
-      currentLeague=id;
-      var btn=document.getElementById('ltab-'+id);
-      if(btn){
-        document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active');});
-        btn.classList.add('active');
-      }
-      renderFixtures();
-      // Scroll to top so league tabs are visible
-      window.scrollTo({top:0,behavior:'smooth'});
-      return;
-    }
-  }
-  // No leagues have fixtures
-  currentLeague=leagueIds[0]||'all';
-  renderFixtures();
+  // Just clear the fixtures container — let user choose a league
+  document.getElementById('fixtures-container').innerHTML='';
 }
 
 function filterLeague(code,btn){
