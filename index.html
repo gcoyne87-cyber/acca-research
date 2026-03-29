@@ -1166,29 +1166,9 @@ function renderFixtures(){
     return;
   }
 
-  var expectedLeagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:'';
-  var countryKeywords={
-    england:['english','england','premier league','championship','league one','league two','national league'],
-    scotland:['scottish','scotland','premiership'],
-    spain:['spanish','spain','la liga','laliga'],
-    germany:['german','germany','bundesliga'],
-    france:['french','france','ligue'],
-    italy:['italian','italy','serie'],
-    netherlands:['dutch','netherlands','eredivisie'],
-    portugal:['portuguese','portugal','primeira','liga portugal']
-  };
-  var myKeywords=countryKeywords[currentCountry]||[];
-
+  // Only match by exact leagueId — no name fallback to avoid cross-country pollution
   var filtered=allFixtures.filter(function(f){
-    // 1. Match by exact leagueId
-    if(f.leagueId===currentLeague) return true;
-    // 2. Match by name AND country keywords together
-    if(expectedLeagueName && f.leagueName){
-      var nameMatch=f.leagueName.toLowerCase().indexOf(expectedLeagueName.toLowerCase())>-1;
-      var countryMatch=myKeywords.some(function(kw){return (f.leagueName||'').toLowerCase().indexOf(kw)>-1;});
-      if(nameMatch && countryMatch) return true;
-    }
-    return false;
+    return f.leagueId===currentLeague;
   });
 
   if(!filtered.length){
