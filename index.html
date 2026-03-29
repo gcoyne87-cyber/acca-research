@@ -338,36 +338,103 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ret-box.gold .ret-lbl{color:rgba(30,158,107,0.7)}
 .ret-val{font-size:20px;font-weight:600;color:#fff;letter-spacing:-0.5px}
 .ret-sub{font-size:9px;color:rgba(255,255,255,0.16);margin-top:2px;font-weight:400}
-.clear-btn{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.28);border-radius:7px;padding:7px;font-size:11px;font-weight:400;cursor:pointer;font-family:inherit}
-.clear-btn:hover{background:rgba(255,80,80,0.15);color:#ff6b6b;border-color:rgba(255,80,80,0.3)}
-</style>
+/* ── TOP NAV ── */
+.topnav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:900px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:12px;height:52px}
+.topnav-logo{font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-0.3px;flex-shrink:0}
+.topnav-links{display:flex;gap:2px;flex:1}
+.topnav-link{background:none;border:none;padding:7px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;font-family:inherit;transition:all .18s;position:relative;white-space:nowrap}
+.topnav-link:hover{color:var(--navy);background:var(--soft)}
+.topnav-link.active{color:var(--navy);font-weight:600;border-bottom:2px solid var(--green);border-radius:0;padding-bottom:5px}
+.topnav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
+.topnav-auth{display:flex;gap:8px;flex-shrink:0}
+.auth-btn{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.auth-login{background:var(--green);color:#fff;border:none}
+.auth-login:hover{opacity:.88}
+.auth-signup{background:var(--white);color:var(--green);border:2px solid var(--green)}
+.auth-signup:hover{background:#f0faf6}
+/* Hide nav links on mobile, show just logo + auth */
+@media(max-width:600px){
+  .topnav-links{display:none}
+  .auth-btn{padding:6px 12px;font-size:12px}
+}
+
+/* ── MOBILE BOTTOM NAV ── */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:300;padding:6px 0 8px}
+@media(max-width:600px){.bottom-nav{display:flex}.main{padding-bottom:90px}}
+.bottom-nav-inner{display:flex;width:100%;max-width:500px;margin:0 auto}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 0;color:var(--muted);transition:all .18s}
+.bnav-btn.active{color:var(--green)}
+.bnav-icon{font-size:20px;line-height:1}
+.bnav-lbl{font-size:10px;font-weight:500;letter-spacing:.02em}
+.calc-box{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+.calc-legs{padding:14px 16px;min-height:60px;border-bottom:1px solid var(--border)}
+.calc-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;font-weight:400}
+.calc-leg-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.calc-leg-item:last-child{border-bottom:none}
+.calc-leg-team{flex:1;font-size:13px;font-weight:500;color:var(--navy)}
+.calc-leg-odds{font-size:13px;font-weight:600;color:var(--green)}
+.calc-leg-remove{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1}
+.calc-leg-remove:hover{color:#e53935}
+.calc-add-row{display:grid;grid-template-columns:1fr 100px auto;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--soft)}
+.calc-input{border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--navy);background:var(--white);outline:none;width:100%}
+.calc-input:focus{border-color:var(--navy)}
+.calc-odds-input{text-align:center}
+.calc-add-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .18s}
+.calc-add-btn:hover{background:var(--green)}
+.calc-stake-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.calc-lbl{font-size:12px;font-weight:500;color:var(--mid)}
+.calc-stake-controls{display:flex;align-items:center;gap:12px}
+.calc-stake-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--white);color:var(--navy);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .18s;line-height:1}
+.calc-stake-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.calc-stake-val{font-size:18px;font-weight:700;color:var(--navy);min-width:48px;text-align:center}
+.calc-results{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.calc-result-row{display:flex;align-items:center;justify-content:space-between}
+.calc-result-lbl{font-size:13px;color:var(--mid);font-weight:400}
+.calc-result-val{font-size:16px;font-weight:700;color:var(--navy)}
+.calc-result-val.green{color:var(--green)}
+.calc-clear{width:100%;background:none;border:none;color:var(--muted);font-size:12px;padding:12px;cursor:pointer;font-family:inherit;transition:all .18s}
+.calc-clear:hover{color:#e53935}
+
 </head>
 <body>
-<div class="main">
-  <div class="eyebrow">Acca Research Tool</div>
-  <div class="title">Fixture <span>Research</span></div>
-  <div class="date-nav">
-    <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#9664;</button>
-    <div class="date-center">
-      <span class="date-display" id="date-display">Today</span>
-      <span class="date-sub" id="date-sub"></span>
-    </div>
-    <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#9654;</button>
-  </div>
-  <div class="section-label">Select Country</div>
-  <div class="country-row" id="country-row"></div>
-  <div class="tabs">
-    <button class="tab active" id="tab-fixtures" onclick="switchTab('fixtures')">Fixtures</button>
-    <button class="tab" id="tab-research" onclick="switchTab('research')">
-      My Research
-      <span class="tab-badge" id="research-badge" style="display:none">0</span>
-    </button>
-  </div>
-  <div id="tab-fixtures-content">
 
-    <!-- League tabs — appear directly under country selector when country selected -->
+<!-- Top nav bar -->
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="topnav-logo">AccaResearch</div>
+    <div class="topnav-links">
+      <button class="topnav-link active" id="tnav-home" onclick="showPage('home')">Home</button>
+      <button class="topnav-link" id="tnav-research" onclick="showPage('research')">
+        My Research
+        <span class="topnav-badge" id="research-badge" style="display:none">0</span>
+      </button>
+      <button class="topnav-link" id="tnav-calc" onclick="showPage('calc')">Acca Calculator</button>
+    </div>
+    <div class="topnav-auth">
+      <button class="auth-btn auth-login">Login</button>
+      <button class="auth-btn auth-signup">Sign Up</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- HOME PAGE -->
+  <div id="page-home">
+    <div class="date-nav">
+      <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#9664;</button>
+      <div class="date-center">
+        <span class="date-display" id="date-display">Today</span>
+        <span class="date-sub" id="date-sub"></span>
+      </div>
+      <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#9654;</button>
+    </div>
+    <div class="section-label">Select Country</div>
+    <div class="country-row" id="country-row"></div>
     <div class="league-tabs" id="league-tabs"></div>
     <div id="fixtures-container"></div>
+    <div id="home-widgets">
 
     <!-- Home widgets — always visible below -->
     <div id="home-widgets">
@@ -425,15 +492,62 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         <div id="ufx-list"></div>
       </div>
 
-    </div>
+    </div><!-- /home-widgets -->
+  </div><!-- /page-home -->
 
-  </div>
-  <div id="tab-research-content" style="display:none">
+  <!-- MY RESEARCH PAGE -->
+  <div id="page-research" style="display:none">
+    <div style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:600;color:var(--navy)">My Research</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">Your saved analysis sessions</div>
+    </div>
     <div id="research-container">
-      <div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research saved yet.<br>Select a country, pick a league and hit Analyse.</div></div>
+      <div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research saved yet.<br>Go to Home, select a country and hit Analyse.</div></div>
     </div>
   </div>
-</div>
+
+  <!-- ACCA CALCULATOR PAGE -->
+  <div id="page-calc" style="display:none">
+    <div style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:600;color:var(--navy)">Acca Calculator</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">Build your accumulator and see your potential returns</div>
+    </div>
+    <div class="calc-box">
+      <div class="calc-legs" id="calc-legs">
+        <div class="calc-empty">Add legs below to get started</div>
+      </div>
+      <div class="calc-add-row">
+        <input class="calc-input" id="calc-team-input" placeholder="Team name" type="text"/>
+        <input class="calc-input calc-odds-input" id="calc-odds-input" placeholder="Odds e.g. 4/5" type="text"/>
+        <button class="calc-add-btn" onclick="calcAddLeg()">+ Add</button>
+      </div>
+      <div class="calc-stake-row">
+        <span class="calc-lbl">Stake</span>
+        <div class="calc-stake-controls">
+          <button class="calc-stake-btn" onclick="calcAdjStake(-5)">−</button>
+          <span class="calc-stake-val" id="calc-stake-val">€10</span>
+          <button class="calc-stake-btn" onclick="calcAdjStake(5)">+</button>
+        </div>
+      </div>
+      <div class="calc-results" id="calc-results">
+        <div class="calc-result-row">
+          <span class="calc-result-lbl">Combined Odds</span>
+          <span class="calc-result-val" id="calc-combined">—</span>
+        </div>
+        <div class="calc-result-row">
+          <span class="calc-result-lbl">Potential Return</span>
+          <span class="calc-result-val green" id="calc-return">—</span>
+        </div>
+        <div class="calc-result-row">
+          <span class="calc-result-lbl">Potential Profit</span>
+          <span class="calc-result-val green" id="calc-profit">—</span>
+        </div>
+      </div>
+      <button class="calc-clear" onclick="calcClear()">Clear All</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
 
 <div class="slip-bubble">
   <div class="slip-panel" id="slip-panel">
@@ -517,12 +631,96 @@ var slipLegs=[],stake=10,slipOpen=false;
 var researchSections=[];
 var MIN=5,MAX=50,STEP=5;
 
-function switchTab(tab){
-  document.getElementById('tab-fixtures').classList.toggle('active',tab==='fixtures');
-  document.getElementById('tab-research').classList.toggle('active',tab==='research');
-  document.getElementById('tab-fixtures-content').style.display=tab==='fixtures'?'':'none';
-  document.getElementById('tab-research-content').style.display=tab==='research'?'':'none';
+// ── PAGE NAVIGATION ──
+function showPage(page){
+  document.getElementById('page-home').style.display=page==='home'?'':'none';
+  document.getElementById('page-research').style.display=page==='research'?'':'none';
+  document.getElementById('page-calc').style.display=page==='calc'?'':'none';
+  // Sync top nav
+  document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active');});
+  var tn=document.getElementById('tnav-'+page);
+  if(tn) tn.classList.add('active');
+  // Sync bottom nav
+  document.querySelectorAll('.bnav-btn').forEach(function(b){b.classList.remove('active');});
+  var bn=document.getElementById('bnav-'+page);
+  if(bn) bn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// Keep old switchTab working for research redirects
+function switchTab(tab){
+  if(tab==='research') showPage('research');
+  else showPage('home');
+}
+
+// ── ACCA CALCULATOR ──
+var calcLegs=[];
+var calcStake=10;
+
+function calcAddLeg(){
+  var team=document.getElementById('calc-team-input').value.trim();
+  var oddsStr=document.getElementById('calc-odds-input').value.trim();
+  if(!team||!oddsStr) return;
+  var parts=oddsStr.split('/');
+  var num=parseInt(parts[0])||1,den=parseInt(parts[1])||1;
+  calcLegs.push({team:team,odds:oddsStr,num:num,den:den});
+  document.getElementById('calc-team-input').value='';
+  document.getElementById('calc-odds-input').value='';
+  document.getElementById('calc-team-input').focus();
+  calcRender();
+}
+
+function calcRemoveLeg(idx){
+  calcLegs.splice(idx,1);
+  calcRender();
+}
+
+function calcAdjStake(delta){
+  calcStake=Math.max(1,calcStake+delta);
+  document.getElementById('calc-stake-val').textContent='€'+calcStake;
+  calcRender();
+}
+
+function calcClear(){
+  calcLegs=[];
+  calcRender();
+}
+
+function calcRender(){
+  var container=document.getElementById('calc-legs');
+  if(!calcLegs.length){
+    container.innerHTML='<div class="calc-empty">Add legs below to get started</div>';
+    document.getElementById('calc-combined').textContent='—';
+    document.getElementById('calc-return').textContent='—';
+    document.getElementById('calc-profit').textContent='—';
+    return;
+  }
+  container.innerHTML=calcLegs.map(function(l,i){
+    return '<div class="calc-leg-item">'
+      +'<span class="calc-leg-team">'+escHtml(l.team)+'</span>'
+      +'<span class="calc-leg-odds">'+escHtml(l.odds)+'</span>'
+      +'<button class="calc-leg-remove" onclick="calcRemoveLeg('+i+')">×</button>'
+      +'</div>';
+  }).join('');
+  var combined=1;
+  calcLegs.forEach(function(l){combined*=(1+l.num/l.den);});
+  var ret=(calcStake*combined).toFixed(2);
+  var profit=(calcStake*combined-calcStake).toFixed(2);
+  // Format combined odds as X/1
+  var w=combined-1;
+  var oddsDisplay=w>0?(Math.round(w*10)/10).toFixed(1)+'/1':'—';
+  document.getElementById('calc-combined').textContent=oddsDisplay;
+  document.getElementById('calc-return').textContent='€'+ret;
+  document.getElementById('calc-profit').textContent='€'+profit;
+}
+
+// Enter key on calculator inputs
+document.addEventListener('DOMContentLoaded',function(){
+  var oi=document.getElementById('calc-odds-input');
+  if(oi) oi.addEventListener('keydown',function(e){if(e.key==='Enter') calcAddLeg();});
+  var ti=document.getElementById('calc-team-input');
+  if(ti) ti.addEventListener('keydown',function(e){if(e.key==='Enter') document.getElementById('calc-odds-input').focus();});
+});
 
 function buildCountryRow(){
   document.getElementById('country-row').innerHTML=COUNTRIES.map(function(c){
@@ -695,9 +893,9 @@ function renderFixtures(){
     return true;
   });
   if(!filtered.length){
-    // Show debug info
-    var sampleIds=[...new Set(allFixtures.slice(0,5).map(function(f){return f.leagueId;}))].join(', ');
-    document.getElementById('fixtures-container').innerHTML='<div class="empty">No fixtures found for '+currentCountry+' on this date.<br><small style="font-size:10px;color:var(--muted)">Total loaded: '+total+' | Sample IDs: '+sampleIds+'</small></div>';
+    var leagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:currentLeague;
+    var dateLabel=currentDate.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('fixtures-container').innerHTML='<div class="empty">No upcoming fixtures for '+escHtml(leagueName)+' on '+dateLabel+'.<br>Try another date or league.</div>';
     return;
   }
   var grouped={},order=[];
@@ -762,7 +960,7 @@ async function triggerAnalysis(cobj,label,fixtures){
     fixtures:fixtures
   });
 
-  switchTab('research');
+  showPage('research');
   renderResearchTab();
   window.scrollTo({top:0,behavior:'smooth'});
 
@@ -1038,6 +1236,8 @@ var POPULAR_ACCAS=[
   {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'5-Leg Acca',odds:'58/1',pickers:134,winRate:'41%'},
   {legs:[{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'3-Leg Acca',odds:'7/1',pickers:198,winRate:'71%'},
   {legs:[{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Burnley',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'4-Leg Acca',odds:'18/1',pickers:156,winRate:'58%'},
+  {legs:[{team:'Stenhousemuir',league:'Scottish League One'},{team:'Rennes',league:'Ligue 1'},{team:'Notts County',league:'League Two'}],badge:'3-Leg Acca',odds:'11/1',pickers:112,winRate:'63%'},
+  {legs:[{team:'NEC Nijmegen',league:'Eredivisie'},{team:'Bromley',league:'League Two'},{team:'Lincoln City',league:'League One'},{team:'Burnley',league:'Championship'}],badge:'4-Leg Acca',odds:'24/1',pickers:98,winRate:'49%'},
 ];
 
 var _paccaIdx=0;
@@ -1475,7 +1675,24 @@ window.addEventListener('DOMContentLoaded',function(){
   loadUpcomingBoxes();
 });
 </script>
-<!-- Drawer for viewing selections -->
+<!-- Mobile bottom nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bnav-btn active" id="bnav-home" onclick="showPage('home')">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-lbl">Home</span>
+    </button>
+    <button class="bnav-btn" id="bnav-research" onclick="showPage('research')">
+      <span class="bnav-icon">🔍</span>
+      <span class="bnav-lbl">My Research</span>
+    </button>
+    <button class="bnav-btn" id="bnav-calc" onclick="showPage('calc')">
+      <span class="bnav-icon">🧮</span>
+      <span class="bnav-lbl">Calculator</span>
+    </button>
+  </div>
+</div>
+
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-handle"></div>
