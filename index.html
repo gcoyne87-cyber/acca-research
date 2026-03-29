@@ -607,14 +607,22 @@ async function loadFixtures(){
     if(data.error){
       document.getElementById('fixtures-container').innerHTML='<div class="error-msg">API error: '+data.error+'</div>';
     }else{
-      allFixtures=(data.events||[]).filter(function(f){
-        // Only keep future fixtures — drop past and live
+      var upcoming=(data.events||[]).filter(function(f){
         return getKoMs(f)>Date.now();
       }).sort(function(a,b){
         if(!a.time||a.time==='00:00:00') return 1;
         if(!b.time||b.time==='00:00:00') return -1;
         return a.time.localeCompare(b.time);
       });
+      // If no upcoming fixtures today, auto-jump to tomorrow
+      if(!upcoming.length && currentDate.toDateString()===new Date().toDateString()){
+        isLoading=false;setNavEnabled(true);
+        currentDate=new Date();currentDate.setDate(currentDate.getDate()+1);
+        dataLoaded=false;
+        loadFixtures();
+        return;
+      }
+      allFixtures=upcoming;
       dataLoaded=true;
       renderFixtures();
     }
