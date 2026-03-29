@@ -538,9 +538,6 @@ function selectCountry(country,btn){
   if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
   currentCountry=country;currentLeague='all';
   btn.classList.add('active');
-  // Keep home widgets visible — just show league tabs + fixtures below
-  document.getElementById('back-nav').classList.remove('visible');
-  var cobj=COUNTRIES.find(function(c){return c.id===country;});
   buildLeagueTabs();
   if(dataLoaded){renderFixtures();}else{loadFixtures();}
 }
@@ -986,7 +983,6 @@ function goHome(){
   currentCountry=null;currentLeague='all';
   document.getElementById('league-tabs').innerHTML='';
   document.getElementById('fixtures-container').innerHTML='';
-  document.getElementById('back-nav').classList.remove('visible');
 }
 
 // ── POPULAR ACCAS DATA ──
@@ -1253,8 +1249,6 @@ function goToFixtureBox(leagueId,dateStr,countryId){
   currentCountry=countryId;currentLeague=leagueId;
   var btn=document.getElementById('cf-'+countryId);
   if(btn) btn.classList.add('active');
-  document.getElementById('home-widgets').style.display='none';
-  document.getElementById('back-nav').classList.add('visible');
   updateDateDisplay();buildLeagueTabs();switchTab('fixtures');
   loadFixtures().then(function(){analyseLeague(leagueId);});
 }
