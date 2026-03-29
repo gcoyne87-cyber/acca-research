@@ -358,6 +358,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .topnav-link:hover{color:var(--navy);background:var(--soft)}
 .topnav-link.active{color:var(--navy);font-weight:600;border-bottom:2px solid var(--green);border-radius:0;padding-bottom:5px}
 .topnav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
+.topnav-badge.pulse{animation:badgePulse 1s ease-in-out 3}
+@keyframes badgePulse{0%{transform:scale(1)}50%{transform:scale(1.5);background:#ff6b00}100%{transform:scale(1)}}
 .topnav-auth{display:flex;gap:8px;flex-shrink:0;margin-left:auto}
 .auth-btn{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .auth-login{background:var(--green);color:#fff;border:none}
@@ -556,9 +558,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
     <div id="fixtures-container"></div>
     <div id="home-widgets">
 
-    <!-- Home widgets — always visible below -->
-    <div id="home-widgets">
-
       <!-- 1. Most Picked This Weekend -->
       <div class="home-section">
         <div class="home-section-head">
@@ -581,18 +580,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- 3. Live Activity -->
-      <div class="home-section">
-        <div class="home-section-head">
-          <span class="home-section-title">🔴 Live Activity</span>
-          <span class="home-section-sub">What people are picking right now</span>
-        </div>
-        <div class="widget-box">
-          <div class="feed-wrap" id="feed-wrap"></div>
-        </div>
-      </div>
-
-      <!-- 4. Popular Accas — swipeable carousel -->
+      <!-- 3. Popular Accas — swipeable carousel -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">🔥 Popular Accas</span>
@@ -603,7 +591,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- 5. Upcoming Fixtures — full league cards -->
+      <!-- 4. Upcoming Fixtures — full league cards -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">📅 Upcoming Fixtures</span>
@@ -767,7 +755,7 @@ function showPage(page){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// Keep old switchTab working for research redirects
+// switchTab maps to showPage
 function switchTab(tab){
   if(tab==='research') showPage('research');
   else showPage('home');
@@ -1105,11 +1093,25 @@ async function triggerAnalysis(cobj,label,fixtures){
 function renderResearchTab(){
   var badge=document.getElementById('research-badge');
   var totalCards=researchSections.reduce(function(t,s){return t+s.cards.length;},0);
-  if(researchSections.length>0){badge.style.display='inline-flex';badge.textContent=totalCards;}
-  else{badge.style.display='none';}
+  if(researchSections.length>0){
+    badge.style.display='inline-flex';
+    badge.textContent=researchSections.length;
+  } else {
+    badge.style.display='none';
+  }
+
+  // Also update bottom nav badge if exists
+  var bnBadge=document.getElementById('bnav-research-badge');
+  if(bnBadge){
+    bnBadge.style.display=researchSections.length>0?'inline-flex':'none';
+    bnBadge.textContent=researchSections.length;
+  }
+
+  var container=document.getElementById('research-container');
+  if(!container) return;
 
   if(!researchSections.length){
-    document.getElementById('research-container').innerHTML='<div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research yet.<br>Go to Fixtures, select a country and hit Analyse.</div></div>';
+    container.innerHTML='<div class="prompt"><div class="prompt-icon">🔍</div><div class="prompt-text">No research saved yet.<br>Go to Home, select a country and hit Analyse.</div></div>';
     return;
   }
 
@@ -1124,7 +1126,6 @@ function renderResearchTab(){
         +'<p id="'+animId+'_title">Analysing '+escHtml(sec.label)+'...</p>'
         +'<small id="'+animId+'_sub" style="min-height:16px;">Gathering fixture data...</small>'
         +'</div>';
-      // Start the animation after render
       setTimeout(function(){startAnalysisAnimation(animId, sec.fixtures||[]);},50);
     }else if(sec.status==='error'){
       html+='<div class="analyse-error">Analysis failed. Please try again.</div>';
@@ -1132,10 +1133,16 @@ function renderResearchTab(){
       html+='<div class="no-picks"><div class="no-picks-icon">&#128269;</div><div class="no-picks-title">No strong selections found</div><div class="no-picks-sub">No picks met the standard for '+escHtml(sec.label)+' today. Try another league or date.</div></div>';
     }else{
       sec.cards.forEach(function(card){html+=buildCardHTML(card);});
+      // Pulse the badge to alert user results are ready
+      if(badge){
+        badge.classList.remove('pulse');
+        void badge.offsetWidth; // force reflow
+        badge.classList.add('pulse');
+      }
     }
     html+='</div>';
   });
-  document.getElementById('research-container').innerHTML=html;
+  container.innerHTML=html;
 }
 
 function removeSection(sectionId){
@@ -1242,6 +1249,11 @@ function updateAddBtn(fid,added){
 function clearSlip(){
   slipLegs.forEach(function(s){updateAddBtn(s.legId.replace('leg_',''),false);});
   slipLegs=[];
+  // Reset all Copy Acca buttons
+  document.querySelectorAll('.pacca-btn').forEach(function(btn){
+    btn.textContent='Copy Acca';
+    btn.classList.remove('added');
+  });
   renderSlip();
 }
 
@@ -1492,12 +1504,21 @@ function drawerCopyAll(btn){
 
 // ── UPCOMING FIXTURE BOXES ──
 var UFX_LEAGUES=[
-  {id:'4329',name:'Championship',country:'england',countryId:'england',flag:'gb-eng'},
-  {id:'4396',name:'League One',country:'england',countryId:'england',flag:'gb-eng'},
-  {id:'4330',name:'Premiership',country:'scotland',countryId:'scotland',flag:'gb-sct'},
-  {id:'4335',name:'La Liga',country:'spain',countryId:'spain',flag:'es'},
-  {id:'4331',name:'Bundesliga',country:'germany',countryId:'germany',flag:'de'},
-  {id:'4332',name:'Serie A',country:'italy',countryId:'italy',flag:'it'},
+  {id:'4329',name:'Championship',country:'england',countryId:'england'},
+  {id:'4396',name:'League One',country:'england',countryId:'england'},
+  {id:'4397',name:'League Two',country:'england',countryId:'england'},
+  {id:'4590',name:'National League',country:'england',countryId:'england'},
+  {id:'4328',name:'Premier League',country:'england',countryId:'england'},
+  {id:'4330',name:'Scottish Premiership',country:'scotland',countryId:'scotland'},
+  {id:'4395',name:'Scottish Championship',country:'scotland',countryId:'scotland'},
+  {id:'4669',name:'Scottish League One',country:'scotland',countryId:'scotland'},
+  {id:'4670',name:'Scottish League Two',country:'scotland',countryId:'scotland'},
+  {id:'4335',name:'La Liga',country:'spain',countryId:'spain'},
+  {id:'4331',name:'Bundesliga',country:'germany',countryId:'germany'},
+  {id:'4332',name:'Serie A',country:'italy',countryId:'italy'},
+  {id:'4334',name:'Ligue 1',country:'france',countryId:'france'},
+  {id:'4337',name:'Eredivisie',country:'netherlands',countryId:'netherlands'},
+  {id:'4344',name:'Primeira Liga',country:'portugal',countryId:'portugal'},
 ];
 
 async function loadUpcomingBoxes(){
@@ -1773,7 +1794,6 @@ window.addEventListener('DOMContentLoaded',function(){
   renderLeaderboard();
   renderPopularPicks();
   renderPopularAccas();
-  startFeed();
   loadUpcomingBoxes();
 });
 </script>
@@ -1786,7 +1806,7 @@ window.addEventListener('DOMContentLoaded',function(){
     </button>
     <button class="bnav-btn" id="bnav-research" onclick="showPage('research')">
       <span class="bnav-icon">🔍</span>
-      <span class="bnav-lbl">My Research</span>
+      <span class="bnav-lbl">My Research <span id="bnav-research-badge" style="display:none;background:var(--green);color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;margin-left:2px">0</span></span>
     </button>
     <button class="bnav-btn" id="bnav-calc" onclick="showPage('calc')">
       <span class="bnav-icon">🧮</span>
