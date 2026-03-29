@@ -20,8 +20,8 @@
   --green:#1e9e6b;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
-.main{max-width:900px;margin:0 auto;padding:32px 24px 140px}
+body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:0;margin:0}
+.main{max-width:900px;margin:0 auto;padding:24px 24px 140px}
 
 /* ── HEADER ── */
 .eyebrow{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);margin-bottom:6px}
@@ -339,24 +339,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ret-val{font-size:20px;font-weight:600;color:#fff;letter-spacing:-0.5px}
 .ret-sub{font-size:9px;color:rgba(255,255,255,0.16);margin-top:2px;font-weight:400}
 /* ── TOP NAV ── */
-.topnav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px solid var(--border)}
-.topnav-inner{max-width:900px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:12px;height:52px}
-.topnav-logo{font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-0.3px;flex-shrink:0}
+.topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);border-bottom:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
+.topnav-inner{max-width:900px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:20px;height:54px}
+.topnav-logo{flex-shrink:0;line-height:1.2}
 .topnav-links{display:flex;gap:2px;flex:1}
 .topnav-link{background:none;border:none;padding:7px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;font-family:inherit;transition:all .18s;position:relative;white-space:nowrap}
 .topnav-link:hover{color:var(--navy);background:var(--soft)}
 .topnav-link.active{color:var(--navy);font-weight:600;border-bottom:2px solid var(--green);border-radius:0;padding-bottom:5px}
 .topnav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
-.topnav-auth{display:flex;gap:8px;flex-shrink:0}
+.topnav-auth{display:flex;gap:8px;flex-shrink:0;margin-left:auto}
 .auth-btn{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
 .auth-login{background:var(--green);color:#fff;border:none}
 .auth-login:hover{opacity:.88}
 .auth-signup{background:var(--white);color:var(--green);border:2px solid var(--green)}
 .auth-signup:hover{background:#f0faf6}
-/* Hide nav links on mobile, show just logo + auth */
 @media(max-width:600px){
   .topnav-links{display:none}
   .auth-btn{padding:6px 12px;font-size:12px}
+  .topnav-inner{height:56px}
 }
 
 /* ── MOBILE BOTTOM NAV ── */
@@ -395,21 +395,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .calc-result-val.green{color:var(--green)}
 .calc-clear{width:100%;background:none;border:none;color:var(--muted);font-size:12px;padding:12px;cursor:pointer;font-family:inherit;transition:all .18s}
 .calc-clear:hover{color:#e53935}
-
+</style>
 </head>
 <body>
 
 <!-- Top nav bar -->
 <div class="topnav">
   <div class="topnav-inner">
-    <div class="topnav-logo">AccaResearch</div>
+    <div class="topnav-logo" onclick="showPage('home')" style="cursor:pointer">
+      <span style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);display:block;margin-bottom:1px">Acca Research Tool</span>
+      <span style="font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-0.3px">Fixture <span style="color:var(--green)">Research</span></span>
+    </div>
     <div class="topnav-links">
       <button class="topnav-link active" id="tnav-home" onclick="showPage('home')">Home</button>
       <button class="topnav-link" id="tnav-research" onclick="showPage('research')">
         My Research
         <span class="topnav-badge" id="research-badge" style="display:none">0</span>
       </button>
-      <button class="topnav-link" id="tnav-calc" onclick="showPage('calc')">Acca Calculator</button>
+      <button class="topnav-link" id="tnav-calc" onclick="showPage('calc')">Calculator</button>
     </div>
     <div class="topnav-auth">
       <button class="auth-btn auth-login">Login</button>
