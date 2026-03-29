@@ -361,7 +361,26 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── MOBILE BOTTOM NAV ── */
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:300;padding:6px 0 8px}
-@media(max-width:600px){.bottom-nav{display:flex}.main{padding-bottom:90px}}
+@media(max-width:600px){
+  .bottom-nav{display:flex}
+  .main{padding-bottom:100px}
+  /* Slip bubble above bottom nav */
+  .slip-bubble{bottom:72px;right:12px}
+  .slip-toggle{font-size:12px;padding:9px 14px}
+  .slip-panel{bottom:130px;right:8px;left:8px;width:auto}
+  /* League tabs scroll horizontally */
+  .league-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .league-tabs::-webkit-scrollbar{display:none}
+  .ltab{flex-shrink:0}
+  /* Country row scrolls horizontally */
+  .country-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .country-row::-webkit-scrollbar{display:none}
+  .cflag{flex-shrink:0}
+  /* Auth buttons smaller */
+  .auth-btn{padding:5px 10px;font-size:11px}
+  /* Date nav smaller */
+  .date-display{font-size:14px}
+}
 .bottom-nav-inner{display:flex;width:100%;max-width:500px;margin:0 auto}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 0;color:var(--muted);transition:all .18s}
 .bnav-btn.active{color:var(--green)}
