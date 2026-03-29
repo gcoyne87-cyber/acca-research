@@ -543,10 +543,14 @@ function selectCountry(country,btn){
 }
 
 function buildLeagueTabs(){
-  var html='<button class="ltab active" onclick="filterLeague(\'all\',this)">All</button>';
+  var html='';
+  var first=true;
   Object.keys(LEAGUES).forEach(function(id){
     var l=LEAGUES[id];
-    if(l.country===currentCountry) html+='<button class="ltab" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
+    if(l.country===currentCountry){
+      html+='<button class="ltab'+(first?' active':'')+'" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
+      if(first){currentLeague=id;first=false;}
+    }
   });
   document.getElementById('league-tabs').innerHTML=html;
 }
@@ -556,6 +560,8 @@ function filterLeague(code,btn){
   document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   renderFixtures();
+  // Scroll fixtures into view smoothly
+  document.getElementById('fixtures-container').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -663,7 +669,7 @@ function renderFixtures(){
   var filtered=allFixtures.filter(function(f){
     var l=LEAGUES[f.leagueId];
     if(!l||l.country!==currentCountry) return false;
-    if(currentLeague!=='all'&&f.leagueId!==currentLeague) return false;
+    if(f.leagueId!==currentLeague) return false;
     return true;
   });
   if(!filtered.length){
