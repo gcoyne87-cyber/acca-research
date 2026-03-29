@@ -120,7 +120,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .back-nav-text{font-size:12px;font-weight:500;color:var(--mid)}
 
 /* ── HOME SECTION ── */
-.home-section{margin-bottom:20px}
+.home-section{margin-bottom:14px}
 .home-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .home-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--navy)}
 .home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
@@ -1166,24 +1166,30 @@ function renderFixtures(){
     return;
   }
 
-  // Get the expected league name from our map
   var expectedLeagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:'';
-  var expectedCountry=currentCountry;
+  var countryKeywords={
+    england:['english','england','premier league','championship','league one','league two','national league'],
+    scotland:['scottish','scotland','premiership'],
+    spain:['spanish','spain','la liga','laliga'],
+    germany:['german','germany','bundesliga'],
+    france:['french','france','ligue'],
+    italy:['italian','italy','serie'],
+    netherlands:['dutch','netherlands','eredivisie'],
+    portugal:['portuguese','portugal','primeira','liga portugal']
+  };
+  var myKeywords=countryKeywords[currentCountry]||[];
 
   var filtered=allFixtures.filter(function(f){
-    // Match by leagueId first
+    // 1. Match by exact leagueId
     if(f.leagueId===currentLeague) return true;
-    // Fallback: match by league name (case-insensitive)
-    if(expectedLeagueName && f.leagueName &&
-       f.leagueName.toLowerCase().indexOf(expectedLeagueName.toLowerCase())>-1) return true;
-    // Also try matching country via leagueName keywords
+    // 2. Match by name AND country keywords together
+    if(expectedLeagueName && f.leagueName){
+      var nameMatch=f.leagueName.toLowerCase().indexOf(expectedLeagueName.toLowerCase())>-1;
+      var countryMatch=myKeywords.some(function(kw){return (f.leagueName||'').toLowerCase().indexOf(kw)>-1;});
+      if(nameMatch && countryMatch) return true;
+    }
     return false;
   });
-
-  console.log('renderFixtures: currentLeague='+currentLeague+' expectedName='+expectedLeagueName+' total='+allFixtures.length+' filtered='+filtered.length);
-  if(allFixtures.length>0){
-    console.log('Sample fixture leagueIds:',allFixtures.slice(0,5).map(function(f){return f.leagueId+'|'+f.leagueName;}));
-  }
 
   if(!filtered.length){
     var leagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:currentLeague;
