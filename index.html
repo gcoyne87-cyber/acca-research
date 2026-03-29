@@ -486,7 +486,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .bnav-btn.active{color:var(--green)}
 .bnav-icon{font-size:20px;line-height:1}
 .bnav-lbl{font-size:10px;font-weight:500;letter-spacing:.02em}
-.calc-box{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+/* ── COMMUNITY ACCA CARDS ── */
+.comm-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100% - 48px);max-width:300px;display:flex;flex-direction:column}
+@media(min-width:700px){.comm-card{width:260px;max-width:260px}}
+.comm-card-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.comm-avatar{width:36px;height:36px;border-radius:50%;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.comm-user-info{flex:1;min-width:0}
+.comm-name{font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:5px}
+.comm-tier-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.04em}
+.comm-record{font-size:10px;color:var(--muted);margin-top:2px}
+.comm-card-body{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.comm-team-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.comm-team-row:last-child{border-bottom:none}
+.comm-team-num{width:18px;height:18px;border-radius:50%;background:var(--soft);font-size:9px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.comm-team-name{font-size:13px;font-weight:500;color:var(--navy)}
+.comm-team-league{font-size:10px;color:var(--muted)}
+.comm-card-foot{padding:9px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--soft)}
+.comm-foot-left{}
+.comm-odds{font-size:16px;font-weight:700;color:var(--navy)}
+.comm-odds-lbl{font-size:9px;color:var(--muted);font-weight:400}
+.comm-copy-btn{font-size:11px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:7px 12px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap}
+.comm-copy-btn:hover{background:var(--green)}
+.comm-copy-btn.added{background:var(--green)}
+
+/* ── ACCA CALCULATOR ── */
 .calc-legs{padding:14px 16px;min-height:60px;border-bottom:1px solid var(--border)}
 .calc-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;font-weight:400}
 .calc-leg-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -580,18 +603,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- 3. Popular Accas — swipeable carousel -->
+      <!-- 3. Community Accas — user submitted with tier badges -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">👥 Community Accas</span>
+          <span class="home-section-sub">Top picks from Gold & Silver members</span>
+        </div>
+        <div class="pacca-carousel-wrap">
+          <div class="pacca-carousel" id="community-carousel"></div>
+        </div>
+      </div>
+
+      <!-- 4. Popular Accas — swipeable carousel by category -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">🔥 Popular Accas</span>
-          <span class="home-section-sub">What the crowd is backing</span>
+          <span class="home-section-sub">Safe picks · Value bets · High risk</span>
         </div>
         <div class="pacca-carousel-wrap">
           <div class="pacca-carousel" id="pacca-carousel"></div>
         </div>
       </div>
 
-      <!-- 4. Upcoming Fixtures — full league cards -->
+      <!-- 5. Upcoming Fixtures — full league cards -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">📅 Upcoming Fixtures</span>
@@ -944,6 +978,8 @@ async function loadFixtures(){
       }
       allFixtures=events;
       dataLoaded=true;
+      // Debug: log first 3 fixtures to console
+      console.log('Fixtures loaded:',events.length,'Sample:',events.slice(0,3).map(function(f){return f.leagueId+' '+f.home+' vs '+f.away;}));
       autoSelectLeague();
     }
   }catch(e){
@@ -1250,7 +1286,7 @@ function clearSlip(){
   slipLegs.forEach(function(s){updateAddBtn(s.legId.replace('leg_',''),false);});
   slipLegs=[];
   // Reset all Copy Acca buttons
-  document.querySelectorAll('.pacca-btn').forEach(function(btn){
+  document.querySelectorAll('.pacca-btn,.comm-copy-btn').forEach(function(btn){
     btn.textContent='Copy Acca';
     btn.classList.remove('added');
   });
@@ -1345,13 +1381,30 @@ function goHome(){
 
 // ── POPULAR ACCAS DATA ──
 var POPULAR_ACCAS=[
-  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'3-Leg Acca',odds:'9/1',pickers:243,winRate:'68%'},
-  {legs:[{team:'Burnley',league:'Championship'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'},{team:'Leeds United',league:'Championship'}],badge:'4-Leg Acca',odds:'22/1',pickers:187,winRate:'54%'},
-  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'5-Leg Acca',odds:'58/1',pickers:134,winRate:'41%'},
-  {legs:[{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'3-Leg Acca',odds:'7/1',pickers:198,winRate:'71%'},
-  {legs:[{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Burnley',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'4-Leg Acca',odds:'18/1',pickers:156,winRate:'58%'},
-  {legs:[{team:'Stenhousemuir',league:'Scottish League One'},{team:'Rennes',league:'Ligue 1'},{team:'Notts County',league:'League Two'}],badge:'3-Leg Acca',odds:'11/1',pickers:112,winRate:'63%'},
-  {legs:[{team:'NEC Nijmegen',league:'Eredivisie'},{team:'Bromley',league:'League Two'},{team:'Lincoln City',league:'League One'},{team:'Burnley',league:'Championship'}],badge:'4-Leg Acca',odds:'24/1',pickers:98,winRate:'49%'},
+  // SAFE PICKS
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'3-Leg · Safe Pick',odds:'9/1',pickers:243,winRate:'68%',category:'safe'},
+  {legs:[{team:'Benfica',league:'Primeira Liga'},{team:'PSG',league:'Ligue 1'},{team:'Bromley',league:'League Two'}],badge:'3-Leg · Safe Pick',odds:'6/1',pickers:312,winRate:'74%',category:'safe'},
+  {legs:[{team:'Celtic',league:'Scottish Premiership'},{team:'Burnley',league:'Championship'}],badge:'2-Leg · Safe Pick',odds:'3/1',pickers:418,winRate:'81%',category:'safe'},
+  // VALUE BETS
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'},{team:'Leeds United',league:'Championship'}],badge:'4-Leg · Value Bet',odds:'22/1',pickers:187,winRate:'54%',category:'value'},
+  {legs:[{team:'Lincoln City',league:'League One'},{team:'Stenhousemuir',league:'Scottish L1'},{team:'NEC Nijmegen',league:'Eredivisie'},{team:'Rennes',league:'Ligue 1'}],badge:'4-Leg · Value Bet',odds:'28/1',pickers:143,winRate:'48%',category:'value'},
+  {legs:[{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Burnley',league:'Championship'},{team:'Lincoln City',league:'League One'}],badge:'4-Leg · Value Bet',odds:'18/1',pickers:156,winRate:'58%',category:'value'},
+  // HIGH RISK
+  {legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],badge:'5-Leg · High Risk',odds:'58/1',pickers:134,winRate:'41%',category:'risk'},
+  {legs:[{team:'NEC Nijmegen',league:'Eredivisie'},{team:'Stenhousemuir',league:'Scottish L1'},{team:'Notts County',league:'League Two'},{team:'Rennes',league:'Ligue 1'},{team:'Lincoln City',league:'League One'},{team:'Burnley',league:'Championship'}],badge:'6-Leg · High Risk',odds:'120/1',pickers:67,winRate:'28%',category:'risk'},
+  {legs:[{team:'Celtic',league:'Scottish Premiership'},{team:'Benfica',league:'Primeira Liga'},{team:'Leeds United',league:'Championship'},{team:'Bromley',league:'League Two'},{team:'Lincoln City',league:'League One'}],badge:'5-Leg · High Risk',odds:'72/1',pickers:89,winRate:'35%',category:'risk'},
+];
+
+// ── COMMUNITY ACCAS ──
+var COMMUNITY_ACCAS=[
+  {user:'GarethM',emoji:'🦁',tier:'gold',tierLabel:'🥇 Gold',record:'14/17 won',legs:[{team:'Burnley',league:'Championship'},{team:'Leeds United',league:'Championship'},{team:'Lincoln City',league:'League One'}],odds:'9/1'},
+  {user:'AccaKing',emoji:'👑',tier:'gold',tierLabel:'🥇 Gold',record:'12/15 won',legs:[{team:'Benfica',league:'Primeira Liga'},{team:'Bromley',league:'League Two'},{team:'Celtic',league:'Scottish Prem'}],odds:'11/1'},
+  {user:'SharpBet',emoji:'⚡',tier:'silver',tierLabel:'⚪ Silver',record:'11/14 won',legs:[{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'}],odds:'4/1'},
+  {user:'PaulD',emoji:'🎯',tier:'silver',tierLabel:'⚪ Silver',record:'10/13 won',legs:[{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Burnley',league:'Championship'}],odds:'14/1'},
+  {user:'SeanF',emoji:'⭐',tier:'silver',tierLabel:'⚪ Silver',record:'9/12 won',legs:[{team:'Burnley',league:'Championship'},{team:'Lincoln City',league:'League One'},{team:'Bromley',league:'League Two'},{team:'Benfica',league:'Primeira Liga'}],odds:'22/1'},
+  {user:'TomR',emoji:'🍀',tier:'bronze',tierLabel:'🥉 Bronze',record:'9/13 won',legs:[{team:'Leeds United',league:'Championship'},{team:'Celtic',league:'Scottish Prem'}],odds:'5/1'},
+  {user:'DaveK',emoji:'🔥',tier:'bronze',tierLabel:'🥉 Bronze',record:'8/11 won',legs:[{team:'Burnley',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Bromley',league:'League Two'}],odds:'13/1'},
+  {user:'RyanP',emoji:'💪',tier:'gold',tierLabel:'🥇 Gold',record:'13/16 won',legs:[{team:'Lincoln City',league:'League One'},{team:'Leeds United',league:'Championship'},{team:'Benfica',league:'Primeira Liga'},{team:'Bromley',league:'League Two'}],odds:'26/1'},
 ];
 
 var _paccaIdx=0;
@@ -1386,6 +1439,50 @@ function renderPopularAccas(){
       +'</div>'
       +'</div>';
   }).join('');
+}
+
+function renderCommunityAccas(){
+  var el=document.getElementById('community-carousel');
+  if(!el) return;
+  var tierColors={gold:'background:#fef3c7;color:#b45309',silver:'background:#f1f5f9;color:#64748b',bronze:'background:#fdf4ec;color:#c2713a'};
+  el.innerHTML=COMMUNITY_ACCAS.map(function(a,i){
+    var tc=tierColors[a.tier]||tierColors.bronze;
+    return '<div class="comm-card">'
+      +'<div class="comm-card-head">'
+      +'<div class="comm-avatar">'+a.emoji+'</div>'
+      +'<div class="comm-user-info">'
+      +'<div class="comm-name">'+escHtml(a.user)+' <span class="comm-tier-badge" style="'+tc+'">'+a.tierLabel+'</span></div>'
+      +'<div class="comm-record">'+escHtml(a.record)+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="comm-card-body">'
+      +a.legs.map(function(l,li){
+        return '<div class="comm-team-row">'
+          +'<div class="comm-team-num">'+(li+1)+'</div>'
+          +'<div><div class="comm-team-name">'+escHtml(l.team)+'</div>'
+          +'<div class="comm-team-league">'+escHtml(l.league)+'</div></div>'
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +'<div class="comm-card-foot">'
+      +'<div class="comm-foot-left"><div class="comm-odds">'+escHtml(a.odds)+'</div><div class="comm-odds-lbl">Combined odds</div></div>'
+      +'<button class="comm-copy-btn" id="comm-btn-'+i+'" onclick="copyCommAcca('+i+',this)">Copy Acca</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function copyCommAcca(idx,btn){
+  var a=COMMUNITY_ACCAS[idx];
+  a.legs.forEach(function(leg,li){
+    var legId='leg_comm'+idx+'_'+li;
+    if(!slipLegs.some(function(s){return s.legId===legId;})){
+      slipLegs.push({legId:legId,team:leg.team,match:leg.league,odds:'EVS',num:1,den:1});
+    }
+  });
+  btn.textContent='✓ Copied!';btn.classList.add('added');
+  renderSlip();
+  if(!slipOpen) toggleSlip();
 }
 
 function copyAcca(idx,btn){
@@ -1794,6 +1891,7 @@ window.addEventListener('DOMContentLoaded',function(){
   renderLeaderboard();
   renderPopularPicks();
   renderPopularAccas();
+  renderCommunityAccas();
   loadUpcomingBoxes();
 });
 </script>
