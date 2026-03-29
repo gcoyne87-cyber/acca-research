@@ -509,7 +509,49 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .comm-copy-btn:hover{background:var(--green)}
 .comm-copy-btn.added{background:var(--green)}
 
-/* ── ACCA CALCULATOR ── */
+/* ── ACCA CALCULATOR WIDGET ── */
+.acca-calc-widget{background:#0e1e38;border-radius:18px;overflow:hidden;color:#fff}
+.acca-calc-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08)}
+.acca-calc-title{font-size:11px;font-weight:600;letter-spacing:.14em;color:rgba(255,255,255,0.4)}
+.acca-calc-legcount{font-size:11px;color:rgba(255,255,255,0.3);font-weight:400}
+.acca-calc-legs{padding:8px 20px;min-height:60px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.acca-calc-empty{font-size:12px;color:rgba(255,255,255,0.25);text-align:center;padding:18px 0;font-weight:400}
+.acca-calc-leg-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+.acca-calc-leg-item:last-child{border-bottom:none}
+.acca-calc-leg-team{flex:1;font-size:14px;font-weight:500;color:#fff}
+.acca-calc-leg-odds{font-size:14px;font-weight:600;color:var(--gold)}
+.acca-calc-leg-remove{background:none;border:none;color:rgba(255,255,255,0.25);font-size:20px;cursor:pointer;padding:0;line-height:1;transition:color .15s}
+.acca-calc-leg-remove:hover{color:#ff6b6b}
+.acca-calc-add{display:grid;grid-template-columns:1fr 90px auto;gap:8px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.acca-calc-input{background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:#fff;outline:none;width:100%}
+.acca-calc-input::placeholder{color:rgba(255,255,255,0.25)}
+.acca-calc-input:focus{border-color:var(--gold)}
+.acca-calc-odds{text-align:center}
+.acca-calc-addbtn{background:var(--green);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .18s}
+.acca-calc-addbtn:hover{opacity:.85}
+.acca-calc-stake-section{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.acca-calc-stake-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.acca-calc-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,0.35)}
+.acca-calc-stakeval{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px}
+.acca-calc-slider-wrap{position:relative;height:28px;display:flex;align-items:center;margin-bottom:6px;cursor:pointer}
+.acca-calc-track-bg{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,0.1);border-radius:2px}
+.acca-calc-track-fill{position:absolute;left:0;height:4px;background:var(--green);border-radius:2px;width:20%}
+.acca-calc-ball{position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:grab;left:20%;transform:translateX(-50%);transition:left .08s}
+.acca-calc-ball:active{cursor:grabbing}
+.acca-calc-ball-inner{width:10px;height:10px;border-radius:50%;background:var(--green)}
+.acca-calc-ticks{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.18);font-weight:400}
+.acca-calc-results{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.acca-calc-results-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.acca-calc-results-grid:last-child{margin-bottom:0}
+.acca-calc-result-box{border-radius:10px;padding:12px 14px}
+.acca-calc-result-box.neutral{background:rgba(255,255,255,0.05)}
+.acca-calc-result-box.gold{background:rgba(30,158,107,0.12);border:1px solid rgba(30,158,107,0.25)}
+.acca-calc-result-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.28);margin-bottom:6px;font-weight:400}
+.acca-calc-result-box.gold .acca-calc-result-lbl{color:rgba(30,158,107,0.7)}
+.acca-calc-result-val{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px}
+.acca-calc-result-sub{font-size:10px;color:rgba(255,255,255,0.2);margin-top:2px}
+.acca-calc-clear{width:100%;background:none;border:none;color:rgba(255,255,255,0.2);font-size:12px;padding:14px;cursor:pointer;font-family:inherit;transition:all .18s}
+.acca-calc-clear:hover{color:#ff6b6b}
 .calc-legs{padding:14px 16px;min-height:60px;border-bottom:1px solid var(--border)}
 .calc-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;font-weight:400}
 .calc-leg-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -592,18 +634,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- 2. This Week's Leaders -->
-      <div class="home-section">
-        <div class="home-section-head">
-          <span class="home-section-title">🏆 This Week's Leaders</span>
-          <span class="home-section-sub">Top accas this week</span>
-        </div>
-        <div class="widget-box">
-          <div id="leaderboard-body"></div>
-        </div>
-      </div>
-
-      <!-- 3. Community Accas — user submitted with tier badges -->
+      <!-- 2. Community Accas -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">👥 Community Accas</span>
@@ -614,7 +645,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         </div>
       </div>
 
-      <!-- 4. Popular Accas — swipeable carousel by category -->
+      <!-- 3. This Week's Leaders -->
+      <div class="home-section">
+        <div class="home-section-head">
+          <span class="home-section-title">🏆 This Week's Leaders</span>
+          <span class="home-section-sub">Top accas this week</span>
+        </div>
+        <div class="widget-box">
+          <div id="leaderboard-body"></div>
+        </div>
+      </div>
+
+      <!-- 4. Popular Accas -->
       <div class="home-section">
         <div class="home-section-head">
           <span class="home-section-title">🔥 Popular Accas</span>
@@ -623,15 +665,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         <div class="pacca-carousel-wrap">
           <div class="pacca-carousel" id="pacca-carousel"></div>
         </div>
-      </div>
-
-      <!-- 5. Upcoming Fixtures — full league cards -->
-      <div class="home-section">
-        <div class="home-section-head">
-          <span class="home-section-title">📅 Upcoming Fixtures</span>
-          <span class="home-section-sub">Select a league to analyse</span>
-        </div>
-        <div id="ufx-list"></div>
       </div>
 
     </div><!-- /home-widgets -->
@@ -652,41 +685,70 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   <div id="page-calc" style="display:none">
     <div style="margin-bottom:16px">
       <div style="font-size:20px;font-weight:600;color:var(--navy)">Acca Calculator</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:2px">Build your accumulator and see your potential returns</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">Add legs, set your stake, see your return</div>
     </div>
-    <div class="calc-box">
-      <div class="calc-legs" id="calc-legs">
-        <div class="calc-empty">Add legs below to get started</div>
+
+    <!-- Dark calculator widget -->
+    <div class="acca-calc-widget">
+      <div class="acca-calc-head">
+        <span class="acca-calc-title">MY ACCA</span>
+        <span class="acca-calc-legcount" id="acw-legcount">0 legs</span>
       </div>
-      <div class="calc-add-row">
-        <input class="calc-input" id="calc-team-input" placeholder="Team name" type="text"/>
-        <input class="calc-input calc-odds-input" id="calc-odds-input" placeholder="Odds e.g. 4/5" type="text"/>
-        <button class="calc-add-btn" onclick="calcAddLeg()">+ Add</button>
+
+      <!-- Legs list -->
+      <div class="acca-calc-legs" id="acw-legs">
+        <div class="acca-calc-empty">No selections yet.<br>Add legs below to build your acca.</div>
       </div>
-      <div class="calc-stake-row">
-        <span class="calc-lbl">Stake</span>
-        <div class="calc-stake-controls">
-          <button class="calc-stake-btn" onclick="calcAdjStake(-5)">−</button>
-          <span class="calc-stake-val" id="calc-stake-val">€10</span>
-          <button class="calc-stake-btn" onclick="calcAdjStake(5)">+</button>
+
+      <!-- Add leg row -->
+      <div class="acca-calc-add">
+        <input class="acca-calc-input" id="acw-team" placeholder="Team / selection" type="text"/>
+        <input class="acca-calc-input acca-calc-odds" id="acw-odds" placeholder="Odds e.g. 5/2" type="text"/>
+        <button class="acca-calc-addbtn" onclick="acwAdd()">+ Add</button>
+      </div>
+
+      <!-- Stake slider -->
+      <div class="acca-calc-stake-section">
+        <div class="acca-calc-stake-row">
+          <span class="acca-calc-lbl">STAKE</span>
+          <span class="acca-calc-stakeval" id="acw-stake-val">€10</span>
+        </div>
+        <div class="acca-calc-slider-wrap" id="acw-slider-wrap">
+          <div class="acca-calc-track-bg"></div>
+          <div class="acca-calc-track-fill" id="acw-track-fill"></div>
+          <div class="acca-calc-ball" id="acw-ball"><div class="acca-calc-ball-inner"></div></div>
+        </div>
+        <div class="acca-calc-ticks"><span>€5</span><span>€15</span><span>€25</span><span>€35</span><span>€50</span></div>
+      </div>
+
+      <!-- Results -->
+      <div class="acca-calc-results">
+        <div class="acca-calc-results-grid">
+          <div class="acca-calc-result-box neutral">
+            <div class="acca-calc-result-lbl">COMBINED ODDS</div>
+            <div class="acca-calc-result-val" id="acw-odds-out">—</div>
+            <div class="acca-calc-result-sub" id="acw-dec-out"></div>
+          </div>
+          <div class="acca-calc-result-box neutral">
+            <div class="acca-calc-result-lbl">LEGS</div>
+            <div class="acca-calc-result-val" id="acw-legs-out">0</div>
+          </div>
+        </div>
+        <div class="acca-calc-results-grid">
+          <div class="acca-calc-result-box gold">
+            <div class="acca-calc-result-lbl">RETURN</div>
+            <div class="acca-calc-result-val" id="acw-return-out">—</div>
+          </div>
+          <div class="acca-calc-result-box gold">
+            <div class="acca-calc-result-lbl">PROFIT</div>
+            <div class="acca-calc-result-val" id="acw-profit-out">—</div>
+          </div>
         </div>
       </div>
-      <div class="calc-results" id="calc-results">
-        <div class="calc-result-row">
-          <span class="calc-result-lbl">Combined Odds</span>
-          <span class="calc-result-val" id="calc-combined">—</span>
-        </div>
-        <div class="calc-result-row">
-          <span class="calc-result-lbl">Potential Return</span>
-          <span class="calc-result-val green" id="calc-return">—</span>
-        </div>
-        <div class="calc-result-row">
-          <span class="calc-result-lbl">Potential Profit</span>
-          <span class="calc-result-val green" id="calc-profit">—</span>
-        </div>
-      </div>
-      <button class="calc-clear" onclick="calcClear()">Clear All</button>
+
+      <button class="acca-calc-clear" onclick="acwClear()">Clear acca</button>
     </div>
+  </div>
   </div>
 
 </div><!-- /main -->
@@ -787,6 +849,7 @@ function showPage(page){
   var bn=document.getElementById('bnav-'+page);
   if(bn) bn.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
+  if(page==='calc') setTimeout(acwInit,50);
 }
 
 // switchTab maps to showPage
@@ -856,12 +919,104 @@ function calcRender(){
   document.getElementById('calc-profit').textContent='€'+profit;
 }
 
-// Enter key on calculator inputs
+// ── ACCA CALCULATOR WIDGET ──
+var acwLegs=[];
+var acwStake=10;
+var acwMin=5,acwMax=50;
+
+function acwInit(){
+  var wrap=document.getElementById('acw-slider-wrap');
+  if(!wrap) return;
+  acwUpdateSlider();
+  var dragging=false;
+  function getPos(e){
+    var rect=wrap.getBoundingClientRect();
+    var x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+    return Math.max(0,Math.min(1,x/rect.width));
+  }
+  function setFromPos(pos){
+    var range=acwMax-acwMin;
+    var raw=acwMin+pos*range;
+    acwStake=Math.round(raw/5)*5;
+    acwStake=Math.max(acwMin,Math.min(acwMax,acwStake));
+    acwUpdateSlider();acwRender();
+  }
+  wrap.addEventListener('mousedown',function(e){dragging=true;setFromPos(getPos(e));});
+  wrap.addEventListener('touchstart',function(e){dragging=true;setFromPos(getPos(e));},{passive:true});
+  document.addEventListener('mousemove',function(e){if(dragging)setFromPos(getPos(e));});
+  document.addEventListener('touchmove',function(e){if(dragging)setFromPos(getPos(e));},{passive:true});
+  document.addEventListener('mouseup',function(){dragging=false;});
+  document.addEventListener('touchend',function(){dragging=false;});
+}
+
+function acwUpdateSlider(){
+  var pct=((acwStake-acwMin)/(acwMax-acwMin))*100;
+  var fill=document.getElementById('acw-track-fill');
+  var ball=document.getElementById('acw-ball');
+  var sv=document.getElementById('acw-stake-val');
+  if(fill) fill.style.width=pct+'%';
+  if(ball) ball.style.left=pct+'%';
+  if(sv) sv.textContent='€'+acwStake;
+}
+
+function acwAdd(){
+  var team=document.getElementById('acw-team').value.trim();
+  var oddsStr=document.getElementById('acw-odds').value.trim();
+  if(!team||!oddsStr) return;
+  var parts=oddsStr.split('/');
+  var num=parseFloat(parts[0])||1,den=parseFloat(parts[1])||1;
+  acwLegs.push({team:team,odds:oddsStr,num:num,den:den});
+  document.getElementById('acw-team').value='';
+  document.getElementById('acw-odds').value='';
+  document.getElementById('acw-team').focus();
+  acwRender();
+}
+
+function acwRemove(idx){acwLegs.splice(idx,1);acwRender();}
+
+function acwClear(){acwLegs=[];acwRender();}
+
+function acwRender(){
+  var legsEl=document.getElementById('acw-legs');
+  var countEl=document.getElementById('acw-legcount');
+  if(countEl) countEl.textContent=acwLegs.length+(acwLegs.length===1?' leg':' legs');
+  if(!acwLegs.length){
+    legsEl.innerHTML='<div class="acca-calc-empty">No selections yet.<br>Add legs below to build your acca.</div>';
+    document.getElementById('acw-odds-out').textContent='—';
+    document.getElementById('acw-dec-out').textContent='';
+    document.getElementById('acw-legs-out').textContent='0';
+    document.getElementById('acw-return-out').textContent='—';
+    document.getElementById('acw-profit-out').textContent='—';
+    return;
+  }
+  legsEl.innerHTML=acwLegs.map(function(l,i){
+    return '<div class="acca-calc-leg-item">'
+      +'<span class="acca-calc-leg-team">'+escHtml(l.team)+'</span>'
+      +'<span class="acca-calc-leg-odds">'+escHtml(l.odds)+'</span>'
+      +'<button class="acca-calc-leg-remove" onclick="acwRemove('+i+')">×</button>'
+      +'</div>';
+  }).join('');
+  var combined=1;
+  acwLegs.forEach(function(l){combined*=(1+l.num/l.den);});
+  var ret=Math.round(acwStake*combined);
+  var profit=Math.round(acwStake*combined-acwStake);
+  var w=combined-1;
+  var oddsDisp=w>0?Math.round(w)+'/1':'—';
+  var decDisp=combined.toFixed(2);
+  document.getElementById('acw-odds-out').textContent=oddsDisp;
+  document.getElementById('acw-dec-out').textContent=decDisp;
+  document.getElementById('acw-legs-out').textContent=acwLegs.length;
+  document.getElementById('acw-return-out').textContent='€'+ret;
+  document.getElementById('acw-profit-out').textContent='€'+profit;
+}
+
+// Enter key support
 document.addEventListener('DOMContentLoaded',function(){
-  var oi=document.getElementById('calc-odds-input');
-  if(oi) oi.addEventListener('keydown',function(e){if(e.key==='Enter') calcAddLeg();});
-  var ti=document.getElementById('calc-team-input');
-  if(ti) ti.addEventListener('keydown',function(e){if(e.key==='Enter') document.getElementById('calc-odds-input').focus();});
+  var oi=document.getElementById('acw-odds');
+  if(oi) oi.addEventListener('keydown',function(e){if(e.key==='Enter') acwAdd();});
+  var ti=document.getElementById('acw-team');
+  if(ti) ti.addEventListener('keydown',function(e){if(e.key==='Enter'){var o=document.getElementById('acw-odds');if(o)o.focus();}});
+  acwInit();
 });
 
 function buildCountryRow(){
@@ -1010,45 +1165,48 @@ function renderFixtures(){
     document.getElementById('fixtures-container').innerHTML='';
     return;
   }
-  // Debug: show total fixtures loaded and how many match
-  var total=allFixtures.length;
+
+  // Get the expected league name from our map
+  var expectedLeagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:'';
+  var expectedCountry=currentCountry;
+
   var filtered=allFixtures.filter(function(f){
-    var l=LEAGUES[f.leagueId];
-    if(!l||l.country!==currentCountry) return false;
-    if(f.leagueId!==currentLeague) return false;
-    return true;
+    // Match by leagueId first
+    if(f.leagueId===currentLeague) return true;
+    // Fallback: match by league name (case-insensitive)
+    if(expectedLeagueName && f.leagueName &&
+       f.leagueName.toLowerCase().indexOf(expectedLeagueName.toLowerCase())>-1) return true;
+    // Also try matching country via leagueName keywords
+    return false;
   });
+
+  console.log('renderFixtures: currentLeague='+currentLeague+' expectedName='+expectedLeagueName+' total='+allFixtures.length+' filtered='+filtered.length);
+  if(allFixtures.length>0){
+    console.log('Sample fixture leagueIds:',allFixtures.slice(0,5).map(function(f){return f.leagueId+'|'+f.leagueName;}));
+  }
+
   if(!filtered.length){
     var leagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:currentLeague;
     var dateLabel=currentDate.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('fixtures-container').innerHTML='<div class="empty">No upcoming fixtures for '+escHtml(leagueName)+' on '+dateLabel+'.<br>Try another date or league.</div>';
     return;
   }
-  var grouped={},order=[];
-  filtered.forEach(function(f){
-    if(!grouped[f.leagueId]){grouped[f.leagueId]=[];order.push(f.leagueId);}
-    grouped[f.leagueId].push(f);
-  });
-  order.sort(function(a,b){return((LEAGUES[a]&&LEAGUES[a].tier)||99)-((LEAGUES[b]&&LEAGUES[b].tier)||99);});
+
   var html='<div class="results-count">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+'</div>';
-  order.forEach(function(id){
-    var l=LEAGUES[id];
-    var name=l?l.name:(grouped[id][0].leagueName||id);
-    var list=grouped[id];
-    var canAnalyse=leagueHasUpcoming(list);
-    var btnHtml=canAnalyse
-      ?'<button class="analyse-btn" onclick="analyseLeague(\''+id+'\')">Analyse Selections</button>'
-      :'<span class="analyse-btn analyse-btn--done">Results Only</span>';
-    html+='<div class="league-block"><div class="league-header"><span class="league-name">'+name+'</span>'+btnHtml+'</div>';
-    list.forEach(function(f){
-      var live=isLive(f.status),ft=f.status==='FT';
-      var hasScore=f.homeScore!=null&&f.homeScore!==''&&f.awayScore!=null&&f.awayScore!=='';
-      var ko=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
-      var scoreStr=(live||ft)&&hasScore?' '+f.homeScore+'-'+f.awayScore:'';
-      html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
-    });
-    html+='</div>';
+  var leagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:(filtered[0].leagueName||currentLeague);
+  var canAnalyse=leagueHasUpcoming(filtered);
+  var btnHtml=canAnalyse
+    ?'<button class="analyse-btn" onclick="analyseLeague(\''+currentLeague+'\')">Analyse Selections</button>'
+    :'<span class="analyse-btn analyse-btn--done">Results Only</span>';
+  html+='<div class="league-block"><div class="league-header"><span class="league-name">'+escHtml(leagueName)+'</span>'+btnHtml+'</div>';
+  filtered.forEach(function(f){
+    var live=isLive(f.status),ft=f.status==='FT';
+    var hasScore=f.homeScore!=null&&f.homeScore!==''&&f.awayScore!=null&&f.awayScore!=='';
+    var ko=live?'LIVE':ft?'FT':formatKickoff(f.date,f.time);
+    var scoreStr=(live||ft)&&hasScore?' '+f.homeScore+'-'+f.awayScore:'';
+    html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
   });
+  html+='</div>';
   document.getElementById('fixtures-container').innerHTML=html;
 }
 
