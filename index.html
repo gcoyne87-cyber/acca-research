@@ -55,7 +55,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .tab .tab-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:600;margin-left:7px;vertical-align:middle}
 
 /* ── LEAGUE TABS ── */
-.league-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;min-height:28px}
+.league-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+#fixtures-container:not(:empty){margin-bottom:20px}
 .ltab{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-family:inherit;transition:all .18s}
 .ltab:hover{border-color:var(--navy);color:var(--navy)}
 .ltab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
@@ -364,7 +365,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   </div>
   <div id="tab-fixtures-content">
 
-    <!-- Home widgets — always visible -->
+    <!-- League tabs — appear directly under country selector when country selected -->
+    <div class="league-tabs" id="league-tabs"></div>
+    <div id="fixtures-container"></div>
+
+    <!-- Home widgets — always visible below -->
     <div id="home-widgets">
 
       <!-- 1. Most Picked This Weekend -->
@@ -422,10 +427,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     </div>
 
-    <div class="league-tabs" id="league-tabs"></div>
-    <div id="fixtures-container">
-      <div class="prompt"><div class="prompt-icon">⚽</div><div class="prompt-text">Select a country above to browse fixtures</div></div>
-    </div>
   </div>
   <div id="tab-research-content" style="display:none">
     <div id="research-container">
@@ -539,20 +540,42 @@ function selectCountry(country,btn){
   currentCountry=country;currentLeague='all';
   btn.classList.add('active');
   buildLeagueTabs();
-  if(dataLoaded){renderFixtures();}else{loadFixtures();}
+  if(dataLoaded){autoSelectLeague();}else{loadFixtures();}
 }
 
 function buildLeagueTabs(){
   var html='';
-  var first=true;
   Object.keys(LEAGUES).forEach(function(id){
     var l=LEAGUES[id];
     if(l.country===currentCountry){
-      html+='<button class="ltab'+(first?' active':'')+'" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
-      if(first){currentLeague=id;first=false;}
+      html+='<button class="ltab" id="ltab-'+id+'" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
     }
   });
   document.getElementById('league-tabs').innerHTML=html;
+}
+
+// Called after fixtures load — pick first league that has data
+function autoSelectLeague(){
+  var leagueIds=Object.keys(LEAGUES).filter(function(id){return LEAGUES[id].country===currentCountry;});
+  for(var i=0;i<leagueIds.length;i++){
+    var id=leagueIds[i];
+    var hasFixtures=allFixtures.some(function(f){return f.leagueId===id;});
+    if(hasFixtures){
+      currentLeague=id;
+      var btn=document.getElementById('ltab-'+id);
+      if(btn){
+        document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+      }
+      renderFixtures();
+      // Scroll to top so league tabs are visible
+      window.scrollTo({top:0,behavior:'smooth'});
+      return;
+    }
+  }
+  // No leagues have fixtures
+  currentLeague=leagueIds[0]||'all';
+  renderFixtures();
 }
 
 function filterLeague(code,btn){
@@ -560,8 +583,7 @@ function filterLeague(code,btn){
   document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   renderFixtures();
-  // Scroll fixtures into view smoothly
-  document.getElementById('fixtures-container').scrollIntoView({behavior:'smooth',block:'start'});
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -634,7 +656,7 @@ async function loadFixtures(){
       }
       allFixtures=events;
       dataLoaded=true;
-      renderFixtures();
+      autoSelectLeague();
     }
   }catch(e){
     document.getElementById('fixtures-container').innerHTML='<div class="error-msg">Failed to load. Check connection and try again.</div>';
