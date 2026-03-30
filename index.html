@@ -100,14 +100,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .lb-streak{font-size:10px;color:var(--muted);font-weight:400;flex-shrink:0}
 
 /* ── POPULAR PICKS ── */
-.pop-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.pop-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .pop-row:last-child{border-bottom:none}
 .pop-info{flex:1;min-width:0}
-.pop-team{font-size:18px;font-weight:600;color:var(--navy);letter-spacing:-0.2px;line-height:1.2}
-.pop-fixture{font-size:10px;color:var(--muted);margin-top:4px;font-weight:400;opacity:.7}
-.pop-ring{position:relative;width:56px;height:56px;flex-shrink:0}
+.pop-team{font-size:16px;font-weight:600;color:var(--navy);letter-spacing:-0.1px;line-height:1.2}
+.pop-fixture{font-size:10px;color:var(--muted);margin-top:2px;font-weight:400}
+.pop-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.pop-ring{position:relative;width:52px;height:52px;flex-shrink:0}
 .pop-ring svg{position:absolute;top:0;left:0}
-.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;color:var(--navy);letter-spacing:-0.5px}
+.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--navy);letter-spacing:-0.5px}
 .pop-add{font-size:11px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
 .pop-add:hover{opacity:.85}
 .pop-add.added{background:var(--green)}
@@ -415,10 +416,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   .widget-title{font-size:13px}
 
   /* MOST PICKED */
-  .pop-team{font-size:18px}
-  .pop-fixture{font-size:12px}
-  .pop-meta{font-size:12px}
-  .pop-row{padding:16px 16px}
+  .pop-team{font-size:17px}
+  .pop-fixture{font-size:10px}
+  .pop-row{padding:12px 16px}
   .pop-add{font-size:12px;padding:8px 14px}
 
   /* LEADERBOARD */
@@ -484,17 +484,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .bnav-icon{font-size:20px;line-height:1}
 .bnav-lbl{font-size:10px;font-weight:500;letter-spacing:.02em}
 /* ── TRENDING STACKED CARDS ── */
-.trend-card{background:var(--navy);border-radius:14px;padding:16px;margin-bottom:12px}
+.trend-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px}
 .trend-card:last-child{margin-bottom:0}
-.trend-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.trend-card-label{font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.1em;text-transform:uppercase}
-.trend-card-hot{font-size:10px;color:rgba(255,255,255,0.25)}
-.trend-card-body{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
-.trend-team{font-size:16px;font-weight:600;color:#fff;line-height:1.2}
-.trend-detail{font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px}
-.trend-btn{width:100%;background:var(--gold);color:var(--navy);border:none;border-radius:9px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
+.trend-card-header{margin-bottom:10px}
+.trend-pill-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--mid)}
+.trend-pill-badge .fire{font-size:16px;line-height:1}
+.trend-card-label{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.02em}
+.trend-card-body{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.trend-team{font-size:15px;font-weight:600;color:var(--navy);line-height:1.2}
+.trend-detail{font-size:9px;color:var(--muted);margin-top:1px}
+.trend-btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
 .trend-btn:hover{opacity:.88}
-.trend-btn.added{background:var(--green);color:#fff}
+.trend-btn.added{background:var(--green)}
 .comm-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100% - 48px);max-width:300px;display:flex;flex-direction:column}
 @media(min-width:700px){.comm-card{width:260px;max-width:260px}}
 .comm-card-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
@@ -1585,8 +1586,7 @@ function renderTrendingAccas(){
   el.innerHTML=TRENDING_ACCAS.map(function(a,i){
     return '<div class="trend-card">'
       +'<div class="trend-card-header">'
-      +'<span class="trend-card-label">'+a.legs.length+' Selections</span>'
-      +'<span class="trend-card-hot">🔥 Hot today</span>'
+      +'<span class="trend-pill-badge"><span class="fire">🔥</span> '+a.legs.length+' Selections</span>'
       +'</div>'
       +'<div class="trend-card-body">'
       +a.legs.map(function(l){
@@ -2065,11 +2065,13 @@ var LEADERBOARD=[
 
 // ── POPULAR PICKS DATA (seeded) ──
 var POPULAR_PICKS=[
-  {team:'Burnley',fixture:'Burnley v Sheffield Wed',league:'Championship',date:'Sat 5 Apr · 15:00',pct:78,fid:'pop1',odds:'4/7'},
-  {team:'Leeds United',fixture:'Leeds Utd v Millwall',league:'Championship',date:'Sat 5 Apr · 15:00',pct:71,fid:'pop2',odds:'8/11'},
-  {team:'Lincoln City',fixture:'Lincoln City v Wigan',league:'League One',date:'Sat 5 Apr · 15:00',pct:65,fid:'pop3',odds:'4/6'},
-  {team:'Bromley',fixture:'Bromley v Notts County',league:'League Two',date:'Sat 5 Apr · 15:00',pct:61,fid:'pop4',odds:'1/2'},
-  {team:'Benfica',fixture:'Benfica v Sporting CP',league:'Primeira Liga',date:'Sat 5 Apr · 20:30',pct:58,fid:'pop5',odds:'2/5'},
+  {team:'Burnley',fixture:'v Sheffield Wed · Championship · Sat 15:00',pct:78,fid:'pop1',odds:'4/7'},
+  {team:'Leeds United',fixture:'v Millwall · Championship · Sat 15:00',pct:71,fid:'pop2',odds:'8/11'},
+  {team:'Lincoln City',fixture:'v Wigan · League One · Sat 15:00',pct:65,fid:'pop3',odds:'4/6'},
+  {team:'Bromley',fixture:'v Notts County · League Two · Sat 15:00',pct:61,fid:'pop4',odds:'1/2'},
+  {team:'Benfica',fixture:'v Sporting CP · Primeira Liga · Sat 20:30',pct:58,fid:'pop5',odds:'2/5'},
+  {team:'Celtic',fixture:'v Hearts · Scottish Prem · Sat 15:00',pct:54,fid:'pop6',odds:'4/9'},
+  {team:'NEC Nijmegen',fixture:'v Ajax · Eredivisie · Sat 16:30',pct:49,fid:'pop7',odds:'5/2'},
 ];
 
 function renderLeaderboard(){
@@ -2090,19 +2092,19 @@ function renderPopularPicks(){
   if(!el) return;
   el.innerHTML=POPULAR_PICKS.map(function(p){
     var added=slipLegs.some(function(s){return s.legId==='leg_'+p.fid;});
-    var circ=144;
+    var circ=119;
     var offset=Math.round(circ-(circ*(p.pct/100)));
     return '<div class="pop-row">'
       +'<div class="pop-ring">'
-      +'<svg width="56" height="56" viewBox="0 0 56 56">'
-      +'<circle cx="28" cy="28" r="23" fill="none" stroke="#c8e6d8" stroke-width="5"/>'
-      +'<circle cx="28" cy="28" r="23" fill="none" stroke="#1e9e6b" stroke-width="5" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" stroke-linecap="round" transform="rotate(-90 28 28)"/>'
+      +'<svg width="52" height="52" viewBox="0 0 52 52">'
+      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#c8e6d8" stroke-width="6"/>'
+      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#1e9e6b" stroke-width="6" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" stroke-linecap="round" transform="rotate(-90 26 26)"/>'
       +'</svg>'
       +'<div class="pop-ring-num">'+p.pct+'%</div>'
       +'</div>'
       +'<div class="pop-info">'
       +'<div class="pop-team">'+escHtml(p.team)+'</div>'
-      +'<div class="pop-fixture">v '+escHtml(p.fixture.split(' v ')[1]||p.fixture)+' · '+escHtml(p.league)+' · '+escHtml(p.date)+'</div>'
+      +'<div class="pop-fixture">'+escHtml(p.fixture)+'</div>'
       +'</div>'
       +'<button class="pop-add'+(added?' added':'')+'" id="popadd_'+p.fid+'" onclick="addPopularToSlip(this)" '
       +'data-fid="'+p.fid+'" data-team="'+escHtml(p.team)+'" data-league="'+escHtml(p.league)+'" data-odds="'+p.odds+'">'
