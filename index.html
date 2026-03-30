@@ -108,7 +108,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .pop-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .pop-ring{position:relative;width:52px;height:52px;flex-shrink:0}
 .pop-ring svg{position:absolute;top:0;left:0}
-.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--navy);letter-spacing:-0.5px}
+.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--navy);letter-spacing:-0.3px}
 .pop-add{font-size:11px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
 .pop-add:hover{opacity:.85}
 .pop-add.added{background:var(--green)}
@@ -2070,8 +2070,6 @@ var POPULAR_PICKS=[
   {team:'Lincoln City',fixture:'v Wigan · League One · Sat 15:00',pct:65,fid:'pop3',odds:'4/6'},
   {team:'Bromley',fixture:'v Notts County · League Two · Sat 15:00',pct:61,fid:'pop4',odds:'1/2'},
   {team:'Benfica',fixture:'v Sporting CP · Primeira Liga · Sat 20:30',pct:58,fid:'pop5',odds:'2/5'},
-  {team:'Celtic',fixture:'v Hearts · Scottish Prem · Sat 15:00',pct:54,fid:'pop6',odds:'4/9'},
-  {team:'NEC Nijmegen',fixture:'v Ajax · Eredivisie · Sat 16:30',pct:49,fid:'pop7',odds:'5/2'},
 ];
 
 function renderLeaderboard(){
@@ -2097,8 +2095,8 @@ function renderPopularPicks(){
     return '<div class="pop-row">'
       +'<div class="pop-ring">'
       +'<svg width="52" height="52" viewBox="0 0 52 52">'
-      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#c8e6d8" stroke-width="6"/>'
-      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#1e9e6b" stroke-width="6" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" stroke-linecap="round" transform="rotate(-90 26 26)"/>'
+      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#c8e6d8" stroke-width="3"/>'
+      +'<circle cx="26" cy="26" r="19" fill="none" stroke="#1e9e6b" stroke-width="3" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" stroke-linecap="round" transform="rotate(-90 26 26)"/>'
       +'</svg>'
       +'<div class="pop-ring-num">'+p.pct+'%</div>'
       +'</div>'
