@@ -344,7 +344,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .home-section-head-a{margin-bottom:14px}
 
-.home-section-head-t3{margin-bottom:14px;padding-bottom:14px;border-bottom:2px solid var(--navy)}
+.home-section-head-t3{margin-bottom:14px;padding-bottom:14px}
 
 .sec-emoji{font-size:24px;line-height:1;display:block;margin-bottom:6px}
 
@@ -4544,17 +4544,43 @@ function infSetAll(){
 
   buildInfLeagueStrip();
 
-  // Show all fixtures from whatever is already loaded
-
   infMultiFixtures={};
 
   if(allFixtures&&allFixtures.length){
 
     infMultiFixtures[infFormatDate(currentDate||new Date())]=allFixtures.slice();
 
-  }
+    infRender();
 
-  infRender();
+  } else {
+
+    var d=currentDate||new Date();
+
+    var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+    var loader=document.getElementById('infinite-fixtures-loader');
+
+    if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';}
+
+    fetch('/.netlify/functions/fixtures?date='+dateStr)
+
+      .then(function(r){return r.json();})
+
+      .then(function(data){
+
+        infMultiFixtures[dateStr]=data.events||[];
+
+        infRender();
+
+      })
+
+      .catch(function(){
+
+        if(loader){loader.textContent='Failed to load. Try again.';loader.style.display='block';}
+
+      });
+
+  }
 
 }
 
