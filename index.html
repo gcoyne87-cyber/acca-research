@@ -258,7 +258,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .inf-fx:last-of-type{border-bottom:none}
 
-.inf-match{font-size:15px;font-weight:600;color:var(--navy);flex:1;min-width:0;margin-right:8px}
+.inf-match{font-size:15px;font-weight:500;color:var(--navy);flex:1;min-width:0;margin-right:8px}
 
 .inf-time{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0}
 
@@ -302,17 +302,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .pop-info{flex:1;min-width:0}
 
-.pop-team{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-0.2px;line-height:1.2}
+.pop-team{font-size:22px;font-weight:500;color:var(--navy);letter-spacing:-0.2px;line-height:1.2}
 
 .pop-fixture{font-size:13px;color:var(--muted);margin-top:3px;font-weight:400;line-height:1.4}
 
 .pop-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
 
-.pop-ring{position:relative;width:52px;height:52px;flex-shrink:0}
+.pop-ring{position:relative;width:72px;height:72px;flex-shrink:0}
 
-.pop-ring svg{position:absolute;top:0;left:0}
+.pop-ring svg{position:absolute;top:0;left:0;width:72px;height:72px}
 
-.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--navy);letter-spacing:-0.3px}
+.pop-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--navy);letter-spacing:-0.5px}
 
 .pop-add{font-size:14px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:11px 18px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
 
@@ -538,7 +538,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-teams{flex:1;min-width:0}
 
-.fx-team{font-size:13px;font-weight:600;color:var(--navy)}
+.fx-team{font-size:13px;font-weight:500;color:var(--navy)}
 
 .fx-ko{font-size:11px;color:var(--green);font-weight:500;text-align:right;white-space:nowrap;flex-shrink:0}
 
@@ -592,7 +592,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .ac-team{font-size:14px;font-weight:400;color:var(--muted)}
 
-.ac-team--pick{font-size:18px;font-weight:600;color:var(--navy)}
+.ac-team--pick{font-size:18px;font-weight:500;color:var(--navy)}
 
 .ac-team-vs{font-size:11px;font-weight:400;color:var(--muted);flex-shrink:0}
 
@@ -920,11 +920,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .pop-row{padding:16px 18px;gap:14px}
 
-  .pop-ring{width:52px;height:52px}
+  .pop-ring{width:72px;height:72px}
 
-  .pop-ring svg{width:52px;height:52px}
+  .pop-ring svg{width:72px;height:72px}
 
-  .pop-ring-num{font-size:12px}
+  .pop-ring-num{font-size:20px;font-weight:700}
 
   .pop-team{font-size:22px;font-weight:700}
 
@@ -952,11 +952,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .wop-hero{padding:14px 14px 12px}
 
-  .wop-pct-num{font-size:40px}
+  .wop-pct-ring{width:72px;height:72px}
 
-  .wop-specialist{font-size:11px}
+  .wop-pct-ring svg{width:72px;height:72px}
 
-  .wop-pick-team{font-size:20px;font-weight:700}
+  .wop-pct-num{font-size:20px;font-weight:700}
+
+  .wop-pick-team{font-size:19px;font-weight:500}
 
   .wop-pick-meta{font-size:11px}
 
@@ -976,7 +978,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   /* ANALYSIS CARDS */
 
-  .ac-team--pick{font-size:20px}
+  .ac-team--pick{font-size:20px;font-weight:400}
 
   .ac-team{font-size:14px}
 
@@ -1024,7 +1026,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .trend-card-body{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 
-.trend-team{font-size:22px;font-weight:700;color:var(--navy);line-height:1.2}
+.trend-team{font-size:22px;font-weight:500;color:var(--navy);line-height:1.2}
 
 .trend-detail{font-size:13px;color:var(--muted);margin-top:4px}
 
@@ -1042,7 +1044,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-carousel::-webkit-scrollbar{display:none}
 
-/* Redesigned community cards */
 .wop-card{background:var(--white);border-radius:16px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 72px);max-width:300px;display:flex;flex-direction:column;border:1.5px solid var(--border)}
 
 .wop-card.gold{border-left:4px solid #c9a84c}
@@ -1053,14 +1054,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 @media(min-width:700px){.wop-card{width:290px;max-width:290px}}
 
-/* Hero section: big % + specialist badge */
 .wop-hero{padding:14px 14px 12px;display:flex;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border)}
 
-.wop-pct-block{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:64px}
+.wop-pct-block{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:72px}
 
-.wop-pct-num{font-size:38px;font-weight:700;color:var(--navy);line-height:1}
+.wop-pct-ring{position:relative;width:72px;height:72px;flex-shrink:0}
 
-.wop-pct-lbl{font-size:10px;color:var(--muted);letter-spacing:.03em;margin-top:2px}
+.wop-pct-ring svg{position:absolute;top:0;left:0;width:72px;height:72px}
+
+.wop-pct-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-0.5px}
 
 .wop-hero-right{flex:1;min-width:0;padding-top:2px}
 
@@ -1082,9 +1084,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-balls{display:flex;gap:3px;align-items:center}
 
-.wop-ball{font-size:15px;line-height:1}
-
-/* Picks list */
 .wop-picks{padding:6px 14px 6px;border-top:1px solid var(--border)}
 
 .wop-pick{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -1093,7 +1092,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-pick-n{width:20px;height:20px;border-radius:50%;background:var(--soft);font-size:10px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px}
 
-.wop-pick-team{font-size:19px;font-weight:700;color:var(--navy);line-height:1.2}
+.wop-pick-team{font-size:19px;font-weight:500;color:var(--navy);line-height:1.2}
 
 .wop-pick-meta{font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
 
@@ -3476,95 +3475,68 @@ function renderCommunityAccas(){
   if(!el) return;
 
   function getSpecialist(tags){
-
     var t=tags.find(function(x){return x.cls==='hot'||x.cls==='strong';});
-
     return t?t.label:'Good picks';
-
   }
 
   function getBalls(n){
-
     var s='';for(var k=0;k<n;k++) s+='&#9917;';return s;
-
   }
 
   function getStreakTxt(form){
-
     var m=form.match(/(\d+) streak/);
-
     if(m) return m[1]+' correct in a row';
-
     var m2=form.match(/(\d+) of (\d+) correct/);
-
     if(m2) return m2[1]+' of last '+m2[2]+' correct';
-
     return form;
-
   }
 
   function isHotStreak(form){
-
     var m=form.match(/(\d+) of (\d+)/);
-
     return m&&(parseInt(m[1])/parseInt(m[2]))>=0.7;
+  }
 
+  function makeRing(pct){
+    var circ=175.9;
+    var offset=(circ-(circ*(pct/100))).toFixed(1);
+    return '<div class="wop-pct-ring">'
+      +'<svg viewBox="0 0 72 72">'
+      +'<circle cx="36" cy="36" r="28" fill="none" stroke="#e2f5ed" stroke-width="4.5"/>'
+      +'<circle cx="36" cy="36" r="28" fill="none" stroke="#1e9e6b" stroke-width="4.5"'
+      +' stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'"'
+      +' stroke-linecap="round" transform="rotate(-90 36 36)"/>'
+      +'</svg>'
+      +'<div class="wop-pct-num">'+pct+'%</div>'
+      +'</div>';
   }
 
   el.innerHTML=COMMUNITY_ACCAS.map(function(a,i){
 
     var specialist=getSpecialist(a.tags);
-
     var balls=getBalls(a.legs.length);
-
     var streakTxt=getStreakTxt(a.form);
-
     var hot=isHotStreak(a.form);
-
     var dotCls=hot?'wop-streak-dot':'wop-streak-dot cold';
 
     var picksHtml=a.legs.map(function(l,li){
-
       return '<div class="wop-pick">'
-
         +'<div class="wop-pick-n">'+(li+1)+'</div>'
-
         +'<div><div class="wop-pick-team">'+escHtml(l.team)+'</div>'
-
         +'<div class="wop-pick-meta">'+escHtml(l.meta)+'</div></div>'
-
         +'</div>';
-
     }).join('');
 
     return '<div class="wop-card '+a.tier+'">'
-
       +'<div class="wop-hero">'
-
-      +'<div class="wop-pct-block">'
-
-      +'<div class="wop-pct-num">'+a.pct+'%</div>'
-
-      +'<div class="wop-pct-lbl">hit rate</div>'
-
-      +'</div>'
-
+      +'<div class="wop-pct-block">'+makeRing(a.pct)+'</div>'
       +'<div class="wop-hero-right">'
-
       +'<span class="wop-specialist '+a.tier+'">'+escHtml(specialist)+'</span>'
-
       +'<div class="wop-streak"><div class="'+dotCls+'"></div><span class="wop-streak-txt">'+escHtml(streakTxt)+'</span></div>'
-
       +'<div class="wop-balls">'+balls+'</div>'
-
       +'</div>'
-
       +'</div>'
-
       +'<div class="wop-picks">'+picksHtml+'</div>'
-
       +'<div class="wop-cta-wrap"><button class="wop-cta" id="wop-btn-'+i+'" onclick="addWopAcca('+i+',this)">Copy Selections</button></div>'
-
       +'</div>';
 
   }).join('');
@@ -4568,32 +4540,8 @@ function infPickCountry(c){
 
   buildInfCountryStrip();buildInfLeagueStrip();
 
-  // Directly fetch fixtures for this country on the current date
   var dateStr=infFormatDate(currentDate||new Date());
 
-  // If we already have fixtures for this date, just filter and render
-  if(infMultiFixtures[dateStr]&&infMultiFixtures[dateStr].length){
-
-    infRender();
-
-    return;
-
-  }
-
-  // If the top section already loaded this country's fixtures, reuse them
-  if(allFixtures&&allFixtures.length&&currentCountry===c){
-
-    infMultiFixtures={};
-
-    infMultiFixtures[dateStr]=allFixtures.slice();
-
-    infRender();
-
-    return;
-
-  }
-
-  // Otherwise fetch directly
   var loader=document.getElementById('infinite-fixtures-loader');
 
   if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';}
@@ -4604,7 +4552,11 @@ function infPickCountry(c){
 
     .then(function(data){
 
-      var events=(data.events||[]).sort(function(a,b){
+      var events=(data.events||[]).filter(function(f){
+
+        return INF_LEAGUES.some(function(l){return String(l.id)===String(f.leagueId)&&l.country===c;});
+
+      }).sort(function(a,b){
 
         if(!a.time||a.time==='00:00:00') return 1;
 
@@ -4624,12 +4576,20 @@ function infPickCountry(c){
 
     .catch(function(){
 
-      if(loader){loader.textContent='Failed to load fixtures. Try again.';loader.style.display='block';}
+      if(loader){loader.textContent='Failed to load. Try again.';loader.style.display='block';}
 
     });
 
 }
 
+
+async function infSelectCountry(c){
+
+  if(c==='all') infSetAll();
+
+  else infPickCountry(c);
+
+}
 
 function infSelectLeague(id){
 
@@ -4681,17 +4641,13 @@ function infRender(){
 
   var rendered=0;
 
-  // Sort dates ascending so earliest date comes first
   var sortedDates=Object.keys(infMultiFixtures).sort();
 
-  // For each league (in INF_LEAGUES priority order), then each date ascending
   leagues.forEach(function(league){
 
     sortedDates.forEach(function(dateStr){
 
-      var dayFixtures=infMultiFixtures[dateStr]||[];
-
-      var lf=dayFixtures.filter(function(f){
+      var lf=(infMultiFixtures[dateStr]||[]).filter(function(f){
 
         return String(f.leagueId)===String(league.id);
 
@@ -4731,10 +4687,9 @@ function infRender(){
 
         +'<div class="analyse-all-wrap">'
 
-        +'<button class="analyse-all-btn" onclick="analyseLeagueDate(\''+ lid +'\',\''+dateStr+'\')">'
+        +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">'
 
-
-        +'<span>✦</span> Analyse All Fixtures with AI →'
+        +'<span>✶</span> Analyse All Fixtures with AI →'
 
         +'</button>'
 
@@ -4752,7 +4707,7 @@ function infRender(){
 
     if(!rendered&&sortedDates.length>0){
 
-      loader.textContent='No fixtures found for this filter. Try a different country.';
+      loader.textContent='No fixtures found for this filter.';
 
       loader.style.display='block';
 
@@ -4769,43 +4724,6 @@ function infRender(){
     }
 
   }
-
-}
-
-
-function analyseLeagueDate(leagueId,dateStr){
-
-  // Filter fixtures for this specific league+date and trigger analysis
-
-  var fixtures=[];
-
-  if(infMultiFixtures[dateStr]){
-
-    fixtures=infMultiFixtures[dateStr].filter(function(f){
-
-      return String(f.leagueId)===String(leagueId);
-
-    });
-
-  }
-
-  if(!fixtures.length){
-
-    // Fallback to all fixtures for this league
-
-    analyseLeague(leagueId);
-
-    return;
-
-  }
-
-  var l=INF_LEAGUES.find(function(x){return String(x.id)===String(leagueId);});
-
-  var cobj=COUNTRIES.find(function(c){return l&&c.id===l.country;})||{id:infCountry||'england',name:'England',code:'gb-eng'};
-
-  var label=(l?l.name:'League')+' · '+dateStr;
-
-  triggerAnalysis(cobj,label,fixtures);
 
 }
 
