@@ -124,33 +124,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .date-item.active .date-num{color:var(--navy)}
 
-.date-day{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block}
+.date-day{font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block}
 
-.date-num{font-size:13px;font-weight:700;color:var(--muted);line-height:1.1;display:block;margin-top:1px}
+.date-num{font-size:13px;font-weight:600;color:var(--muted);line-height:1.1;display:block;margin-top:1px}
 
 .date-today .date-day{color:var(--green)!important}
 
-/* ── COUNTRY FLAGS ── */
+/* ── FILTER STRIPS ── */
+
+.filter-step-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;padding:0 2px}
+
+.filter-strip{background:var(--white);border-radius:10px;border:.5px solid var(--border);overflow:hidden;margin-bottom:6px}
+
+.filter-strip-inner{display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+
+.filter-strip-inner::-webkit-scrollbar{display:none}
+
+.fstab{flex-shrink:0;padding:11px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;border-right:.5px solid #f5f7fb;transition:all .15s;background:none;border-top:none;border-left:none;font-family:inherit}
+
+.fstab:last-child{border-right:none}
+
+.fstab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600}
 
 .section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:9px}
 
-.country-row{display:flex;flex-wrap:nowrap;gap:14px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-
-.country-row::-webkit-scrollbar{display:none}
-
-.cflag{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border:none;background:none;padding:2px;flex-shrink:0;font-family:inherit;transition:all .18s}
-
-.cflag-circle{width:46px;height:46px;border-radius:50%;border:2px solid var(--border);background:var(--white);overflow:hidden;display:flex;align-items:center;justify-content:center;transition:all .15s}
-
-.cflag img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-
-.cflag span{font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap}
-
-.cflag:hover .cflag-circle{border-color:var(--navy)}
-
-.cflag.active .cflag-circle{border-color:var(--navy);border-width:2.5px}
-
-.cflag.active span{color:var(--navy);font-weight:700}
+.country-row{display:none}
 
 /* ── TABS ── */
 
@@ -166,7 +164,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── LEAGUE TABS ── */
 
-.league-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.league-tabs{display:none}
 
 #fixtures-container:not(:empty){margin-bottom:20px}
 
@@ -774,13 +772,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .date-num{font-size:13px}
 
-  /* COUNTRY ROW */
+  /* FILTER STRIPS */
 
-  .section-label{font-size:12px;margin-bottom:10px}
+  .fstab{padding:11px 16px;font-size:14px}
 
-  .cflag-circle{width:50px;height:50px}
-
-  .cflag span{font-size:11px}
+  .filter-step-label{font-size:9px}
 
   /* LEAGUE TABS */
 
@@ -1310,11 +1306,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     <div class="date-nav" id="date-nav"></div>
 
-    <div class="section-label">Select Country</div>
+    <div class="filter-step-label">Country</div>
 
-    <div class="country-row" id="country-row"></div>
+    <div class="filter-strip" id="country-filter">
 
-    <div class="league-tabs" id="league-tabs"></div>
+      <div class="filter-strip-inner" id="country-strip-inner"></div>
+
+    </div>
+
+    <div id="league-filter-wrap" style="display:none">
+
+      <div class="filter-step-label">League</div>
+
+      <div class="filter-strip">
+
+        <div class="filter-strip-inner" id="league-strip-inner"></div>
+
+      </div>
+
+    </div>
+
+    <div class="league-tabs" id="league-tabs" style="display:none"></div>
 
     <div id="fixtures-container"></div>
 
@@ -2040,15 +2052,13 @@ document.addEventListener('DOMContentLoaded',function(){
 
 function buildCountryRow(){
 
-  document.getElementById('country-row').innerHTML=COUNTRIES.map(function(c){
+  var inner=document.getElementById('country-strip-inner');
 
-    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)">'
+  if(!inner) return;
 
-      +'<div class="cflag-circle"><img src="https://flagcdn.com/w80/'+c.code+'.png" alt="'+c.name+'"></div>'
+  inner.innerHTML=COUNTRIES.map(function(c){
 
-      +'<span>'+c.name+'</span>'
-
-      +'</button>';
+    return '<button class="fstab" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)">'+c.name+'</button>';
 
   }).join('');
 
@@ -2066,7 +2076,13 @@ function selectCountry(country,btn){
 
   }
 
-  if(currentCountry) document.getElementById('cf-'+currentCountry).classList.remove('active');
+  if(currentCountry){
+
+    var old=document.getElementById('cf-'+currentCountry);
+
+    if(old) old.classList.remove('active');
+
+  }
 
   currentCountry=country;currentLeague='all';
 
@@ -2080,6 +2096,12 @@ function selectCountry(country,btn){
 
 function buildLeagueTabs(){
 
+  var inner=document.getElementById('league-strip-inner');
+
+  var wrap=document.getElementById('league-filter-wrap');
+
+  if(!inner||!wrap) return;
+
   var html='';
 
   Object.keys(LEAGUES).forEach(function(id){
@@ -2088,13 +2110,15 @@ function buildLeagueTabs(){
 
     if(l.country===currentCountry){
 
-      html+='<button class="ltab" id="ltab-'+id+'" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
+      html+='<button class="fstab" id="ltab-'+id+'" onclick="filterLeague(\''+id+'\',this)">'+l.name+'</button>';
 
     }
 
   });
 
-  document.getElementById('league-tabs').innerHTML=html;
+  inner.innerHTML=html;
+
+  wrap.style.display=html?'block':'none';
 
 }
 
@@ -2112,7 +2136,7 @@ function filterLeague(code,btn){
 
   currentLeague=code;
 
-  document.querySelectorAll('#league-tabs .ltab').forEach(function(b){b.classList.remove('active')});
+  document.querySelectorAll('#league-strip-inner .fstab').forEach(function(b){b.classList.remove('active')});
 
   btn.classList.add('active');
 
@@ -2136,7 +2160,7 @@ function updateDateDisplay(){
 
   var days=[];
 
-  for(var i=-3;i<=7;i++){
+  for(var i=-2;i<=14;i++){
 
     var d=new Date(dc);d.setDate(dc.getDate()+i);
 
@@ -2167,6 +2191,10 @@ function updateDateDisplay(){
       +'</div>';
 
   }).join('');
+
+  var activeEl=nav.querySelector('.date-item.active');
+
+  if(activeEl) setTimeout(function(){activeEl.scrollIntoView({inline:'center',behavior:'smooth'});},50);
 
 }
 
