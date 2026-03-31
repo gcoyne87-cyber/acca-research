@@ -4568,51 +4568,68 @@ function infPickCountry(c){
 
   buildInfCountryStrip();buildInfLeagueStrip();
 
-  // Trigger the top section to load this country — reuses the working fetch
+  // Directly fetch fixtures for this country on the current date
+  var dateStr=infFormatDate(currentDate||new Date());
 
-  var btn=document.getElementById('cf-'+c);
+  // If we already have fixtures for this date, just filter and render
+  if(infMultiFixtures[dateStr]&&infMultiFixtures[dateStr].length){
 
-  if(btn){
+    infRender();
 
-    btn.click();
-
-    // Wait for allFixtures to populate then render bottom section
-
-    var attempts=0;
-
-    var interval=setInterval(function(){
-
-      attempts++;
-
-      if(allFixtures&&allFixtures.length&&currentCountry===c){
-
-        clearInterval(interval);
-
-        infMultiFixtures={};
-
-        infMultiFixtures[infFormatDate(currentDate||new Date())]=allFixtures.slice();
-
-        infRender();
-
-      } else if(attempts>40){
-
-        clearInterval(interval);
-
-      }
-
-    },250);
+    return;
 
   }
 
+  // If the top section already loaded this country's fixtures, reuse them
+  if(allFixtures&&allFixtures.length&&currentCountry===c){
+
+    infMultiFixtures={};
+
+    infMultiFixtures[dateStr]=allFixtures.slice();
+
+    infRender();
+
+    return;
+
+  }
+
+  // Otherwise fetch directly
+  var loader=document.getElementById('infinite-fixtures-loader');
+
+  if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';}
+
+  fetch('/.netlify/functions/fixtures?date='+dateStr)
+
+    .then(function(r){return r.json();})
+
+    .then(function(data){
+
+      var events=(data.events||[]).sort(function(a,b){
+
+        if(!a.time||a.time==='00:00:00') return 1;
+
+        if(!b.time||b.time==='00:00:00') return -1;
+
+        return a.time.localeCompare(b.time);
+
+      });
+
+      infMultiFixtures={};
+
+      infMultiFixtures[dateStr]=events;
+
+      infRender();
+
+    })
+
+    .catch(function(){
+
+      if(loader){loader.textContent='Failed to load fixtures. Try again.';loader.style.display='block';}
+
+    });
+
 }
 
-async function infSelectCountry(c){
-
-  if(c==='all') infSetAll();
-
-  else infPickCountry(c);
-
-}
 
 function infSelectLeague(id){
 
