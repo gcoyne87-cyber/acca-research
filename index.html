@@ -480,21 +480,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .upcoming-arrow{font-size:14px;color:var(--muted)}
 
-.fixture-row{display:grid;grid-template-columns:1fr auto;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);transition:background .12s}
+.fixture-row{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:.5px solid #f5f7fb;transition:background .12s}
 
 .fixture-row:last-child{border-bottom:none}
 
 .fixture-row:hover{background:var(--soft)}
 
-.fx-teams{display:flex;flex-direction:column;gap:2px}
+.fx-teams{flex:1;min-width:0}
 
-.fx-team{font-size:13px;font-weight:400;color:var(--mid)}
+.fx-team{font-size:13px;font-weight:600;color:var(--navy)}
 
-.fx-ko{font-size:11px;color:var(--green);font-weight:500;text-align:right;white-space:nowrap}
+.fx-ko{font-size:11px;color:var(--green);font-weight:500;text-align:right;white-space:nowrap;flex-shrink:0}
 
 .fx-ko.live{color:var(--green);font-weight:600}
 
-.fx-ft{font-size:11px;color:var(--muted);font-weight:400;text-align:right}
+.fx-ft{font-size:11px;color:var(--muted);font-weight:400;text-align:right;flex-shrink:0}
 
 /* ── EMPTY STATES ── */
 
@@ -892,11 +892,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .analyse-btn{font-size:13px;padding:6px 14px}
 
-  .fixture-row{padding:12px 14px}
+  .fixture-row{padding:10px 14px}
 
-  .fx-team{font-size:15px}
+  .fx-team{font-size:14px;font-weight:600}
 
-  .fx-ko{font-size:13px}
+  .fx-ko{font-size:12px}
 
   /* ANALYSIS CARDS */
 
@@ -2430,7 +2430,7 @@ function renderFixtures(){
 
     var scoreStr=(live||ft)&&hasScore?' '+f.homeScore+'-'+f.awayScore:'';
 
-    html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
+    html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+escHtml(f.home)+(scoreStr)+' v '+escHtml(f.away)+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
 
   });
 
