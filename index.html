@@ -76,39 +76,81 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .title span{color:var(--green)}
 
+/* ── HERO BANNER ── */
+
+.hero-banner{background:#0b1628;margin:0 -24px 16px;padding:28px 24px 24px}
+
+@media(min-width:600px){.hero-banner{margin:0 0 16px;border-radius:16px}}
+
+.hero-banner-tag{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#1e9e6b;margin-bottom:14px}
+
+.hero-banner-title{font-size:30px;font-weight:700;color:#fff;line-height:1.15;margin-bottom:12px;letter-spacing:-0.3px}
+
+@media(max-width:600px){.hero-banner-title{font-size:26px;font-weight:700;letter-spacing:-0.2px}}
+
+.hero-banner-sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:24px;line-height:1.65}
+
+.hero-banner-steps{display:flex;align-items:center;margin-bottom:24px}
+
+.hbs-step{display:flex;align-items:center;gap:8px}
+
+.hbs-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+
+.hbs-green{background:#1e9e6b;color:#fff}
+
+.hbs-gold{background:#fff;color:#0b1628;border:2.5px solid #c9a84c}
+
+.hbs-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.75)}
+
+.hbs-arrow{font-size:14px;color:rgba(255,255,255,.2);margin:0 8px}
+
+.hero-banner-cta{display:block;width:100%;background:#ffffff!important;color:#0b1628!important;border:none;border-radius:11px;padding:16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.01em}
+
 /* ── DATE NAV ── */
 
-.date-nav{display:flex;align-items:center;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:20px;gap:12px}
+.date-nav{display:flex;align-items:stretch;background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 
-.date-arrow{background:var(--soft);border:none;color:var(--mid);width:34px;height:34px;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.date-nav::-webkit-scrollbar{display:none}
 
-.date-arrow:hover{background:var(--navy);color:#fff}
+.date-arrow{display:none}
 
-.date-arrow:disabled{opacity:0.25;cursor:default}
+.date-item{flex-shrink:0;padding:6px 11px;text-align:center;cursor:pointer;border-right:1px solid var(--border);border-bottom:2px solid transparent;transition:all .15s}
 
-.date-center{text-align:center;flex:1}
+.date-item:last-child{border-right:none}
 
-.date-display{font-size:15px;font-weight:600;color:var(--navy);display:block}
+.date-item.active{border-bottom-color:var(--navy)}
 
-.date-sub{font-size:11px;color:var(--muted);margin-top:2px;display:block;font-weight:400}
+.date-item.active .date-day{color:var(--navy)}
+
+.date-item.active .date-num{color:var(--navy)}
+
+.date-day{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block}
+
+.date-num{font-size:13px;font-weight:700;color:var(--muted);line-height:1.1;display:block;margin-top:1px}
+
+.date-today .date-day{color:var(--green)!important}
 
 /* ── COUNTRY FLAGS ── */
 
 .section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:9px}
 
-.country-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.country-row{display:flex;flex-wrap:nowrap;gap:14px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 
-.cflag{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9px;cursor:pointer;border:1.5px solid var(--border);background:var(--white);transition:all .18s;font-family:inherit}
+.country-row::-webkit-scrollbar{display:none}
 
-.cflag img{width:22px;height:15px;border-radius:2px;object-fit:cover;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.cflag{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border:none;background:none;padding:2px;flex-shrink:0;font-family:inherit;transition:all .18s}
 
-.cflag span{font-size:12px;font-weight:500;color:var(--mid)}
+.cflag-circle{width:46px;height:46px;border-radius:50%;border:2px solid var(--border);background:var(--white);overflow:hidden;display:flex;align-items:center;justify-content:center;transition:all .15s}
 
-.cflag:hover{border-color:var(--navy);background:var(--soft)}
+.cflag img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 
-.cflag.active{border-color:var(--navy);background:var(--navy)}
+.cflag span{font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap}
 
-.cflag.active span{color:#fff}
+.cflag:hover .cflag-circle{border-color:var(--navy)}
+
+.cflag.active .cflag-circle{border-color:var(--navy);border-width:2.5px}
+
+.cflag.active span{color:var(--navy);font-weight:700}
 
 /* ── TABS ── */
 
@@ -142,13 +184,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .league-header{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--soft);border-bottom:1px solid var(--border)}
 
-.league-name{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--navy)}
+.league-name{font-size:13px;font-weight:700;color:var(--green)}
+
+.league-header-right{display:flex;align-items:center;gap:8px}
+
+.league-header-date{font-size:11px;color:var(--muted);font-weight:400}
+
+.league-header-count{font-size:10px;color:var(--muted);background:var(--border);padding:2px 8px;border-radius:99px}
 
 .analyse-btn{font-size:11px;font-weight:500;background:var(--white);color:var(--navy);border:1.5px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:inherit;transition:all .18s}
 
 .analyse-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
 
 .analyse-btn--done{font-size:11px;font-weight:400;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:6px;padding:4px 12px;cursor:default;font-family:inherit;opacity:.6}
+
+/* Analyse All — Option B gold border */
+
+.analyse-all-wrap{padding:12px 14px;border-top:1px solid var(--border);background:var(--white)}
+
+.analyse-all-btn{display:block;width:100%;background:var(--white);color:var(--navy);border:2.5px solid var(--gold);border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.01em;transition:all .18s}
+
+.analyse-all-btn:hover{background:var(--gold);color:var(--white)}
+
+.analyse-all-btn span{color:var(--gold)}
+
+.analyse-all-sub{text-align:center;font-size:10px;color:var(--muted);margin-top:7px}
 
 /* ── LEADERBOARD ── */
 
@@ -706,27 +766,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   /* DATE NAV */
 
-  .date-nav{padding:14px 16px;margin-bottom:16px}
+  .date-nav{margin-bottom:12px}
 
-  .date-display{font-size:20px;font-weight:700}
+  .date-item{padding:6px 10px}
 
-  .date-sub{font-size:13px}
+  .date-day{font-size:9px}
 
-  .date-arrow{width:44px;height:44px;font-size:20px}
+  .date-num{font-size:13px}
 
   /* COUNTRY ROW */
 
   .section-label{font-size:12px;margin-bottom:10px}
 
-  .country-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:8px;margin-bottom:14px}
+  .cflag-circle{width:50px;height:50px}
 
-  .country-row::-webkit-scrollbar{display:none}
-
-  .cflag{flex-shrink:0;padding:10px 16px;border-radius:12px}
-
-  .cflag img{width:28px;height:20px}
-
-  .cflag span{font-size:14px;font-weight:600}
+  .cflag span{font-size:11px}
 
   /* LEAGUE TABS */
 
@@ -1226,21 +1280,35 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   <div id="page-home">
 
-    <div class="date-nav">
+    <!-- HERO BANNER -->
 
-      <button class="date-arrow" id="btn-prev" onclick="changeDate(-1)">&#9664;</button>
+    <div class="hero-banner">
 
-      <div class="date-center">
+      <div class="hero-banner-tag">AI-Powered Acca Research</div>
 
-        <span class="date-display" id="date-display">Today</span>
+      <div class="hero-banner-title">Build smarter selections.<br>Let <span style="color:#c9a84c">AI analyse</span> your fixtures.</div>
 
-        <span class="date-sub" id="date-sub"></span>
+      <div class="hero-banner-sub">Pick a country, choose your league, and let AI analyse every fixture for you</div>
+
+      <div class="hero-banner-steps">
+
+        <div class="hbs-step"><div class="hbs-num hbs-green">1</div><div class="hbs-label">Country</div></div>
+
+        <div class="hbs-arrow">›</div>
+
+        <div class="hbs-step"><div class="hbs-num hbs-green">2</div><div class="hbs-label">League</div></div>
+
+        <div class="hbs-arrow">›</div>
+
+        <div class="hbs-step"><div class="hbs-num hbs-gold">3</div><div class="hbs-label">AI Analyse</div></div>
 
       </div>
 
-      <button class="date-arrow" id="btn-next" onclick="changeDate(1)">&#9654;</button>
+      <button class="hero-banner-cta" onclick="document.getElementById('country-row').scrollIntoView({behavior:'smooth'})">Get Started →</button>
 
     </div>
+
+    <div class="date-nav" id="date-nav"></div>
 
     <div class="section-label">Select Country</div>
 
@@ -1974,7 +2042,13 @@ function buildCountryRow(){
 
   document.getElementById('country-row').innerHTML=COUNTRIES.map(function(c){
 
-    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)"><img src="https://flagcdn.com/w40/'+c.code+'.png" alt="'+c.name+'"><span>'+c.name+'</span></button>';
+    return '<button class="cflag" id="cf-'+c.id+'" onclick="selectCountry(\''+c.id+'\',this)">'
+
+      +'<div class="cflag-circle"><img src="https://flagcdn.com/w80/'+c.code+'.png" alt="'+c.name+'"></div>'
+
+      +'<span>'+c.name+'</span>'
+
+      +'</button>';
 
   }).join('');
 
@@ -2052,33 +2126,77 @@ function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStar
 
 function updateDateDisplay(){
 
+  var nav=document.getElementById('date-nav');
+
+  if(!nav) return;
+
   var today=new Date();today.setHours(0,0,0,0);
 
   var dc=new Date(currentDate);dc.setHours(0,0,0,0);
 
-  var day=dc.toLocaleDateString('en-GB',{weekday:'long'});
+  var days=[];
 
-  var dt=dc.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  for(var i=-3;i<=7;i++){
 
-  var main=day,sub=dt;
+    var d=new Date(dc);d.setDate(dc.getDate()+i);
 
-  if(dc.getTime()===today.getTime()){main='Today';sub=day+', '+dt;}
+    days.push({offset:i,date:new Date(d)});
 
-  var tom=new Date(today);tom.setDate(today.getDate()+1);
+  }
 
-  if(dc.getTime()===tom.getTime()){main='Tomorrow';sub=day+', '+dt;}
+  nav.innerHTML=days.map(function(item){
 
-  document.getElementById('date-display').textContent=main;
+    var d=item.date;
 
-  document.getElementById('date-sub').textContent=sub;
+    var isToday=d.getTime()===today.getTime();
+
+    var isActive=item.offset===0;
+
+    var dayStr=isToday?'Today':d.toLocaleDateString('en-GB',{weekday:'short'});
+
+    var dayNum=d.getDate();
+
+    var classes='date-item'+(isActive?' active':'')+(isToday?' date-today':'');
+
+    return '<div class="'+classes+'" onclick="jumpToDate('+item.offset+')">'
+
+      +'<span class="date-day">'+dayStr+'</span>'
+
+      +'<span class="date-num">'+dayNum+'</span>'
+
+      +'</div>';
+
+  }).join('');
+
+}
+
+function jumpToDate(offset){
+
+  var d=new Date(currentDate);
+
+  d.setDate(d.getDate()+offset);
+
+  if(isLoading){pendingDate=d;return;}
+
+  currentDate=d;dataLoaded=false;
+
+  researchSections=[];
+
+  renderResearchTab();
+
+  if(currentCountry){loadFixtures();}else{updateDateDisplay();}
 
 }
 
 function setNavEnabled(en){
 
-  document.getElementById('btn-prev').disabled=!en;
+  var prev=document.getElementById('btn-prev');
 
-  document.getElementById('btn-next').disabled=!en;
+  var next=document.getElementById('btn-next');
+
+  if(prev) prev.disabled=!en;
+
+  if(next) next.disabled=!en;
 
 }
 
@@ -2254,19 +2372,27 @@ function renderFixtures(){
 
   }
 
-  var html='<div class="results-count">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+'</div>';
+  var html='';
 
   var leagueName=LEAGUES[currentLeague]?LEAGUES[currentLeague].name:(filtered[0].leagueName||currentLeague);
 
+  var dateLabel=currentDate.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+
   var canAnalyse=leagueHasUpcoming(filtered);
 
-  var btnHtml=canAnalyse
+  html+='<div class="league-block"><div class="league-header">'
 
-    ?'<button class="analyse-btn" onclick="analyseLeague(\''+currentLeague+'\')">Analyse Selections</button>'
+    +'<span class="league-name">'+escHtml(leagueName)+'</span>'
 
-    :'<span class="analyse-btn analyse-btn--done">Results Only</span>';
+    +'<div class="league-header-right">'
 
-  html+='<div class="league-block"><div class="league-header"><span class="league-name">'+escHtml(leagueName)+'</span>'+btnHtml+'</div>';
+    +'<span class="league-header-date">'+escHtml(dateLabel)+'</span>'
+
+    +'<span class="league-header-count">'+filtered.length+' fixture'+(filtered.length===1?'':'s')+'</span>'
+
+    +'</div>'
+
+    +'</div>';
 
   filtered.forEach(function(f){
 
@@ -2281,6 +2407,22 @@ function renderFixtures(){
     html+='<div class="fixture-row"><div class="fx-teams"><div class="fx-team">'+f.home+scoreStr+'</div><div class="fx-team">'+f.away+'</div></div>'+(live?'<div class="fx-ko live">LIVE</div>':ft?'<div class="fx-ft">FT</div>':'<div class="fx-ko">'+ko+'</div>')+'</div>';
 
   });
+
+  if(canAnalyse){
+
+    html+='<div class="analyse-all-wrap">'
+
+      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+currentLeague+'\')">'
+
+      +'<span>✦</span> Analyse All Fixtures with AI →'
+
+      +'</button>'
+
+      +'<div class="analyse-all-sub">AI analyses all '+filtered.length+' '+escHtml(leagueName)+' fixtures instantly</div>'
+
+      +'</div>';
+
+  }
 
   html+='</div>';
 
