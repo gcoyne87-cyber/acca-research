@@ -24,6 +24,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+<script>if('scrollRestoration' in history){history.scrollRestoration='manual';}</script>
+
 <title>Acca Research Tool</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -2192,10 +2194,6 @@ function updateDateDisplay(){
 
   }).join('');
 
-  var activeEl=nav.querySelector('.date-item.active');
-
-  if(activeEl) setTimeout(function(){activeEl.scrollIntoView({inline:'center',behavior:'smooth'});},50);
-
 }
 
 function jumpToDate(offset){
@@ -4209,6 +4207,8 @@ function addPopularToSlip(btn){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
+
+  window.scrollTo(0,0);
 
   buildCountryRow();
 
