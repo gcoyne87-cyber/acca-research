@@ -200,15 +200,47 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* Analyse All — Option B gold border */
 
-.analyse-all-wrap{padding:12px 14px;border-top:1px solid var(--border);background:var(--white)}
+.analyse-all-wrap{padding:12px 14px 14px;border-top:.5px solid var(--border);background:var(--white)}
 
-.analyse-all-btn{display:block;width:100%;background:var(--white);color:var(--navy);border:2.5px solid var(--gold);border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.01em;transition:all .18s}
+.analyse-all-btn{display:block;width:100%;background:#ffffff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.01em;transition:all .18s;-webkit-appearance:none;appearance:none}
 
 .analyse-all-btn:hover{background:var(--gold);color:var(--white)}
 
 .analyse-all-btn span{color:var(--gold)}
 
+.analyse-all-btn:hover span{color:var(--white)}
+
 .analyse-all-sub{text-align:center;font-size:10px;color:var(--muted);margin-top:7px}
+
+/* ── LEAGUE CAROUSEL ── */
+
+.league-carousel-outer{overflow:hidden;margin:0 -24px;padding:0 24px}
+
+.league-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}
+
+.league-carousel::-webkit-scrollbar{display:none}
+
+.lc-card{width:260px;flex-shrink:0;background:var(--white);border-radius:12px;border:.5px solid var(--border);overflow:hidden;scroll-snap-align:start;display:flex;flex-direction:column}
+
+.lc-head{padding:10px 14px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+
+.lc-league{font-size:13px;font-weight:700;color:var(--green)}
+
+.lc-right{display:flex;align-items:center;gap:6px}
+
+.lc-date{font-size:10px;color:var(--muted)}
+
+.lc-count{font-size:9px;color:var(--muted);background:var(--border);padding:2px 7px;border-radius:99px}
+
+.lc-fx{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:.5px solid #f8f9fb}
+
+.lc-fx:last-of-type{border-bottom:none}
+
+.lc-match{font-size:13px;font-weight:600;color:var(--navy);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px}
+
+.lc-time{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+
+.lc-more{font-size:11px;color:var(--muted);padding:6px 14px 10px;font-style:italic}
 
 /* ── LEADERBOARD ── */
 
@@ -1330,6 +1362,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     <div class="league-tabs" id="league-tabs" style="display:none"></div>
 
+    <div id="league-carousel-wrap" style="display:none">
+
+      <div class="league-carousel-outer">
+
+        <div class="league-carousel" id="league-carousel"></div>
+
+      </div>
+
+    </div>
+
     <div id="fixtures-container"></div>
 
     <div id="home-widgets">
@@ -2104,7 +2146,7 @@ function buildLeagueTabs(){
 
   if(!inner||!wrap) return;
 
-  var html='';
+  var html='<button class="fstab active" id="ltab-all" onclick="filterLeague(\'all\',this)">All Fixtures</button>';
 
   Object.keys(LEAGUES).forEach(function(id){
 
@@ -2122,15 +2164,21 @@ function buildLeagueTabs(){
 
   wrap.style.display=html?'block':'none';
 
+  currentLeague='all';
+
+  renderLeagueCarousel();
+
 }
 
 // Called after fixtures load — just show tabs, wait for user to pick
 
 function autoSelectLeague(){
 
-  // Just clear the fixtures container — let user choose a league
+  currentLeague='all';
 
   document.getElementById('fixtures-container').innerHTML='';
+
+  renderLeagueCarousel();
 
 }
 
@@ -2142,9 +2190,99 @@ function filterLeague(code,btn){
 
   btn.classList.add('active');
 
-  renderFixtures();
+  if(code==='all'){
 
-  window.scrollTo({top:0,behavior:'smooth'});
+    document.getElementById('fixtures-container').innerHTML='';
+
+    renderLeagueCarousel();
+
+  }else{
+
+    document.getElementById('league-carousel-wrap').style.display='none';
+
+    renderFixtures();
+
+    window.scrollTo({top:0,behavior:'smooth'});
+
+  }
+
+}
+
+function renderLeagueCarousel(){
+
+  var wrap=document.getElementById('league-carousel-wrap');
+
+  var carousel=document.getElementById('league-carousel');
+
+  if(!wrap||!carousel) return;
+
+  var dateLabel=currentDate.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
+  var leagueIds=Object.keys(LEAGUES).filter(function(id){
+
+    return LEAGUES[id].country===currentCountry;
+
+  });
+
+  var cards=leagueIds.map(function(id){
+
+    var l=LEAGUES[id];
+
+    var fixtures=allFixtures.filter(function(f){return f.leagueId===id;});
+
+    if(!fixtures.length) return '';
+
+    var preview=fixtures.slice(0,4);
+
+    var moreCount=fixtures.length-preview.length;
+
+    var rows=preview.map(function(f){
+
+      var ko=formatKickoff(f.date,f.time)||'TBC';
+
+      return '<div class="lc-fx"><div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>';
+
+    }).join('');
+
+    if(moreCount>0) rows+='<div class="lc-more">+ '+moreCount+' more fixture'+(moreCount===1?'':'s')+'</div>';
+
+    return '<div class="lc-card">'
+
+      +'<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div>'
+
+      +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
+
+      +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
+
+      +rows
+
+      +'<div class="analyse-all-wrap">'
+
+      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')">'
+
+      +'<span>✦</span> Analyse All Fixtures with AI →'
+
+      +'</button>'
+
+      +'<div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div>'
+
+      +'</div>'
+
+      +'</div>';
+
+  }).filter(Boolean);
+
+  if(!cards.length){
+
+    wrap.style.display='none';
+
+    return;
+
+  }
+
+  carousel.innerHTML=cards.join('');
+
+  wrap.style.display='block';
 
 }
 
