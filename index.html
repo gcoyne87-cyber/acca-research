@@ -342,6 +342,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
 
+.home-section-head-a{margin-bottom:14px}
+
+.home-section-head-t3{margin-bottom:14px;padding-bottom:14px;border-bottom:2px solid var(--navy)}
+
+.sec-emoji{font-size:24px;line-height:1;display:block;margin-bottom:6px}
+
+.sec-title{font-size:24px;font-weight:700;color:var(--navy);line-height:1.1}
+
+.sec-sub{font-size:13px;color:var(--muted);margin-top:4px}
+
+.sec-swipe{font-size:12px;color:var(--green);font-weight:600;margin-top:6px}
+
 /* ── POPULAR ACCAS — peek carousel ── */
 
 .pacca-carousel-wrap{overflow:hidden;margin:0 -24px;padding:0 24px}
@@ -926,7 +938,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .pop-ring-num{font-size:20px;font-weight:700}
 
-  .pop-team{font-size:22px;font-weight:700}
+  .pop-team{font-size:22px;font-weight:500}
 
   .pop-fixture{font-size:13px;margin-top:3px;line-height:1.4}
 
@@ -936,7 +948,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .trend-card{padding:18px 18px 16px;margin-bottom:14px;border-radius:14px}
 
-  .trend-team{font-size:22px;font-weight:700}
+  .trend-team{font-size:22px;font-weight:500}
 
   .trend-detail{font-size:13px;margin-top:4px}
 
@@ -1356,9 +1368,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div class="home-section">
 
-        <div class="home-section-head">
+        <div class="home-section-head-a">
 
-          <span class="home-section-title">🔥 Most Selected Today</span>
+          <span class="sec-emoji">🔥</span>
+
+          <div class="sec-title">Most Selected Today</div>
+
+          <div class="sec-sub">Teams getting the most picks right now</div>
 
         </div>
 
@@ -1374,9 +1390,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div class="home-section">
 
-        <div class="home-section-head">
+        <div class="home-section-head-t3">
 
-          <span class="home-section-title">⚡ Trending Selections</span>
+          <span class="sec-emoji">⚡</span>
+
+          <div class="sec-title">Trending Selections</div>
+
+          <div class="sec-sub">Most added combos this week</div>
 
         </div>
 
@@ -1388,11 +1408,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div style="margin-bottom:0" id="wop-section">
 
-        <div class="home-section-head">
+        <div class="home-section-head-a">
 
-          <span class="home-section-title">👥 What Others Are Picking</span>
+          <span class="sec-emoji">👥</span>
 
-          <span class="home-section-sub">This week's selections</span>
+          <div class="sec-title">What Others Are Picking</div>
+
+          <div class="sec-sub">This week's community selections</div>
+
+          <div class="sec-swipe">Swipe right to browse →</div>
 
         </div>
 
@@ -4540,7 +4564,9 @@ function infPickCountry(c){
 
   buildInfCountryStrip();buildInfLeagueStrip();
 
-  var dateStr=infFormatDate(currentDate||new Date());
+  var d=currentDate||new Date();
+
+  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 
   var loader=document.getElementById('infinite-fixtures-loader');
 
@@ -4574,9 +4600,11 @@ function infPickCountry(c){
 
     })
 
-    .catch(function(){
+    .catch(function(err){
 
-      if(loader){loader.textContent='Failed to load. Try again.';loader.style.display='block';}
+      console.error('Fixture fetch error:',err);
+
+      if(loader){loader.textContent='Failed to load fixtures. Try again.';loader.style.display='block';}
 
     });
 
