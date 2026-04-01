@@ -4770,12 +4770,17 @@ function infRender(){
   if(infLeague!=='all') leaguesToShow=INF_LEAGUES.filter(function(l){return l.id===infLeague;});
 
   leaguesToShow.forEach(function(league){
-    // Get all fixtures for this league across all dates, sorted by date then time
+    // Get all fixtures for this league across all dates
     var lf=allF.filter(function(f){return String(f.leagueId)===String(league.id);});
+    if(!lf.length) return;
+    // Find the earliest date that has fixtures for this league
+    var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean);
+    dates.sort();
+    var nextDate=dates[0];
+    // Only show fixtures from that next date (one round only)
+    lf=lf.filter(function(f){return f._dateStr===nextDate;});
     lf.sort(function(a,b){
-      var ad=(a._dateStr||'')+(a.time||'');
-      var bd=(b._dateStr||'')+(b.time||'');
-      return ad.localeCompare(bd);
+      return (a.time||'').localeCompare(b.time||'');
     });
     if(!lf.length) return;
 
