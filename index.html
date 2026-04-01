@@ -68,7 +68,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 }
 
-.main{max-width:900px;margin:0 auto;padding:24px 24px 140px}
+.main{max-width:900px;margin:0 auto;padding:24px 24px 80px}
 
 /* ── HEADER ── */
 
@@ -342,7 +342,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .home-section-sub{font-size:10px;color:var(--muted);font-weight:400}
 
-.home-section-head-a{margin-bottom:14px}
+.home-section-head-a{margin-bottom:6px}
 
 .home-section-head-t3{margin-bottom:14px;padding-bottom:14px}
 
@@ -816,7 +816,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .bottom-nav{display:flex}
 
-  .main{padding:12px 16px 110px}
+  .main{padding:12px 16px 80px}
 
   .slip-bubble{bottom:75px;right:12px}
 
@@ -914,7 +914,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   /* SECTION TITLES */
 
-  .home-section{margin-bottom:12px}
+  .home-section{margin-bottom:4px}
 
   .home-section-title{font-size:15px;letter-spacing:.08em}
 
@@ -1018,7 +1018,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .bnav-btn.active{color:var(--green)}
 
-.bnav-icon{font-size:20px;line-height:1}
+.bnav-icon{font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
 
 .bnav-lbl{font-size:10px;font-weight:500;letter-spacing:.02em}
 
@@ -1050,9 +1050,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── WHAT OTHERS ARE PICKING CAROUSEL ── */
 
-.wop-carousel-outer{overflow:hidden;margin:0 -24px;padding:0 24px}
+.wop-carousel-outer{overflow:hidden;margin:0 -24px;padding:0 24px 0}
 
-.wop-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;align-items:flex-start}
+.wop-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:0;align-items:flex-start}
 
 .wop-carousel::-webkit-scrollbar{display:none}
 
@@ -1370,7 +1370,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div class="hero-banner-sub">View the most selected teams and trending selections today</div>
 
-      <button class="hero-banner-cta" onclick="document.getElementById('home-widgets').scrollIntoView({behavior:'smooth',block:'start'})">View Today's Picks</button>
+      <button class="hero-banner-cta" onclick="var el=document.getElementById('most-selected-section');el.scrollIntoView({behavior:'smooth',block:'start'});">View Today's Picks</button>
 
     </div>
 
@@ -1414,7 +1414,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <!-- 1. Most Selected Today -->
 
-      <div class="home-section">
+      <div class="home-section" id="most-selected-section">
 
         <div class="home-section-head-a">
 
@@ -1478,17 +1478,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <!-- 4. All Fixtures with Filter + Infinite Scroll -->
 
-      <div style="margin-top:20px" id="infinite-fixtures-section">
-
-        <div class="home-section-head">
-
-          <span class="home-section-title">📋 All Fixtures</span>
-
-          <span class="home-section-sub">Filter · Scroll · Analyse</span>
-
-        </div>
+      <div style="margin-top:0" id="infinite-fixtures-section">
 
         <!-- Country filter -->
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--navy)">📋 All Fixtures</span>
+          
+        </div>
 
         <div class="filter-step-label">Country</div>
 
@@ -1508,7 +1505,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         <div id="infinite-fixtures-list"></div>
 
-        <div id="infinite-fixtures-loader" style="text-align:center;padding:20px;font-size:13px;color:var(--muted)">Select a country above and a date at the top to load fixtures</div>
+        <div id="infinite-fixtures-loader" style="text-align:center;padding:20px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
 
       </div>
 
@@ -2237,23 +2234,15 @@ function buildLeagueTabs(){
 // Called after fixtures load — just show tabs, wait for user to pick
 
 function autoSelectLeague(){
-
   currentLeague='all';
-
   document.getElementById('fixtures-container').innerHTML='';
-
   renderLeagueCarousel();
-
   if(allFixtures&&allFixtures.length){
-
     var ds=infFormatDate(currentDate||new Date());
-
+    infMultiFixtures={};
     infMultiFixtures[ds]=allFixtures.slice();
-
     infRender();
-
   }
-
 }
 
 function filterLeague(code,btn){
@@ -4749,19 +4738,22 @@ function infGetFixtures(){
 }
 
 function infRender(){
-
   var list=document.getElementById('infinite-fixtures-list');
-
   var loader=document.getElementById('infinite-fixtures-loader');
-
   if(!list) return;
-
   list.innerHTML='';
-
+  // Country priority order for "All" view
+  var COUNTRY_ORDER=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
   var leagues=infGetLeagues();
-
+  // Sort leagues by country order, then by name
+  leagues=leagues.slice().sort(function(a,b){
+    var ai=COUNTRY_ORDER.indexOf(a.country);
+    var bi=COUNTRY_ORDER.indexOf(b.country);
+    if(ai<0)ai=99;if(bi<0)bi=99;
+    if(ai!==bi)return ai-bi;
+    return a.name.localeCompare(b.name);
+  });
   var rendered=0;
-
   var sortedDates=Object.keys(infMultiFixtures).sort();
 
   leagues.forEach(function(league){
@@ -4849,19 +4841,26 @@ function infRender(){
 }
 
 function initInfiniteScroll(){
-
   infCountry='all';
-
   infLeague='all';
-
   buildInfCountryStrip();
-
   buildInfLeagueStrip();
-
   var loader=document.getElementById('infinite-fixtures-loader');
-
-  if(loader){loader.textContent='Select a country above to load fixtures';loader.style.display='block';loader.style.color='var(--muted)';}
-
+  if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';loader.style.color='var(--muted)';}
+  // Independent fetch — does not depend on country selection
+  var d=new Date();
+  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  fetch('/.netlify/functions/fixtures?date='+dateStr)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var events=data.events||[];
+      infMultiFixtures={};
+      infMultiFixtures[dateStr]=events;
+      infRender();
+    })
+    .catch(function(){
+      if(loader){loader.textContent='Failed to load. Check connection.';loader.style.display='block';}
+    });
 }
 
 window.addEventListener('DOMContentLoaded',function(){
@@ -4899,27 +4898,21 @@ window.addEventListener('DOMContentLoaded',function(){
   <div class="bottom-nav-inner">
 
     <button class="bnav-btn active" id="bnav-home" onclick="showPage('home')">
-
-      <span class="bnav-icon">🏠</span>
-
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span class="bnav-lbl">Home</span>
-
     </button>
 
     <button class="bnav-btn" id="bnav-research" onclick="showPage('research')">
-
-      <span class="bnav-icon">🔍</span>
-
-      <span class="bnav-lbl">My Research <span id="bnav-research-badge" style="display:none;background:var(--green);color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;margin-left:2px">0</span></span>
-
+      <div style="position:relative;display:inline-flex">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span id="bnav-research-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--green);color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;align-items:center;justify-content:center">0</span>
+      </div>
+      <span class="bnav-lbl">Research</span>
     </button>
 
     <button class="bnav-btn" id="bnav-calc" onclick="showPage('calc')">
-
-      <span class="bnav-icon">🧮</span>
-
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
       <span class="bnav-lbl">Calculator</span>
-
     </button>
 
   </div>
