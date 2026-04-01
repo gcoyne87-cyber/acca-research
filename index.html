@@ -344,7 +344,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .home-section-head-a{margin-bottom:14px}
 
-.home-section-head-t3{margin-bottom:14px;padding-bottom:14px}
+.home-section-head-t3{margin-bottom:8px;padding-bottom:0}
 
 .sec-emoji{font-size:24px;line-height:1;display:block;margin-bottom:6px}
 
@@ -1261,7 +1261,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .calc-clear:hover{color:#e53935}
 
 #wop-section,#wop-section+div,#infinite-fixtures-section{margin-top:0!important;padding-top:0!important}
-.home-section{margin-bottom:4px!important}
+.home-section{margin-bottom:14px!important}
 .home-section-head-a{margin-bottom:6px!important}
 </style>
 
@@ -1366,7 +1366,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div class="hero-banner-sub">View the most selected teams and trending selections today</div>
 
-      <button class="hero-banner-cta" onclick="document.getElementById('most-selected-section').scrollIntoView({behavior:'smooth',block:'start'})">View Today's Picks</button>
+      <button class="hero-banner-cta" onclick="var el=document.getElementById('most-selected-section');var top=el.getBoundingClientRect().top+window.pageYOffset-70;window.scrollTo({top:top,behavior:'smooth'});">View Today's Picks</button>
 
     </div>
 
