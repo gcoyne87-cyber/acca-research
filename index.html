@@ -1260,6 +1260,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .calc-clear:hover{color:#e53935}
 
+#wop-section,#wop-section+div,#infinite-fixtures-section{margin-top:0!important;padding-top:0!important}
+.home-section{margin-bottom:4px!important}
+.home-section-head-a{margin-bottom:6px!important}
 </style>
 
 </head>
@@ -1298,6 +1301,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         if(t)t.style.display='';
         if(m)m.style.display='';
         if(b)b.style.display='';
+        // Re-render fixtures after reveal
+        setTimeout(function(){if(typeof infRender==='function')infRender();},100);
       },520);
     },2800);
   });
@@ -4737,85 +4742,129 @@ function infRender(){
   var loader=document.getElementById('infinite-fixtures-loader');
   if(!list) return;
   list.innerHTML='';
+
+  // Get all fixtures across all fetched dates
   var allF=[];
   Object.keys(infMultiFixtures).forEach(function(dateStr){
-    (infMultiFixtures[dateStr]||[]).forEach(function(f){f._dateStr=dateStr;allF.push(f);});
+    (infMultiFixtures[dateStr]||[]).forEach(function(f){
+      f._dateStr=dateStr;
+      allF.push(f);
+    });
   });
+
+  // Filter by country if selected
   if(infCountry!=='all'){
     var allowed=INF_LEAGUES.filter(function(l){return l.country===infCountry;}).map(function(l){return String(l.id);});
     allF=allF.filter(function(f){return allowed.indexOf(String(f.leagueId))>-1;});
   }
+
+  // Filter by league if selected
   if(infLeague!=='all'){
     allF=allF.filter(function(f){return String(f.leagueId)===String(infLeague);});
   }
-  var grouped={};
-  allF.forEach(function(f){var k=String(f.leagueId);if(!grouped[k])grouped[k]=[];grouped[k].push(f);});
-  var COUNTRY_ORDER=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
-  var leagueIds=Object.keys(grouped);
-  leagueIds.sort(function(a,b){
-    var la=INF_LEAGUES.find(function(l){return String(l.id)===a;});
-    var lb=INF_LEAGUES.find(function(l){return String(l.id)===b;});
-    var ca=la?COUNTRY_ORDER.indexOf(la.country):99;
-    var cb=lb?COUNTRY_ORDER.indexOf(lb.country):99;
-    if(ca!==cb)return ca-cb;
-    var na=la?la.name:(grouped[a][0].leagueName||a);
-    var nb=lb?lb.name:(grouped[b][0].leagueName||b);
-    return na.localeCompare(nb);
-  });
+
   var rendered=0;
-  leagueIds.forEach(function(lid){
-    var fixtures=grouped[lid].slice().sort(function(a,b){
-      if(!a.time||a.time==='00:00:00')return 1;
-      if(!b.time||b.time==='00:00:00')return -1;
-      return a.time.localeCompare(b.time);
+
+  // Iterate through INF_LEAGUES IN ORDER - this gives exact Premier League, Championship etc order
+  var leaguesToShow = infCountry==='all' ? INF_LEAGUES : INF_LEAGUES.filter(function(l){return l.country===infCountry;});
+  if(infLeague!=='all') leaguesToShow=INF_LEAGUES.filter(function(l){return l.id===infLeague;});
+
+  leaguesToShow.forEach(function(league){
+    // Get all fixtures for this league across all dates, sorted by date then time
+    var lf=allF.filter(function(f){return String(f.leagueId)===String(league.id);});
+    lf.sort(function(a,b){
+      var ad=(a._dateStr||'')+(a.time||'');
+      var bd=(b._dateStr||'')+(b.time||'');
+      return ad.localeCompare(bd);
     });
-    var leagueInfo=INF_LEAGUES.find(function(l){return String(l.id)===lid;});
-    var leagueName=leagueInfo?leagueInfo.name:(fixtures[0].leagueName||lid);
-    var dateStr=fixtures[0]._dateStr||'';
-    var dateLabel='';
-    try{dateLabel=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){}
-    var rows=fixtures.map(function(f){
+    if(!lf.length) return;
+
+    var rows=lf.map(function(f){
       var ko=formatKickoff(f.date,f.time)||'TBC';
-      return '<div class="inf-fx"><div class="inf-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div><div class="inf-time">'+ko+'</div></div>';
+      var dateLabel='';
+      try{
+        var dd=new Date(f._dateStr+'T12:00:00');
+        var today=new Date();today.setHours(0,0,0,0);
+        var diff=Math.round((dd-today)/86400000);
+        if(diff===0) dateLabel='Today';
+        else if(diff===1) dateLabel='Tomorrow';
+        else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      }catch(e){}
+      return '<div class="inf-fx">'
+        +'<div class="inf-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">'
+        +'<div class="inf-time">'+ko+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);margin-top:1px">'+dateLabel+'</div>'
+        +'</div>'
+        +'</div>';
     }).join('');
+
     var card='<div class="inf-league-block">'
-      +'<div class="inf-league-head"><div class="inf-league-name">'+escHtml(leagueName)+'</div>'
-      +'<div class="inf-league-meta">'+(dateLabel?dateLabel+' · ':'')+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div>'
+      +'<div class="inf-league-head">'
+      +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
+      +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+      +'</div>'
       +rows
       +'<div class="analyse-all-wrap">'
-            +'<button class="analyse-all-btn" onclick="analyseLeague(\''+lid+'\')">'
+            +('<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">')
       +'<span>✶</span> Analyse All Fixtures with AI →'
       +'</button>'
-      +'<div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(leagueName)+' fixtures instantly</div>'
+      +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
       +'</div></div>';
     list.insertAdjacentHTML('beforeend',card);
     rendered++;
   });
+
   if(loader){
-    if(!rendered&&Object.keys(infMultiFixtures).length>0){loader.textContent='No fixtures found.';loader.style.display='block';}
-    else if(!rendered){loader.textContent='Loading fixtures...';loader.style.display='block';}
-    else{loader.style.display='none';}
+    if(!rendered&&Object.keys(infMultiFixtures).length>0){
+      loader.textContent='No fixtures found for this filter.';
+      loader.style.display='block';
+    }else if(!rendered){
+      loader.textContent='Loading fixtures...';
+      loader.style.display='block';
+    }else{
+      loader.style.display='none';
+    }
   }
 }
+
+function infFormatDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
 function initInfiniteScroll(){
-
   infCountry='all';
-
   infLeague='all';
-
   buildInfCountryStrip();
-
   buildInfLeagueStrip();
-
   var loader=document.getElementById('infinite-fixtures-loader');
-
   if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';loader.style.color='var(--muted)';}
-  var d=new Date();
-  var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  fetch('/.netlify/functions/fixtures?date='+ds)
-    .then(function(r){return r.json();})
-    .then(function(data){infMultiFixtures={};infMultiFixtures[ds]=data.events||[];infRender();})
-    .catch(function(){if(loader){loader.textContent='Failed to load fixtures.';loader.style.display='block';}});
+
+  // Fetch today + next 6 days so we always have fixtures to show
+  var dates=[];
+  for(var i=0;i<7;i++){
+    var d=new Date();
+    d.setDate(d.getDate()+i);
+    dates.push(infFormatDate(d));
+  }
+
+  infMultiFixtures={};
+  var completed=0;
+
+  dates.forEach(function(ds){
+    fetch('/.netlify/functions/fixtures?date='+ds)
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var events=data.events||[];
+        if(events.length>0) infMultiFixtures[ds]=events;
+        completed++;
+        if(completed===dates.length) infRender();
+      })
+      .catch(function(){
+        completed++;
+        if(completed===dates.length) infRender();
+      });
+  });
 }
 
 window.addEventListener('DOMContentLoaded',function(){
@@ -4841,6 +4890,16 @@ window.addEventListener('DOMContentLoaded',function(){
   loadUpcomingBoxes();
 
   initInfiniteScroll();
+
+  // Also re-render fixtures every 3s for first 15s to catch delayed data
+  var _infRetry=0;
+  var _infTimer=setInterval(function(){
+    _infRetry++;
+    if(_infRetry>5||Object.keys(infMultiFixtures).length>0){
+      clearInterval(_infTimer);
+      if(Object.keys(infMultiFixtures).length>0) infRender();
+    }
+  },3000);
 
 });
 
