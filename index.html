@@ -1264,17 +1264,65 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 <body>
 
+<!-- SPLASH SCREENS -->
+<div id="splash-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0b1628;z-index:9999;overflow:hidden;transition:opacity 0.5s ease">
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#1e9e6b,#c9a84c,#1e9e6b,transparent);background-size:200%;animation:splashBar 2.5s linear infinite"></div>
+  <div style="position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(30,158,107,.14);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out infinite"></div>
+  <div style="position:absolute;width:330px;height:330px;border-radius:50%;border:1px solid rgba(30,158,107,.06);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out 1s infinite"></div>
+  <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(30,158,107,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+
+  <!-- Screen 1 -->
+  <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;transition:opacity 0.4s ease">
+    <div style="text-align:center">
+      <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1">
+        <span style="color:#fff">Accu</span><span style="color:#c9a84c">Edge</span>
+      </div>
+      <div style="font-family:Outfit,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#1e9e6b;font-weight:500;margin-top:10px">Sports Research Tool</div>
+      <div style="width:28px;height:1.5px;background:linear-gradient(90deg,#c9a84c,#e0bc5a);border-radius:2px;margin:16px auto 0"></div>
+    </div>
+  </div>
+
+
+</div>
+
+<style>
+@keyframes splashBar{0%{background-position:0%}100%{background-position:200%}}
+@keyframes splashRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+</style>
+
+<script>
+(function(){
+  window.addEventListener('DOMContentLoaded',function(){
+    setTimeout(function(){
+      var overlay=document.getElementById('splash-overlay');
+      overlay.style.transition='opacity 0.5s ease';
+      overlay.style.opacity='0';
+      setTimeout(function(){
+        overlay.style.display='none';
+        var t=document.getElementById('main-topnav');
+        var m=document.getElementById('main-content');
+        var b=document.getElementById('main-bottom-nav');
+        if(t)t.style.display='';
+        if(m)m.style.display='';
+        if(b)b.style.display='';
+      },520);
+    },2800);
+  });
+})();
+</script>
+
+
 <!-- Top nav bar -->
 
-<div class="topnav">
+<div class="topnav" id="main-topnav" style="display:none">
 
   <div class="topnav-inner">
 
-    <div class="topnav-logo" onclick="showPage('home')" style="cursor:pointer">
+    <div class="topnav-logo" onclick="showPage('home')" style="cursor:pointer;line-height:1.2">
 
-      <span style="font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);display:block;margin-bottom:1px">Acca Research Tool</span>
+      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
 
-      <span style="font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-0.3px">Fixture <span style="color:var(--green)">Research</span></span>
+      <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-top:3px">Sports Research Tool</div>
 
     </div>
 
@@ -1306,7 +1354,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 </div>
 
-<div class="main">
+<div class="main" id="main-content" style="display:none">
 
   <!-- HOME PAGE -->
 
@@ -4846,7 +4894,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- Mobile bottom nav -->
 
-<div class="bottom-nav">
+<div class="bottom-nav" id="main-bottom-nav" style="display:none">
 
   <div class="bottom-nav-inner">
 
