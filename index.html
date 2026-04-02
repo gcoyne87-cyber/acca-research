@@ -1436,7 +1436,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         // Re-render fixtures after reveal
 
-        setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();infRender();renderTopFixtureCarousel();}},100);
+        setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}},100);
 
       },520);
 
@@ -1514,19 +1514,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     <div id="top-fix-section">
 
-      <!-- Tab bar: All + countries -->
+      <!-- Country tab bar -->
 
       <div class="top-tab-bar" id="top-tab-bar"></div>
 
-      <!-- Fixture carousel -->
+      <!-- League slider strip -->
 
-      <div style="font-size:11px;color:var(--green);font-weight:600;padding:8px 14px 4px">📋 Upcoming fixtures · Swipe by league →</div>
+      <div class="top-tab-bar" id="top-league-strip" style="margin-bottom:0"></div>
 
-      <div class="league-carousel-outer">
+      <!-- Single league card -->
 
-        <div class="league-carousel" id="top-fixture-carousel"></div>
-
-      </div>
+      <div id="top-fixture-carousel"></div>
 
       <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
 
@@ -5160,249 +5158,175 @@ function infRender(){
 
 }
 
-var topCarouselCountry='all';
+var topCarouselCountry='england';
+var topLeagueSelected='';
+
+var TOP_LEAGUES_BY_COUNTRY={
+  england:['4328','4329','4396','4397','4590','4681','4682'],
+  scotland:['4330','4395','4669','4670'],
+  spain:['4335','4400'],
+  germany:['4331','4406','4413'],
+  france:['4334','4401'],
+  italy:['4332','4404'],
+  netherlands:['4337','4402'],
+  portugal:['4344','4403']
+};
 
 function buildTopTabBar(){
-
   var bar=document.getElementById('top-tab-bar');
-
   if(!bar) return;
-
   var countries=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
-
   var labels={england:'England',scotland:'Scotland',spain:'Spain',germany:'Germany',france:'France',italy:'Italy',netherlands:'Netherlands',portugal:'Portugal'};
-
   bar.innerHTML='';
-
-  var allTab=document.createElement('button');
-
-  allTab.className='top-tab'+(topCarouselCountry==='all'?' active':'');
-
-  allTab.textContent='All';
-
-  allTab.onclick=function(){setTopCarouselCountry('all');};
-
-  bar.appendChild(allTab);
-
   countries.forEach(function(c){
-
     var tab=document.createElement('button');
-
     tab.className='top-tab'+(topCarouselCountry===c?' active':'');
-
     tab.textContent=labels[c];
-
     tab.onclick=(function(cc){return function(){setTopCarouselCountry(cc);};})(c);
-
     bar.appendChild(tab);
-
   });
+}
 
+function buildTopLeagueStrip(){
+  var strip=document.getElementById('top-league-strip');
+  if(!strip) return;
+  var leagues=TOP_LEAGUES_BY_COUNTRY[topCarouselCountry]||[];
+  // Find which leagues actually have fixtures
+  var allF=[];
+  Object.keys(infMultiFixtures).forEach(function(ds){
+    (infMultiFixtures[ds]||[]).forEach(function(f){allF.push(f);});
+  });
+  var available=leagues.filter(function(id){
+    return allF.some(function(f){return String(f.leagueId)===String(id);});
+  });
+  if(!available.length){
+    // fallback — show all leagues for country even if no fixtures yet
+    available=leagues;
+  }
+  // Auto-select first if current selection not in this country
+  if(!available.includes(topLeagueSelected)){
+    topLeagueSelected=available[0]||'';
+  }
+  strip.innerHTML=available.map(function(id){
+    var l=INF_LEAGUES.find(function(x){return x.id===id;})||{name:id};
+    return '<button class="top-tab'+(topLeagueSelected===id?' active':'')+'" onclick="setTopLeague(\''+id+'\')">'+l.name+'</button>';
+  }).join('');
 }
 
 function setTopCarouselCountry(c){
-
   topCarouselCountry=c;
-
+  topLeagueSelected='';
   buildTopTabBar();
-
+  buildTopLeagueStrip();
   renderTopFixtureCarousel();
+}
 
+function setTopLeague(id){
+  topLeagueSelected=id;
+  buildTopLeagueStrip();
+  renderTopFixtureCarousel();
 }
 
 function renderTopFixtureCarousel(){
-
-  var carousel=document.getElementById('top-fixture-carousel');
-
+  var container=document.getElementById('top-fixture-carousel');
   var loader=document.getElementById('top-fixture-loader');
+  if(!container) return;
 
-  if(!carousel) return;
-
-  // Collect all fixtures from infMultiFixtures
-
+  // Collect all fixtures
   var allF=[];
-
   Object.keys(infMultiFixtures).forEach(function(dateStr){
-
     (infMultiFixtures[dateStr]||[]).forEach(function(f){
-
       f._dateStr=dateStr;
-
       allF.push(f);
-
     });
-
   });
 
-  // Filter by country tab
-
-  var leaguesToShow=topCarouselCountry==='all'
-
-    ? INF_LEAGUES
-
-    : INF_LEAGUES.filter(function(l){return l.country===topCarouselCountry;});
-
-  var cards=[];
-
-  leaguesToShow.forEach(function(league){
-
-    var lf=allF.filter(function(f){return String(f.leagueId)===String(league.id);});
-
-    if(!lf.length) return;
-
-    // GAMEWEEK LOGIC: find earliest date, then include all fixtures within 4 days of that date
-
-    var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean);
-
-    dates.sort();
-
-    var firstDate=new Date(dates[0]+'T12:00:00');
-
-    var cutoff=new Date(firstDate);
-
-    cutoff.setDate(cutoff.getDate()+2);
-
-    // Include all fixtures within that 4-day window
-
-    lf=lf.filter(function(f){
-
-      var fd=new Date((f._dateStr||'')+'T12:00:00');
-
-      return fd<=cutoff;
-
-    });
-
-    // Sort by date then time
-
-    lf.sort(function(a,b){
-
-      var ad=(a._dateStr||'')+(a.time||'99:99');
-
-      var bd=(b._dateStr||'')+(b.time||'99:99');
-
-      return ad.localeCompare(bd);
-
-    });
-
-    if(!lf.length) return;
-
-    // Date label for header
-
-    var dateLabel='';
-
-    try{
-
-      var dd=new Date(dates[0]+'T12:00:00');
-
-      var today=new Date();today.setHours(0,0,0,0);
-
-      var diff=Math.round((dd-today)/86400000);
-
-      if(diff===0) dateLabel='Today';
-
-      else if(diff===1) dateLabel='Tomorrow';
-
-      else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-
-    }catch(e){}
-
-    var rows=lf.map(function(f){
-
-      var ko=formatKickoff(f.date,f.time)||'TBC';
-
-      // Show day label if different from first date
-
-      var dayTag='';
-
-      if(f._dateStr!==dates[0]){
-
-        try{
-
-          var fd=new Date(f._dateStr+'T12:00:00');
-
-          var today2=new Date();today2.setHours(0,0,0,0);
-
-          var diff2=Math.round((fd-today2)/86400000);
-
-          dayTag=diff2===0?'Today':diff2===1?'Tomorrow':fd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-
-          dayTag='<span style="font-size:9px;background:#f0f2f7;color:#5a6478;padding:1px 5px;border-radius:4px;margin-left:4px">'+dayTag+'</span>';
-
-        }catch(e){}
-
+  if(!topLeagueSelected){
+    // pick first available league for this country
+    var countryLeagues=TOP_LEAGUES_BY_COUNTRY[topCarouselCountry]||[];
+    for(var i=0;i<countryLeagues.length;i++){
+      var lid=countryLeagues[i];
+      if(allF.some(function(f){return String(f.leagueId)===String(lid);})){
+        topLeagueSelected=lid;
+        break;
       }
-
-      return '<div class="lc-fx">'
-
-        +(function(){
-
-          var o=getDummyOdds(f.home,f.away);
-
-          var lg=escHtml(league.name);
-
-          return '<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
-
-            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>';
-
-        })()
-
-        +'</div>';
-
-    }).join('');
-
-    cards.push('<div class="lc-card">'
-
-      +'<div class="lc-head">'
-
-      +'<div class="lc-league">'+escHtml(league.name)+'</div>'
-
-      +'<div class="lc-right">'
-
-      +'<div class="lc-date">'+dateLabel+'</div>'
-
-      +'<div class="lc-count">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
-
-      +'</div></div>'
-
-      +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
-
-      +rows
-
-      +'<div class="analyse-all-wrap">'
-
-      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">' 
-
-      +'<span>✦</span> Analyse All Fixtures with AI →'
-
-      +'</button>'
-
-      +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
-
-      +'</div>'
-
-      +'</div>');
-
-  });
-
-  if(!cards.length){
-
-    carousel.innerHTML='';
-
-    if(loader){loader.textContent='No fixtures found.';loader.style.display='block';}
-
-    return;
-
+    }
+    if(!topLeagueSelected&&countryLeagues.length) topLeagueSelected=countryLeagues[0];
+    buildTopLeagueStrip();
   }
 
-  carousel.innerHTML=cards.join('');
+  var league=INF_LEAGUES.find(function(l){return l.id===topLeagueSelected;});
+  if(!league){
+    container.innerHTML='';
+    if(loader){loader.textContent='No fixtures found.';loader.style.display='block';}
+    return;
+  }
 
+  // Get fixtures for selected league
+  var lf=allF.filter(function(f){return String(f.leagueId)===String(topLeagueSelected);});
+
+  // Gameweek logic: earliest date + 2 days window
+  if(lf.length){
+    var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean).sort();
+    var firstDate=new Date(dates[0]+'T12:00:00');
+    var cutoff=new Date(firstDate);
+    cutoff.setDate(cutoff.getDate()+2);
+    lf=lf.filter(function(f){
+      return new Date((f._dateStr||'')+'T12:00:00')<=cutoff;
+    });
+    lf.sort(function(a,b){
+      return ((a._dateStr||'')+(a.time||'99:99')).localeCompare((b._dateStr||'')+(b.time||'99:99'));
+    });
+  }
+
+  if(!lf.length){
+    container.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted)">No upcoming fixtures for '+league.name+'</div>';
+    if(loader) loader.style.display='none';
+    return;
+  }
+
+  // Date label
+  var dateLabel='';
+  try{
+    var dd=new Date((lf[0]._dateStr||'')+'T12:00:00');
+    var today=new Date();today.setHours(0,0,0,0);
+    var diff=Math.round((dd-today)/86400000);
+    if(diff===0) dateLabel='Today';
+    else if(diff===1) dateLabel='Tomorrow';
+    else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  }catch(e){}
+
+  var rows=lf.map(function(f){
+    var ko=formatKickoff(f.date,f.time)||'TBC';
+    var o=getDummyOdds(f.home,f.away);
+    var lg=escHtml(league.name);
+    return '<div class="inf-fx">'
+      +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
+      +'</div>';
+  }).join('');
+
+  var card='<div class="inf-league-block">'
+    +'<div class="inf-league-head">'
+    +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
+    +'<div class="inf-league-meta">'+dateLabel+' &middot; '+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+    +'</div>'
+    +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
+    +rows
+    +'<div class="analyse-all-wrap">'
+    +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">'
+    +'<span>✦</span> Analyse All Fixtures with AI →'
+    +'</button>'
+    +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
+    +'</div>'
+    +'</div>';
+
+  container.innerHTML=card;
   if(loader) loader.style.display='none';
-
 }
+
 
 function getDummyOdds(home, away){
 
@@ -5502,7 +5426,7 @@ function initInfiniteScroll(){
 
         completed++;
 
-        if(completed===dates.length){infRender();buildTopTabBar();renderTopFixtureCarousel();}
+        if(completed===dates.length){infRender();buildTopTabBar();buildTopLeagueStrip();renderTopFixtureCarousel();}
 
       })
 
@@ -5510,7 +5434,7 @@ function initInfiniteScroll(){
 
         completed++;
 
-        if(completed===dates.length){infRender();buildTopTabBar();renderTopFixtureCarousel();}
+        if(completed===dates.length){infRender();buildTopTabBar();buildTopLeagueStrip();renderTopFixtureCarousel();}
 
       });
 
@@ -5540,6 +5464,10 @@ window.addEventListener('DOMContentLoaded',function(){
 
   loadUpcomingBoxes();
 
+  buildTopTabBar();
+
+  buildTopLeagueStrip();
+
   initInfiniteScroll();
 
   // Also re-render fixtures every 3s for first 15s to catch delayed data
@@ -5554,7 +5482,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
       clearInterval(_infTimer);
 
-      if(Object.keys(infMultiFixtures).length>0){buildTopTabBar();infRender();renderTopFixtureCarousel();}
+      if(Object.keys(infMultiFixtures).length>0){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}
 
     }
 
