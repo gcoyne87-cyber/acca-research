@@ -4561,16 +4561,18 @@ function renderLeaderboard(){
 function renderPopularPicks(){
   var el=document.getElementById('popular-body');
   if(!el) return;
+  var borders=['#c9a84c','#9aa3b5','#b87c4a'];
   var badges=[
     {bg:'#fef3c7',color:'#92400e',label:'Top Pick'},
     {bg:'#e2e8f0',color:'#475569',label:'2nd'},
     {bg:'#fde7cc',color:'#7c2d12',label:'3rd'}
   ];
   el.innerHTML=POPULAR_PICKS.map(function(p,i){
+    var added=slipLegs.some(function(s){return s.legId==='leg_'+p.fid;});
     var badge=badges[i]||null;
-    var pillBg=badge?badge.bg:'#f0f2f7';
-    var pillColor=badge?badge.color:'#5a6478';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:.5px solid var(--border)">'      +'<div style="background:'+pillBg+';color:'+pillColor+';font-size:13px;font-weight:700;width:48px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+p.pct+'%</div>'      +'<div style="flex:1;min-width:0">'      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted)">'+escHtml(p.fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500;margin-top:2px">'+p.pct+'% of our community have selected this team</div>'      +'</div>'      +'<div style="background:#f0f2f7;color:var(--navy);font-size:13px;font-weight:700;width:48px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+escHtml(p.odds||'')+'</div>'      +'</div>';
+    var border=borders[i]||'transparent';
+    var fixture=p.fixture.replace(/\s*·\s*Sat\s+\d+:\d+/,'').replace(/\s*·\s*Sun\s+\d+:\d+/,'').replace(/\s*·\s*\w+\s+\d+:\d+/,'');
+    return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<div style="background:#f0f2f7;color:var(--navy);font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center">'+escHtml(p.odds||'')+'</div>'      +'</div>'      +'</div>';
   }).join('');
 }
 function addPopularToSlip(btn){
