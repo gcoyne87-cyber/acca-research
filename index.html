@@ -1362,6 +1362,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 @media(max-width:600px){.top-tab-bar{margin:0 -16px;padding:0 16px}}
 
+/* ── RISK TIER TABS ── */
+.risk-tab{padding:7px 16px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-family:inherit;transition:all .18s;white-space:nowrap}
+.risk-tab:hover{border-color:var(--navy);color:var(--navy)}
+.risk-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
 </style>
 
 </head>
@@ -1532,13 +1537,55 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         <div id="home-widgets">
 
-      <!-- 1. Most Selected Today -->
+      <!-- 1. Trending Accumulators -->
+
+      <div class="home-section" id="trending-section">
+
+        <!-- Header -->
+
+        <div style="margin-bottom:14px">
+
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+
+            <span style="font-size:22px">🔥</span>
+
+            <div style="font-size:20px;font-weight:700;color:var(--navy);letter-spacing:-0.3px">Trending Accumulators</div>
+
+          </div>
+
+          <div style="font-size:13px;color:var(--mid);line-height:1.6;margin-bottom:12px">Built from a combination of what our users are backing and our AI algorithm — the most researched selections on the platform right now.</div>
+
+          <!-- Risk tier filter -->
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+
+            <button class="risk-tab active" id="risk-all" onclick="setRiskFilter('all',this)">All</button>
+
+            <button class="risk-tab" id="risk-low" onclick="setRiskFilter('low',this)">🟢 Low Risk</button>
+
+            <button class="risk-tab" id="risk-mid" onclick="setRiskFilter('mid',this)">🟡 Mid Risk</button>
+
+            <button class="risk-tab" id="risk-high" onclick="setRiskFilter('high',this)">🔴 High Risk</button>
+
+          </div>
+
+        </div>
+
+        <div class="trend-carousel-outer">
+
+          <div class="trend-carousel" id="trending-stacked"></div>
+
+        </div>
+
+      </div>
+
+      <!-- 2. Most Selected Today -->
 
       <div class="home-section" id="most-selected-section">
 
         <div class="home-section-head-a">
 
-          <span class="sec-emoji">🔥</span>
+          <span class="sec-emoji">⚡</span>
 
           <div class="sec-title">Most Selected Today</div>
 
@@ -1554,55 +1601,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       </div>
 
-      <!-- 2. Trending Selections -->
-
-      <div class="home-section">
-
-        <div class="home-section-head-t3">
-
-          <span class="sec-emoji">⚡</span>
-
-          <div class="sec-title">Trending Selections</div>
-
-          <div class="sec-sub">Most added combos this week</div>
-
-          <div class="sec-swipe">Swipe right to browse →</div>
-
-        </div>
-
-        <div class="trend-carousel-outer">
-
-          <div class="trend-carousel" id="trending-stacked"></div>
-
-        </div>
-
-      </div>
-
-      <!-- 3. What Others Are Picking -->
-
-      <div style="margin-bottom:0!important" id="wop-section">
-
-        <div class="home-section-head-a">
-
-          <span class="sec-emoji">👥</span>
-
-          <div class="sec-title">What Others Are Picking</div>
-
-          <div class="sec-sub">This week's community selections</div>
-
-          <div class="sec-swipe">Swipe right to browse →</div>
-
-        </div>
-
-        <div class="wop-carousel-outer">
-
-          <div class="wop-carousel" id="community-carousel"></div>
-
-        </div>
-
-      </div>
-
-      <!-- 4. All Fixtures with Filter + Infinite Scroll -->
+      <!-- 3. All Fixtures with Filter + Infinite Scroll -->
 
       <div style="margin-top:0!important" id="infinite-fixtures-section">
 
@@ -3412,91 +3411,57 @@ function goHome(){
 
 var TRENDING_ACCAS=[
 
-  {
+  {risk:'low',legs:[
+    {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+    {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+  ],label:'2-Leg · Low Risk',winRate:'74%'},
 
-    legs:[
+  {risk:'low',legs:[
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+    {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+    {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+  ],label:'3-Leg · Low Risk',winRate:'68%'},
 
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+  {risk:'mid',legs:[
+    {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+  ],label:'3-Leg · Mid Risk',winRate:'61%'},
 
-      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+  {risk:'mid',legs:[
+    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+    {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+  ],label:'4-Leg · Mid Risk',winRate:'51%'},
 
-      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+  {risk:'high',legs:[
+    {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00',odds:'5/4'},
+    {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+    {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+    {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+  ],label:'5-Leg · High Risk',winRate:'38%'},
 
-    ],
-
-    label:'3-Leg Acca',winRate:'68%'
-
-  },
-
-  {
-
-    legs:[
-
-      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
-
-      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
-
-    ],
-
-    label:'2-Leg Acca',winRate:'74%'
-
-  },
-
-  {
-
-    legs:[
-
-      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
-
-      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
-
-      {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
-
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
-
-    ],
-
-    label:'4-Leg Acca',winRate:'51%'
-
-  },
-
-  {
-
-    legs:[
-
-      {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00',odds:'5/4'},
-
-      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
-
-      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
-
-      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
-
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
-
-    ],
-
-    label:'5-Leg Acca',winRate:'38%'
-
-  },
-
-  {
-
-    legs:[
-
-      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
-
-      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
-
-      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
-
-    ],
-
-    label:'3-Leg Acca',winRate:'61%'
-
-  },
+  {risk:'high',legs:[
+    {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+    {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+    {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+  ],label:'6-Leg · High Risk',winRate:'24%'},
 
 ];
+
+var currentRiskFilter='all';
+
+function setRiskFilter(risk,btn){
+  currentRiskFilter=risk;
+  document.querySelectorAll('.risk-tab').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderTrendingAccas();
+}
 
 function calcAccaOdds(legs){
 
@@ -3541,57 +3506,28 @@ function calcAccaOdds(legs){
 function renderTrendingAccas(){
 
   var el=document.getElementById('trending-stacked');
-
   if(!el) return;
 
-  el.innerHTML=TRENDING_ACCAS.map(function(a,i){
+  var riskColors={low:'#1e9e6b',mid:'#e8890c',high:'#e53935'};
+  var riskLabels={low:'🟢 Low Risk',mid:'🟡 Mid Risk',high:'🔴 High Risk'};
 
-    return '<div class="trend-card">'
+  var filtered=TRENDING_ACCAS.filter(function(a){
+    return currentRiskFilter==='all'||a.risk===currentRiskFilter;
+  });
 
-      +'<div class="trend-card-header">'
+  if(!filtered.length){
+    el.innerHTML='<div style="padding:24px;text-align:center;font-size:13px;color:var(--muted)">No accas in this tier yet.</div>';
+    return;
+  }
 
-      +'<span class="trend-pill-badge"><span class="fire">🔥</span> '+a.legs.length+' Selections</span>'
+  el.innerHTML=filtered.map(function(a,i){
+    var realIdx=TRENDING_ACCAS.indexOf(a);
+    var riskCol=riskColors[a.risk]||'var(--green)';
+    var riskLbl=riskLabels[a.risk]||'';
 
-      +'</div>'
-
-      +'<div class="trend-card-body" style="padding:0 16px">'
-
-      +a.legs.map(function(l){
-
-        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:.5px solid var(--border)">'
-
-          +'<div style="min-width:0">'
-
-          +'<div class="trend-team">'+escHtml(l.team)+'</div>'
-
-          +'<div class="trend-detail">'+escHtml(l.detail)+'</div>'
-
-          +'</div>'
-
-          +(l.odds?'<div class="trend-leg-odds" onclick="this.classList.toggle(\'selected\');">'+escHtml(l.odds)+'</div>':'')
-
-          +'</div>';
-
-      }).join('')
-
-      +'</div>'
-
-      +'<div class="trend-acca-section">'
-
-      +'<div class="trend-acca-lbl">Acca odds</div>'
-
-      +'<div class="trend-acca-odds">'+calcAccaOdds(a.legs)+'</div>'
-
-      +'<button class="trend-btn" id="trend-btn-'+i+'" onclick="addTrendingAcca('+i+',this)">+ Add These Selections</button>'
-
-      +'</div>'
-
-      +'</div>';
-
-  }).join('');
+    return '<div class="trend-card">'      +'<div class="trend-card-header" style="display:flex;align-items:center;justify-content:space-between">'      +'<span style="font-size:11px;font-weight:700;color:'+riskCol+';letter-spacing:.06em;text-transform:uppercase">'+riskLbl+'</span>'      +'<span style="font-size:11px;color:var(--muted);font-weight:500">'+a.legs.length+' selections</span>'      +'</div>'      +'<div class="trend-card-body" style="padding:0 16px">'      +a.legs.map(function(l){        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:.5px solid var(--border)">'          +'<div style="min-width:0">'          +'<div class="trend-team">'+escHtml(l.team)+'</div>'          +'<div class="trend-detail">'+escHtml(l.detail)+'</div>'          +'</div>'          +(l.odds?'<div class="trend-leg-odds" onclick="this.classList.toggle(\'selected\');">'+escHtml(l.odds)+'</div>':'')          +'</div>';      }).join('')      +'</div>'      +'<div class="trend-acca-section">'      +'<div class="trend-acca-lbl">Combined odds</div>'      +'<div class="trend-acca-odds">'+calcAccaOdds(a.legs)+'</div>'      +'<button class="trend-btn" id="trend-btn-'+realIdx+'" onclick="addTrendingAcca('+realIdx+',this)">+ Add to My Slip</button>'      +'</div>'      +'</div>';  }).join('');
 
 }
-
 function addTrendingAcca(idx,btn){
 
   var a=TRENDING_ACCAS[idx];
