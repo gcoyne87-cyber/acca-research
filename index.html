@@ -1113,6 +1113,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-pick-meta{font-size:12px;color:var(--muted);margin-top:2px;font-weight:400}
 
+.wop-pick-odds{background:#f0f2f7;color:#0b1628;font-size:14px;font-weight:700;padding:6px 12px;border-radius:8px;flex-shrink:0;margin-left:10px;white-space:nowrap}
+.trend-leg-odds{background:#f0f2f7;color:#0b1628;font-size:13px;font-weight:700;padding:5px 10px;border-radius:7px;flex-shrink:0;margin-left:8px;white-space:nowrap}
 .wop-cta-wrap{padding:10px 14px 14px}
 
 .wop-cta{display:block;width:100%;background:var(--green);color:#fff;border:none;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:10px;text-align:center;letter-spacing:.02em;transition:background .18s}
@@ -3264,87 +3266,46 @@ function goHome(){
 var TRENDING_ACCAS=[
 
   {
-
     legs:[
-
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00'},
-
-      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00'},
-
-      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30'},
-
+      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
     ],
-
     label:'3-Leg Acca',winRate:'68%'
-
   },
-
   {
-
     legs:[
-
-      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00'},
-
-      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00'},
-
+      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
     ],
-
     label:'2-Leg Acca',winRate:'74%'
-
   },
-
   {
-
     legs:[
-
-      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00'},
-
-      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30'},
-
-      {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00'},
-
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00'},
-
+      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+      {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
     ],
-
     label:'4-Leg Acca',winRate:'51%'
-
   },
-
   {
-
     legs:[
-
-      {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00'},
-
-      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00'},
-
-      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00'},
-
-      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30'},
-
-      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00'},
-
+      {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00',odds:'5/4'},
+      {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+      {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+      {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+      {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
     ],
-
     label:'5-Leg Acca',winRate:'38%'
-
   },
-
   {
-
     legs:[
-
-      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00'},
-
-      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00'},
-
-      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30'},
-
+      {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+      {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+      {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
     ],
-
     label:'3-Leg Acca',winRate:'61%'
-
   },
 
 ];
@@ -3368,15 +3329,13 @@ function renderTrendingAccas(){
       +'<div class="trend-card-body">'
 
       +a.legs.map(function(l){
-
-        return '<div>'
-
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+          +'<div style="min-width:0">'
           +'<div class="trend-team">'+escHtml(l.team)+'</div>'
-
           +'<div class="trend-detail">'+escHtml(l.detail)+'</div>'
-
+          +'</div>'
+          +(l.odds?'<div class="trend-leg-odds">'+escHtml(l.odds)+'</div>':'')
           +'</div>';
-
       }).join('')
 
       +'</div>'
@@ -3449,91 +3408,91 @@ var COMMUNITY_ACCAS=[
 
    tags:[{label:'92% L1 hit rate',cls:'hot'},{label:'Championship',cls:'league'},{label:'6 streak',cls:'streak'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'}]},
 
   {user:'AccaKing',tier:'gold',pct:80,form:'12 of 15 correct · last 3 wks',
 
    tags:[{label:'Scottish Prem specialist',cls:'strong'},{label:'80% win rate',cls:'hot'},{label:'4 streak',cls:'streak'}],
 
-   legs:[{team:'Celtic',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'},{team:'PSG',meta:'Ligue 1 · Sat 21:00 · v Marseille'}]},
+   legs:[{team:'Celtic',odds:'4/7',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'},{team:'PSG',odds:'4/6',meta:'Ligue 1 · Sat 21:00 · v Marseille'}]},
 
   {user:'SharpBet',tier:'silver',pct:78,form:'11 of 14 correct · last 3 wks',
 
    tags:[{label:'78% L2 hit rate',cls:'hot'},{label:'Value hunter',cls:'strong'},{label:'League Two',cls:'league'}],
 
-   legs:[{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'},{team:'NEC Nijmegen',meta:'Eredivisie · Sat 16:30 · v Ajax'}]},
+   legs:[{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'},{team:'NEC Nijmegen',odds:'7/5',meta:'Eredivisie · Sat 16:30 · v Ajax'}]},
 
   {user:'RyanP',tier:'gold',pct:81,form:'13 of 16 correct · last 3 wks',
 
    tags:[{label:'82% Championship',cls:'hot'},{label:'Championship',cls:'league'},{label:'5 streak',cls:'streak'}],
 
-   legs:[{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'}]},
+   legs:[{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'}]},
 
   {user:'PaulD',tier:'silver',pct:76,form:'10 of 13 correct · last 3 wks',
 
    tags:[{label:'Ligue 1 expert',cls:'strong'},{label:'75% correct',cls:'hot'},{label:'Long odds',cls:'streak'}],
 
-   legs:[{team:'Rennes',meta:'Ligue 1 · Sat 17:00 · v Lyon'},{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'}]},
+   legs:[{team:'Rennes',odds:'EVS',meta:'Ligue 1 · Sat 17:00 · v Lyon'},{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'}]},
 
   {user:'SeanF',tier:'silver',pct:75,form:'9 of 12 correct · last 3 wks',
 
    tags:[{label:'Eredivisie specialist',cls:'strong'},{label:'League One',cls:'league'},{label:'Safe picks',cls:'hot'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'}]},
 
   {user:'TomR',tier:'bronze',pct:69,form:'9 of 13 correct · last 3 wks',
 
    tags:[{label:'Scottish specialist',cls:'strong'},{label:'3 streak',cls:'streak'},{label:'Doubles',cls:'league'}],
 
-   legs:[{team:'Celtic',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Stenhousemuir',meta:'Scottish L1 · Sat 15:00 · v Dumbarton'}]},
+   legs:[{team:'Celtic',odds:'4/7',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Stenhousemuir',odds:'5/4',meta:'Scottish L1 · Sat 15:00 · v Dumbarton'}]},
 
   {user:'DaveK',tier:'bronze',pct:72,form:'8 of 11 correct · last 3 wks',
 
    tags:[{label:'9 of last 11 correct',cls:'hot'},{label:'L1 & L2',cls:'league'},{label:'Safe picks',cls:'strong'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'}]},
 
   {user:'JohnB',tier:'gold',pct:78,form:'11 of 14 correct · last 3 wks',
 
    tags:[{label:'High value accas',cls:'hot'},{label:'Eredivisie',cls:'league'},{label:'4 streak',cls:'streak'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'}]},
 
   {user:'ChrisW',tier:'bronze',pct:66,form:'8 of 12 correct · last 3 wks',
 
    tags:[{label:'League One expert',cls:'strong'},{label:'67% L1 hit rate',cls:'hot'}],
 
-   legs:[{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'},{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'}]},
+   legs:[{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'},{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'}]},
 
   {user:'KevinM',tier:'silver',pct:71,form:'10 of 14 correct · last 3 wks',
 
    tags:[{label:'71% correct',cls:'hot'},{label:'Primeira Liga',cls:'league'},{label:'Safe triples',cls:'strong'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Benfica',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Benfica',odds:'7/4',meta:'Primeira Liga · Sat 20:30 · v Sporting'},{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'}]},
 
   {user:'MikeH',tier:'bronze',pct:70,form:'7 of 10 correct · last 3 wks',
 
    tags:[{label:'3 streak',cls:'streak'},{label:'Championship',cls:'league'},{label:'Doubles',cls:'strong'}],
 
-   legs:[{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'}]},
+   legs:[{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'},{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'}]},
 
   {user:'LiamT',tier:'silver',pct:73,form:'11 of 15 correct · last 3 wks',
 
    tags:[{label:'Ligue 1 & Eredivisie',cls:'strong'},{label:'73% hit rate',cls:'hot'},{label:'Value bets',cls:'streak'}],
 
-   legs:[{team:'Rennes',meta:'Ligue 1 · Sat 17:00 · v Lyon'},{team:'NEC Nijmegen',meta:'Eredivisie · Sat 16:30 · v Ajax'},{team:'Celtic',meta:'Scottish Prem · Sat 15:00 · v Hearts'}]},
+   legs:[{team:'Rennes',odds:'EVS',meta:'Ligue 1 · Sat 17:00 · v Lyon'},{team:'NEC Nijmegen',odds:'7/5',meta:'Eredivisie · Sat 16:30 · v Ajax'},{team:'Celtic',odds:'4/7',meta:'Scottish Prem · Sat 15:00 · v Hearts'}]},
 
   {user:'NiallC',tier:'gold',pct:76,form:'13 of 17 correct · last 3 wks',
 
    tags:[{label:'76% all leagues',cls:'hot'},{label:'7 streak',cls:'streak'},{label:'L2 specialist',cls:'league'}],
 
-   legs:[{team:'Bromley',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Lincoln City',meta:'League One · Sat 15:00 · v Wigan'},{team:'Burnley',meta:'Championship · Sat 15:00 · v Sheff Wed'}]},
+   legs:[{team:'Bromley',odds:'6/4',meta:'League Two · Sat 15:00 · v Notts County'},{team:'Lincoln City',odds:'EVS',meta:'League One · Sat 15:00 · v Wigan'},{team:'Burnley',odds:'4/6',meta:'Championship · Sat 15:00 · v Sheff Wed'}]},
 
   {user:'BarryF',tier:'bronze',pct:61,form:'8 of 13 correct · last 3 wks',
 
    tags:[{label:'Scottish football',cls:'strong'},{label:'Local knowledge',cls:'hot'}],
 
-   legs:[{team:'Stenhousemuir',meta:'Scottish L1 · Sat 15:00 · v Dumbarton'},{team:'Celtic',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Leeds United',meta:'Championship · Sat 15:00 · v Millwall'}]},
+   legs:[{team:'Stenhousemuir',odds:'5/4',meta:'Scottish L1 · Sat 15:00 · v Dumbarton'},{team:'Celtic',odds:'4/7',meta:'Scottish Prem · Sat 15:00 · v Hearts'},{team:'Leeds United',odds:'8/11',meta:'Championship · Sat 15:00 · v Millwall'}]},
 
 ];
 
@@ -3619,14 +3578,12 @@ function renderCommunityAccas(){
 
     var picksHtml=a.legs.map(function(l,li){
 
-      return '<div class="wop-pick">'
-
+      return '<div class="wop-pick" style="display:flex;align-items:center;justify-content:space-between">'
+        +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
         +'<div class="wop-pick-n">'+(li+1)+'</div>'
-
-        +'<div><div class="wop-pick-team">'+escHtml(l.team)+'</div>'
-
-        +'<div class="wop-pick-meta">'+escHtml(l.meta)+'</div></div>'
-
+        +'<div style="min-width:0"><div class="wop-pick-team">'+escHtml(l.team)+'</div>'
+        +'<div class="wop-pick-meta">'+escHtml(l.meta)+'</div></div></div>'
+        +(l.odds?'<div class="wop-pick-odds">'+escHtml(l.odds)+'</div>':'')
         +'</div>';
 
     }).join('');
