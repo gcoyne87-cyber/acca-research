@@ -2337,7 +2337,10 @@ function renderLeagueCarousel(){
 
       var ko=formatKickoff(f.date,f.time)||'TBC';
 
-      return '<div class="lc-fx"><div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>';
+      return '<div class="lc-fx">'
+        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>'
+        +'<div class="lc-odd">-</div><div class="lc-odd">-</div><div class="lc-odd">-</div>'
+        +'</div>';
 
     }).join('');
 
@@ -2348,6 +2351,7 @@ function renderLeagueCarousel(){
       +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
 
       +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
+      +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
 
       +rows
 
@@ -4948,7 +4952,8 @@ function renderTopFixtureCarousel(){
         }catch(e){}
       }
       return '<div class="lc-fx">'
-        +'<div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+dayTag+'</div>'
+        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>'
+        +'<div class="lc-odd">-</div><div class="lc-odd">-</div><div class="lc-odd">-</div>'
         +'<div class="lc-time">'+ko+'</div>'
         +'</div>';
     }).join('');
