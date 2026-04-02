@@ -946,9 +946,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   /* TRENDING */
 
-  .trend-card{padding:18px 18px 16px;margin-bottom:14px;border-radius:14px}
+  .trend-card{padding:16px;border-radius:14px;width:calc(100vw - 52px);max-width:340px}
 
-  .trend-team{font-size:17px;font-weight:600}
+  .trend-team{font-size:18px;font-weight:600}
 
   .trend-detail{font-size:13px;margin-top:4px}
 
@@ -956,25 +956,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .trend-card-body{gap:12px;margin-bottom:18px}
 
-  .trend-btn{font-size:14px;padding:14px;border-radius:11px}
+  .trend-btn{font-size:15px;padding:15px;border-radius:11px}
 
   /* WHAT OTHERS ARE PICKING */
 
-  .wop-card{width:calc(100vw - 60px);max-width:300px}
+  .wop-card{width:calc(100vw - 52px);max-width:340px}
 
   .wop-hero{padding:14px 14px 12px}
 
-  .wop-pct-ring{width:72px;height:72px}
+  .wop-pct-ring{width:80px;height:80px}
 
-  .wop-pct-ring svg{width:72px;height:72px}
+  .wop-pct-ring svg{width:80px;height:80px}
 
-  .wop-pct-num{font-size:20px;font-weight:700}
+  .wop-pct-num{font-size:22px;font-weight:700}
 
-  .wop-pick-team{font-size:15px;font-weight:500}
+  .wop-pick-team{font-size:17px;font-weight:600}
 
   .wop-pick-meta{font-size:11px}
 
-  .wop-cta{font-size:14px;padding:13px}
+  .wop-cta{font-size:15px;padding:14px}
 
   /* LEADERBOARD */
 
@@ -1024,9 +1024,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── TRENDING STACKED CARDS ── */
 
-.trend-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.trend-carousel-outer{overflow:hidden;margin:0 -24px;padding:0 24px}
+.trend-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;align-items:stretch}
+.trend-carousel::-webkit-scrollbar{display:none}
+.trend-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:16px;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 52px);max-width:340px;display:flex;flex-direction:column}
 
-.trend-card:last-child{margin-bottom:0}
+
 
 .trend-card-header{margin-bottom:10px}
 
@@ -1036,13 +1039,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .trend-card-label{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.02em}
 
-.trend-card-body{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.trend-card-body{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;flex:1}
 
-.trend-team{font-size:17px;font-weight:600;color:var(--navy);line-height:1.2}
+.trend-team{font-size:18px;font-weight:600;color:var(--navy);line-height:1.2}
 
-.trend-detail{font-size:13px;color:var(--muted);margin-top:4px}
+.trend-detail{font-size:13px;color:var(--muted);margin-top:3px}
 
-.trend-btn{width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
+.trend-btn{width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
 
 .trend-btn:hover{opacity:.88}
 
@@ -1054,11 +1057,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 #wop-section{margin-bottom:0!important}
 #infinite-fixtures-section{margin-top:0!important}
 
-.wop-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:0;align-items:flex-start}
+.wop-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:0;align-items:stretch}
 
 .wop-carousel::-webkit-scrollbar{display:none}
 
-.wop-card{background:var(--white);border-radius:16px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 72px);max-width:300px;display:flex;flex-direction:column;border:1.5px solid var(--border)}
+.wop-card{background:var(--white);border-radius:16px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 52px);max-width:340px;display:flex;flex-direction:column;border:1.5px solid var(--border)}
 
 .wop-card.gold{border-left:4px solid #c9a84c}
 
@@ -1072,15 +1075,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-pct-block{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:72px}
 
-.wop-pct-ring{position:relative;width:72px;height:72px;flex-shrink:0}
+.wop-pct-ring{position:relative;width:80px;height:80px;flex-shrink:0}
 
-.wop-pct-ring svg{position:absolute;top:0;left:0;width:72px;height:72px}
+.wop-pct-ring svg{position:absolute;top:0;left:0;width:80px;height:80px}
 
-.wop-pct-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-0.5px}
+.wop-pct-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--navy);line-height:1;letter-spacing:-0.5px}
 
 .wop-hero-right{flex:1;min-width:0;padding-top:2px}
 
-.wop-specialist{display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.wop-specialist{display:inline-block;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 
 .wop-specialist.gold{background:#fef3c7;color:#78350f}
 
@@ -1094,11 +1097,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-streak-dot.cold{background:#f59e0b}
 
-.wop-streak-txt{font-size:11px;color:var(--muted)}
+.wop-streak-txt{font-size:12px;color:var(--muted)}
 
 .wop-balls{display:flex;gap:3px;align-items:center}
 
-.wop-picks{padding:6px 14px 6px;border-top:1px solid var(--border)}
+.wop-picks{padding:6px 14px 6px;border-top:1px solid var(--border);flex:1}
 
 .wop-pick{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-bottom:1px solid var(--border)}
 
@@ -1106,13 +1109,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-pick-n{width:20px;height:20px;border-radius:50%;background:var(--soft);font-size:10px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px}
 
-.wop-pick-team{font-size:15px;font-weight:500;color:var(--navy);line-height:1.2}
+.wop-pick-team{font-size:17px;font-weight:600;color:var(--navy);line-height:1.2}
 
-.wop-pick-meta{font-size:11px;color:var(--muted);margin-top:2px;font-weight:400}
+.wop-pick-meta{font-size:12px;color:var(--muted);margin-top:2px;font-weight:400}
 
 .wop-cta-wrap{padding:10px 14px 14px}
 
-.wop-cta{display:block;width:100%;background:var(--green);color:#fff;border:none;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:10px;text-align:center;letter-spacing:.02em;transition:background .18s}
+.wop-cta{display:block;width:100%;background:var(--green);color:#fff;border:none;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:10px;text-align:center;letter-spacing:.02em;transition:background .18s}
 
 .wop-cta:hover{opacity:.88}
 
@@ -1406,7 +1409,36 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     <div id="fixtures-container"></div>
 
+    <!-- FIXTURE CAROUSEL — above Most Selected -->
+    <div id="fixture-carousel-section" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--navy)">📋 Upcoming Fixtures</span>
+      </div>
+      <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:10px">Swipe to browse leagues →</div>
+      <div class="league-carousel-outer">
+        <div class="league-carousel" id="top-fixture-carousel"></div>
+      </div>
+      <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
+    </div>
+
     <div id="home-widgets">
+
+      <!-- FIXTURE CAROUSEL with country filter -->
+      <div id="fixture-carousel-section" style="margin-bottom:16px">
+
+        <!-- Country tabs -->
+        <div class="filter-strip" style="margin-bottom:0;border-radius:10px 10px 0 0;border-bottom:none">
+          <div class="filter-strip-inner" id="top-country-strip"></div>
+        </div>
+
+        <!-- Fixture carousel -->
+        <div style="font-size:11px;color:var(--green);font-weight:600;padding:8px 0 6px">📋 Next fixtures · Swipe by league →</div>
+        <div class="league-carousel-outer">
+          <div class="league-carousel" id="top-fixture-carousel"></div>
+        </div>
+        <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
+
+      </div>
 
       <!-- 1. Most Selected Today -->
 
@@ -1442,9 +1474,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
           <div class="sec-sub">Most added combos this week</div>
 
+          <div class="sec-swipe">Swipe right to browse →</div>
+
         </div>
 
-        <div id="trending-stacked"></div>
+        <div class="trend-carousel-outer">
+          <div class="trend-carousel" id="trending-stacked"></div>
+        </div>
 
       </div>
 
@@ -1475,6 +1511,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
       <!-- 4. All Fixtures with Filter + Infinite Scroll -->
 
       <div style="margin-top:0!important" id="infinite-fixtures-section">
+
+        <!-- Date nav moved here -->
+        <div class="date-nav" id="date-nav"></div>
 
         <div class="home-section-head">
 
@@ -4833,8 +4872,94 @@ function infRender(){
   }
 }
 
-function infFormatDate(d){
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+var topCarouselCountry='all';
+
+function buildTopCountryStrip(){
+  var inner=document.getElementById('top-country-strip');
+  if(!inner) return;
+  var countries=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
+  var labels={england:'England',scotland:'Scotland',spain:'Spain',germany:'Germany',france:'France',italy:'Italy',netherlands:'Netherlands',portugal:'Portugal'};
+  var html='<button class="fstab'+(topCarouselCountry==='all'?' active':'')+'" onclick="setTopCarouselCountry(\'all\')">All</button>';
+  countries.forEach(function(c){
+    html+='<button class="fstab'+(topCarouselCountry===c?' active':'')+'" onclick="setTopCarouselCountry(\''+c+'\')">'+labels[c]+'</button>';
+  });
+  inner.innerHTML=html;
+}
+
+function setTopCarouselCountry(c){
+  topCarouselCountry=c;
+  buildTopCountryStrip();
+  buildTopCountryStrip();
+  renderTopFixtureCarousel();
+}
+
+function renderTopFixtureCarousel(){
+  var carousel=document.getElementById('top-fixture-carousel');
+  var loader=document.getElementById('top-fixture-loader');
+  if(!carousel) return;
+
+  // Collect all fixtures from infMultiFixtures
+  var allF=[];
+  Object.keys(infMultiFixtures).forEach(function(dateStr){
+    (infMultiFixtures[dateStr]||[]).forEach(function(f){f._dateStr=dateStr;allF.push(f);});
+  });
+
+  // Filter by selected country
+  var leaguesToShow=topCarouselCountry==='all'?INF_LEAGUES:INF_LEAGUES.filter(function(l){return l.country===topCarouselCountry;});
+
+  var cards=[];
+  leaguesToShow.forEach(function(league){
+    var lf=allF.filter(function(f){return String(f.leagueId)===String(league.id);});
+    if(!lf.length) return;
+    // Only next round
+    var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean);
+    dates.sort();
+    var nextDate=dates[0];
+    lf=lf.filter(function(f){return f._dateStr===nextDate;});
+    lf.sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
+    if(!lf.length) return;
+
+    var dateLabel='';
+    try{
+      var dd=new Date(nextDate+'T12:00:00');
+      var today=new Date();today.setHours(0,0,0,0);
+      var diff=Math.round((dd-today)/86400000);
+      if(diff===0) dateLabel='Today';
+      else if(diff===1) dateLabel='Tomorrow';
+      else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    }catch(e){}
+
+    var rows=lf.map(function(f){
+      var ko=formatKickoff(f.date,f.time)||'TBC';
+      return '<div class="lc-fx">'
+        +'<div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div>'
+        +'<div class="lc-time">'+ko+'</div>'
+        +'</div>';
+    }).join('');
+
+    cards.push('<div class="lc-card">'
+      +'<div class="lc-head">'
+      +'<div class="lc-league">'+escHtml(league.name)+'</div>'
+      +'<div class="lc-right">'
+      +'<div class="lc-date">'+dateLabel+'</div>'
+      +'<div class="lc-count">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+      +'</div></div>'
+      +rows
+      +'<div class="analyse-all-wrap">'
+      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">' 
+      +'<span>✦</span> Analyse All Fixtures with AI →'
+      +'</button>'
+      +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
+      +'</div>'
+      +'</div>');
+  });
+
+  if(!cards.length){
+    if(loader){loader.textContent='No upcoming fixtures found.';loader.style.display='block';}
+    return;
+  }
+  carousel.innerHTML=cards.join('');
+  if(loader) loader.style.display='none';
 }
 
 function initInfiniteScroll(){
@@ -4863,11 +4988,11 @@ function initInfiniteScroll(){
         var events=data.events||[];
         if(events.length>0) infMultiFixtures[ds]=events;
         completed++;
-        if(completed===dates.length) infRender();
+        if(completed===dates.length){infRender();renderTopFixtureCarousel();}
       })
       .catch(function(){
         completed++;
-        if(completed===dates.length) infRender();
+        if(completed===dates.length){infRender();renderTopFixtureCarousel();}
       });
   });
 }
