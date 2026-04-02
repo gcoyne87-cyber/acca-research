@@ -2338,7 +2338,7 @@ function renderLeagueCarousel(){
       var ko=formatKickoff(f.date,f.time)||'TBC';
 
       return '<div class="lc-fx">'
-        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>'
+        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
         +'<div class="lc-odd">-</div><div class="lc-odd">-</div><div class="lc-odd">-</div>'
         +'</div>';
 
@@ -4952,7 +4952,7 @@ function renderTopFixtureCarousel(){
         }catch(e){}
       }
       return '<div class="lc-fx">'
-        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-time">'+ko+'</div></div>'
+        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
         +'<div class="lc-odd">-</div><div class="lc-odd">-</div><div class="lc-odd">-</div>'
         +'<div class="lc-time">'+ko+'</div>'
         +'</div>';
