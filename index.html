@@ -1274,6 +1274,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .rg-links a{color:rgba(255,255,255,.45);text-decoration:none;font-size:11px;font-weight:500}
 .rg-links a:hover{color:#fff}
 .rg-divider{width:40px;height:1px;background:rgba(255,255,255,.1);margin:14px auto}
+.top-tab-bar{display:flex;background:var(--white);border-bottom:1.5px solid var(--border);overflow-x:auto;scrollbar-width:none;margin:0 -24px;padding:0 24px}
+.top-tab-bar::-webkit-scrollbar{display:none}
+.top-tab{flex-shrink:0;padding:11px 14px;font-size:13px;font-weight:500;color:var(--muted);border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.top-tab.active{color:var(--navy);font-weight:700;border-bottom:2.5px solid var(--green)}
+@media(max-width:600px){.top-tab-bar{margin:0 -16px;padding:0 16px}}
 </style>
 
 </head>
@@ -1382,66 +1387,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     </div>
 
-    <div class="date-nav" id="date-nav"></div>
+    <!-- TOP FIXTURE SECTION -->
+    <div id="top-fix-section">
 
-    <div id="league-filter-wrap" style="display:none">
+      <!-- Tab bar: All + countries -->
+      <div class="top-tab-bar" id="top-tab-bar"></div>
 
-      <div class="filter-step-label">League</div>
-
-      <div class="filter-strip">
-
-        <div class="filter-strip-inner" id="league-strip-inner"></div>
-
-      </div>
-
-    </div>
-
-    <div class="league-tabs" id="league-tabs" style="display:none"></div>
-
-    <div id="league-carousel-wrap" style="display:none">
-
-      <div class="league-carousel-outer">
-
-        <div class="league-carousel" id="league-carousel"></div>
-
-      </div>
-
-    </div>
-
-    <div id="fixtures-container"></div>
-
-    <!-- FIXTURE CAROUSEL — above Most Selected -->
-    <div id="fixture-carousel-section" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--navy)">📋 Upcoming Fixtures</span>
-      </div>
-      <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:10px">Swipe to browse leagues →</div>
+      <!-- Fixture carousel -->
+      <div style="font-size:11px;color:var(--green);font-weight:600;padding:8px 14px 4px">📋 Upcoming fixtures · Swipe by league →</div>
       <div class="league-carousel-outer">
         <div class="league-carousel" id="top-fixture-carousel"></div>
       </div>
       <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
+
     </div>
 
-    <div id="home-widgets">
-
-      <!-- FIXTURE CAROUSEL with country filter -->
-      <div id="fixture-carousel-section" style="margin-bottom:16px">
-
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--navy)">📋 Upcoming Fixtures</span>
-          <span style="font-size:11px;color:var(--green);font-weight:600">Swipe →</span>
-        </div>
-
-        <!-- Country tabs — tight strip -->
-        <div style="display:flex;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;gap:6px" id="top-country-strip"></div>
-
-        <!-- Fixture carousel -->
-        <div class="league-carousel-outer">
-          <div class="league-carousel" id="top-fixture-carousel"></div>
-        </div>
-        <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
-
-      </div>
+        <div id="home-widgets">
 
       <!-- 1. Most Selected Today -->
 
@@ -1515,8 +1476,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div style="margin-top:0!important" id="infinite-fixtures-section">
 
-        <!-- Date nav moved here -->
-        <div class="date-nav" id="date-nav"></div>
 
         <div class="home-section-head">
 
@@ -4877,30 +4836,29 @@ function infRender(){
 
 var topCarouselCountry='all';
 
-function buildTopCountryStrip(){
-  var inner=document.getElementById('top-country-strip');
-  if(!inner) return;
+function buildTopTabBar(){
+  var bar=document.getElementById('top-tab-bar');
+  if(!bar) return;
   var countries=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
   var labels={england:'England',scotland:'Scotland',spain:'Spain',germany:'Germany',france:'France',italy:'Italy',netherlands:'Netherlands',portugal:'Portugal'};
-  inner.innerHTML='';
-  var allBtn=document.createElement('button');
-  allBtn.textContent='All';
-  allBtn.style.cssText='flex-shrink:0;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:'+(topCarouselCountry==='all'?'700':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(topCarouselCountry==='all'?'#1e9e6b':'#e4e8f0')+';background:'+(topCarouselCountry==='all'?'#1e9e6b':'#fff')+';color:'+(topCarouselCountry==='all'?'#fff':'#5a6478')+';white-space:nowrap;transition:all .15s';
-  allBtn.onclick=function(){setTopCarouselCountry('all');};
-  inner.appendChild(allBtn);
+  bar.innerHTML='';
+  var allTab=document.createElement('button');
+  allTab.className='top-tab'+(topCarouselCountry==='all'?' active':'');
+  allTab.textContent='All';
+  allTab.onclick=function(){setTopCarouselCountry('all');};
+  bar.appendChild(allTab);
   countries.forEach(function(c){
-    var btn=document.createElement('button');
-    btn.textContent=labels[c];
-    btn.style.cssText='flex-shrink:0;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:'+(topCarouselCountry===c?'700':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(topCarouselCountry===c?'#1e9e6b':'#e4e8f0')+';background:'+(topCarouselCountry===c?'#1e9e6b':'#fff')+';color:'+(topCarouselCountry===c?'#fff':'#5a6478')+';white-space:nowrap;transition:all .15s';
-    btn.onclick=(function(cc){return function(){setTopCarouselCountry(cc);};})(c);
-    inner.appendChild(btn);
+    var tab=document.createElement('button');
+    tab.className='top-tab'+(topCarouselCountry===c?' active':'');
+    tab.textContent=labels[c];
+    tab.onclick=(function(cc){return function(){setTopCarouselCountry(cc);};})(c);
+    bar.appendChild(tab);
   });
 }
 
 function setTopCarouselCountry(c){
   topCarouselCountry=c;
-  buildTopCountryStrip();
-  buildTopCountryStrip();
+  buildTopTabBar();
   renderTopFixtureCarousel();
 }
 
@@ -4912,27 +4870,49 @@ function renderTopFixtureCarousel(){
   // Collect all fixtures from infMultiFixtures
   var allF=[];
   Object.keys(infMultiFixtures).forEach(function(dateStr){
-    (infMultiFixtures[dateStr]||[]).forEach(function(f){f._dateStr=dateStr;allF.push(f);});
+    (infMultiFixtures[dateStr]||[]).forEach(function(f){
+      f._dateStr=dateStr;
+      allF.push(f);
+    });
   });
 
-  // Filter by selected country
-  var leaguesToShow=topCarouselCountry==='all'?INF_LEAGUES:INF_LEAGUES.filter(function(l){return l.country===topCarouselCountry;});
+  // Filter by country tab
+  var leaguesToShow=topCarouselCountry==='all'
+    ? INF_LEAGUES
+    : INF_LEAGUES.filter(function(l){return l.country===topCarouselCountry;});
 
   var cards=[];
+
   leaguesToShow.forEach(function(league){
     var lf=allF.filter(function(f){return String(f.leagueId)===String(league.id);});
     if(!lf.length) return;
-    // Only next round
+
+    // GAMEWEEK LOGIC: find earliest date, then include all fixtures within 4 days of that date
     var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean);
     dates.sort();
-    var nextDate=dates[0];
-    lf=lf.filter(function(f){return f._dateStr===nextDate;});
-    lf.sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
+    var firstDate=new Date(dates[0]+'T12:00:00');
+    var cutoff=new Date(firstDate);
+    cutoff.setDate(cutoff.getDate()+4);
+
+    // Include all fixtures within that 4-day window
+    lf=lf.filter(function(f){
+      var fd=new Date((f._dateStr||'')+'T12:00:00');
+      return fd<=cutoff;
+    });
+
+    // Sort by date then time
+    lf.sort(function(a,b){
+      var ad=(a._dateStr||'')+(a.time||'99:99');
+      var bd=(b._dateStr||'')+(b.time||'99:99');
+      return ad.localeCompare(bd);
+    });
+
     if(!lf.length) return;
 
+    // Date label for header
     var dateLabel='';
     try{
-      var dd=new Date(nextDate+'T12:00:00');
+      var dd=new Date(dates[0]+'T12:00:00');
       var today=new Date();today.setHours(0,0,0,0);
       var diff=Math.round((dd-today)/86400000);
       if(diff===0) dateLabel='Today';
@@ -4942,8 +4922,19 @@ function renderTopFixtureCarousel(){
 
     var rows=lf.map(function(f){
       var ko=formatKickoff(f.date,f.time)||'TBC';
+      // Show day label if different from first date
+      var dayTag='';
+      if(f._dateStr!==dates[0]){
+        try{
+          var fd=new Date(f._dateStr+'T12:00:00');
+          var today2=new Date();today2.setHours(0,0,0,0);
+          var diff2=Math.round((fd-today2)/86400000);
+          dayTag=diff2===0?'Today':diff2===1?'Tomorrow':fd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+          dayTag='<span style="font-size:9px;background:#f0f2f7;color:#5a6478;padding:1px 5px;border-radius:4px;margin-left:4px">'+dayTag+'</span>';
+        }catch(e){}
+      }
       return '<div class="lc-fx">'
-        +'<div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div>'
+        +'<div class="lc-match">'+escHtml(f.home)+' v '+escHtml(f.away)+dayTag+'</div>'
         +'<div class="lc-time">'+ko+'</div>'
         +'</div>';
     }).join('');
@@ -4966,12 +4957,14 @@ function renderTopFixtureCarousel(){
   });
 
   if(!cards.length){
-    if(loader){loader.textContent='No upcoming fixtures found.';loader.style.display='block';}
+    carousel.innerHTML='';
+    if(loader){loader.textContent='No fixtures found.';loader.style.display='block';}
     return;
   }
   carousel.innerHTML=cards.join('');
   if(loader) loader.style.display='none';
 }
+
 
 function initInfiniteScroll(){
   infCountry='all';
