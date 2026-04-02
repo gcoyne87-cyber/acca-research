@@ -956,7 +956,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .trend-pill-badge{font-size:13px;padding:5px 12px}
 
-  .trend-card-body{gap:0;margin-bottom:0}
+  .trend-card-body{gap:0;margin-bottom:0;flex:unset}
 
   .trend-btn{font-size:15px;padding:15px;border-radius:11px}
 
@@ -4815,11 +4815,10 @@ function infRender(){
         else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       }catch(e){}
       return '<div class="inf-fx">'
-        +'<div class="inf-match">'+escHtml(f.home)+' v '+escHtml(f.away)+'</div>'
-        +'<div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">'
-        +'<div class="inf-time">'+ko+'</div>'
-        +'<div style="font-size:10px;color:var(--muted);margin-top:1px">'+dateLabel+'</div>'
-        +'</div>'
+        +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+        +'<div class="inf-odd">-</div>'
+        +'<div class="inf-odd">-</div>'
+        +'<div class="inf-odd">-</div>'
         +'</div>';
     }).join('');
 
@@ -4828,6 +4827,7 @@ function infRender(){
       +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
       +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
       +'</div>'
+      +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
       +rows
       +'<div class="analyse-all-wrap">'
             +('<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">')
