@@ -1321,7 +1321,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         if(b)b.style.display='';
         var f=document.getElementById('main-rg-footer');if(f)f.style.display='';
         // Re-render fixtures after reveal
-        setTimeout(function(){if(typeof infRender==='function')infRender();},100);
+        setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();infRender();renderTopFixtureCarousel();}},100);
       },520);
     },2800);
   });
@@ -4849,7 +4849,7 @@ function renderTopFixtureCarousel(){
     dates.sort();
     var firstDate=new Date(dates[0]+'T12:00:00');
     var cutoff=new Date(firstDate);
-    cutoff.setDate(cutoff.getDate()+4);
+    cutoff.setDate(cutoff.getDate()+2);
 
     // Include all fixtures within that 4-day window
     lf=lf.filter(function(f){
@@ -4949,11 +4949,11 @@ function initInfiniteScroll(){
         var events=data.events||[];
         if(events.length>0) infMultiFixtures[ds]=events;
         completed++;
-        if(completed===dates.length){infRender();renderTopFixtureCarousel();}
+        if(completed===dates.length){infRender();buildTopTabBar();renderTopFixtureCarousel();}
       })
       .catch(function(){
         completed++;
-        if(completed===dates.length){infRender();renderTopFixtureCarousel();}
+        if(completed===dates.length){infRender();buildTopTabBar();renderTopFixtureCarousel();}
       });
   });
 }
@@ -4988,7 +4988,7 @@ window.addEventListener('DOMContentLoaded',function(){
     _infRetry++;
     if(_infRetry>5||Object.keys(infMultiFixtures).length>0){
       clearInterval(_infTimer);
-      if(Object.keys(infMultiFixtures).length>0) infRender();
+      if(Object.keys(infMultiFixtures).length>0){buildTopTabBar();infRender();renderTopFixtureCarousel();}
     }
   },3000);
 
