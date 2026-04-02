@@ -5192,17 +5192,8 @@ function buildTopLeagueStrip(){
   if(!strip) return;
   var leagues=TOP_LEAGUES_BY_COUNTRY[topCarouselCountry]||[];
   // Find which leagues actually have fixtures
-  var allF=[];
-  Object.keys(infMultiFixtures).forEach(function(ds){
-    (infMultiFixtures[ds]||[]).forEach(function(f){allF.push(f);});
-  });
-  var available=leagues.filter(function(id){
-    return allF.some(function(f){return String(f.leagueId)===String(id);});
-  });
-  if(!available.length){
-    // fallback — show all leagues for country even if no fixtures yet
-    available=leagues;
-  }
+  // Always show all leagues for the country regardless of fixture availability
+  var available=leagues;
   // Auto-select first if current selection not in this country
   if(!available.includes(topLeagueSelected)){
     topLeagueSelected=available[0]||'';
@@ -5310,8 +5301,8 @@ function renderTopFixtureCarousel(){
 
   var card='<div class="inf-league-block">'
     +'<div class="inf-league-head">'
-    +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
-    +'<div class="inf-league-meta">'+dateLabel+' &middot; '+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+    +'<div class="inf-league-meta">'+dateLabel+'</div>'
+    +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
     +'</div>'
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
     +rows
