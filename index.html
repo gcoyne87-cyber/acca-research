@@ -1266,6 +1266,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 #wop-section,#wop-section+div,#infinite-fixtures-section{margin-top:0!important;padding-top:0!important}
 .home-section{margin-bottom:14px!important}
 .home-section-head-a{margin-bottom:6px!important}
+.rg-footer{background:#0b1628;color:rgba(255,255,255,.55);padding:24px 20px 120px;font-family:'Outfit',sans-serif;font-size:11px;line-height:1.6;text-align:center}
+.rg-footer-top{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.rg-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:5px 12px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+.rg-badge-warn{background:rgba(201,168,76,.12);border-color:rgba(201,168,76,.3);color:#c9a84c}
+.rg-links{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.rg-links a{color:rgba(255,255,255,.45);text-decoration:none;font-size:11px;font-weight:500}
+.rg-links a:hover{color:#fff}
+.rg-divider{width:40px;height:1px;background:rgba(255,255,255,.1);margin:14px auto}
 </style>
 
 </head>
@@ -1304,6 +1312,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         if(t)t.style.display='';
         if(m)m.style.display='';
         if(b)b.style.display='';
+        var f=document.getElementById('main-rg-footer');if(f)f.style.display='';
         // Re-render fixtures after reveal
         setTimeout(function(){if(typeof infRender==='function')infRender();},100);
       },520);
@@ -1375,14 +1384,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     <div class="date-nav" id="date-nav"></div>
 
-    <div class="filter-step-label">Country</div>
-
-    <div class="filter-strip" id="country-filter">
-
-      <div class="filter-strip-inner" id="country-strip-inner"></div>
-
-    </div>
-
     <div id="league-filter-wrap" style="display:none">
 
       <div class="filter-step-label">League</div>
@@ -1426,13 +1427,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
       <!-- FIXTURE CAROUSEL with country filter -->
       <div id="fixture-carousel-section" style="margin-bottom:16px">
 
-        <!-- Country tabs -->
-        <div class="filter-strip" style="margin-bottom:0;border-radius:10px 10px 0 0;border-bottom:none">
-          <div class="filter-strip-inner" id="top-country-strip"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--navy)">📋 Upcoming Fixtures</span>
+          <span style="font-size:11px;color:var(--green);font-weight:600">Swipe →</span>
         </div>
 
+        <!-- Country tabs — tight strip -->
+        <div style="display:flex;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;gap:6px" id="top-country-strip"></div>
+
         <!-- Fixture carousel -->
-        <div style="font-size:11px;color:var(--green);font-weight:600;padding:8px 0 6px">📋 Next fixtures · Swipe by league →</div>
         <div class="league-carousel-outer">
           <div class="league-carousel" id="top-fixture-carousel"></div>
         </div>
@@ -4879,11 +4882,19 @@ function buildTopCountryStrip(){
   if(!inner) return;
   var countries=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
   var labels={england:'England',scotland:'Scotland',spain:'Spain',germany:'Germany',france:'France',italy:'Italy',netherlands:'Netherlands',portugal:'Portugal'};
-  var html='<button class="fstab'+(topCarouselCountry==='all'?' active':'')+'" onclick="setTopCarouselCountry(\'all\')">All</button>';
+  inner.innerHTML='';
+  var allBtn=document.createElement('button');
+  allBtn.textContent='All';
+  allBtn.style.cssText='flex-shrink:0;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:'+(topCarouselCountry==='all'?'700':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(topCarouselCountry==='all'?'#1e9e6b':'#e4e8f0')+';background:'+(topCarouselCountry==='all'?'#1e9e6b':'#fff')+';color:'+(topCarouselCountry==='all'?'#fff':'#5a6478')+';white-space:nowrap;transition:all .15s';
+  allBtn.onclick=function(){setTopCarouselCountry('all');};
+  inner.appendChild(allBtn);
   countries.forEach(function(c){
-    html+='<button class="fstab'+(topCarouselCountry===c?' active':'')+'" onclick="setTopCarouselCountry(\''+c+'\')">'+labels[c]+'</button>';
+    var btn=document.createElement('button');
+    btn.textContent=labels[c];
+    btn.style.cssText='flex-shrink:0;padding:7px 14px;border-radius:99px;font-size:13px;font-weight:'+(topCarouselCountry===c?'700':'600')+';cursor:pointer;font-family:inherit;border:1.5px solid '+(topCarouselCountry===c?'#1e9e6b':'#e4e8f0')+';background:'+(topCarouselCountry===c?'#1e9e6b':'#fff')+';color:'+(topCarouselCountry===c?'#fff':'#5a6478')+';white-space:nowrap;transition:all .15s';
+    btn.onclick=(function(cc){return function(){setTopCarouselCountry(cc);};})(c);
+    inner.appendChild(btn);
   });
-  inner.innerHTML=html;
 }
 
 function setTopCarouselCountry(c){
@@ -5083,6 +5094,25 @@ window.addEventListener('DOMContentLoaded',function(){
 
   <div class="drawer-body" id="drawer-body"></div>
 
+</div>
+
+<!-- Responsible Gambling Footer -->
+<div class="rg-footer" id="main-rg-footer" style="display:none">
+  <div class="rg-footer-top">
+    <span class="rg-badge rg-badge-warn">⚠️ 18+ Only</span>
+    <span class="rg-badge">Gamble Responsibly</span>
+    <span class="rg-badge">For Entertainment Only</span>
+  </div>
+  <div class="rg-links">
+    <a href="https://www.problemgambling.ie" target="_blank" rel="noopener">Problem Gambling Ireland</a>
+    <a href="https://www.gambleaware.org" target="_blank" rel="noopener">GambleAware</a>
+    <a href="https://www.gamstop.co.uk" target="_blank" rel="noopener">GamStop</a>
+    <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware</a>
+  </div>
+  <div class="rg-divider"></div>
+  <div>AccuEdge is a sports research tool for informational purposes only. We do not accept bets or handle any gambling transactions. If you or someone you know has a gambling problem, please seek help immediately.</div>
+  <div style="margin-top:8px;color:rgba(255,255,255,.3)">Freephone helpline: <a href="tel:1800936725" style="color:rgba(255,255,255,.45);text-decoration:none">1800 936 725</a> (Problem Gambling Ireland)</div>
+  <div style="margin-top:10px;font-size:10px;color:rgba(255,255,255,.2)">© 2026 AccuEdge · For users 18 and over only</div>
 </div>
 
 </body>
