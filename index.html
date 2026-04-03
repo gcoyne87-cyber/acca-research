@@ -1360,29 +1360,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .risk-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
-
-/* ── DAILY PICKS CAROUSEL ── */
-.daily-picks-outer{overflow:hidden;margin:0 -24px;padding:0 24px;margin-bottom:16px}
-.daily-picks-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;align-items:stretch}
-.daily-picks-carousel::-webkit-scrollbar{display:none}
-.daily-pick-card{background:#e8f8f1;border:1.5px solid #a7e0c4;border-radius:14px;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 52px);max-width:340px;padding:16px;display:flex;flex-direction:column}
-.dp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.dp-badge{display:inline-flex;align-items:center;gap:6px;background:#fffbf0;border:1.5px solid var(--gold);border-radius:99px;padding:5px 14px}
-.dp-badge-icon{font-size:13px;line-height:1}
-.dp-badge-txt{font-size:12px;font-weight:700;color:#92400e;letter-spacing:.04em}
-.dp-team{font-size:28px;font-weight:700;color:var(--navy);letter-spacing:-0.5px;margin-bottom:2px;line-height:1.1}
-.dp-opponent{font-size:13px;color:#4a8a6a;margin-bottom:1px}
-.dp-league{font-size:11px;color:#4a8a6a;opacity:.7;margin-bottom:12px}
-.dp-bullets{background:rgba(255,255,255,0.65);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;margin-bottom:14px;flex:1}
-.dp-bullet{font-size:12px;color:var(--mid);display:flex;align-items:flex-start;gap:6px;line-height:1.5}
-.dp-bullet-tick{color:var(--green);font-weight:700;flex-shrink:0}
-.dp-foot{display:flex;align-items:center;gap:10px}
-.dp-add-btn{flex:1;background:var(--green);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
-.dp-add-btn.added{background:#157a52}
-.dp-swipe-hint{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:8px}
-.dp-swipe-txt{font-size:11px;font-weight:600;color:var(--green)}
-.dp-swipe-pill{background:var(--green);color:#fff;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700}
-
 </style>
 
 </head>
@@ -1553,19 +1530,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         <div id="home-widgets">
 
-      <!-- 0. Daily Picks — Top Pick / Double / Treble -->
+      <!-- 0. Daily Picks -->
 
       <div class="home-section" id="daily-picks-section" style="margin-bottom:20px">
 
-        <div class="daily-picks-outer">
-
-          <div class="daily-picks-carousel" id="daily-picks-carousel">
-
-            <!-- rendered by JS -->
-
-          </div>
-
-        </div>
+        <div id="daily-picks-container" style="display:flex;flex-direction:column;gap:12px"><!-- JS --></div>
 
       </div>
 
@@ -1585,11 +1554,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
           </div>
 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
 
             <div style="font-size:13px;color:var(--mid);line-height:1.6">Built from a combination of the most popular picks from users and our AI algorithm.</div>
 
-            <div style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0;background:var(--green);border-radius:99px;padding:4px 12px"><span style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap">Swipe</span><span style="font-size:13px;color:#fff;font-weight:700">&#8594;</span></div>
+            <div style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0;background:var(--green);border-radius:99px;padding:4px 12px"><span style="font-size:12px;font-weight:700;color:#fff">Swipe</span><span style="color:#fff;font-weight:700">&#8594;</span></div>
 
           </div>
 
@@ -2304,36 +2273,53 @@ function acwRender(){
 // Enter key support
 
 
-function getNextKoSecs(fixtures){
-  var now=Date.now();
-  var upcoming=[];
-  (fixtures||[]).forEach(function(f){
-    if(!f.time||f.time==='00:00:00') return;
-    try{var ms=new Date(f.date+'T'+f.time+'Z').getTime();if(ms>now)upcoming.push(ms);}catch(e){}
-  });
-  if(!upcoming.length) return -1;
-  upcoming.sort(function(a,b){return a-b;});
-  return Math.floor((upcoming[0]-now)/1000);
+var DAILY_PICKS=[
+  {type:"Today's Top Pick",icon:'⚡',team:'Burnley',opponent:'v Sheffield Wednesday',league:'Championship · Sat 15:00',reasons:['Won 5 of last 6 home games, conceding just 3 goals','Sheff Wed winless away in 8 — worst record in division','Key injury: Sheff Wed missing top scorer Docherty','Unbeaten in last 4 H2H meetings at Turf Moor'],community:'78% of AccuEdge community backing Burnley',odds:'4/6'},
+  {type:'Best Value',icon:'💰',team:'Lincoln City',opponent:'v Wigan Athletic',league:'League One · Sat 15:00',reasons:['Priced at EVS but won 4 of last 5 at home','Wigan Athletic on 6-game away losing run','Lincoln top scorer fit after injury return','AI model rates Lincoln 68% likely — odds say 50%'],community:'61% of AccuEdge community backing Lincoln City',odds:'EVS'},
+  {type:'Dark Horse',icon:'🔍',team:'NEC Nijmegen',opponent:'v Ajax',league:'Eredivisie · Sat 16:30',reasons:['Ajax poor away form — 2 wins in last 8 trips','NEC unbeaten at home in 5, scoring 2+ each game','Ajax missing 3 first team starters through suspension','NEC won 3 of last 4 H2H at this ground'],community:'54% of AccuEdge community backing NEC Nijmegen',odds:'7/5'}
+];
+
+function renderDailyPicks(){
+  var el=document.getElementById('daily-picks-container');
+  if(!el) return;
+  var bgs=['#e8f8f1','#f0f7ff','#fdf4ec'];
+  var borders=['#a7e0c4','#93c5fd','#f6b97a'];
+  el.innerHTML=DAILY_PICKS.map(function(p,i){
+    var bg=bgs[i];var bdr=borders[i];
+    var rows=p.reasons.map(function(r){
+      return '<div style="display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--mid);line-height:1.4;overflow:hidden"><span style="color:var(--green);font-weight:700;flex-shrink:0">\u2713</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r)+'</span></div>';
+    }).join('');
+    var comm='<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:600;margin-top:6px;padding-top:7px;border-top:.5px solid rgba(30,158,107,0.25);overflow:hidden"><span style="flex-shrink:0">&#x1F465;</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.community)+'</span></div>';
+    return '<div style="background:'+bg+';border:1.5px solid '+bdr+';border-radius:14px;padding:16px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+      +'<div style="display:inline-flex;align-items:center;gap:6px;background:#fffbf0;border:1.5px solid var(--gold);border-radius:99px;padding:5px 14px"><span style="font-size:13px;line-height:1">'+p.icon+'</span><span style="font-size:12px;font-weight:700;color:#92400e">'+escHtml(p.type)+'</span></div>'
+      +'<button id="dp-odds-'+i+'" onclick="addDailyPick('+i+',this)" style="background:#fff;border:1.5px solid '+bdr+';border-radius:99px;padding:5px 16px;font-size:16px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(p.odds)+'</button>'
+      +'</div>'
+      +'<div style="font-size:28px;font-weight:700;color:var(--navy);letter-spacing:-0.5px;margin-bottom:2px">'+escHtml(p.team)+'</div>'
+      +'<div style="font-size:13px;color:#4a8a6a;margin-bottom:1px">'+escHtml(p.opponent)+'</div>'
+      +'<div style="font-size:11px;color:#4a8a6a;opacity:.7;margin-bottom:12px">'+escHtml(p.league)+'</div>'
+      +'<div style="background:rgba(255,255,255,0.65);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;margin-bottom:14px">'+rows+comm+'</div>'
+      +'<button class="dp-add-btn" id="dp-btn-'+i+'" onclick="addDailyPick('+i+',this)" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s">+ Add to My Slip</button>'
+      +'</div>';
+  }).join('');
 }
-function fmtCd(secs){
-  if(secs<=0) return null;
-  var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
-  function p(n){return String(n).padStart(2,'0');}
-  return h>0?h+'h '+p(m)+'m '+p(s)+'s':p(m)+'m '+p(s)+'s';
-}
-var _cdTimers={};
-function startLeagueCountdown(elId,fixtureList){
-  if(_cdTimers[elId])clearInterval(_cdTimers[elId]);
-  function tick(){
-    var el=document.getElementById(elId);
-    if(!el){clearInterval(_cdTimers[elId]);return;}
-    var secs=getNextKoSecs(fixtureList);
-    if(secs<0){el.textContent='';clearInterval(_cdTimers[elId]);return;}
-    var t=fmtCd(secs);
-    el.textContent=t?'Next kick-off in '+t:'';
+
+function addDailyPick(idx,btn){
+  var p=DAILY_PICKS[idx];
+  var legId='leg_daily'+idx;
+  var ob=document.getElementById('dp-odds-'+idx);
+  var sb=document.getElementById('dp-btn-'+idx);
+  if(slipLegs.some(function(s){return s.legId===legId;})){
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+    if(ob){ob.textContent=p.odds;ob.style.background='#fff';ob.style.color='var(--green)';}
+    if(sb){sb.textContent='+ Add to My Slip';sb.style.background='var(--green)';}
+    renderSlip();return;
   }
-  tick();
-  _cdTimers[elId]=setInterval(tick,1000);
+  var parts=(p.odds==='EVS'?'1/1':p.odds||'1/1').split('/');
+  slipLegs.push({legId:legId,team:p.team,match:p.opponent,odds:p.odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+  if(ob){ob.textContent='\u2713';ob.style.background='#157a52';ob.style.color='#fff';ob.style.borderColor='#157a52';}
+  if(sb){sb.textContent='\u2713 Added to Slip';sb.style.background='#157a52';}
+  renderSlip();if(!slipOpen)toggleSlip();
 }
 
 function buildAllPicksAcca(btn){
@@ -2357,72 +2343,12 @@ function calcTop5Odds(){
     var o=(p.odds||'').trim();
     if(!o) return;
     if(o==='EVS'){dec*=2;return;}
-    var parts=o.split('/');
-    if(parts.length===2){var n=parseFloat(parts[0]),d=parseFloat(parts[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)dec*=(n/d)+1;}
+    var pts=o.split('/');
+    if(pts.length===2){var n=parseFloat(pts[0]),d=parseFloat(pts[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)dec*=(n/d)+1;}
   });
   var w=Math.round(dec-1);
   var el=document.getElementById('top5-odds-display');
   if(el) el.textContent=(w<1?1:w)+'/1';
-}
-
-
-var DAILY_PICKS=[
-  {
-    type:"Today's Top Pick",
-    icon:'⚡',
-    teams:['Burnley'],
-    opponents:['v Sheffield Wednesday'],
-    league:'Championship · Sat 15:00',
-    reasons:[
-      'Won 5 of last 6 home games, conceding just 3 goals',
-      'Sheffield Wed winless away in 8 — worst away record in division',
-      'Key injury boost: Sheff Wed missing their top scorer Docherty',
-      'Burnley unbeaten in last 4 H2H meetings at Turf Moor',
-      '78% of AccuEdge community backing Burnley today'
-    ],
-    odds:'4/6'
-  }
-];
-
-function renderDailyPicks(){
-  var el=document.getElementById('daily-picks-carousel');
-  if(!el||!DAILY_PICKS.length) return;
-  var p=DAILY_PICKS[0];
-  el.innerHTML='<div class="daily-pick-card" style="width:100%;max-width:100%">'
-    +'<div class="dp-header">'
-    +'<div class="dp-badge"><span class="dp-badge-icon">'+p.icon+'</span><span class="dp-badge-txt">'+escHtml(p.type)+'</span></div>'
-    +'<button id="dp-odds-btn" onclick="addDailyPick(0,this,true)" style="background:#fff;border:1.5px solid #a7e0c4;border-radius:99px;padding:5px 16px;font-size:16px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit;transition:all .18s;flex-shrink:0">'+escHtml(p.odds)+'</button>'
-    +'</div>'
-    +'<div class="dp-team">'+escHtml(p.teams[0])+'</div>'
-    +'<div class="dp-opponent">'+escHtml(p.opponents[0])+'</div>'
-    +'<div class="dp-league">'+escHtml(p.league)+'</div>'
-    +'<div class="dp-bullets">'
-    +p.reasons.map(function(r,ri){var last=ri===p.reasons.length-1;return last?'<div class="dp-bullet" style="margin-top:5px;padding-top:8px;border-top:.5px solid rgba(30,158,107,0.2)"><span style="color:var(--green);font-weight:700;flex-shrink:0">\uD83D\uDC65</span><span style="color:var(--green);font-weight:600">'+escHtml(r)+'</span></div>':'<div class="dp-bullet"><span class="dp-bullet-tick">\u2713</span><span>'+escHtml(r)+'</span></div>';}).join('')
-    +'</div>'
-    +'<div class="dp-foot">'
-    +'<button class="dp-add-btn" id="dp-btn-0" onclick="addDailyPick(0,this,false)">+ Add to My Slip</button>'
-    +'</div>'
-    +'</div>';
-}
-
-function addDailyPick(idx,btn,isOddsBtn){
-  var p=DAILY_PICKS[idx];
-  var legId='leg_daily'+idx+'_0';
-  if(slipLegs.some(function(s){return s.legId===legId;})){
-    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-    var ob=document.getElementById('dp-odds-btn');
-    var sb=document.getElementById('dp-btn-0');
-    if(ob){ob.textContent=p.odds;ob.style.background='#fff';ob.style.color='var(--green)';ob.style.borderColor='#a7e0c4';}
-    if(sb){sb.textContent='+ Add to My Slip';sb.classList.remove('added');}
-    renderSlip();return;
-  }
-  var parts=(p.odds||'1/1').split('/');
-  slipLegs.push({legId:legId,team:p.teams[0],match:p.opponents[0]||'',odds:p.odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-  var ob=document.getElementById('dp-odds-btn');
-  var sb=document.getElementById('dp-btn-0');
-  if(ob){ob.textContent='✓';ob.style.background='#157a52';ob.style.color='#fff';ob.style.borderColor='#157a52';}
-  if(sb){sb.textContent='✓ Added to Slip';sb.classList.add('added');}
-  renderSlip();if(!slipOpen)toggleSlip();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
@@ -2614,7 +2540,12 @@ function renderLeagueCarousel(){
     }).join('');
 
     return '<div class="lc-card">'
-      +(function(){var cdId='cd-lc-'+id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,fixtures);},50);return '<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div><div class="lc-right"><div class="lc-date">'+dateLabel+'</div><div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div><div style="padding:0 18px 8px;background:var(--soft);border-bottom:.5px solid var(--border)"><span id="'+cdId+'" style="font-size:11px;font-weight:600;color:var(--green)"></span></div>';})()
+
+      +'<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div>'
+
+      +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
+
+      +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
 
       +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
 
@@ -3602,6 +3533,18 @@ var TRENDING_ACCAS=[
 
   ],label:'3-Leg · Mid Risk',winRate:'61%'},
 
+  {risk:'mid',legs:[
+
+    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+
+    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+
+    {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+
+  ],label:'4-Leg · Mid Risk',winRate:'51%'},
+
   {risk:'high',legs:[
 
     {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00',odds:'5/4'},
@@ -3692,79 +3635,6 @@ function calcAccaOdds(legs){
 
 }
 
-function renderUserAccaCards(){
-  // Pick top 3 community accas with 3+ legs
-  var picks=COMMUNITY_ACCAS.filter(function(a){return a.legs.length>=3;}).slice(0,3);
-  return picks.map(function(a,i){
-    var realIdx=i;
-    var tierColors={gold:'#c9a84c',silver:'#8a98b0',bronze:'#b87c4a'};
-    var tierLabels={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
-    var tierBg={gold:'#fef3c7',silver:'#e2e8f0',bronze:'#fde7cc'};
-    var tierTxt={gold:'#78350f',silver:'#334155',bronze:'#7c2d12'};
-    var specialist=a.tags.find(function(t){return t.cls==='strong'||t.cls==='hot';});
-    var specLabel=specialist?specialist.label:'';
-    var correct=a.form.match(/(\d+) of (\d+)/);
-    var recordTxt=correct?correct[1]+' of '+correct[2]+' correct':'';
-    var n=a.legs.length;
-    var teamSize=n<=3?'18px':n===4?'15px':'13px';
-    var subSize='13px';
-    var oddsSize=n<=3?'13px':'12px';
-    var oddsPad=n<=3?'5px 10px':'4px 9px';
-    var rows=a.legs.map(function(l,li){
-      var fixture=l.meta.replace(/·\s*\w+\s+\d+:\d+$/,'').replace(/·[^·]*$/,'').trim();
-      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'
-        +'<div style="min-width:0">'
-        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'
-        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'
-        +'</div>'
-        +(l.odds?'<button id="uleg-'+i+'-'+li+'" onclick="addUserLeg('+i+','+li+',this)" style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(l.odds)+'</button>':'')
-        +'</div>';
-    }).join('');
-    var combined=calcAccaOdds(a.legs.map(function(l){return {odds:l.odds};}));
-    return '<div class="trend-card">'
-      +'<div style="padding:10px 16px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:9px;flex-shrink:0">'
-      +'<div style="width:26px;height:26px;border-radius:50%;background:'+tierColors[a.tier]+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">'+escHtml(a.user.charAt(0))+'</div>'
-      +'<div style="min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:5px"><span style="font-size:13px;font-weight:700;color:var(--navy)">'+escHtml(a.user)+'</span><span style="font-size:10px;font-weight:600;background:'+tierBg[a.tier]+';color:'+tierTxt[a.tier]+';padding:2px 7px;border-radius:99px">'+tierLabels[a.tier]+'</span></div>'
-      +(recordTxt||specLabel?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(recordTxt?escHtml(recordTxt):'')+(recordTxt&&specLabel?' · ':'')+(specLabel?'<span style="color:var(--green);font-weight:600">'+escHtml(specLabel)+'</span>':'')+'</div>':'')
-      +'</div>'
-      +'</div>'
-      +'<div style="flex:1;display:flex;flex-direction:column">'+rows+'</div>'
-      +'<div style="padding:12px 16px;border-top:.5px solid var(--border);flex-shrink:0">'
-      +'<div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>'
-      +'<div style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">'+combined+'</div>'
-      +'<button class="trend-btn" id="uacca-btn-'+i+'" onclick="addUserAcca('+i+',this)">+ Add to My Slip</button>'
-      +'</div>'
-      +'</div>';
-  }).join('');
-}
-
-function addUserLeg(ai,li,btn){
-  var a=COMMUNITY_ACCAS[ai];var leg=a.legs[li];var legId='leg_uleg'+ai+'_'+li;
-  if(slipLegs.some(function(s){return s.legId===legId;})){
-    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-    btn.textContent=leg.odds||'EVS';btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
-    renderSlip();return;
-  }
-  var parts=(leg.odds||'1/1').split('/');
-  slipLegs.push({legId:legId,team:leg.team,match:leg.meta,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
-  renderSlip();if(!slipOpen)toggleSlip();
-}
-
-function addUserAcca(ai,btn){
-  var a=COMMUNITY_ACCAS[ai];
-  a.legs.forEach(function(leg,li){
-    var legId='leg_uacca'+ai+'_'+li;
-    if(!slipLegs.some(function(s){return s.legId===legId;})){
-      var parts=(leg.odds||'1/1').split('/');
-      slipLegs.push({legId:legId,team:leg.team,match:leg.meta,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-    }
-  });
-  btn.textContent='✓ Added';btn.classList.add('added');
-  renderSlip();if(!slipOpen)toggleSlip();
-}
-
 function renderTrendingAccas(){
 
   var el=document.getElementById('trending-stacked');
@@ -3817,7 +3687,7 @@ function renderTrendingAccas(){
 
     return '<div class="trend-card">'      +'<div style="padding:10px 16px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'      +'<div style="display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:'+riskCol+'"></div><span style="font-size:10px;font-weight:700;color:'+riskCol+';letter-spacing:.06em">'+riskLbl+'</span></div>'      +'<span style="font-size:10px;color:var(--muted)">'+n+' selections</span>'      +'</div>'      +'<div style="flex:1;display:flex;flex-direction:column">'+rows+'</div>'      +'<div style="padding:12px 16px;border-top:.5px solid var(--border);flex-shrink:0">'      +'<div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>'      +'<div style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">'+calcAccaOdds(a.legs)+'</div>'      +'<button class="trend-btn" id="trend-btn-'+realIdx+'" onclick="addTrendingAcca('+realIdx+',this)">+ Add to My Slip</button>'      +'</div>'      +'</div>';
 
-  }).join('')+renderUserAccaCards();
+  }).join('');
 
 }
 
@@ -5317,7 +5187,9 @@ function infRender(){
 
       +'<div class="inf-league-head">'
 
-      +(function(){var cdId='cd-inf-'+league.id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,lf);},50);return '<div class="inf-league-name">'+escHtml(league.name)+'</div><div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdId+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>';})()
+      +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
+
+      +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
 
       +'</div>'
 
@@ -5623,7 +5495,9 @@ function renderTopFixtureCarousel(){
 
     +'<div class="inf-league-head">'
 
-    +(function(){var cdId='cd-top-'+league.id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,lf);},50);return '<div class="inf-league-meta">'+dateLabel+'</div><div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdId+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>';})()
+    +'<div class="inf-league-meta">'+dateLabel+'</div>'
+
+    +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
 
     +'</div>'
 
