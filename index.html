@@ -732,7 +732,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .slip-panel-title{font-size:12px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.08em}
 
-.slip-panel-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:20px;cursor:pointer;line-height:1;padding:0}
+.slip-panel-close{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;line-height:1;padding:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}.slip-panel-close:hover{background:rgba(255,255,255,0.28)}
 
 .slip-body{padding:12px 14px;max-height:420px;overflow-y:auto}
 
@@ -1576,6 +1576,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
           <div id="popular-body"></div>
 
+          <div style="padding:12px 16px;border-top:.5px solid var(--border)">
+
+            <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>
+
+            <div id="top5-odds-display" style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">6/1</div>
+
+            <button id="build-top5-btn" onclick="buildAllPicksAcca(this)" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s">+ Add All 5 to My Slip</button>
+
+          </div>
+
         </div>
 
       </div>
@@ -1826,7 +1836,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       </div>
 
-      <button class="clear-btn" onclick="clearSlip()">Clear slip</button>
+      <button class="clear-btn" onclick="clearSlip()" style="width:100%;margin-top:10px;padding:11px;background:rgba(229,57,53,0.1);color:#e53935;border:1.5px solid rgba(229,57,53,0.3);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.01em;transition:all .18s" onmouseover="this.style.background='rgba(229,57,53,0.18)'" onmouseout="this.style.background='rgba(229,57,53,0.1)'">🗑  Clear Slip</button>
 
     </div>
 
@@ -2248,6 +2258,19 @@ function acwRender(){
 
 // Enter key support
 
+
+function fxToggleMore(id){
+  var h=document.getElementById(id+'-h');
+  var i=document.getElementById(id+'-i');
+  var t=document.getElementById(id+'-t');
+  var cta=document.getElementById(id+'-cta');
+  var open=h.style.display!=='none';
+  h.style.display=open?'none':'';
+  if(cta)cta.style.display=open?'none':'';
+  i.textContent=open?'+':'−';
+  t.textContent=open?(h.querySelectorAll('.inf-fx,.lc-fx').length+' more fixtures'):'Show fewer fixtures';
+}
+
 document.addEventListener('DOMContentLoaded',function(){
 
   var oi=document.getElementById('acw-odds');
@@ -2410,93 +2433,28 @@ function renderLeagueCarousel(){
 
     if(!fixtures.length) return '';
 
+    function makeLcRow(f){
+      var ko=formatKickoff(f.date,f.time)||'TBC';
+      var o=getDummyOdds(f.home,f.away);
+      var lg=escHtml(l.name);
+      return '<div class="lc-fx"><div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
+        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+    }
     var SHOW_LC=5;
+    var visLc=fixtures.slice(0,SHOW_LC).map(makeLcRow).join('');
+    var hidLc=fixtures.length>SHOW_LC?fixtures.slice(SHOW_LC).map(makeLcRow).join(''):'';
+    var extraLc=fixtures.length-SHOW_LC;
+    var smLc='sm-lc-'+id;
+    var showMoreLc=extraLc>0
+      ?'<div id="'+smLc+'-h" style="display:none">'+hidLc+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smLc+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smLc+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smLc+'-t">'+extraLc+' more fixtures</span></button></div><div id="'+smLc+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div></div>'
+      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div>';
 
-    var visibleFx=fixtures.slice(0,SHOW_LC).map(function(f){
-
-      var ko=formatKickoff(f.date,f.time)||'TBC';
-
-      var o=getDummyOdds(f.home,f.away);
-
-      var league=escHtml(l.name);
-
-      return '<div class="lc-fx">'
-
-        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-        +'</div>';
-
-    }).join('');
-
-    var hiddenFx=fixtures.length>SHOW_LC?fixtures.slice(SHOW_LC).map(function(f){
-
-      var ko=formatKickoff(f.date,f.time)||'TBC';
-
-      var o=getDummyOdds(f.home,f.away);
-
-      var league=escHtml(l.name);
-
-      return '<div class="lc-fx">'
-
-        +'<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-        +'</div>';
-
-    }).join(''):'';
-
-    var lcExtra=fixtures.length-SHOW_LC;
-
-    var lcSmId='lcsm-'+id;
-
-    var lcShowMore=lcExtra>0
-
-      ?'<div id="'+lcSmId+'-hidden" style="display:none">'+hiddenFx+'</div>'
-
-       +'<div style="border-top:.5px solid var(--border)">'
-
-       +'<button onclick="infToggleMore(\''+lcSmId+'\')" id="'+lcSmId+'-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy);transition:background .15s" onmouseover="this.style.background=\'var(--soft)\'" onmouseout="this.style.background=\'none\'">'
-
-       +'<span id="'+lcSmId+'-icon" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</span>'
-
-       +'<span id="'+lcSmId+'-txt">'+lcExtra+' more fixtures</span>'
-
-       +'</button>'
-
-       +'</div>'
-
-       +'<div id="'+lcSmId+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div></div>'
-
-      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div>';
-
-    return '<div class="lc-card">'
-
-      +'<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div>'
-
-      +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
-
-      +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
-
-      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')" style="padding:10px 20px;font-size:13px"><span>✦</span> Analyse All Fixtures with AI →</button></div>'
-
+    return '<div class="lc-card"><div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div><div class="lc-right"><div class="lc-date">'+dateLabel+'</div><div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
+      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button></div>'
       +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
-
-      +visibleFx
-
-      +lcShowMore
-
-      +'</div>';
+      +visLc+showMoreLc+'</div>';
 
   }).filter(Boolean);
 
@@ -2814,7 +2772,7 @@ function renderFixtures(){
 
       +'<button class="analyse-all-btn" onclick="analyseLeague(\''+currentLeague+'\')">'
 
-      +'<span>✦</span> Analyse All Fixtures with AI →'
+      +'<span>❖</span> Analyse '+filtered.length+' Fixtures with AI →'
 
       +'</button>'
 
@@ -3510,6 +3468,8 @@ function setRiskFilter(risk,btn){
 
   renderTrendingAccas();
 
+  calcTop5Odds();
+
 }
 
 function calcAccaOdds(legs){
@@ -3598,11 +3558,7 @@ function renderTrendingAccas(){
 
       var fixture=l.detail.replace(/·\s*\w+\s+\d+:\d+$/,'').trim();
 
-      var legId='leg_trend'+realIdx+'_'+li;
-
-      var legAdded=slipLegs.some(function(s){return s.legId===legId;});
-
-      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<button id="tleg-'+realIdx+'-'+li+'" onclick="addTrendingLeg('+realIdx+','+li+',this)" style="background:'+(legAdded?'#157a52':'#f0f2f7')+';color:'+(legAdded?'#fff':'var(--navy)')+';font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+(legAdded?'✓':escHtml(l.odds))+'</button>':'')        +'</div>';
+      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<button id="tleg-'+realIdx+'-'+li+'" onclick="addTrendingLeg('+realIdx+','+li+',this)" style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(l.odds)+'</button>':'')        +'</div>';
 
     }).join('');
 
@@ -3622,7 +3578,7 @@ function addTrendingAcca(idx,btn){
 
     if(!slipLegs.some(function(s){return s.legId===legId;})){
 
-      slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt((leg.odds||'1/1').split('/')[0])||1,den:parseInt((leg.odds||'1/1').split('/')[1])||1});
+      var op=(leg.odds||'EVS').split('/');slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt(op[0])||1,den:parseInt(op[1])||1});
 
     }
 
@@ -3637,33 +3593,16 @@ function addTrendingAcca(idx,btn){
 }
 
 function addTrendingLeg(idx,li,btn){
-
-  var a=TRENDING_ACCAS[idx];
-
-  var leg=a.legs[li];
-
-  var legId='leg_trend'+idx+'_'+li;
-
+  var a=TRENDING_ACCAS[idx];var leg=a.legs[li];var legId='leg_trend'+idx+'_'+li;
   if(slipLegs.some(function(s){return s.legId===legId;})){
-
     slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-
     btn.textContent=leg.odds||'EVS';btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
-
     renderSlip();return;
-
   }
-
   var parts=(leg.odds||'1/1').split('/');
-
   slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-
   btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
-
-  renderSlip();
-
-  if(!slipOpen) toggleSlip();
-
+  renderSlip();if(!slipOpen)toggleSlip();
 }
 
 var POPULAR_ACCAS=[
@@ -4721,31 +4660,46 @@ function renderPopularPicks(){
 }
 
 function addPopularToSlip(btn){
-
   var fid=btn.dataset.fid,team=btn.dataset.team,league=btn.dataset.league,odds=btn.dataset.odds;
-
   var legId='leg_'+fid;
-
   if(slipLegs.some(function(s){return s.legId===legId;})){
-
     slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-
     btn.textContent=odds;btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
-
     renderSlip();return;
-
   }
-
-  var parts=odds.split('/');
-
+  var parts=(odds||'1/1').split('/');
   slipLegs.push({legId:legId,team:team,match:league,odds:odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-
   btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
+  renderSlip();if(slipLegs.length===1&&!slipOpen)toggleSlip();
+}
 
-  renderSlip();
+function buildAllPicksAcca(btn){
+  POPULAR_PICKS.forEach(function(p){
+    var legId='leg_'+p.fid;
+    if(!slipLegs.some(function(s){return s.legId===legId;})){
+      var parts=(p.odds||'1/1').split('/');
+      slipLegs.push({legId:legId,team:p.team,match:p.fixture,odds:p.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+    }
+    var ob=document.getElementById('popbtn-'+p.fid);
+    if(ob){ob.textContent='✓';ob.style.background='#157a52';ob.style.color='#fff';}
+  });
+  btn.textContent='✓ Added to Slip';btn.style.background='#157a52';
+  renderSlip();if(!slipOpen)toggleSlip();
+}
 
-  if(slipLegs.length===1&&!slipOpen) toggleSlip();
-
+function calcTop5Odds(){
+  if(!POPULAR_PICKS||!POPULAR_PICKS.length) return;
+  var dec=1;
+  POPULAR_PICKS.forEach(function(p){
+    var o=(p.odds||'').trim();
+    if(!o) return;
+    if(o==='EVS'){dec*=2;return;}
+    var parts=o.split('/');
+    if(parts.length===2){var n=parseFloat(parts[0]),d=parseFloat(parts[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)dec*=(n/d)+1;}
+  });
+  var w=Math.round(dec-1);
+  var el=document.getElementById('top5-odds-display');
+  if(el) el.textContent=(w<1?1:w)+'/1';
 }
 
 // ── INFINITE SCROLL FIXTURES ──
@@ -5090,104 +5044,27 @@ function infRender(){
 
     if(!lf.length) return;
 
-    var dateLabel='';
-
-    var SHOW_MAX=5;
-
-    var visibleRows=lf.slice(0,SHOW_MAX).map(function(f){
-
+    function makeInfRow(f){
       var ko=formatKickoff(f.date,f.time)||'TBC';
-
       var o=getDummyOdds(f.home,f.away);
-
       var ln=escHtml(league.name);
-
-      return '<div class="inf-fx">'
-
-        +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-
+      return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
         +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
         +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-        +'</div>';
-
-    }).join('');
-
-    var hiddenRows=lf.length>SHOW_MAX?lf.slice(SHOW_MAX).map(function(f){
-
-      var ko=formatKickoff(f.date,f.time)||'TBC';
-
-      var o=getDummyOdds(f.home,f.away);
-
-      var ln=escHtml(league.name);
-
-      return '<div class="inf-fx">'
-
-        +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-        +'</div>';
-
-    }).join(''):'';
-
-    var extraCount=lf.length-SHOW_MAX;
-
-    var showMoreId='sm-'+league.id;
-
-    var showMoreBlock=extraCount>0
-
-      ?'<div id="'+showMoreId+'-hidden" style="display:none">'+hiddenRows+'</div>'
-
-       +'<div style="border-top:.5px solid var(--border)">'
-
-       +'<button onclick="infToggleMore(\''+showMoreId+'\')" id="'+showMoreId+'-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy);transition:background .15s" onmouseover="this.style.background=\'var(--soft)\'" onmouseout="this.style.background=\'none\'">'
-
-       +'<span id="'+showMoreId+'-icon" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</span>'
-
-       +'<span id="'+showMoreId+'-txt">'+extraCount+' more fixtures</span>'
-
-       +'</button>'
-
-       +'</div>'
-
-       +'<div id="'+showMoreId+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
-
-      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
-
-    var topAnalyse='<div style="padding:10px 14px;border-bottom:.5px solid var(--border)">'
-
-      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>✦</span> Analyse All Fixtures with AI →</button>'
-
-      +'</div>';
-
-    var card='<div class="inf-league-block">'
-
-      +'<div class="inf-league-head">'
-
-      +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
-
-      +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
-
-      +'</div>'
-
-      +topAnalyse
-
+        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+    }
+    var INF_SHOW=5;
+    var visInf=lf.slice(0,INF_SHOW).map(makeInfRow).join('');
+    var hidInf=lf.length>INF_SHOW?lf.slice(INF_SHOW).map(makeInfRow).join(''):'';
+    var extraInf=lf.length-INF_SHOW;
+    var smInf='sm-inf-'+league.id;
+    var showMoreInf=extraInf>0
+      ?'<div id="'+smInf+'-h" style="display:none">'+hidInf+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smInf+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smInf+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smInf+'-t">'+extraInf+' more fixtures</span></button></div><div id="'+smInf+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
+      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
+    var card='<div class="inf-league-block"><div class="inf-league-head"><div class="inf-league-name">'+escHtml(league.name)+'</div><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div></div>'
+      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
       +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-
-      +visibleRows
-
-      +showMoreBlock
-
-      +'</div>';
-
+      +visInf+showMoreInf+'</div>';
     list.insertAdjacentHTML('beforeend',card);
 
     rendered++;
@@ -5213,40 +5090,6 @@ function infRender(){
       loader.style.display='none';
 
     }
-
-  }
-
-}
-
-function infToggleMore(id){
-
-  var hidden=document.getElementById(id+'-hidden');
-
-  var btn=document.getElementById(id+'-btn');
-
-  var icon=document.getElementById(id+'-icon');
-
-  var txt=document.getElementById(id+'-txt');
-
-  var cta=document.getElementById(id+'-cta');
-
-  var open=hidden.style.display!=='none';
-
-  hidden.style.display=open?'none':'';
-
-  if(cta) cta.style.display=open?'none':'';
-
-  icon.textContent=open?'+':'−';
-
-  if(open){
-
-    var count=hidden.querySelectorAll('.inf-fx').length;
-
-    txt.textContent=count+' more fixtures';
-
-  }else{
-
-    txt.textContent='Show fewer fixtures';
 
   }
 
@@ -5482,96 +5325,27 @@ function renderTopFixtureCarousel(){
 
   }catch(e){}
 
+  function makeTopRow(f){
+    var ko=formatKickoff(f.date,f.time)||'TBC';
+    var o=getDummyOdds(f.home,f.away);
+    var lg=escHtml(league.name);
+    return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+  }
   var TOP_SHOW=5;
-
-  var visibleRows=lf.slice(0,TOP_SHOW).map(function(f){
-
-    var ko=formatKickoff(f.date,f.time)||'TBC';
-
-    var o=getDummyOdds(f.home,f.away);
-
-    var lg=escHtml(league.name);
-
-    return '<div class="inf-fx">'
-
-      +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-      +'</div>';
-
-  }).join('');
-
-  var hiddenTopRows=lf.length>TOP_SHOW?lf.slice(TOP_SHOW).map(function(f){
-
-    var ko=formatKickoff(f.date,f.time)||'TBC';
-
-    var o=getDummyOdds(f.home,f.away);
-
-    var lg=escHtml(league.name);
-
-    return '<div class="inf-fx">'
-
-      +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
-
-      +'</div>';
-
-  }).join(''):'';
-
-  var topExtra=lf.length-TOP_SHOW;
-
-  var topSmId='topsm-'+league.id;
-
-  var topShowMore=topExtra>0
-
-    ?'<div id="'+topSmId+'-hidden" style="display:none">'+hiddenTopRows+'</div>'
-
-     +'<div style="border-top:.5px solid var(--border)">'
-
-     +'<button onclick="infToggleMore(\''+topSmId+'\')" id="'+topSmId+'-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy);transition:background .15s" onmouseover="this.style.background=\'var(--soft)\'" onmouseout="this.style.background=\'none\'">'
-
-     +'<span id="'+topSmId+'-icon" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</span>'
-
-     +'<span id="'+topSmId+'-txt">'+topExtra+' more fixtures</span>'
-
-     +'</button>'
-
-     +'</div>'
-
-     +'<div id="'+topSmId+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
-
-    :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>✦</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
-
-  var card='<div class="inf-league-block">'
-
-    +'<div class="inf-league-head">'
-
-    +'<div class="inf-league-meta">'+dateLabel+'</div>'
-
-    +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
-
-    +'</div>'
-
-    +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>✦</span> Analyse All Fixtures with AI →</button></div>'
-
+  var visTop=lf.slice(0,TOP_SHOW).map(makeTopRow).join('');
+  var hidTop=lf.length>TOP_SHOW?lf.slice(TOP_SHOW).map(makeTopRow).join(''):'';
+  var extraTop=lf.length-TOP_SHOW;
+  var smTop='sm-top-'+league.id;
+  var showMoreTop=extraTop>0
+    ?'<div id="'+smTop+'-h" style="display:none">'+hidTop+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smTop+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smTop+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smTop+'-t">'+extraTop+' more fixtures</span></button></div><div id="'+smTop+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
+    :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
+  var card='<div class="inf-league-block"><div class="inf-league-head"><div class="inf-league-meta">'+dateLabel+'</div><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div></div>'
+    +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-
-    +visibleRows
-
-    +topShowMore
-
-    +'</div>';
-
+    +visTop+showMoreTop+'</div>';
   container.innerHTML=card;
 
   if(loader) loader.style.display='none';
@@ -5707,6 +5481,8 @@ window.addEventListener('DOMContentLoaded',function(){
   renderPopularPicks();
 
   renderTrendingAccas();
+
+  calcTop5Odds();
 
   renderPopularAccas();
 
