@@ -336,10 +336,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .pop-ring{display:none}
 
-
-
-
-
 .pop-add{font-size:12px;font-weight:700;background:#f0f2f7;color:#0b1628;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;flex-shrink:0}
 
 .pop-add:hover{background:#e4e8f0;border-color:#0b1628}
@@ -956,12 +952,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   .pop-row{padding:9px 14px;gap:10px}
 
-
-
-
-
-
-
   .pop-team{font-size:14px;font-weight:500}
 
   .pop-fixture{font-size:12px;margin-top:1px;line-height:1.3}
@@ -1363,8 +1353,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 @media(max-width:600px){.top-tab-bar{margin:0 -16px;padding:0 16px}}
 
 /* ── RISK TIER TABS ── */
+
 .risk-tab{padding:7px 16px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--mid);font-family:inherit;transition:all .18s;white-space:nowrap}
+
 .risk-tab:hover{border-color:var(--navy);color:var(--navy)}
+
 .risk-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
 </style>
@@ -3397,45 +3390,74 @@ function goHome(){
 
 var TRENDING_ACCAS=[
 
+  {risk:'mid',legs:[
+
+    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+
+    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+
+    {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+
+    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+
+  ],label:'4-Leg · Mid Risk',winRate:'51%'},
+
   {risk:'low',legs:[
+
     {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+
     {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+
   ],label:'2-Leg · Low Risk',winRate:'74%'},
 
   {risk:'low',legs:[
+
     {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+
     {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+
     {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+
   ],label:'3-Leg · Low Risk',winRate:'68%'},
 
   {risk:'mid',legs:[
+
     {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+
     {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+
     {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+
   ],label:'3-Leg · Mid Risk',winRate:'61%'},
 
-  {risk:'mid',legs:[
-    {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
-    {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
-    {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
-    {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
-  ],label:'4-Leg · Mid Risk',winRate:'51%'},
-
   {risk:'high',legs:[
+
     {team:'Stenhousemuir',detail:'v Dumbarton · Scottish L1 · Sat 15:00',odds:'5/4'},
+
     {team:'Lincoln City',detail:'v Wigan · League One · Sat 15:00',odds:'EVS'},
+
     {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+
     {team:'Benfica',detail:'v Sporting CP · Primeira Liga · Sat 20:30',odds:'7/4'},
+
     {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+
   ],label:'5-Leg · High Risk',winRate:'38%'},
 
   {risk:'high',legs:[
+
     {team:'Celtic',detail:'v Hearts · Scottish Prem · Sat 15:00',odds:'4/7'},
+
     {team:'Bromley',detail:'v Notts County · League Two · Sat 15:00',odds:'6/4'},
+
     {team:'NEC Nijmegen',detail:'v Ajax · Eredivisie · Sat 16:30',odds:'7/5'},
+
     {team:'Rennes',detail:'v Lyon · Ligue 1 · Sat 17:00',odds:'EVS'},
+
     {team:'Burnley',detail:'v Sheffield Wed · Championship · Sat 15:00',odds:'4/6'},
+
     {team:'Leeds United',detail:'v Millwall · Championship · Sat 15:00',odds:'8/11'},
+
   ],label:'6-Leg · High Risk',winRate:'24%'},
 
 ];
@@ -3443,10 +3465,15 @@ var TRENDING_ACCAS=[
 var currentRiskFilter='all';
 
 function setRiskFilter(risk,btn){
+
   currentRiskFilter=risk;
+
   document.querySelectorAll('.risk-tab').forEach(function(b){b.classList.remove('active');});
+
   btn.classList.add('active');
+
   renderTrendingAccas();
+
 }
 
 function calcAccaOdds(legs){
@@ -3490,39 +3517,61 @@ function calcAccaOdds(legs){
 }
 
 function renderTrendingAccas(){
+
   var el=document.getElementById('trending-stacked');
+
   if(!el) return;
 
   var riskColors={low:'#1e9e6b',mid:'#e8890c',high:'#e53935'};
+
   var riskLabels={low:'LOW RISK',mid:'MID RISK',high:'HIGH RISK'};
 
   var filtered=TRENDING_ACCAS.filter(function(a){
+
     return a.legs.length>=3&&(currentRiskFilter==='all'||a.risk===currentRiskFilter);
+
   });
 
   if(!filtered.length){
+
     el.innerHTML='<div style="padding:24px;text-align:center;font-size:13px;color:var(--muted)">No accas available.</div>';
+
     return;
+
   }
 
   el.innerHTML=filtered.map(function(a,i){
+
     var realIdx=TRENDING_ACCAS.indexOf(a);
+
     var riskCol=riskColors[a.risk]||'var(--green)';
+
     var riskLbl=riskLabels[a.risk]||'';
+
     var n=a.legs.length;
+
     var teamSize=n<=3?'18px':n===4?'15px':'13px';
+
     var subSize='13px';
+
     var oddsSize=n<=3?'13px':'12px';
+
     var oddsPad=n<=3?'5px 10px':'4px 9px';
 
     var rows=a.legs.map(function(l){
+
       var fixture=l.detail.replace(/·\s*\w+\s+\d+:\d+$/,'').trim();
+
       return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<div style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px">'+escHtml(l.odds)+'</div>':'')        +'</div>';
+
     }).join('');
 
     return '<div class="trend-card">'      +'<div style="padding:10px 16px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'      +'<div style="display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:'+riskCol+'"></div><span style="font-size:10px;font-weight:700;color:'+riskCol+';letter-spacing:.06em">'+riskLbl+'</span></div>'      +'<span style="font-size:10px;color:var(--muted)">'+n+' selections</span>'      +'</div>'      +'<div style="flex:1;display:flex;flex-direction:column">'+rows+'</div>'      +'<div style="padding:12px 16px;border-top:.5px solid var(--border);flex-shrink:0">'      +'<div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>'      +'<div style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">'+calcAccaOdds(a.legs)+'</div>'      +'<button class="trend-btn" id="trend-btn-'+realIdx+'" onclick="addTrendingAcca('+realIdx+',this)">+ Add to My Slip</button>'      +'</div>'      +'</div>';
+
   }).join('');
+
 }
+
 function addTrendingAcca(idx,btn){
 
   var a=TRENDING_ACCAS[idx];
@@ -4568,22 +4617,39 @@ function renderLeaderboard(){
 }
 
 function renderPopularPicks(){
+
   var el=document.getElementById('popular-body');
+
   if(!el) return;
+
   var borders=['#c9a84c','#9aa3b5','#b87c4a'];
+
   var badges=[
+
     {bg:'#fef3c7',color:'#92400e',label:'Top Pick'},
+
     {bg:'#e2e8f0',color:'#475569',label:'2nd'},
+
     {bg:'#fde7cc',color:'#7c2d12',label:'3rd'}
+
   ];
+
   el.innerHTML=POPULAR_PICKS.map(function(p,i){
+
     var added=slipLegs.some(function(s){return s.legId==='leg_'+p.fid;});
+
     var badge=badges[i]||null;
+
     var border=borders[i]||'transparent';
+
     var fixture=p.fixture.replace(/\s*·\s*Sat\s+\d+:\d+/,'').replace(/\s*·\s*Sun\s+\d+:\d+/,'').replace(/\s*·\s*\w+\s+\d+:\d+/,'');
+
     return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<div style="background:#f0f2f7;color:var(--navy);font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center">'+escHtml(p.odds||'')+'</div>'      +'</div>'      +'</div>';
+
   }).join('');
+
 }
+
 function addPopularToSlip(btn){
 
   var fid=btn.dataset.fid,team=btn.dataset.team,league=btn.dataset.league,odds=btn.dataset.odds;
@@ -5055,165 +5121,290 @@ function infRender(){
 }
 
 var topCarouselCountry='england';
+
 var topLeagueSelected='';
 
 var TOP_LEAGUES_BY_COUNTRY={
+
   england:['4328','4329','4396','4397','4590','4681','4682'],
+
   scotland:['4330','4395','4669','4670'],
+
   spain:['4335','4400'],
+
   germany:['4331','4406','4413'],
+
   france:['4334','4401'],
+
   italy:['4332','4404'],
+
   netherlands:['4337','4402'],
+
   portugal:['4344','4403']
+
 };
 
 function buildTopTabBar(){
+
   var bar=document.getElementById('top-tab-bar');
+
   if(!bar) return;
+
   var countries=['england','scotland','spain','germany','france','italy','netherlands','portugal'];
+
   var labels={england:'England',scotland:'Scotland',spain:'Spain',germany:'Germany',france:'France',italy:'Italy',netherlands:'Netherlands',portugal:'Portugal'};
+
   bar.innerHTML='';
+
   countries.forEach(function(c){
+
     var tab=document.createElement('button');
+
     tab.className='top-tab'+(topCarouselCountry===c?' active':'');
+
     tab.textContent=labels[c];
+
     tab.onclick=(function(cc){return function(){setTopCarouselCountry(cc);};})(c);
+
     bar.appendChild(tab);
+
   });
+
 }
 
 function buildTopLeagueStrip(){
+
   var strip=document.getElementById('top-league-strip');
+
   if(!strip) return;
+
   var leagues=TOP_LEAGUES_BY_COUNTRY[topCarouselCountry]||[];
+
   // Find which leagues actually have fixtures
+
   // Always show all leagues for the country regardless of fixture availability
+
   var available=leagues;
+
   // Auto-select first if current selection not in this country
+
   if(!available.includes(topLeagueSelected)){
+
     topLeagueSelected=available[0]||'';
+
   }
+
   strip.innerHTML=available.map(function(id){
+
     var l=INF_LEAGUES.find(function(x){return x.id===id;})||{name:id};
+
     return '<button class="top-tab'+(topLeagueSelected===id?' active':'')+'" onclick="setTopLeague(\''+id+'\')">'+l.name+'</button>';
+
   }).join('');
+
 }
 
 function setTopCarouselCountry(c){
+
   topCarouselCountry=c;
+
   topLeagueSelected='';
+
   buildTopTabBar();
+
   buildTopLeagueStrip();
+
   renderTopFixtureCarousel();
+
 }
 
 function setTopLeague(id){
+
   topLeagueSelected=id;
+
   buildTopLeagueStrip();
+
   renderTopFixtureCarousel();
+
 }
 
 function renderTopFixtureCarousel(){
+
   var container=document.getElementById('top-fixture-carousel');
+
   var loader=document.getElementById('top-fixture-loader');
+
   if(!container) return;
 
   // Collect all fixtures
+
   var allF=[];
+
   Object.keys(infMultiFixtures).forEach(function(dateStr){
+
     (infMultiFixtures[dateStr]||[]).forEach(function(f){
+
       f._dateStr=dateStr;
+
       allF.push(f);
+
     });
+
   });
 
   if(!topLeagueSelected){
+
     // pick first available league for this country
+
     var countryLeagues=TOP_LEAGUES_BY_COUNTRY[topCarouselCountry]||[];
+
     for(var i=0;i<countryLeagues.length;i++){
+
       var lid=countryLeagues[i];
+
       if(allF.some(function(f){return String(f.leagueId)===String(lid);})){
+
         topLeagueSelected=lid;
+
         break;
+
       }
+
     }
+
     if(!topLeagueSelected&&countryLeagues.length) topLeagueSelected=countryLeagues[0];
+
     buildTopLeagueStrip();
+
   }
 
   var league=INF_LEAGUES.find(function(l){return l.id===topLeagueSelected;});
+
   if(!league){
+
     container.innerHTML='';
+
     if(loader){loader.textContent='No fixtures found.';loader.style.display='block';}
+
     return;
+
   }
 
   // Get fixtures for selected league
+
   var lf=allF.filter(function(f){return String(f.leagueId)===String(topLeagueSelected);});
 
   // Gameweek logic: earliest date + 2 days window
+
   if(lf.length){
+
     var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean).sort();
+
     var firstDate=new Date(dates[0]+'T12:00:00');
+
     var cutoff=new Date(firstDate);
+
     cutoff.setDate(cutoff.getDate()+2);
+
     lf=lf.filter(function(f){
+
       return new Date((f._dateStr||'')+'T12:00:00')<=cutoff;
+
     });
+
     lf.sort(function(a,b){
+
       return ((a._dateStr||'')+(a.time||'99:99')).localeCompare((b._dateStr||'')+(b.time||'99:99'));
+
     });
+
   }
 
   if(!lf.length){
+
     container.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted)">No upcoming fixtures for '+league.name+'</div>';
+
     if(loader) loader.style.display='none';
+
     return;
+
   }
 
   // Date label
+
   var dateLabel='';
+
   try{
+
     var dd=new Date((lf[0]._dateStr||'')+'T12:00:00');
+
     var today=new Date();today.setHours(0,0,0,0);
+
     var diff=Math.round((dd-today)/86400000);
+
     if(diff===0) dateLabel='Today';
+
     else if(diff===1) dateLabel='Tomorrow';
+
     else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
   }catch(e){}
 
   var rows=lf.map(function(f){
+
     var ko=formatKickoff(f.date,f.time)||'TBC';
+
     var o=getDummyOdds(f.home,f.away);
+
     var lg=escHtml(league.name);
+
     return '<div class="inf-fx">'
+
       +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+
       +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+
       +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+
       +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
+
       +'</div>';
+
   }).join('');
 
   var card='<div class="inf-league-block">'
+
     +'<div class="inf-league-head">'
+
     +'<div class="inf-league-meta">'+dateLabel+'</div>'
+
     +'<div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+
     +'</div>'
+
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
+
     +rows
+
     +'<div class="analyse-all-wrap">'
+
     +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">'
+
     +'<span>✦</span> Analyse All Fixtures with AI →'
+
     +'</button>'
+
     +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
+
     +'</div>'
+
     +'</div>';
 
   container.innerHTML=card;
-  if(loader) loader.style.display='none';
-}
 
+  if(loader) loader.style.display='none';
+
+}
 
 function getDummyOdds(home, away){
 
