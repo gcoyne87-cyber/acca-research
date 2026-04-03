@@ -732,7 +732,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .slip-panel-title{font-size:12px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.08em}
 
-.slip-panel-close{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;line-height:1;padding:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}.slip-panel-close:hover{background:rgba(255,255,255,0.28)}
+.slip-panel-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:20px;cursor:pointer;line-height:1;padding:0}
 
 .slip-body{padding:12px 14px;max-height:420px;overflow-y:auto}
 
@@ -1360,6 +1360,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .risk-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
+
+/* ── DAILY PICKS CAROUSEL ── */
+.daily-picks-outer{overflow:hidden;margin:0 -24px;padding:0 24px;margin-bottom:16px}
+.daily-picks-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;align-items:stretch}
+.daily-picks-carousel::-webkit-scrollbar{display:none}
+.daily-pick-card{background:#e8f8f1;border:1.5px solid #a7e0c4;border-radius:14px;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 52px);max-width:340px;padding:16px;display:flex;flex-direction:column}
+.dp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dp-badge{display:inline-flex;align-items:center;gap:6px;background:#fffbf0;border:1.5px solid var(--gold);border-radius:99px;padding:5px 14px}
+.dp-badge-icon{font-size:13px;line-height:1}
+.dp-badge-txt{font-size:12px;font-weight:700;color:#92400e;letter-spacing:.04em}
+.dp-team{font-size:28px;font-weight:700;color:var(--navy);letter-spacing:-0.5px;margin-bottom:2px;line-height:1.1}
+.dp-opponent{font-size:13px;color:#4a8a6a;margin-bottom:1px}
+.dp-league{font-size:11px;color:#4a8a6a;opacity:.7;margin-bottom:12px}
+.dp-bullets{background:rgba(255,255,255,0.65);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;margin-bottom:14px;flex:1}
+.dp-bullet{font-size:12px;color:var(--mid);display:flex;align-items:flex-start;gap:6px;line-height:1.5}
+.dp-bullet-tick{color:var(--green);font-weight:700;flex-shrink:0}
+.dp-foot{display:flex;align-items:center;gap:10px}
+.dp-add-btn{flex:1;background:var(--green);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
+.dp-add-btn.added{background:#157a52}
+.dp-swipe-hint{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:8px}
+.dp-swipe-txt{font-size:11px;font-weight:600;color:var(--green)}
+.dp-swipe-pill{background:var(--green);color:#fff;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700}
+
 </style>
 
 </head>
@@ -1530,6 +1553,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         <div id="home-widgets">
 
+      <!-- 0. Daily Picks — Top Pick / Double / Treble -->
+
+      <div class="home-section" id="daily-picks-section" style="margin-bottom:20px">
+
+        <div class="daily-picks-outer">
+
+          <div class="daily-picks-carousel" id="daily-picks-carousel">
+
+            <!-- rendered by JS -->
+
+          </div>
+
+        </div>
+
+      </div>
+
       <!-- 1. Trending Accumulators -->
 
       <div class="home-section" id="trending-section">
@@ -1546,7 +1585,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
           </div>
 
-          <div style="font-size:13px;color:var(--mid);line-height:1.6">Built from a combination of the most popular picks from users and our AI algorithm.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px">
+
+            <div style="font-size:13px;color:var(--mid);line-height:1.6">Built from a combination of the most popular picks from users and our AI algorithm.</div>
+
+            <div style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0;background:var(--green);border-radius:99px;padding:4px 12px"><span style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap">Swipe</span><span style="font-size:13px;color:#fff;font-weight:700">&#8594;</span></div>
+
+          </div>
 
         </div>
 
@@ -1836,7 +1881,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       </div>
 
-      <button class="clear-btn" onclick="clearSlip()" style="width:100%;margin-top:10px;padding:11px;background:rgba(229,57,53,0.1);color:#e53935;border:1.5px solid rgba(229,57,53,0.3);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.01em;transition:all .18s" onmouseover="this.style.background='rgba(229,57,53,0.18)'" onmouseout="this.style.background='rgba(229,57,53,0.1)'">🗑  Clear Slip</button>
+      <button class="clear-btn" onclick="clearSlip()">Clear slip</button>
 
     </div>
 
@@ -2259,16 +2304,125 @@ function acwRender(){
 // Enter key support
 
 
-function fxToggleMore(id){
-  var h=document.getElementById(id+'-h');
-  var i=document.getElementById(id+'-i');
-  var t=document.getElementById(id+'-t');
-  var cta=document.getElementById(id+'-cta');
-  var open=h.style.display!=='none';
-  h.style.display=open?'none':'';
-  if(cta)cta.style.display=open?'none':'';
-  i.textContent=open?'+':'−';
-  t.textContent=open?(h.querySelectorAll('.inf-fx,.lc-fx').length+' more fixtures'):'Show fewer fixtures';
+function getNextKoSecs(fixtures){
+  var now=Date.now();
+  var upcoming=[];
+  (fixtures||[]).forEach(function(f){
+    if(!f.time||f.time==='00:00:00') return;
+    try{var ms=new Date(f.date+'T'+f.time+'Z').getTime();if(ms>now)upcoming.push(ms);}catch(e){}
+  });
+  if(!upcoming.length) return -1;
+  upcoming.sort(function(a,b){return a-b;});
+  return Math.floor((upcoming[0]-now)/1000);
+}
+function fmtCd(secs){
+  if(secs<=0) return null;
+  var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+  function p(n){return String(n).padStart(2,'0');}
+  return h>0?h+'h '+p(m)+'m '+p(s)+'s':p(m)+'m '+p(s)+'s';
+}
+var _cdTimers={};
+function startLeagueCountdown(elId,fixtureList){
+  if(_cdTimers[elId])clearInterval(_cdTimers[elId]);
+  function tick(){
+    var el=document.getElementById(elId);
+    if(!el){clearInterval(_cdTimers[elId]);return;}
+    var secs=getNextKoSecs(fixtureList);
+    if(secs<0){el.textContent='';clearInterval(_cdTimers[elId]);return;}
+    var t=fmtCd(secs);
+    el.textContent=t?'Next kick-off in '+t:'';
+  }
+  tick();
+  _cdTimers[elId]=setInterval(tick,1000);
+}
+
+function buildAllPicksAcca(btn){
+  POPULAR_PICKS.forEach(function(p){
+    var legId='leg_'+p.fid;
+    if(!slipLegs.some(function(s){return s.legId===legId;})){
+      var parts=(p.odds||'1/1').split('/');
+      slipLegs.push({legId:legId,team:p.team,match:p.fixture,odds:p.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+    }
+    var ob=document.getElementById('popbtn-'+p.fid);
+    if(ob){ob.textContent='\u2713';ob.style.background='#157a52';ob.style.color='#fff';}
+  });
+  btn.textContent='\u2713 Added to Slip';btn.style.background='#157a52';
+  renderSlip();if(!slipOpen)toggleSlip();
+}
+
+function calcTop5Odds(){
+  if(!POPULAR_PICKS||!POPULAR_PICKS.length) return;
+  var dec=1;
+  POPULAR_PICKS.forEach(function(p){
+    var o=(p.odds||'').trim();
+    if(!o) return;
+    if(o==='EVS'){dec*=2;return;}
+    var parts=o.split('/');
+    if(parts.length===2){var n=parseFloat(parts[0]),d=parseFloat(parts[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)dec*=(n/d)+1;}
+  });
+  var w=Math.round(dec-1);
+  var el=document.getElementById('top5-odds-display');
+  if(el) el.textContent=(w<1?1:w)+'/1';
+}
+
+
+var DAILY_PICKS=[
+  {
+    type:"Today's Top Pick",
+    icon:'⚡',
+    teams:['Burnley'],
+    opponents:['v Sheffield Wednesday'],
+    league:'Championship · Sat 15:00',
+    reasons:[
+      'Won 5 of last 6 home games, conceding just 3 goals',
+      'Sheffield Wed winless away in 8 — worst away record in division',
+      'Key injury boost: Sheff Wed missing their top scorer Docherty',
+      'Burnley unbeaten in last 4 H2H meetings at Turf Moor',
+      '78% of AccuEdge community backing Burnley today'
+    ],
+    odds:'4/6'
+  }
+];
+
+function renderDailyPicks(){
+  var el=document.getElementById('daily-picks-carousel');
+  if(!el||!DAILY_PICKS.length) return;
+  var p=DAILY_PICKS[0];
+  el.innerHTML='<div class="daily-pick-card" style="width:100%;max-width:100%">'
+    +'<div class="dp-header">'
+    +'<div class="dp-badge"><span class="dp-badge-icon">'+p.icon+'</span><span class="dp-badge-txt">'+escHtml(p.type)+'</span></div>'
+    +'<button id="dp-odds-btn" onclick="addDailyPick(0,this,true)" style="background:#fff;border:1.5px solid #a7e0c4;border-radius:99px;padding:5px 16px;font-size:16px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit;transition:all .18s;flex-shrink:0">'+escHtml(p.odds)+'</button>'
+    +'</div>'
+    +'<div class="dp-team">'+escHtml(p.teams[0])+'</div>'
+    +'<div class="dp-opponent">'+escHtml(p.opponents[0])+'</div>'
+    +'<div class="dp-league">'+escHtml(p.league)+'</div>'
+    +'<div class="dp-bullets">'
+    +p.reasons.map(function(r,ri){var last=ri===p.reasons.length-1;return last?'<div class="dp-bullet" style="margin-top:5px;padding-top:8px;border-top:.5px solid rgba(30,158,107,0.2)"><span style="color:var(--green);font-weight:700;flex-shrink:0">\uD83D\uDC65</span><span style="color:var(--green);font-weight:600">'+escHtml(r)+'</span></div>':'<div class="dp-bullet"><span class="dp-bullet-tick">\u2713</span><span>'+escHtml(r)+'</span></div>';}).join('')
+    +'</div>'
+    +'<div class="dp-foot">'
+    +'<button class="dp-add-btn" id="dp-btn-0" onclick="addDailyPick(0,this,false)">+ Add to My Slip</button>'
+    +'</div>'
+    +'</div>';
+}
+
+function addDailyPick(idx,btn,isOddsBtn){
+  var p=DAILY_PICKS[idx];
+  var legId='leg_daily'+idx+'_0';
+  if(slipLegs.some(function(s){return s.legId===legId;})){
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+    var ob=document.getElementById('dp-odds-btn');
+    var sb=document.getElementById('dp-btn-0');
+    if(ob){ob.textContent=p.odds;ob.style.background='#fff';ob.style.color='var(--green)';ob.style.borderColor='#a7e0c4';}
+    if(sb){sb.textContent='+ Add to My Slip';sb.classList.remove('added');}
+    renderSlip();return;
+  }
+  var parts=(p.odds||'1/1').split('/');
+  slipLegs.push({legId:legId,team:p.teams[0],match:p.opponents[0]||'',odds:p.odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+  var ob=document.getElementById('dp-odds-btn');
+  var sb=document.getElementById('dp-btn-0');
+  if(ob){ob.textContent='✓';ob.style.background='#157a52';ob.style.color='#fff';ob.style.borderColor='#157a52';}
+  if(sb){sb.textContent='✓ Added to Slip';sb.classList.add('added');}
+  renderSlip();if(!slipOpen)toggleSlip();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
@@ -2433,28 +2587,52 @@ function renderLeagueCarousel(){
 
     if(!fixtures.length) return '';
 
-    function makeLcRow(f){
-      var ko=formatKickoff(f.date,f.time)||'TBC';
-      var o=getDummyOdds(f.home,f.away);
-      var lg=escHtml(l.name);
-      return '<div class="lc-fx"><div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
-    }
-    var SHOW_LC=5;
-    var visLc=fixtures.slice(0,SHOW_LC).map(makeLcRow).join('');
-    var hidLc=fixtures.length>SHOW_LC?fixtures.slice(SHOW_LC).map(makeLcRow).join(''):'';
-    var extraLc=fixtures.length-SHOW_LC;
-    var smLc='sm-lc-'+id;
-    var showMoreLc=extraLc>0
-      ?'<div id="'+smLc+'-h" style="display:none">'+hidLc+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smLc+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smLc+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smLc+'-t">'+extraLc+' more fixtures</span></button></div><div id="'+smLc+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div></div>'
-      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div>';
+    var rows=fixtures.map(function(f){
 
-    return '<div class="lc-card"><div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div><div class="lc-right"><div class="lc-date">'+dateLabel+'</div><div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
-      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button></div>'
+      var ko=formatKickoff(f.date,f.time)||'TBC';
+
+      return '<div class="lc-fx">'
+
+        +(function(){
+
+          var o=getDummyOdds(f.home,f.away);
+
+          var league=escHtml(l.name);
+
+          return '<div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
+
+            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+
+            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+
+            +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+league+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>';
+
+        })()
+
+        +'</div>';
+
+    }).join('');
+
+    return '<div class="lc-card">'
+      +(function(){var cdId='cd-lc-'+id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,fixtures);},50);return '<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div><div class="lc-right"><div class="lc-date">'+dateLabel+'</div><div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div><div style="padding:0 18px 8px;background:var(--soft);border-bottom:.5px solid var(--border)"><span id="'+cdId+'" style="font-size:11px;font-weight:600;color:var(--green)"></span></div>';})()
+
       +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
-      +visLc+showMoreLc+'</div>';
+
+      +rows
+
+      +'<div class="analyse-all-wrap">'
+
+      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')">'
+
+      +'<span>✦</span> Analyse All Fixtures with AI →'
+
+      +'</button>'
+
+      +'<div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div>'
+
+      +'</div>'
+
+      +'</div>';
 
   }).filter(Boolean);
 
@@ -2772,7 +2950,7 @@ function renderFixtures(){
 
       +'<button class="analyse-all-btn" onclick="analyseLeague(\''+currentLeague+'\')">'
 
-      +'<span>❖</span> Analyse '+filtered.length+' Fixtures with AI →'
+      +'<span>✦</span> Analyse All Fixtures with AI →'
 
       +'</button>'
 
@@ -3468,6 +3646,8 @@ function setRiskFilter(risk,btn){
 
   renderTrendingAccas();
 
+  renderDailyPicks();
+
   calcTop5Odds();
 
 }
@@ -3512,6 +3692,79 @@ function calcAccaOdds(legs){
 
 }
 
+function renderUserAccaCards(){
+  // Pick top 3 community accas with 3+ legs
+  var picks=COMMUNITY_ACCAS.filter(function(a){return a.legs.length>=3;}).slice(0,3);
+  return picks.map(function(a,i){
+    var realIdx=i;
+    var tierColors={gold:'#c9a84c',silver:'#8a98b0',bronze:'#b87c4a'};
+    var tierLabels={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
+    var tierBg={gold:'#fef3c7',silver:'#e2e8f0',bronze:'#fde7cc'};
+    var tierTxt={gold:'#78350f',silver:'#334155',bronze:'#7c2d12'};
+    var specialist=a.tags.find(function(t){return t.cls==='strong'||t.cls==='hot';});
+    var specLabel=specialist?specialist.label:'';
+    var correct=a.form.match(/(\d+) of (\d+)/);
+    var recordTxt=correct?correct[1]+' of '+correct[2]+' correct':'';
+    var n=a.legs.length;
+    var teamSize=n<=3?'18px':n===4?'15px':'13px';
+    var subSize='13px';
+    var oddsSize=n<=3?'13px':'12px';
+    var oddsPad=n<=3?'5px 10px':'4px 9px';
+    var rows=a.legs.map(function(l,li){
+      var fixture=l.meta.replace(/·\s*\w+\s+\d+:\d+$/,'').replace(/·[^·]*$/,'').trim();
+      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'
+        +'<div style="min-width:0">'
+        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'
+        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'
+        +'</div>'
+        +(l.odds?'<button id="uleg-'+i+'-'+li+'" onclick="addUserLeg('+i+','+li+',this)" style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(l.odds)+'</button>':'')
+        +'</div>';
+    }).join('');
+    var combined=calcAccaOdds(a.legs.map(function(l){return {odds:l.odds};}));
+    return '<div class="trend-card">'
+      +'<div style="padding:10px 16px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:9px;flex-shrink:0">'
+      +'<div style="width:26px;height:26px;border-radius:50%;background:'+tierColors[a.tier]+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">'+escHtml(a.user.charAt(0))+'</div>'
+      +'<div style="min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:5px"><span style="font-size:13px;font-weight:700;color:var(--navy)">'+escHtml(a.user)+'</span><span style="font-size:10px;font-weight:600;background:'+tierBg[a.tier]+';color:'+tierTxt[a.tier]+';padding:2px 7px;border-radius:99px">'+tierLabels[a.tier]+'</span></div>'
+      +(recordTxt||specLabel?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(recordTxt?escHtml(recordTxt):'')+(recordTxt&&specLabel?' · ':'')+(specLabel?'<span style="color:var(--green);font-weight:600">'+escHtml(specLabel)+'</span>':'')+'</div>':'')
+      +'</div>'
+      +'</div>'
+      +'<div style="flex:1;display:flex;flex-direction:column">'+rows+'</div>'
+      +'<div style="padding:12px 16px;border-top:.5px solid var(--border);flex-shrink:0">'
+      +'<div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>'
+      +'<div style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">'+combined+'</div>'
+      +'<button class="trend-btn" id="uacca-btn-'+i+'" onclick="addUserAcca('+i+',this)">+ Add to My Slip</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function addUserLeg(ai,li,btn){
+  var a=COMMUNITY_ACCAS[ai];var leg=a.legs[li];var legId='leg_uleg'+ai+'_'+li;
+  if(slipLegs.some(function(s){return s.legId===legId;})){
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+    btn.textContent=leg.odds||'EVS';btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
+    renderSlip();return;
+  }
+  var parts=(leg.odds||'1/1').split('/');
+  slipLegs.push({legId:legId,team:leg.team,match:leg.meta,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
+  renderSlip();if(!slipOpen)toggleSlip();
+}
+
+function addUserAcca(ai,btn){
+  var a=COMMUNITY_ACCAS[ai];
+  a.legs.forEach(function(leg,li){
+    var legId='leg_uacca'+ai+'_'+li;
+    if(!slipLegs.some(function(s){return s.legId===legId;})){
+      var parts=(leg.odds||'1/1').split('/');
+      slipLegs.push({legId:legId,team:leg.team,match:leg.meta,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+    }
+  });
+  btn.textContent='✓ Added';btn.classList.add('added');
+  renderSlip();if(!slipOpen)toggleSlip();
+}
+
 function renderTrendingAccas(){
 
   var el=document.getElementById('trending-stacked');
@@ -3554,17 +3807,17 @@ function renderTrendingAccas(){
 
     var oddsPad=n<=3?'5px 10px':'4px 9px';
 
-    var rows=a.legs.map(function(l,li){
+    var rows=a.legs.map(function(l){
 
       var fixture=l.detail.replace(/·\s*\w+\s+\d+:\d+$/,'').trim();
 
-      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<button id="tleg-'+realIdx+'-'+li+'" onclick="addTrendingLeg('+realIdx+','+li+',this)" style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(l.odds)+'</button>':'')        +'</div>';
+      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<div style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px">'+escHtml(l.odds)+'</div>':'')        +'</div>';
 
     }).join('');
 
     return '<div class="trend-card">'      +'<div style="padding:10px 16px;background:var(--soft);border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'      +'<div style="display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:'+riskCol+'"></div><span style="font-size:10px;font-weight:700;color:'+riskCol+';letter-spacing:.06em">'+riskLbl+'</span></div>'      +'<span style="font-size:10px;color:var(--muted)">'+n+' selections</span>'      +'</div>'      +'<div style="flex:1;display:flex;flex-direction:column">'+rows+'</div>'      +'<div style="padding:12px 16px;border-top:.5px solid var(--border);flex-shrink:0">'      +'<div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-bottom:3px">COMBINED ODDS</div>'      +'<div style="font-size:24px;font-weight:700;color:var(--green);margin-bottom:12px">'+calcAccaOdds(a.legs)+'</div>'      +'<button class="trend-btn" id="trend-btn-'+realIdx+'" onclick="addTrendingAcca('+realIdx+',this)">+ Add to My Slip</button>'      +'</div>'      +'</div>';
 
-  }).join('');
+  }).join('')+renderUserAccaCards();
 
 }
 
@@ -3578,7 +3831,7 @@ function addTrendingAcca(idx,btn){
 
     if(!slipLegs.some(function(s){return s.legId===legId;})){
 
-      var op=(leg.odds||'EVS').split('/');slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt(op[0])||1,den:parseInt(op[1])||1});
+      slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:'EVS',num:1,den:1});
 
     }
 
@@ -3590,19 +3843,6 @@ function addTrendingAcca(idx,btn){
 
   if(!slipOpen) toggleSlip();
 
-}
-
-function addTrendingLeg(idx,li,btn){
-  var a=TRENDING_ACCAS[idx];var leg=a.legs[li];var legId='leg_trend'+idx+'_'+li;
-  if(slipLegs.some(function(s){return s.legId===legId;})){
-    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-    btn.textContent=leg.odds||'EVS';btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
-    renderSlip();return;
-  }
-  var parts=(leg.odds||'1/1').split('/');
-  slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
-  renderSlip();if(!slipOpen)toggleSlip();
 }
 
 var POPULAR_ACCAS=[
@@ -4653,53 +4893,38 @@ function renderPopularPicks(){
 
     var fixture=p.fixture.replace(/\s*·\s*Sat\s+\d+:\d+/,'').replace(/\s*·\s*Sun\s+\d+:\d+/,'').replace(/\s*·\s*\w+\s+\d+:\d+/,'');
 
-    return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<button id="popbtn-'+p.fid+'" onclick="addPopularToSlip(this)" data-fid="'+p.fid+'" data-team="'+escHtml(p.team)+'" data-league="'+escHtml(fixture)+'" data-odds="'+escHtml(p.odds||'EVS')+'" style="background:'+(added?'#157a52':'#f0f2f7')+';color:'+(added?'#fff':'var(--navy)')+';font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+(added?'✓':escHtml(p.odds||''))+'</button>'      +'</div>'      +'</div>';
+    return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<div style="background:#f0f2f7;color:var(--navy);font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center">'+escHtml(p.odds||'')+'</div>'      +'</div>'      +'</div>';
 
   }).join('');
 
 }
 
 function addPopularToSlip(btn){
+
   var fid=btn.dataset.fid,team=btn.dataset.team,league=btn.dataset.league,odds=btn.dataset.odds;
+
   var legId='leg_'+fid;
+
   if(slipLegs.some(function(s){return s.legId===legId;})){
+
     slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
-    btn.textContent=odds;btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
+
+    btn.textContent='+ Add';btn.classList.remove('added');
+
     renderSlip();return;
+
   }
-  var parts=(odds||'1/1').split('/');
+
+  var parts=odds.split('/');
+
   slipLegs.push({legId:legId,team:team,match:league,odds:odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
-  renderSlip();if(slipLegs.length===1&&!slipOpen)toggleSlip();
-}
 
-function buildAllPicksAcca(btn){
-  POPULAR_PICKS.forEach(function(p){
-    var legId='leg_'+p.fid;
-    if(!slipLegs.some(function(s){return s.legId===legId;})){
-      var parts=(p.odds||'1/1').split('/');
-      slipLegs.push({legId:legId,team:p.team,match:p.fixture,odds:p.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
-    }
-    var ob=document.getElementById('popbtn-'+p.fid);
-    if(ob){ob.textContent='✓';ob.style.background='#157a52';ob.style.color='#fff';}
-  });
-  btn.textContent='✓ Added to Slip';btn.style.background='#157a52';
-  renderSlip();if(!slipOpen)toggleSlip();
-}
+  btn.textContent='✓ Added';btn.classList.add('added');
 
-function calcTop5Odds(){
-  if(!POPULAR_PICKS||!POPULAR_PICKS.length) return;
-  var dec=1;
-  POPULAR_PICKS.forEach(function(p){
-    var o=(p.odds||'').trim();
-    if(!o) return;
-    if(o==='EVS'){dec*=2;return;}
-    var parts=o.split('/');
-    if(parts.length===2){var n=parseFloat(parts[0]),d=parseFloat(parts[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)dec*=(n/d)+1;}
-  });
-  var w=Math.round(dec-1);
-  var el=document.getElementById('top5-odds-display');
-  if(el) el.textContent=(w<1?1:w)+'/1';
+  renderSlip();
+
+  if(slipLegs.length===1&&!slipOpen) toggleSlip();
+
 }
 
 // ── INFINITE SCROLL FIXTURES ──
@@ -5044,27 +5269,74 @@ function infRender(){
 
     if(!lf.length) return;
 
-    function makeInfRow(f){
+    var rows=lf.map(function(f){
+
       var ko=formatKickoff(f.date,f.time)||'TBC';
-      var o=getDummyOdds(f.home,f.away);
-      var ln=escHtml(league.name);
-      return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
-    }
-    var INF_SHOW=5;
-    var visInf=lf.slice(0,INF_SHOW).map(makeInfRow).join('');
-    var hidInf=lf.length>INF_SHOW?lf.slice(INF_SHOW).map(makeInfRow).join(''):'';
-    var extraInf=lf.length-INF_SHOW;
-    var smInf='sm-inf-'+league.id;
-    var showMoreInf=extraInf>0
-      ?'<div id="'+smInf+'-h" style="display:none">'+hidInf+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smInf+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smInf+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smInf+'-t">'+extraInf+' more fixtures</span></button></div><div id="'+smInf+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
-      :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
-    var card='<div class="inf-league-block"><div class="inf-league-head"><div class="inf-league-name">'+escHtml(league.name)+'</div><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div></div>'
-      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
+
+      var dateLabel='';
+
+      try{
+
+        var dd=new Date(f._dateStr+'T12:00:00');
+
+        var today=new Date();today.setHours(0,0,0,0);
+
+        var diff=Math.round((dd-today)/86400000);
+
+        if(diff===0) dateLabel='Today';
+
+        else if(diff===1) dateLabel='Tomorrow';
+
+        else dateLabel=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
+      }catch(e){}
+
+      return '<div class="inf-fx">'
+
+        +(function(){
+
+          var o=getDummyOdds(f.home,f.away);
+
+          var ln=escHtml(league.name);
+
+          return '<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+
+            +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+
+            +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
+
+            +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>';
+
+        })()
+
+        +'</div>';
+
+    }).join('');
+
+    var card='<div class="inf-league-block">'
+
+      +'<div class="inf-league-head">'
+
+      +(function(){var cdId='cd-inf-'+league.id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,lf);},50);return '<div class="inf-league-name">'+escHtml(league.name)+'</div><div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdId+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>';})()
+
+      +'</div>'
+
       +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-      +visInf+showMoreInf+'</div>';
+
+      +rows
+
+      +'<div class="analyse-all-wrap">'
+
+            +('<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">')
+
+      +'<span>✶</span> Analyse All Fixtures with AI →'
+
+      +'</button>'
+
+      +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
+
+      +'</div></div>';
+
     list.insertAdjacentHTML('beforeend',card);
 
     rendered++;
@@ -5325,27 +5597,54 @@ function renderTopFixtureCarousel(){
 
   }catch(e){}
 
-  function makeTopRow(f){
+  var rows=lf.map(function(f){
+
     var ko=formatKickoff(f.date,f.time)||'TBC';
+
     var o=getDummyOdds(f.home,f.away);
+
     var lg=escHtml(league.name);
-    return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+
+    return '<div class="inf-fx">'
+
+      +'<div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
+
       +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
+
       +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
-  }
-  var TOP_SHOW=5;
-  var visTop=lf.slice(0,TOP_SHOW).map(makeTopRow).join('');
-  var hidTop=lf.length>TOP_SHOW?lf.slice(TOP_SHOW).map(makeTopRow).join(''):'';
-  var extraTop=lf.length-TOP_SHOW;
-  var smTop='sm-top-'+league.id;
-  var showMoreTop=extraTop>0
-    ?'<div id="'+smTop+'-h" style="display:none">'+hidTop+'</div><div style="border-top:.5px solid var(--border)"><button onclick="fxToggleMore(\''+smTop+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)><span id="'+smTop+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smTop+'-t">'+extraTop+' more fixtures</span></button></div><div id="'+smTop+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
-    :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
-  var card='<div class="inf-league-block"><div class="inf-league-head"><div class="inf-league-meta">'+dateLabel+'</div><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div></div>'
-    +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
+
+      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div>'
+
+      +'</div>';
+
+  }).join('');
+
+  var card='<div class="inf-league-block">'
+
+    +'<div class="inf-league-head">'
+
+    +(function(){var cdId='cd-top-'+league.id+'-'+Date.now();setTimeout(function(){startLeagueCountdown(cdId,lf);},50);return '<div class="inf-league-meta">'+dateLabel+'</div><div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdId+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>';})()
+
+    +'</div>'
+
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-    +visTop+showMoreTop+'</div>';
+
+    +rows
+
+    +'<div class="analyse-all-wrap">'
+
+    +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">'
+
+    +'<span>✦</span> Analyse All Fixtures with AI →'
+
+    +'</button>'
+
+    +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
+
+    +'</div>'
+
+    +'</div>';
+
   container.innerHTML=card;
 
   if(loader) loader.style.display='none';
@@ -5481,6 +5780,8 @@ window.addEventListener('DOMContentLoaded',function(){
   renderPopularPicks();
 
   renderTrendingAccas();
+
+  renderDailyPicks();
 
   calcTop5Odds();
 
