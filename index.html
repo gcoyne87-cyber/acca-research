@@ -3558,11 +3558,15 @@ function renderTrendingAccas(){
 
     var oddsPad=n<=3?'5px 10px':'4px 9px';
 
-    var rows=a.legs.map(function(l){
+    var rows=a.legs.map(function(l,li){
 
       var fixture=l.detail.replace(/·\s*\w+\s+\d+:\d+$/,'').trim();
 
-      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<div style="background:#f0f2f7;color:var(--navy);font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px">'+escHtml(l.odds)+'</div>':'')        +'</div>';
+      var legId='leg_trend'+realIdx+'_'+li;
+
+      var legAdded=slipLegs.some(function(s){return s.legId===legId;});
+
+      return '<div style="flex:1;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:.5px solid var(--border)">'        +'<div style="min-width:0">'        +'<div style="font-size:'+teamSize+';font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">'+escHtml(l.team)+'</div>'        +'<div style="font-size:'+subSize+';color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(fixture)+'</div>'        +'</div>'        +(l.odds?'<button id="tleg-'+realIdx+'-'+li+'" onclick="addTrendingLeg('+realIdx+','+li+',this)" style="background:'+(legAdded?'#157a52':'#f0f2f7')+';color:'+(legAdded?'#fff':'var(--navy)')+';font-size:'+oddsSize+';font-weight:700;padding:'+oddsPad+';border-radius:6px;flex-shrink:0;text-align:center;min-width:40px;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+(legAdded?'✓':escHtml(l.odds))+'</button>':'')        +'</div>';
 
     }).join('');
 
@@ -3582,13 +3586,43 @@ function addTrendingAcca(idx,btn){
 
     if(!slipLegs.some(function(s){return s.legId===legId;})){
 
-      slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:'EVS',num:1,den:1});
+      slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt((leg.odds||'1/1').split('/')[0])||1,den:parseInt((leg.odds||'1/1').split('/')[1])||1});
 
     }
 
   });
 
   btn.textContent='✓ Added';btn.classList.add('added');
+
+  renderSlip();
+
+  if(!slipOpen) toggleSlip();
+
+}
+
+function addTrendingLeg(idx,li,btn){
+
+  var a=TRENDING_ACCAS[idx];
+
+  var leg=a.legs[li];
+
+  var legId='leg_trend'+idx+'_'+li;
+
+  if(slipLegs.some(function(s){return s.legId===legId;})){
+
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+
+    btn.textContent=leg.odds||'EVS';btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
+
+    renderSlip();return;
+
+  }
+
+  var parts=(leg.odds||'1/1').split('/');
+
+  slipLegs.push({legId:legId,team:leg.team,match:leg.detail,odds:leg.odds||'EVS',num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
+
+  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
 
   renderSlip();
 
@@ -4644,7 +4678,7 @@ function renderPopularPicks(){
 
     var fixture=p.fixture.replace(/\s*·\s*Sat\s+\d+:\d+/,'').replace(/\s*·\s*Sun\s+\d+:\d+/,'').replace(/\s*·\s*\w+\s+\d+:\d+/,'');
 
-    return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<div style="background:#f0f2f7;color:var(--navy);font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center">'+escHtml(p.odds||'')+'</div>'      +'</div>'      +'</div>';
+    return '<div style="display:flex;align-items:center;gap:0;border-bottom:.5px solid var(--border);border-left:3px solid '+border+'">'      +'<div style="flex:1;min-width:0;padding:12px 12px 12px 13px">'      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'      +'<span style="font-size:18px;font-weight:600;color:var(--navy);line-height:1.2">'+escHtml(p.team)+'</span>'      +(badge?'<span style="font-size:10px;font-weight:600;background:'+badge.bg+';color:'+badge.color+';padding:2px 7px;border-radius:99px">'+badge.label+'</span>':'')      +'</div>'      +'<div style="font-size:13px;color:var(--muted);margin-bottom:3px">'+escHtml(fixture)+'</div>'      +'<div style="font-size:12px;color:var(--green);font-weight:500">'+p.pct+'% community pick</div>'      +'</div>'      +'<div style="padding:12px 14px 12px 0;flex-shrink:0">'      +'<button id="popbtn-'+p.fid+'" onclick="addPopularToSlip(this)" data-fid="'+p.fid+'" data-team="'+escHtml(p.team)+'" data-league="'+escHtml(fixture)+'" data-odds="'+escHtml(p.odds||'EVS')+'" style="background:'+(added?'#157a52':'#f0f2f7')+';color:'+(added?'#fff':'var(--navy)')+';font-size:14px;font-weight:700;width:52px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-family:inherit;transition:all .18s">'+(added?'✓':escHtml(p.odds||''))+'</button>'      +'</div>'      +'</div>';
 
   }).join('');
 
@@ -4660,7 +4694,7 @@ function addPopularToSlip(btn){
 
     slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
 
-    btn.textContent='+ Add';btn.classList.remove('added');
+    btn.textContent=odds;btn.style.background='#f0f2f7';btn.style.color='var(--navy)';
 
     renderSlip();return;
 
@@ -4670,7 +4704,7 @@ function addPopularToSlip(btn){
 
   slipLegs.push({legId:legId,team:team,match:league,odds:odds,num:parseInt(parts[0])||1,den:parseInt(parts[1])||1});
 
-  btn.textContent='✓ Added';btn.classList.add('added');
+  btn.textContent='✓';btn.style.background='#157a52';btn.style.color='#fff';
 
   renderSlip();
 
