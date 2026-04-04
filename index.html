@@ -1418,7 +1418,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-cta:hover span{color:#fff}
 
-.fx-hda{display:flex;justify-content:flex-end;padding:5px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:#fafbfc}
+.fx-hda{display:flex;justify-content:flex-end;padding:5px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:#fff}
 
 .fx-hda-lbl{width:50px;font-size:11px;color:var(--muted);text-align:center;font-weight:500}
 
@@ -2899,13 +2899,19 @@ function renderLeagueCarousel(){
     if(!fixtures.length) return '';
 
     var SH=5,cdId='cd-lc-'+id,smId='smlc-'+id;
-    setTimeout(function(){startCd(cdId,fixtures);},80);
+
     var vis=fixtures.slice(0,SH).map(function(f){return mkFxRow(f,l.name);}).join('');
+
     var hid=fixtures.length>SH?fixtures.slice(SH).map(function(f){return mkFxRow(f,l.name);}).join(''):'';
+
     return mkFxCard(l.name,dateLabel,fixtures.length,cdId,id,vis,fixtures.length-SH,smId,hid);
+
   }).filter(Boolean);
+
   if(!cards.length){wrap.style.display='none';return;}
+
   carousel.innerHTML='<div class="fx-section">'+cards.join('')+'</div>';
+
   wrap.style.display='block';
 
 }
@@ -5449,11 +5455,15 @@ function infRender(){
     if(!lf.length) return;
 
     var SH=5,cdI='cd-inf-'+league.id,smI='sminf-'+league.id;
+
     var dateI='';try{var ddI=new Date((lf[0]._dateStr||'')+'T12:00:00');var tI=new Date();tI.setHours(0,0,0,0);var dfI=Math.round((ddI-tI)/86400000);dateI=dfI===0?'Today':dfI===1?'Tomorrow':ddI.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){}
-    setTimeout(function(){startCd(cdI,lf);},80);
+
     var vis=lf.slice(0,SH).map(function(f){return mkFxRow(f,league.name);}).join('');
+
     var hid=lf.length>SH?lf.slice(SH).map(function(f){return mkFxRow(f,league.name);}).join(''):'';
+
     var card=mkFxCard(league.name,dateI,lf.length,cdI,league.id,vis,lf.length-SH,smI,hid);
+
     list.insertAdjacentHTML('beforeend',card);
 
     rendered++;
@@ -5484,78 +5494,146 @@ function infRender(){
 
 }
 
-
 function fmtKo(dateStr,timeStr){
+
   var t=(timeStr||'').substring(0,5)||'';
+
   var d='';
+
   try{
+
     if(dateStr){
+
       var dd=new Date(dateStr+'T12:00:00');
+
       var today=new Date();today.setHours(0,0,0,0);
+
       var diff=Math.round((dd-today)/86400000);
+
       if(diff===0)d='Today';
+
       else if(diff===1)d='Tomorrow';
+
       else d=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
     }
+
   }catch(e){}
+
   return (d?d+' ':'')+t;
+
 }
+
 var _cdt={};
+
 function getNextKo(fixtures){
+
   var now=Date.now(),up=[];
+
   (fixtures||[]).forEach(function(f){
+
     if(!f.time||f.time==='00:00:00')return;
+
     try{var ms=new Date((f._dateStr||f.date||'')+'T'+f.time).getTime();if(ms>now)up.push(ms);}catch(e){}
+
   });
+
   if(!up.length)return -1;
+
   up.sort(function(a,b){return a-b;});
+
   return Math.floor((up[0]-now)/1000);
+
 }
+
 function startCd(elId,fixtures){
+
   if(_cdt[elId])clearInterval(_cdt[elId]);
+
   function pad(n){return String(n).padStart(2,'0');}
+
   function tick(){
+
     var el=document.getElementById(elId);
+
     if(!el){clearInterval(_cdt[elId]);return;}
+
     var s=getNextKo(fixtures);
+
     if(s<0){el.innerHTML='';clearInterval(_cdt[elId]);return;}
+
     var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+
     el.innerHTML='<div class="fx-ts"><span class="fx-tn">'+pad(h)+'</span><span class="fx-tl">HRS</span></div>'
+
       +'<span class="fx-tsep">:</span>'
+
       +'<div class="fx-ts"><span class="fx-tn">'+pad(m)+'</span><span class="fx-tl">MIN</span></div>'
+
       +'<span class="fx-tsep">:</span>'
+
       +'<div class="fx-ts"><span class="fx-tn">'+pad(sec)+'</span><span class="fx-tl">SEC</span></div>';
+
   }
+
   tick();_cdt[elId]=setInterval(tick,1000);
+
 }
+
 function mkFxRow(f,leagueName){
+
   var ko=fmtKo(f._dateStr||f.date,f.time);
+
   var o=getDummyOdds(f.home,f.away);
+
   var ln=escHtml(leagueName||'');
+
   return '<div class="fx-row">'
+
     +'<div class="fx-teams"><div class="fx-t1">'+escHtml(f.home)+'</div><div class="fx-t2">'+escHtml(f.away)+'</div><div class="fx-ko">'+ko+'</div></div>'
+
     +'<div class="fx-odds">'
+
     +'<button class="fx-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</button>'
+
     +'<button class="fx-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</button>'
+
     +'<button class="fx-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</button>'
+
     +'</div></div>';
+
 }
+
 function mkFxCard(name,date,count,cdId,lgId,rows,extra,smId,hidRows){
+
   var showMore=extra>0
+
     ?'<div id="'+smId+'-h" style="display:none">'+hidRows+'</div>'
+
      +'<button class="fx-more" onclick="fxTog(\''+smId+'\',this)"><span class="fx-more-circle" id="'+smId+'-i">+</span><span id="'+smId+'-t">'+extra+' more fixtures</span></button>'
+
     :'';
+
   return '<div class="fx-league-card">'
+
     +'<div class="fx-league-top">'
+
     +'<span class="fx-lg-name">'+escHtml(name)+'</span>'
+
     +'<span class="fx-lg-date">'+escHtml(date||'')+'</span>'
-    +'<div id="'+cdId+'" style="display:flex;align-items:center;gap:2px;flex-shrink:0"></div>'
+
     +'</div>'
-    +'<div class="fx-cta-row"><button class="fx-cta" onclick="analyseLeague(\''+lgId+'\')"><span>&#x2756;</span> Analyse '+count+' Fixtures with AI &#x2192;</button></div>'
+
+    +'<div class="fx-cta-row"><button class="fx-cta" onclick="analyseLeague(\''+lgId+'\')"><span>&#x2756;</span> Analyse '+count+' '+escHtml(name)+' Fixtures with AI &#x2192;</button></div>'
+
     +'<div class="fx-hda"><div class="fx-hda-lbl">Home</div><div class="fx-hda-lbl">Draw</div><div class="fx-hda-lbl">Away</div></div>'
+
     +rows+showMore
+
     +'</div>';
+
 }
+
 var topCarouselCountry='england';
 
 var topLeagueSelected='';
@@ -5787,11 +5865,17 @@ function renderTopFixtureCarousel(){
   }catch(e){}
 
   var SH=5,cdT='cd-top-'+league.id,smT='smtop-'+league.id;
+
   setTimeout(function(){startCd(cdT,lf);},80);
+
   var vis=lf.slice(0,SH).map(function(f){return mkFxRow(f,league.name);}).join('');
+
   var hid=lf.length>SH?lf.slice(SH).map(function(f){return mkFxRow(f,league.name);}).join(''):'';
+
   var card='<div class="fx-section">'+mkFxCard(league.name,dateLabel,lf.length,cdT,league.id,vis,lf.length-SH,smT,hid)+'</div>';
+
   container.innerHTML=card;
+
   if(loader) loader.style.display='none';
 
 }
