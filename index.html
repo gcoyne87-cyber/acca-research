@@ -1572,7 +1572,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <!-- Single league card -->
 
-      <div id="top-fixture-carousel"></div>
+      <div id="top-fixture-carousel" style="background:var(--soft);padding:12px"></div>
 
       <div id="top-fixture-loader" style="text-align:center;padding:16px;font-size:13px;color:var(--muted)">Loading fixtures...</div>
 
@@ -1684,7 +1684,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         </div>
 
-        <div id="infinite-fixtures-list"></div>
+        <div id="infinite-fixtures-list" style="background:var(--soft);padding:12px"></div>
 
         <div id="infinite-fixtures-loader" style="text-align:center;padding:20px;font-size:13px;color:var(--muted)">Select a country above and a date at the top to load fixtures</div>
 
@@ -2500,8 +2500,8 @@ function getGameweekFixtures(lf){
 }
 
 
-function buildFxRow(f, leagueName, datePrefix){
-  var ko=(datePrefix||'')+((f.time||'').substring(0,5)||'TBC');
+function buildFxRow(f, leagueName, ko){
+  if(!ko) ko=fmtKoInline(f._dateStr||f.date,f.time);
   var o=getDummyOdds(f.home,f.away);
   var ln=escHtml(leagueName||'');
   return '<div class="fx-row">'
@@ -2682,8 +2682,8 @@ function renderLeagueCarousel(){
     var cdId='cd-lc-'+id;
     var smId='smlc-'+id;
     setTimeout(function(){startLeagueCountdown(cdId,fixtures);},60);
-    var vis=fixtures.slice(0,SH5).map(function(f){return buildFxRow(f,l.name,dateLabel+' ');}).join('');
-    var hid=fixtures.length>SH5?fixtures.slice(SH5).map(function(f){return buildFxRow(f,l.name,dateLabel+' ');}).join(''):'';
+    var vis=fixtures.slice(0,SH5).map(function(f){return buildFxRow(f,l.name,fmtKoInline(f.date,f.time));}).join('');
+    var hid=fixtures.length>SH5?fixtures.slice(SH5).map(function(f){return buildFxRow(f,l.name,fmtKoInline(f.date,f.time));}).join(''):'';
     var extra=fixtures.length-SH5;
     var showMore=extra>0
       ?'<div id="'+smId+'-h" style="display:none">'+hid+'</div>'
@@ -5231,7 +5231,7 @@ function infRender(){
 
     if(!lf.length) return;
 
-    function makeInfRow(f){return buildFxRow(f,league.name,fmtKoInline(f._dateStr,'')+'');}
+    function makeInfRow(f){return buildFxRow(f,league.name,fmtKoInline(f._dateStr,f.time));}
     var ISH5=5;
     var iVis=lf.slice(0,ISH5).map(makeInfRow).join('');
     var iHid=lf.length>ISH5?lf.slice(ISH5).map(makeInfRow).join(''):'';
@@ -5508,7 +5508,7 @@ function renderTopFixtureCarousel(){
 
   }catch(e){}
 
-  function makeTopRow(f){return buildFxRow(f,league.name,fmtKoInline(f._dateStr,'')+'');}
+  function makeTopRow(f){return buildFxRow(f,league.name,fmtKoInline(f._dateStr,f.time));}
   var TSH5=5;
   var tVis=lf.slice(0,TSH5).map(makeTopRow).join('');
   var tHid=lf.length>TSH5?lf.slice(TSH5).map(makeTopRow).join(''):'';
