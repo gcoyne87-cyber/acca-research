@@ -1367,6 +1367,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .kof-num{font-size:12px;font-weight:700;color:#fff;line-height:1;font-variant-numeric:tabular-nums;display:block}
 .kof-lbl{font-size:7px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-top:1px;display:block}
 .kof-sep{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
+
+/* ── LEAGUE BLOCK STYLE ── */
+.league-block-outer{position:relative;margin-top:14px}
+.league-block-label{position:absolute;top:-10px;left:14px;z-index:1;background:var(--soft);padding:0 8px;font-size:14px;font-weight:700;color:var(--green);line-height:20px}
+.league-block-card{background:var(--soft);border-radius:14px;overflow:hidden;border:.5px solid #a7e0c4;border-left:4px solid var(--green);padding-top:8px}
+.league-block-header{padding:8px 12px 10px;display:flex;align-items:center;gap:8px}
+.league-block-kickoff{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.league-block-fixtures{background:#fff;margin:0 10px 10px;border-radius:10px;overflow:hidden;border:.5px solid var(--border)}
 </style>
 
 </head>
@@ -2386,12 +2394,12 @@ function startLeagueCountdown(elId,fixtureList){
     var secs=getNextKoSecs(fixtureList);
     if(secs<0){el.innerHTML='';clearInterval(_cdT[elId]);return;}
     var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
-    el.innerHTML='<div class="kof-timer">'
-      +'<div class="kof-seg"><span class="kof-num">'+pad(h)+'</span><span class="kof-lbl">HRS</span></div>'
-      +'<div class="kof-sep">:</div>'
-      +'<div class="kof-seg"><span class="kof-num">'+pad(m)+'</span><span class="kof-lbl">MIN</span></div>'
-      +'<div class="kof-sep">:</div>'
-      +'<div class="kof-seg"><span class="kof-num">'+pad(s)+'</span><span class="kof-lbl">SEC</span></div>'
+    el.innerHTML='<div style="display:flex;align-items:center;gap:2px;margin-right:6px">'
+      +'<div style="background:var(--navy);border-radius:5px;padding:2px 5px;text-align:center;min-width:26px"><span style="font-size:11px;font-weight:700;color:#fff;line-height:1;display:block;font-variant-numeric:tabular-nums">'+pad(h)+'</span><span style="font-size:6px;color:rgba(255,255,255,.4);letter-spacing:.07em;display:block;margin-top:1px">HRS</span></div>'
+      +'<span style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">:</span>'
+      +'<div style="background:var(--navy);border-radius:5px;padding:2px 5px;text-align:center;min-width:26px"><span style="font-size:11px;font-weight:700;color:#fff;line-height:1;display:block;font-variant-numeric:tabular-nums">'+pad(m)+'</span><span style="font-size:6px;color:rgba(255,255,255,.4);letter-spacing:.07em;display:block;margin-top:1px">MIN</span></div>'
+      +'<span style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">:</span>'
+      +'<div style="background:var(--navy);border-radius:5px;padding:2px 5px;text-align:center;min-width:26px"><span style="font-size:11px;font-weight:700;color:#fff;line-height:1;display:block;font-variant-numeric:tabular-nums">'+pad(s)+'</span><span style="font-size:6px;color:rgba(255,255,255,.4);letter-spacing:.07em;display:block;margin-top:1px">SEC</span></div>'
       +'</div>';
   }
   tick();
@@ -2639,18 +2647,19 @@ function renderLeagueCarousel(){
        +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdLc+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdLc+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdLc+'-t">'+extraFx+' more fixtures</span></button></div>'
       :'';
 
-    return '<div class="lc-card">'
-      +'<div class="lc-head"><div class="lc-league">'+escHtml(l.name)+'</div>'
-      +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
-      +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
-      +'<div style="padding:0 18px 6px;background:var(--soft);border-bottom:.5px solid var(--border)"><span id="'+cdIdLc+'" style="font-size:11px;font-weight:600;color:var(--green)"></span></div>'
-      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button></div>'
+    return '<div class="league-block-outer">'
+      +'<div class="league-block-label">'+escHtml(l.name)+'</div>'
+      +'<div class="league-block-card">'
+      +'<div class="league-block-header">'
+      +'<div class="league-block-kickoff">Kick-off</div>'
+      +'<div id="'+cdIdLc+'" style="flex-shrink:0"></div>'
+      +'<button onclick="analyseLeague(\''+id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
+      +'</div>'
+      +'<div class="league-block-fixtures">'
       +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
-      +visRows
-      +(extraFx>0
-        ?'<div id="'+smIdLc+'-h" style="display:none">'+hidRows+'</div>'
-         +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdLc+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdLc+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdLc+'-t">'+extraFx+' more fixtures</span></button></div>'
-        :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div>')
+      +visRows+showMoreLc
+      +'</div>'
+      +'</div>'
       +'</div>';
 
   }).filter(Boolean);
@@ -5235,14 +5244,19 @@ function infRender(){
        +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdI+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdI+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdI+'-t">'+iExtra+' more fixtures</span></button></div>'
       :'';
 
-    var card='<div class="inf-league-block">'
-      +'<div class="inf-league-head" style="gap:10px">'
-      +'<div class="inf-league-name" style="flex-shrink:0">'+escHtml(league.name)+'</div>'
-      +'<div id="'+cdIdI+'" style="flex:1;display:flex;justify-content:center"></div>'
-      +'<button onclick="analyseLeague(\''+league.id+'\')" style="flex-shrink:0;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">❖ Analyse with AI</button>'
+    var card='<div class="league-block-outer">'
+      +'<div class="league-block-label">'+escHtml(league.name)+'</div>'
+      +'<div class="league-block-card">'
+      +'<div class="league-block-header">'
+      +'<div class="league-block-kickoff">Kick-off</div>'
+      +'<div id="'+cdIdI+'" style="flex-shrink:0"></div>'
+      +'<button onclick="analyseLeague(\''+league.id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
       +'</div>'
+      +'<div class="league-block-fixtures">'
       +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
       +iVis+showMoreI
+      +'</div>'
+      +'</div>'
       +'</div>';
 
     list.insertAdjacentHTML('beforeend',card);
