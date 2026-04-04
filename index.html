@@ -1360,6 +1360,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .risk-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
+
+/* ── SEGMENTED KICK-OFF TIMER ── */
+.kof-timer{display:flex;align-items:center;gap:3px;margin-top:4px}
+.kof-seg{background:var(--navy);border-radius:5px;padding:3px 6px;text-align:center;min-width:30px}
+.kof-num{font-size:12px;font-weight:700;color:#fff;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.kof-lbl{font-size:7px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-top:1px;display:block}
+.kof-sep{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
 </style>
 
 </head>
@@ -2372,13 +2379,20 @@ function fmtCd(secs){
 var _cdT={};
 function startLeagueCountdown(elId,fixtureList){
   if(_cdT[elId])clearInterval(_cdT[elId]);
+  function pad(n){return String(n).padStart(2,'0');}
   function tick(){
     var el=document.getElementById(elId);
     if(!el){clearInterval(_cdT[elId]);return;}
     var secs=getNextKoSecs(fixtureList);
-    if(secs<0){el.textContent='';clearInterval(_cdT[elId]);return;}
-    var t=fmtCd(secs);
-    el.textContent=t?'Next kick-off in '+t:'';
+    if(secs<0){el.innerHTML='';clearInterval(_cdT[elId]);return;}
+    var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+    el.innerHTML='<div class="kof-timer">'
+      +'<div class="kof-seg"><span class="kof-num">'+pad(h)+'</span><span class="kof-lbl">HRS</span></div>'
+      +'<div class="kof-sep">:</div>'
+      +'<div class="kof-seg"><span class="kof-num">'+pad(m)+'</span><span class="kof-lbl">MIN</span></div>'
+      +'<div class="kof-sep">:</div>'
+      +'<div class="kof-seg"><span class="kof-num">'+pad(s)+'</span><span class="kof-lbl">SEC</span></div>'
+      +'</div>';
   }
   tick();
   _cdT[elId]=setInterval(tick,1000);
@@ -5226,7 +5240,7 @@ function infRender(){
     var card='<div class="inf-league-block">'
       +'<div class="inf-league-head">'
       +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
-      +'<div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdI+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>'
+      +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdI+'"></div></div>'
       +'</div>'
       +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
       +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
@@ -5522,7 +5536,7 @@ function renderTopFixtureCarousel(){
   var card='<div class="inf-league-block">'
     +'<div class="inf-league-head">'
     +'<div class="inf-league-meta">'+dateLabel+'</div>'
-    +'<div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdT+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdT+'"></div></div>'
     +'</div>'
     +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
