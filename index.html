@@ -2397,6 +2397,51 @@ function fxTog(id){
   tx.textContent=open?(h.querySelectorAll('.lc-fx,.inf-fx').length+' more fixtures'):'Show fewer fixtures';
 }
 
+
+function fmtKoInline(dateStr,timeStr){
+  var ko=formatKickoff(dateStr,timeStr)||'TBC';
+  var dayLbl='';
+  try{
+    var dd=new Date(dateStr+'T12:00:00');
+    var today=new Date();today.setHours(0,0,0,0);
+    var diff=Math.round((dd-today)/86400000);
+    if(diff===0) dayLbl='Today';
+    else if(diff===1) dayLbl='Tomorrow';
+    else dayLbl=dd.toLocaleDateString('en-GB',{weekday:'short'});
+  }catch(e){}
+  return dayLbl?dayLbl+' '+ko:ko;
+}
+
+function getGameweekFixtures(lf){
+  // Sort by date+time first
+  lf.sort(function(a,b){
+    return ((a._dateStr||'')+(a.time||'99:99')).localeCompare((b._dateStr||'')+(b.time||'99:99'));
+  });
+  // Batch lone fixtures: if a date has only 1 fixture, merge it with the next batch
+  var byDate={};
+  lf.forEach(function(f){
+    var d=f._dateStr||'unknown';
+    if(!byDate[d]) byDate[d]=[];
+    byDate[d].push(f);
+  });
+  var dates=Object.keys(byDate).sort();
+  var result=[];
+  var carry=[];
+  dates.forEach(function(d,i){
+    var group=byDate[d];
+    if(group.length===1 && i<dates.length-1){
+      // lone fixture — carry forward to next batch
+      carry=carry.concat(group);
+    } else {
+      result=result.concat(carry).concat(group);
+      carry=[];
+    }
+  });
+  // if anything left in carry (e.g. last date was lone), append it
+  result=result.concat(carry);
+  return result;
+}
+
 document.addEventListener('DOMContentLoaded',function(){
 
   var oi=document.getElementById('acw-odds');
@@ -5149,22 +5194,9 @@ function infRender(){
 
     if(!lf.length) return;
 
-    // Find the earliest date that has fixtures for this league
-
-    var dates=lf.map(function(f){return f._dateStr||'';}).filter(Boolean);
-
-    dates.sort();
-
-    var nextDate=dates[0];
-
-    // Only show fixtures from that next date (one round only)
-
-    lf=lf.filter(function(f){return f._dateStr===nextDate;});
-
+    // Show full gameweek — all upcoming dates for this league
     lf.sort(function(a,b){
-
-      return (a.time||'').localeCompare(b.time||'');
-
+      return ((a._dateStr||'')+(a.time||'99:99')).localeCompare((b._dateStr||'')+(b.time||'99:99'));
     });
 
     if(!lf.length) return;
