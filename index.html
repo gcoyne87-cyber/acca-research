@@ -2586,8 +2586,14 @@ function renderLeagueCarousel(){
       +'<div class="lc-right"><div class="lc-date">'+dateLabel+'</div>'
       +'<div class="lc-count">'+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div></div></div>'
       +'<div style="padding:0 18px 6px;background:var(--soft);border-bottom:.5px solid var(--border)"><span id="'+cdIdLc+'" style="font-size:11px;font-weight:600;color:var(--green)"></span></div>'
+      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button></div>'
       +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
-      +visRows+showMoreLc+'</div>';
+      +visRows
+      +(extraFx>0
+        ?'<div id="'+smIdLc+'-h" style="display:none">'+hidRows+'</div>'
+         +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdLc+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdLc+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdLc+'-t">'+extraFx+' more fixtures</span></button></div>'
+        :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+fixtures.length+' '+escHtml(l.name)+' fixtures instantly</div></div>')
+      +'</div>';
 
   }).filter(Boolean);
 
@@ -5190,19 +5196,14 @@ function infRender(){
       +'<div class="inf-league-name">'+escHtml(league.name)+'</div>'
       +'<div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdI+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>'
       +'</div>'
+      +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
       +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-      +iVis+showMoreI
-      +'<div class="analyse-all-wrap">'
-
-            +('<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">')
-
-      +'<span>✶</span> Analyse All Fixtures with AI →'
-
-      +'</button>'
-
-      +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
-
-      +'</div></div>';
+      +iVis
+      +(iExtra>0
+        ?'<div id="'+smIdI+'-h" style="display:none">'+iHid+'</div>'
+         +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdI+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdI+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdI+'-t">'+iExtra+' more fixtures</span></button></div>'
+        :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>')
+      +'</div>';
 
     list.insertAdjacentHTML('beforeend',card);
 
@@ -5491,22 +5492,9 @@ function renderTopFixtureCarousel(){
     +'<div class="inf-league-meta">'+dateLabel+'</div>'
     +'<div style="text-align:right"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdT+'" style="font-size:10px;font-weight:600;color:var(--green);margin-top:2px"></div></div>'
     +'</div>'
+    +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-    +tVis+showMoreT
-
-    +''+''
-
-    +'<button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')">'
-
-    +'<span>✦</span> Analyse All Fixtures with AI →'
-
-    +'</button>'
-
-    +'<div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div>'
-
-    +'</div>'
-
-    +'</div>';
+    +tVis+showMoreT+'</div>';
 
   container.innerHTML=card;
 
