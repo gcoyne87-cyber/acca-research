@@ -1414,7 +1414,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-cta:hover span{color:#fff}
 
-.fx-hda{display:flex;justify-content:flex-end;padding:4px 16px 4px 16px;gap:4px;background:#fff}
+.fx-hda{display:flex;justify-content:flex-end;padding:4px 16px;gap:4px;background:#fff;border:none}
 
 .fx-hda-lbl{width:52px;font-size:11px;color:var(--muted);text-align:center;font-weight:500;flex-shrink:0}
 
@@ -1424,7 +1424,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-t1,.fx-t2{font-size:15px;font-weight:500;color:var(--navy);line-height:1.4}
 
-.fx-ko{font-size:11px;font-weight:400;color:var(--muted);margin-top:4px}
+.fx-ko{font-size:12px;font-weight:500;color:var(--green);margin-top:4px}
 
 .fx-odds{display:flex;gap:4px;flex-shrink:0}
 
@@ -5264,23 +5264,50 @@ function infSetAll(){
 
   infCountry='all';
 
-  buildInfCountryStrip();
+  buildInfCountryStrip();buildInfLeagueStrip();
 
-  buildInfLeagueStrip();
+  var loader=document.getElementById('infinite-fixtures-loader');
 
-  // Show all fixtures from whatever is already loaded
+  if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';}
 
   infMultiFixtures={};
 
-  if(allFixtures&&allFixtures.length){
+  var days=[];
 
-    infMultiFixtures[infFormatDate(currentDate||new Date())]=allFixtures.slice();
+  var base=currentDate||new Date();
+
+  for(var i=0;i<7;i++){
+
+    var d=new Date(base);d.setDate(base.getDate()+i);
+
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
 
   }
 
-  infRender();
+  Promise.all(days.map(function(dateStr){
+
+    return fetch('/.netlify/functions/fixtures?date='+dateStr)
+
+      .then(function(r){return r.json();})
+
+      .then(function(data){
+
+        var events=data.events||[];
+
+        if(events.length) infMultiFixtures[dateStr]=events;
+
+      })
+
+      .catch(function(){});
+
+  })).then(function(){
+
+    infRender();
+
+  });
 
 }
+
 
 function infPickCountry(c){
 
@@ -5288,51 +5315,53 @@ function infPickCountry(c){
 
   buildInfCountryStrip();buildInfLeagueStrip();
 
-  var d=currentDate||new Date();
-
-  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-
   var loader=document.getElementById('infinite-fixtures-loader');
 
   if(loader){loader.textContent='Loading fixtures...';loader.style.display='block';}
 
-  fetch('/.netlify/functions/fixtures?date='+dateStr)
+  infMultiFixtures={};
 
-    .then(function(r){return r.json();})
+  // Fetch next 7 days in parallel so all upcoming fixtures appear
+  var days=[];
 
-    .then(function(data){
+  var base=currentDate||new Date();
 
-      var events=(data.events||[]).filter(function(f){
+  for(var i=0;i<7;i++){
 
-        return INF_LEAGUES.some(function(l){return String(l.id)===String(f.leagueId)&&l.country===c;});
+    var d=new Date(base);d.setDate(base.getDate()+i);
 
-      }).sort(function(a,b){
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
 
-        if(!a.time||a.time==='00:00:00') return 1;
+  }
 
-        if(!b.time||b.time==='00:00:00') return -1;
+  Promise.all(days.map(function(dateStr){
 
-        return a.time.localeCompare(b.time);
+    return fetch('/.netlify/functions/fixtures?date='+dateStr)
 
-      });
+      .then(function(r){return r.json();})
 
-      infMultiFixtures={};
+      .then(function(data){
 
-      infMultiFixtures[dateStr]=events;
+        var events=(data.events||[]).filter(function(f){
 
-      infRender();
+          return INF_LEAGUES.some(function(l){return String(l.id)===String(f.leagueId)&&l.country===c;});
 
-    })
+        });
 
-    .catch(function(err){
+        if(events.length) infMultiFixtures[dateStr]=events;
 
-      console.error('Fixture fetch error:',err);
+      })
 
-      if(loader){loader.textContent='Failed to load fixtures. Try again.';loader.style.display='block';}
+      .catch(function(){});
 
-    });
+  })).then(function(){
+
+    infRender();
+
+  });
 
 }
+
 
 async function infSelectCountry(c){
 
