@@ -220,7 +220,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .league-carousel::-webkit-scrollbar{display:none}
 
-.lc-card{width:calc(100vw - 52px);max-width:400px;flex-shrink:0;background:var(--white);border-radius:14px;border:.5px solid var(--border);overflow:hidden;scroll-snap-align:center;display:flex;flex-direction:column}
+.lc-card{width:calc(100vw - 48px);max-width:400px;flex-shrink:0;background:var(--white);border-radius:14px;border:.5px solid var(--border);overflow:hidden;scroll-snap-align:center;display:flex;flex-direction:column}
 
 @media(min-width:600px){.lc-card{width:320px;max-width:320px}}
 
@@ -1373,9 +1373,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .league-block-head{background:var(--soft);padding:10px 14px 0}
 .league-block-label{font-size:14px;font-weight:700;color:var(--green)}
 .league-block-date{font-size:11px;color:var(--muted);margin-top:1px}
-.league-block-bar{display:flex;align-items:center;gap:8px;padding:8px 14px}
+.league-block-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;overflow:hidden}
 .league-block-kickoff{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
-.league-block-cta{flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;transition:all .18s}
+.league-block-cta{flex:1;min-width:0;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:all .18s}
 .league-block-cta:hover{background:var(--gold);color:#fff}
 .league-block-cta span{color:var(--gold)}
 .league-block-cta:hover span{color:#fff}
@@ -2983,17 +2983,7 @@ function renderFixtures(){
 
   if(canAnalyse){
 
-    html+='<div class="analyse-all-wrap">'
-
-      +'<button class="analyse-all-btn" onclick="analyseLeague(\''+currentLeague+'\')">'
-
-      +'<span>✦</span> Analyse All Fixtures with AI →'
-
-      +'</button>'
-
-      +'<div class="analyse-all-sub">AI analyses all '+filtered.length+' '+escHtml(leagueName)+' fixtures instantly</div>'
-
-      +'</div>';
+    // bottom CTA removed
 
   }
 
@@ -5554,8 +5544,8 @@ function renderTopFixtureCarousel(){
   var showMoreT=tExtra>0
     ?'<div id="'+smIdT+'-h" style="display:none">'+tHid+'</div>'
      +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdT+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdT+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdT+'-t">'+tExtra+' more fixtures</span></button></div>'
-     +'<div id="'+smIdT+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
-    :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
+     +''
+    :'';
 
   var card='<div class="league-block-outer">'
     +'<div class="league-block-label">'+escHtml(league.name)+'</div>'
