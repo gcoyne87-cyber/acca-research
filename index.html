@@ -234,7 +234,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .lc-count{font-size:12px;color:var(--muted);background:var(--border);padding:4px 10px;border-radius:99px}
 
-.lc-hda-head{display:grid;grid-template-columns:1fr 56px 56px 56px;gap:6px;padding:5px 14px;background:#fafbfc;border-bottom:.5px solid var(--border)}
+.lc-hda-head{display:flex;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
 
 .lc-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
@@ -266,7 +266,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .inf-league-meta{font-size:11px;color:var(--muted)}
 
-.inf-hda-head{display:grid;grid-template-columns:1fr 56px 56px 56px;gap:6px;padding:5px 14px;background:#fafbfc;border-bottom:.5px solid var(--border)}
+.inf-hda-head{display:flex;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
 
 .inf-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
@@ -1368,13 +1368,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .kof-lbl{font-size:7px;color:rgba(255,255,255,.4);letter-spacing:.07em;margin-top:1px;display:block}
 .kof-sep{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
 
-/* ── LEAGUE BLOCK STYLE ── */
-.league-block-outer{position:relative;margin-top:14px}
-.league-block-label{position:absolute;top:-10px;left:14px;z-index:1;background:var(--soft);padding:0 8px;font-size:14px;font-weight:700;color:var(--green);line-height:20px}
-.league-block-card{background:var(--soft);border-radius:14px;overflow:hidden;border:.5px solid #a7e0c4;border-left:4px solid var(--green);padding-top:8px}
-.league-block-header{padding:8px 12px 10px;display:flex;align-items:center;gap:8px}
-.league-block-kickoff{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
-.league-block-fixtures{background:#fff;margin:0 10px 10px;border-radius:10px;overflow:hidden;border:.5px solid var(--border)}
+/* ── LEAGUE BLOCK — BOYLE STYLE ── */
+.league-block-outer{background:#fff;margin-bottom:0}
+.league-block-head{background:var(--soft);padding:10px 14px 0}
+.league-block-label{font-size:14px;font-weight:700;color:var(--green)}
+.league-block-date{font-size:11px;color:var(--muted);margin-top:1px}
+.league-block-bar{display:flex;align-items:center;gap:8px;padding:8px 14px}
+.league-block-kickoff{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
+.league-block-cta{flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;transition:all .18s}
+.league-block-cta:hover{background:var(--gold);color:#fff}
+.league-block-cta span{color:var(--gold)}
+.league-block-cta:hover span{color:#fff}
+.league-block-fixtures{background:#fff}
+.league-gap{height:8px;background:var(--soft)}
 </style>
 
 </head>
@@ -2631,9 +2637,11 @@ function renderLeagueCarousel(){
       var o=getDummyOdds(f.home,f.away);
       var lg=escHtml(l.name);
       return '<div class="lc-fx"><div class="lc-match"><div class="lc-home">'+escHtml(f.home)+'</div><div class="lc-away">'+escHtml(f.away)+'</div><div class="lc-ko">'+ko+'</div></div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-        +'<div class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+        +'<div class="lc-odds-wrap">'
+        +'<button class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</button>'
+        +'<button class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</button>'
+        +'<button class="lc-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</button>'
+        +'</div></div>';
     }
     var SH5=5;
     var visRows=fixtures.slice(0,SH5).map(makeLcRow).join('');
@@ -2648,17 +2656,18 @@ function renderLeagueCarousel(){
       :'';
 
     return '<div class="league-block-outer">'
+      +'<div class="league-block-head">'
       +'<div class="league-block-label">'+escHtml(l.name)+'</div>'
-      +'<div class="league-block-card">'
-      +'<div class="league-block-header">'
+      +'<div class="league-block-date">'+dateLabel+' · '+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div>'
+      +'</div>'
+      +'<div class="league-block-bar">'
       +'<div class="league-block-kickoff">Kick-off</div>'
-      +'<div id="'+cdIdLc+'" style="flex-shrink:0"></div>'
-      +'<button onclick="analyseLeague(\''+id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
+      +'<div id="'+cdIdLc+'" style="flex-shrink:0;display:flex;align-items:center"></div>'
+      +'<button class="league-block-cta" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button>'
       +'</div>'
       +'<div class="league-block-fixtures">'
-      +'<div class="lc-hda-head"><div></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
+      +'<div class="lc-hda-head"><div class="lc-hda-space"></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
       +visRows+showMoreLc
-      +'</div>'
       +'</div>'
       +'</div>';
 
@@ -5224,13 +5233,15 @@ function infRender(){
     if(!lf.length) return;
 
     function makeInfRow(f){
-      var ko=formatKickoff(f.date,f.time)||'TBC';
+      var ko=fmtKoInline(f._dateStr,f.time);
       var o=getDummyOdds(f.home,f.away);
       var ln=escHtml(league.name);
       return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-        +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+        +'<div class="inf-odds-wrap">'
+        +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</button>'
+        +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</button>'
+        +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+ln+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</button>'
+        +'</div></div>';
     }
     var ISH5=5;
     var iVis=lf.slice(0,ISH5).map(makeInfRow).join('');
@@ -5244,20 +5255,23 @@ function infRender(){
        +'<div style="border-top:.5px solid var(--border)"><button onclick="fxTog(\''+smIdI+'\',this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--navy)"><span id="'+smIdI+'-i" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1">+</span><span id="'+smIdI+'-t">'+iExtra+' more fixtures</span></button></div>'
       :'';
 
+    var dateStr2='';try{var dd2=new Date((lf[0]._dateStr||'')+'T12:00:00');var today2=new Date();today2.setHours(0,0,0,0);var diff2=Math.round((dd2-today2)/86400000);dateStr2=diff2===0?'Today':diff2===1?'Tomorrow':dd2.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){}
     var card='<div class="league-block-outer">'
+      +'<div class="league-block-head">'
       +'<div class="league-block-label">'+escHtml(league.name)+'</div>'
-      +'<div class="league-block-card">'
-      +'<div class="league-block-header">'
+      +'<div class="league-block-date">'+dateStr2+' · '+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
+      +'</div>'
+      +'<div class="league-block-bar">'
       +'<div class="league-block-kickoff">Kick-off</div>'
-      +'<div id="'+cdIdI+'" style="flex-shrink:0"></div>'
-      +'<button onclick="analyseLeague(\''+league.id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
+      +'<div id="'+cdIdI+'" style="flex-shrink:0;display:flex;align-items:center"></div>'
+      +'<button class="league-block-cta" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button>'
       +'</div>'
       +'<div class="league-block-fixtures">'
-      +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
+      +'<div class="inf-hda-head"><div class="inf-hda-space"></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
       +iVis+showMoreI
       +'</div>'
       +'</div>'
-      +'</div>';
+      +'<div class="league-gap"></div>';
 
     list.insertAdjacentHTML('beforeend',card);
 
@@ -5550,7 +5564,7 @@ function renderTopFixtureCarousel(){
     +'<button onclick="analyseLeague(\''+league.id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
     +'</div>'
     +'<div class="league-block-fixtures">'
-    +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
+    +'<div class="inf-hda-head"><div class="inf-hda-space"></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
     +tVis+showMoreT
     +'</div>'
     +'</div>'
