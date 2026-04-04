@@ -234,7 +234,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .lc-count{font-size:12px;color:var(--muted);background:var(--border);padding:4px 10px;border-radius:99px}
 
-.lc-hda-head{display:flex;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.lc-hda-head{display:flex;justify-content:flex-end;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
 
 .lc-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
@@ -266,7 +266,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .inf-league-meta{font-size:11px;color:var(--muted)}
 
-.inf-hda-head{display:flex;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.inf-hda-head{display:flex;justify-content:flex-end;padding:5px 14px;background:#fafbfc;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
 
 .inf-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
@@ -1370,12 +1370,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── LEAGUE BLOCK — BOYLE STYLE ── */
 .league-block-outer{background:#fff;margin-bottom:0}
-.league-block-head{background:var(--soft);padding:10px 14px 0}
+.league-block-head{background:var(--soft);padding:10px 14px 8px}
 .league-block-label{font-size:14px;font-weight:700;color:var(--green)}
 .league-block-date{font-size:11px;color:var(--muted);margin-top:1px}
-.league-block-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;overflow:hidden}
+.league-block-bar{padding:0 14px 10px}
 .league-block-kickoff{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
-.league-block-cta{flex:1;min-width:0;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:all .18s}
+.league-block-cta{display:block;width:100%;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:all .18s}
 .league-block-cta:hover{background:var(--gold);color:#fff}
 .league-block-cta span{color:var(--gold)}
 .league-block-cta:hover span{color:#fff}
@@ -2657,16 +2657,14 @@ function renderLeagueCarousel(){
 
     return '<div class="league-block-outer">'
       +'<div class="league-block-head">'
-      +'<div class="league-block-label">'+escHtml(l.name)+'</div>'
-      +'<div class="league-block-date">'+dateLabel+' · '+fixtures.length+' fixture'+(fixtures.length===1?'':'s')+'</div>'
-      +'</div>'
-      +'<div class="league-block-bar">'
-      +'<div class="league-block-kickoff">Kick-off</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:nowrap">'
+      +'<div style="min-width:0"><span class="league-block-label">'+escHtml(l.name)+'</span><span style="font-size:11px;color:var(--muted);margin-left:8px">'+dateLabel+'</span></div>'
       +'<div id="'+cdIdLc+'" style="flex-shrink:0;display:flex;align-items:center"></div>'
-      +'<button class="league-block-cta" onclick="analyseLeague(\''+id+'\')"><span>❖</span> Analyse '+fixtures.length+' Fixtures with AI →</button>'
+      +'</div>'
+      +'<div class="league-block-bar"><button class="league-block-cta" onclick="analyseLeague(\''+id+'\')"><span style=\"color:var(--gold)\">✦</span> Analyse '+fixtures.length+' Fixtures with AI →</button></div>'
       +'</div>'
       +'<div class="league-block-fixtures">'
-      +'<div class="lc-hda-head"><div class="lc-hda-space"></div><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
+      +'<div class="lc-hda-head"><div class="lc-hda-lbl">Home</div><div class="lc-hda-lbl">Draw</div><div class="lc-hda-lbl">Away</div></div>'
       +visRows+showMoreLc
       +'</div>'
       +'</div>';
@@ -5248,16 +5246,14 @@ function infRender(){
     var dateStr2='';try{var dd2=new Date((lf[0]._dateStr||'')+'T12:00:00');var today2=new Date();today2.setHours(0,0,0,0);var diff2=Math.round((dd2-today2)/86400000);dateStr2=diff2===0?'Today':diff2===1?'Tomorrow':dd2.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){}
     var card='<div class="league-block-outer">'
       +'<div class="league-block-head">'
-      +'<div class="league-block-label">'+escHtml(league.name)+'</div>'
-      +'<div class="league-block-date">'+dateStr2+' · '+lf.length+' fixture'+(lf.length===1?'':'s')+'</div>'
-      +'</div>'
-      +'<div class="league-block-bar">'
-      +'<div class="league-block-kickoff">Kick-off</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:nowrap">'
+      +'<div style="min-width:0"><span class="league-block-label">'+escHtml(league.name)+'</span><span style="font-size:11px;color:var(--muted);margin-left:8px">'+dateStr2+'</span></div>'
       +'<div id="'+cdIdI+'" style="flex-shrink:0;display:flex;align-items:center"></div>'
-      +'<button class="league-block-cta" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button>'
+      +'</div>'
+      +'<div class="league-block-bar"><button class="league-block-cta" onclick="analyseLeague(\''+league.id+'\')"><span style=\"color:var(--gold)\">✦</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
       +'</div>'
       +'<div class="league-block-fixtures">'
-      +'<div class="inf-hda-head"><div class="inf-hda-space"></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
+      +'<div class="inf-hda-head"><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
       +iVis+showMoreI
       +'</div>'
       +'</div>'
