@@ -5541,14 +5541,20 @@ function renderTopFixtureCarousel(){
      +'<div id="'+smIdT+'-cta" style="display:none"><div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div></div>'
     :'<div class="analyse-all-wrap"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')"><span>❖</span> Analyse All Fixtures with AI →</button><div class="analyse-all-sub">AI analyses all '+lf.length+' '+escHtml(league.name)+' fixtures instantly</div></div>';
 
-  var card='<div class="inf-league-block">'
-    +'<div class="inf-league-head">'
-    +'<div class="inf-league-meta">'+dateLabel+'</div>'
-    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><div class="inf-league-meta">'+lf.length+' fixture'+(lf.length===1?'':'s')+'</div><div id="'+cdIdT+'"></div></div>'
+  var card='<div class="league-block-outer">'
+    +'<div class="league-block-label">'+escHtml(league.name)+'</div>'
+    +'<div class="league-block-card">'
+    +'<div class="league-block-header">'
+    +'<div class="league-block-kickoff">Kick-off</div>'
+    +'<div id="'+cdIdT+'" style="flex-shrink:0"></div>'
+    +'<button onclick="analyseLeague(\''+league.id+'\')" style="flex:1;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:30px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;transition:all .18s"><span style="color:var(--gold)">❖</span> Analyse with AI →</button>'
     +'</div>'
-    +'<div style="padding:10px 14px;border-bottom:.5px solid var(--border)"><button class="analyse-all-btn" onclick="analyseLeague(\''+league.id+'\')" style="padding:10px 20px;font-size:13px"><span>❖</span> Analyse '+lf.length+' Fixtures with AI →</button></div>'
+    +'<div class="league-block-fixtures">'
     +'<div class="inf-hda-head"><div></div><div class="inf-hda-lbl">Home</div><div class="inf-hda-lbl">Draw</div><div class="inf-hda-lbl">Away</div></div>'
-    +tVis+showMoreT+'</div>';
+    +tVis+showMoreT
+    +'</div>'
+    +'</div>'
+    +'</div>';
 
   container.innerHTML=card;
 
