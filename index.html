@@ -238,9 +238,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .lc-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
-.lc-fx{display:grid;grid-template-columns:1fr 56px 56px 56px;gap:6px;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center}
+.lc-fx{display:flex;flex-direction:row;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:#fff;gap:8px}
 
-.lc-fx:last-of-type{border-bottom:none}
+
 
 .lc-match{min-width:0;overflow:hidden}
 
@@ -250,7 +250,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .lc-ko{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}
 
-.lc-odd{background:#f0f2f7;border:none;border-radius:6px;height:34px;width:56px;font-size:12px;font-weight:700;color:var(--navy);text-align:center;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0}
+.lc-odd{background:var(--soft);border:none;border-radius:6px;height:36px;width:48px;font-size:12px;font-weight:700;color:var(--navy);text-align:center;cursor:pointer;font-family:inherit}
 
 .lc-match{font-size:16px;font-weight:600;color:var(--navy);flex:1;min-width:0;margin-right:8px}
 
@@ -270,9 +270,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .inf-hda-lbl{font-size:11px;font-weight:500;color:#aaa;text-align:center}
 
-.inf-fx{display:grid;grid-template-columns:1fr 56px 56px 56px;gap:6px;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center}
+.inf-fx{display:flex;flex-direction:row;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:#fff;gap:8px}
 
-.inf-fx:last-of-type{border-bottom:none}
+
 
 .inf-match{min-width:0;overflow:hidden}
 
@@ -282,7 +282,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .inf-ko{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}
 
-.inf-odd{background:#f0f2f7;border:none;border-radius:6px;height:34px;width:56px;font-size:12px;font-weight:700;color:var(--navy);text-align:center;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0}
+.inf-odd{background:var(--soft);border:none;border-radius:6px;height:36px;width:48px;font-size:12px;font-weight:700;color:var(--navy);text-align:center;cursor:pointer;font-family:inherit}
 
 .inf-match{font-size:15px;font-weight:500;color:var(--navy);flex:1;min-width:0;margin-right:8px}
 
@@ -5534,13 +5534,15 @@ function renderTopFixtureCarousel(){
   }catch(e){}
 
   function makeTopRow(f){
-    var ko=formatKickoff(f.date,f.time)||'TBC';
+    var ko=fmtKoInline(f._dateStr,f.time);
     var o=getDummyOdds(f.home,f.away);
     var lg=escHtml(league.name);
     return '<div class="inf-fx"><div class="inf-match"><div class="inf-home">'+escHtml(f.home)+'</div><div class="inf-away">'+escHtml(f.away)+'</div><div class="inf-ko">'+ko+'</div></div>'
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</div>'
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</div>'
-      +'<div class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</div></div>';
+      +'<div class="inf-odds-wrap">'
+      +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'H\',\''+o.h+'\',this)">'+o.h+'</button>'
+      +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'D\',\''+o.d+'\',this)">'+o.d+'</button>'
+      +'<button class="inf-odd" onclick="addFxToSlip(\''+f.home+'\',\''+f.away+'\',\''+lg+'\',\'A\',\''+o.a+'\',this)">'+o.a+'</button>'
+      +'</div></div>';
   }
   var TSH5=5;
   var tVis=lf.slice(0,TSH5).map(makeTopRow).join('');
