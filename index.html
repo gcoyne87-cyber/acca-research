@@ -3896,11 +3896,26 @@ function renderTrendingAccas(){
 
   var riskSub={low:'Low risk',mid:'Mid risk',high:'High risk'};
 
-  var filtered=TRENDING_ACCAS.filter(function(a){
+  // Show exactly one of each risk tier: low, mid, high
+  var seen={};
 
-    return a.legs.length>=3&&(currentRiskFilter==='all'||a.risk===currentRiskFilter);
+  var filtered=[];
+
+  var order=['low','mid','high'];
+
+  order.forEach(function(r){
+
+    var match=TRENDING_ACCAS.find(function(a){return a.risk===r&&a.legs.length>=3;});
+
+    if(match) filtered.push(match);
 
   });
+
+  if(currentRiskFilter!=='all'){
+
+    filtered=filtered.filter(function(a){return a.risk===currentRiskFilter;});
+
+  }
 
   if(!filtered.length){
 
