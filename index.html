@@ -250,7 +250,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── INFINITE SCROLL FIXTURES ── */
 
-.inf-league-block{background:var(--white);border-radius:14px;border:.5px solid var(--border);overflow:hidden;margin-bottom:12px}
+.inf-league-block{background:var(--white);margin-bottom:14px}
 
 .inf-league-head{display:none}
 
@@ -1390,23 +1390,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── UNIFIED FIXTURE CARD LAYOUT ── */
 
-.fx-league-card{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)}
+.fx-league-card{background:#fff;margin-bottom:14px}
 
-.fx-league-top{padding:14px 16px 12px;display:flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--border)}
+.fx-league-top{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--green)}
 
-.fx-lg-name{font-size:16px;font-weight:700;color:var(--green);white-space:nowrap}
+.fx-lg-name{font-size:15px;font-weight:700;color:var(--green);white-space:nowrap}
 
 .fx-lg-date{font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap}
 
-.fx-league-name{font-size:16px;font-weight:700;color:var(--green);white-space:nowrap}
+.fx-league-name{font-size:15px;font-weight:700;color:var(--green);white-space:nowrap}
 
 .fx-league-date{font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap}
 
-.fx-cta-row{padding:12px 16px}
+.fx-cta-row{padding:0}
 
-.fx-cta-wrap{padding:12px 16px}
+.fx-cta-wrap{padding:0}
 
-.fx-cta{display:block;width:100%;background:#fff;color:var(--navy);border:2px solid var(--gold);border-radius:99px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:all .18s}
+.fx-cta{display:block;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;margin:8px 12px;width:calc(100% - 24px);transition:all .18s}
 
 .fx-cta span{color:var(--gold)}
 
@@ -1414,27 +1414,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-cta:hover span{color:#fff}
 
-.fx-hda{display:flex;justify-content:flex-end;padding:4px 16px;gap:4px;background:#fff;border:none}
+.fx-hda{display:flex;padding:0 12px;border-bottom:1px solid var(--border);border-top:none}
 
-.fx-hda-lbl{width:52px;font-size:11px;color:var(--muted);text-align:center;font-weight:500;flex-shrink:0}
+.fx-hda-lbl{width:44px;font-size:10px;color:var(--muted);text-align:center;font-weight:500;padding:3px 0;flex-shrink:0}
 
-.fx-row{display:flex;align-items:center;padding:14px 16px;border-top:1px solid var(--border);gap:0;background:#fff}
+.fx-row{display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border);background:#fff}
 
-.fx-teams{flex:1;min-width:0;padding-right:12px}
+.fx-teams{flex:1;min-width:0;padding-right:8px}
 
-.fx-t1,.fx-t2{font-size:15px;font-weight:500;color:var(--navy);line-height:1.4}
+.fx-t1,.fx-t2{font-size:14px;font-weight:500;color:var(--navy);line-height:1.25}
 
-.fx-ko{font-size:12px;font-weight:500;color:var(--green);margin-top:4px}
+.fx-ko{font-size:10px;font-weight:500;color:var(--green);margin-top:2px}
 
-.fx-odds{display:flex;gap:4px;flex-shrink:0}
+.fx-odds{display:flex;gap:3px;flex-shrink:0;margin-left:auto}
 
-.fx-odd{width:52px;height:36px;background:var(--soft);border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;font-family:inherit;transition:all .15s}
+.fx-odd{width:44px;height:28px;background:var(--soft);border:none;border-radius:5px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all .15s}
 
 .fx-odd:active,.fx-odd.selected{background:var(--navy);color:#fff}
 
-.fx-more{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:#fff;border:none;border-top:1px solid var(--border);font-family:inherit;font-size:14px;font-weight:600;color:var(--navy);cursor:pointer}
+.fx-more{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;background:#fff;border:none;border-top:1px solid var(--border);font-family:inherit;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer}
 
-.fx-more-circle{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.fx-more-circle{width:18px;height:18px;border-radius:50%;background:var(--navy);color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 
 .fx-section-wrap{background:var(--soft);padding:12px}
 
@@ -5519,31 +5519,7 @@ function infRender(){
 
 function fmtKo(dateStr,timeStr){
 
-  var t=(timeStr||'').substring(0,5)||'';
-
-  var d='';
-
-  try{
-
-    if(dateStr){
-
-      var dd=new Date(dateStr+'T12:00:00');
-
-      var today=new Date();today.setHours(0,0,0,0);
-
-      var diff=Math.round((dd-today)/86400000);
-
-      if(diff===0)d='Today';
-
-      else if(diff===1)d='Tomorrow';
-
-      else d=dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-
-    }
-
-  }catch(e){}
-
-  return (d?d+' ':'')+t;
+  return (timeStr||'').substring(0,5)||'';
 
 }
 
@@ -5647,15 +5623,16 @@ function mkFxCard(name,date,count,cdId,lgId,rows,extra,smId,hidRows){
 
     +'</div>'
 
-    +'<div class="fx-cta-row"><button class="fx-cta" onclick="analyseLeague(\''+lgId+'\')"><span>&#x2756;</span> Analyse '+count+' '+escHtml(name)+' Fixtures with AI &#x2192;</button></div>'
+    +'<button class="fx-cta" onclick="analyseLeague(\''+lgId+'\')"><span>&#x2756;</span> Analyse '+count+' '+escHtml(name)+' Fixtures with AI &#x2192;</button>'
 
-    +'<div class="fx-hda"><div class="fx-hda-lbl">Home</div><div class="fx-hda-lbl">Draw</div><div class="fx-hda-lbl">Away</div></div>'
+    +'<div class="fx-hda"><div style="flex:1"></div><div class="fx-hda-lbl">Home</div><div class="fx-hda-lbl">Draw</div><div class="fx-hda-lbl">Away</div></div>'
 
     +rows+showMore
 
     +'</div>';
 
 }
+
 
 var topCarouselCountry='england';
 
