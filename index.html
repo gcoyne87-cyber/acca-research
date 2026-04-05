@@ -798,9 +798,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .topnav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
 
-.topnav-badge.pulse{animation:badgePulse 1s ease-in-out 3}
+@keyframes flashPill{0%,100%{background:var(--green);color:#fff}50%{background:transparent;color:var(--green)}}
 
-@keyframes badgePulse{0%{transform:scale(1)}50%{transform:scale(1.5);background:#ff6b00}100%{transform:scale(1)}}
+.research-pill{display:none;align-items:center;gap:5px;background:var(--green);color:#fff;border:2px solid var(--green);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;margin-left:4px;vertical-align:middle;cursor:pointer}
+
+.research-pill.flash{animation:flashPill 0.8s ease-in-out infinite}
+
+.research-nav-spinner{display:none;width:13px;height:13px;border:2px solid rgba(30,158,107,0.25);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-left:5px;vertical-align:middle;flex-shrink:0}
 
 .topnav-auth{display:flex;gap:8px;flex-shrink:0;margin-left:auto}
 
@@ -1544,9 +1548,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <button class="topnav-link" id="tnav-research" onclick="showPage('research')">
 
-        My Research
+        <span id="research-label-text">My Research</span>
+
+        <span class="research-nav-spinner" id="research-nav-spinner"></span>
 
         <span class="topnav-badge" id="research-badge" style="display:none">0</span>
+
+        <span class="research-pill" id="research-pill">Research <span id="research-pill-count">1</span></span>
 
       </button>
 
@@ -2023,6 +2031,14 @@ function showPage(page){
   document.getElementById('page-research').style.display=page==='research'?'':'none';
 
   document.getElementById('page-calc').style.display=page==='calc'?'':'none';
+
+  // If user navigates to research, stop the flashing pill
+  if(page==='research'){
+    var pill=document.getElementById('research-pill');
+    var navSpinner=document.getElementById('research-nav-spinner');
+    if(pill){pill.style.display='none';pill.classList.remove('flash');}
+    if(navSpinner) navSpinner.style.display='none';
+  }
 
   // Sync top nav
 
@@ -3272,6 +3288,14 @@ async function triggerAnalysis(cobj,label,fixtures){
 
   var sectionId='sec'+Date.now();
 
+  // Show spinner in nav immediately
+  var navSpinner=document.getElementById('research-nav-spinner');
+  var pill=document.getElementById('research-pill');
+  var badge=document.getElementById('research-badge');
+  if(navSpinner){navSpinner.style.display='inline-block';}
+  if(pill){pill.style.display='none';pill.classList.remove('flash');}
+  if(badge){badge.style.display='none';}
+
   researchSections.unshift({
 
     sectionId:sectionId,
@@ -3371,30 +3395,44 @@ async function triggerAnalysis(cobj,label,fixtures){
 function renderResearchTab(){
 
   var badge=document.getElementById('research-badge');
+  var navSpinner=document.getElementById('research-nav-spinner');
+  var pill=document.getElementById('research-pill');
+  var pillCount=document.getElementById('research-pill-count');
 
   var totalCards=researchSections.reduce(function(t,s){return t+s.cards.length;},0);
 
-  if(researchSections.length>0){
+  var anyLoading=researchSections.some(function(s){return s.status==='loading';});
+  var anyDone=researchSections.some(function(s){return s.status==='done'&&s.cards.length>0;});
+  var count=researchSections.length;
 
-    badge.style.display='inline-flex';
+  // Hide old badge always — pill replaces it
+  if(badge) badge.style.display='none';
 
-    badge.textContent=researchSections.length;
-
+  if(anyLoading){
+    // Show spinner, hide pill
+    if(navSpinner) navSpinner.style.display='inline-block';
+    if(pill){pill.style.display='none';pill.classList.remove('flash');}
+  } else if(anyDone && count>0){
+    // Hide spinner, show flashing pill
+    if(navSpinner) navSpinner.style.display='none';
+    if(pill && pillCount){
+      pillCount.textContent=count;
+      pill.style.display='inline-flex';
+      pill.classList.add('flash');
+    }
   } else {
-
-    badge.style.display='none';
-
+    // Nothing — hide everything
+    if(navSpinner) navSpinner.style.display='none';
+    if(pill){pill.style.display='none';pill.classList.remove('flash');}
   }
-
-  // Also update bottom nav badge if exists
 
   var bnBadge=document.getElementById('bnav-research-badge');
 
   if(bnBadge){
 
-    bnBadge.style.display=researchSections.length>0?'inline-flex':'none';
+    bnBadge.style.display=count>0?'inline-flex':'none';
 
-    bnBadge.textContent=researchSections.length;
+    bnBadge.textContent=count;
 
   }
 
@@ -3443,18 +3481,6 @@ function renderResearchTab(){
     }else{
 
       sec.cards.forEach(function(card){html+=buildCardHTML(card);});
-
-      // Pulse the badge to alert user results are ready
-
-      if(badge){
-
-        badge.classList.remove('pulse');
-
-        void badge.offsetWidth; // force reflow
-
-        badge.classList.add('pulse');
-
-      }
 
     }
 
