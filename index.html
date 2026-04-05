@@ -1586,6 +1586,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     </div>
 
+    <!-- RECENT WINNERS -->
+    <div class="home-section" id="winners-section" style="margin-bottom:20px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:18px;font-weight:600;color:var(--navy)">🏆 Recent Winners</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">AI picks that landed</div>
+        </div>
+        <div style="font-size:11px;font-weight:500;color:var(--green)">Swipe right →</div>
+      </div>
+      <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="winners-carousel"></div>
+    </div>
+
+
+
     <!-- TOP FIXTURE SECTION -->
 
     <div id="top-fix-section" style="display:none">
@@ -3847,6 +3861,8 @@ function setRiskFilter(risk,btn){
 
   renderTrendingAccas();
 
+  renderWinners();
+
   renderDailyPicks();
 
   calcTop5Odds();
@@ -6003,6 +6019,8 @@ window.addEventListener('DOMContentLoaded',function(){
 
   renderTrendingAccas();
 
+  renderWinners();
+
   renderDailyPicks();
 
   calcTop5Odds();
@@ -6038,6 +6056,72 @@ window.addEventListener('DOMContentLoaded',function(){
   },3000);
 
 });
+
+
+
+var RECENT_WINNERS=[
+
+  {type:'Top Pick',date:'Yesterday',legs:[{team:'Lincoln City',detail:'v Wigan Athletic · League One'}],price:'EVS'},
+
+  {type:'Safe Acca',date:'Fri 4 Apr',legs:[{team:'Burnley',detail:'v Sheffield Wed · Championship'},{team:'Lincoln City',detail:'v Wigan · League One'},{team:'Celtic',detail:'v Hearts · Scottish Prem'}],price:'8/1'},
+
+  {type:'Dark Horse',date:'Thu 3 Apr',legs:[{team:'NEC Nijmegen',detail:'v Ajax · Eredivisie'}],price:'7/5'},
+
+  {type:'Value Acca',date:'Wed 2 Apr',legs:[{team:'Burnley',detail:'v Sheffield Wed · Championship'},{team:'Benfica',detail:'v Sporting CP · Primeira Liga'},{team:'Lincoln City',detail:'v Wigan · League One'},{team:'Celtic',detail:'v Hearts · Scottish Prem'}],price:'22/1'},
+
+  {type:'Best Value',date:'Tue 1 Apr',legs:[{team:'Leeds United',detail:'v Millwall · Championship'}],price:'8/11'},
+
+];
+
+function renderWinners(){
+
+  var el=document.getElementById('winners-carousel');
+
+  if(!el) return;
+
+  el.innerHTML=RECENT_WINNERS.map(function(w){
+
+    var teamsHtml=w.legs.map(function(l){
+
+      return '<div style="margin-bottom:5px">'
+
+        +'<div style="font-size:'+(w.legs.length===1?'15px':'14px')+';font-weight:500;color:#0b1628;margin-bottom:2px">'+escHtml(l.team)+'</div>'
+
+        +'<div style="font-size:'+(w.legs.length===1?'12px':'11px')+';color:#aaa">'+escHtml(l.detail)+'</div>'
+
+        +'</div>';
+
+    }).join('');
+
+    return '<div style="flex-shrink:0;width:240px;height:210px;background:#fff;border-radius:14px;border:1px solid #e8eaed;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,0.06)">'
+
+      +'<div style="background:#1e9e6b;padding:13px 16px;flex-shrink:0">'
+
+      +'<div style="font-size:18px;font-weight:600;color:#fff;line-height:1.1;margin-bottom:3px">★ Winner</div>'
+
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.7)">'+escHtml(w.type)+' · '+escHtml(w.date)+'</div>'
+
+      +'</div>'
+
+      +'<div style="padding:13px 16px;flex:1;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden">'
+
+      +'<div>'+teamsHtml+'</div>'
+
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px solid #f0f0f0;flex-shrink:0">'
+
+      +'<div style="font-size:10px;color:#aaa">Price</div>'
+
+      +'<div style="font-size:18px;font-weight:600;color:#1e9e6b">'+escHtml(w.price)+'</div>'
+
+      +'</div>'
+
+      +'</div>'
+
+      +'</div>';
+
+  }).join('');
+
+}
 
 </script>
 
