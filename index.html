@@ -2296,47 +2296,56 @@ function renderDailyPicks(){
 
   if(!el) return;
 
-  var bgs=['#e8f8f1','#f0f7ff','#fdf4ec'];
-
-  var borders=['#a7e0c4','#93c5fd','#f6b97a'];
+  var borderCols=['#1e9e6b','#c9a84c','#e07b2a'];
 
   el.innerHTML=DAILY_PICKS.map(function(p,i){
 
-    var bg=bgs[i];var bdr=borders[i];
+    var bdr=borderCols[i]||'#1e9e6b';
 
     var rows=p.reasons.map(function(r){
 
-      return '<div style="display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--mid);line-height:1.4;overflow:hidden"><span style="color:var(--green);font-weight:700;flex-shrink:0">\u2713</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r)+'</span></div>';
+      return '<div style="display:flex;align-items:baseline;gap:6px;font-size:12px;color:#555;line-height:1.5"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0">✓</span><span>'+escHtml(r)+'</span></div>';
 
     }).join('');
 
-    var comm='<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:600;margin-top:6px;padding-top:7px;border-top:.5px solid rgba(30,158,107,0.25);overflow:hidden"><span style="flex-shrink:0">&#x1F465;</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.community)+'</span></div>';
+    return '<div style="background:#fff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;border-left:4px solid '+bdr+'">'
 
-    return '<div style="background:'+bg+';border:1.5px solid '+bdr+';border-radius:14px;padding:16px">'
+      +'<div style="padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f0f0">'
 
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+      +'<div>'
 
-      +'<div style="display:inline-flex;align-items:center;gap:6px;background:#fffbf0;border:1.5px solid var(--gold);border-radius:99px;padding:5px 14px"><span style="font-size:13px;line-height:1">'+p.icon+'</span><span style="font-size:12px;font-weight:700;color:#92400e">'+escHtml(p.type)+'</span></div>'
+      +'<div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #e8eaed;border-radius:99px;padding:3px 10px;margin-bottom:8px"><span style="font-size:12px">'+p.icon+'</span><span style="font-size:11px;font-weight:600;color:#0b1628">'+escHtml(p.type)+'</span></div>'
 
-      +'<button id="dp-odds-'+i+'" onclick="addDailyPick('+i+',this)" style="background:#fff;border:1.5px solid '+bdr+';border-radius:99px;padding:5px 16px;font-size:16px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit;transition:all .18s">'+escHtml(p.odds)+'</button>'
+      +'<div style="font-size:19px;font-weight:700;color:#0b1628;line-height:1.1;margin-bottom:3px">'+escHtml(p.team)+'</div>'
+
+      +'<div style="font-size:11px;color:#aaa">'+escHtml(p.opponent)+' · '+escHtml(p.league)+'</div>'
 
       +'</div>'
 
-      +'<div style="font-size:28px;font-weight:700;color:var(--navy);letter-spacing:-0.5px;margin-bottom:2px">'+escHtml(p.team)+'</div>'
+      +'<div style="text-align:right;flex-shrink:0;padding-left:12px">'
 
-      +'<div style="font-size:13px;color:#4a8a6a;margin-bottom:1px">'+escHtml(p.opponent)+'</div>'
+      +'<div style="font-size:10px;color:#aaa;margin-bottom:2px;letter-spacing:.04em">PRICE</div>'
 
-      +'<div style="font-size:11px;color:#4a8a6a;opacity:.7;margin-bottom:12px">'+escHtml(p.league)+'</div>'
+      +'<div style="font-size:32px;font-weight:800;color:#1e9e6b;line-height:1">'+escHtml(p.odds)+'</div>'
 
-      +'<div style="background:rgba(255,255,255,0.65);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;margin-bottom:14px">'+rows+comm+'</div>'
+      +'</div>'
 
-      +'<button class="dp-add-btn" id="dp-btn-'+i+'" onclick="addDailyPick('+i+',this)" style="width:100%;background:var(--navy);color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s">+ Add to My Slip</button>'
+      +'</div>'
+
+      +'<div style="padding:12px 16px;display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #f0f0f0">'+rows+'</div>'
+
+      +'<div style="padding:10px 16px 14px">'
+
+      +'<button class="dp-add-btn" id="dp-btn-'+i+'" onclick="addDailyPick('+i+',this)" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s">+ Add to My Slip</button>'
+
+      +'</div>'
 
       +'</div>';
 
   }).join('');
 
 }
+
 
 function addDailyPick(idx,btn){
 
