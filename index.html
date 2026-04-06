@@ -1640,6 +1640,29 @@ function updateSportStrip(sport){
 
 }
 
+function switchRacingTab(tab,el){
+
+  document.querySelectorAll('#racing-section-tabs .fstab').forEach(function(b){b.classList.remove('active');});
+
+  el.classList.add('active');
+
+  var cards=document.getElementById('racing-meetings-list');
+  var next=document.getElementById('next-race-content');
+  var dayLbl=cards?cards.previousElementSibling:null;
+
+  if(tab==='cards'){
+    if(cards) cards.style.display='';
+    if(next) next.style.display='none';
+    if(dayLbl) dayLbl.style.display='';
+  } else {
+    if(cards) cards.style.display='none';
+    if(next) next.style.display='';
+    if(dayLbl) dayLbl.style.display='none';
+    renderNextRaceStrip();
+  }
+
+}
+
 function switchSport(sport){
 
   _currentSport=sport;
@@ -1762,13 +1785,7 @@ function showRacingHome(){
 
     </div>
 
-    <div class="filter-strip" id="racing-section-strip" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;display:none">
-
-      <div class="filter-strip-inner">
-
-        <button class="fstab active">Race Cards</button>
-
-      </div>
+    <div class="filter-strip" id="racing-section-strip" style="display:none">
 
     </div>
 
@@ -1926,7 +1943,7 @@ function showRacingHome(){
 
   <div id="racing-home-content" style="display:none">
 
-    <div class="hero-banner">
+    <div class="hero-banner" style="margin-bottom:0">
 
       <div class="hero-banner-tag">AI-Powered Research</div>
 
@@ -1936,11 +1953,37 @@ function showRacingHome(){
 
     </div>
 
-    <div class="main">
+    <div style="background:var(--white);border-bottom:.5px solid var(--border);margin:0 -24px">
 
-      <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:0 0 10px">Today · UK &amp; Ireland</div>
+      <div style="max-width:900px;margin:0 auto">
+
+        <div class="filter-strip" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+
+          <div class="filter-strip-inner" id="racing-section-tabs">
+
+            <button class="fstab active" onclick="switchRacingTab('cards',this)">Race Cards</button>
+
+            <button class="fstab" onclick="switchRacingTab('next',this)">Next Race</button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="main" style="padding-top:12px;padding-bottom:16px">
 
       <div id="racing-meetings-list"></div>
+
+    </div>
+
+    <div id="next-race-content" style="display:none;padding:12px 24px 16px">
+
+      <div id="next-race-strip" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px"></div>
+
+      <div id="next-race-card"></div>
 
     </div>
 
@@ -6577,6 +6620,96 @@ function rcToggleMeeting(id){
 function rcSelectRace(mid,ri){
   rcOpenRace[mid]=rcOpenRace[mid]===ri?null:ri;
   renderRacingMeetings();
+}
+
+var NR_RACES=[
+  {t:'13:15',venue:'Cork',mins:22,dist:'2m7f',type:'Maiden Hurdle',runners:13,next:true},
+  {t:'13:30',venue:'Aintree',mins:37,dist:'2m4f',type:'Hurdle',runners:9},
+  {t:'13:35',venue:'Hereford',mins:42,dist:'2m1f',type:'Chase',runners:8},
+  {t:'13:45',venue:'Kempton',mins:52,dist:'1m2f',type:'Flat',runners:12},
+  {t:'13:50',venue:'Cork',mins:57,dist:'2m4f',type:'Handicap Chase',runners:11},
+  {t:'13:55',venue:'Southwell',mins:62,dist:'1m',type:'Flat',runners:7},
+  {t:'14:05',venue:'Fairyhouse',mins:72,dist:'2m4f',type:'Nov Hcap Hrd',runners:20},
+  {t:'14:10',venue:'Hereford',mins:77,dist:'3m',type:'Chase',runners:6},
+];
+
+var NR_RUNNERS=[
+  {n:9,name:'Majolique',jt:'J.P. Townend / W.P. Mullins',price:'2/1',pick:true},
+  {n:7,name:'Proactif',jt:'M.P. Walsh / W.P. Mullins',price:'5/2',pick:false},
+  {n:3,name:'Macho Man',jt:'D.E. Mullins / W.P. Mullins',price:'4/1',pick:false},
+  {n:6,name:'North Shore',jt:'K. Donoghue / G. Cromwell',price:'8/1',pick:false},
+  {n:2,name:'Kai Lung',jt:'S. O\'Keeffe / W.P. Mullins',price:'20/1',pick:false},
+  {n:4,name:'Doctor Elvis',jt:'J.W. Kennedy / G. Elliott',price:'10/1',pick:false},
+  {n:1,name:'Sky And Sand',jt:'D. Gilligan / R. O\'Sullivan',price:'12/1',pick:false},
+  {n:5,name:'Umpires Call',jt:'K. Donoghue / J.P. Dempsey',price:'16/1',pick:false},
+];
+
+var nrSelected=0;
+var nrMoreOpen=false;
+
+function renderNextRaceStrip(){
+  var strip=document.getElementById('next-race-strip');
+  if(!strip) return;
+  strip.innerHTML=NR_RACES.map(function(r,i){
+    var cls='rc-t-box'+(i===nrSelected?' sel':r.next?' next':'');
+    return '<div class="'+cls+'" style="flex-shrink:0;width:68px;border:1px solid '+(i===nrSelected?'#0b1628':r.next?'#1e9e6b':'#e4e8f0')+';border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;background:'+(i===nrSelected?'#0b1628':r.next?'#f0faf6':'#f5f7fb')+'" onclick="nrSelect('+i+')">'
+      +'<span style="font-size:13px;font-weight:600;color:'+(i===nrSelected?'#fff':r.next?'#1e9e6b':'#0b1628')+';display:block">'+r.t+'</span>'
+      +'<span style="font-size:10px;color:'+(i===nrSelected?'rgba(255,255,255,.5)':r.next?'#1e9e6b':'#9aa3b5')+';display:block;margin-top:2px">'+r.venue+'</span>'
+    +'</div>';
+  }).join('');
+  renderNextRaceCard();
+}
+
+function nrSelect(i){nrSelected=i;nrMoreOpen=false;renderNextRaceStrip();}
+
+function renderNextRaceCard(){
+  var el=document.getElementById('next-race-card');
+  if(!el) return;
+  var r=NR_RACES[nrSelected];
+  var shown=NR_RUNNERS.slice(0,5);
+  var hidden=NR_RUNNERS.slice(5);
+  var runnersHtml=shown.map(function(ru){
+    return '<div class="rc-runner" style="display:flex;align-items:flex-start;padding:8px 14px;border-bottom:1px solid #f0f2f7;gap:8px">'
+      +'<div style="font-size:11px;color:#9aa3b5;width:16px;flex-shrink:0;padding-top:2px;text-align:center">'+ru.n+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:#0b1628">'+escHtml(ru.name)+'</div>'
+      +'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(ru.jt)+'</div>'
+      +(ru.pick?'<div style="display:inline-block;font-size:9px;background:#e1f5ee;color:#085041;padding:2px 6px;border-radius:4px;font-weight:600;margin-top:2px">&#x2756; AI pick</div>':'')
+      +'</div>'
+      +'<div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div><div style="font-size:9px;color:#9aa3b5;text-align:right;margin-top:1px">E/W</div></div>'
+    +'</div>';
+  }).join('');
+  var extraHtml=hidden.map(function(ru){
+    return '<div style="display:flex;align-items:flex-start;padding:8px 14px;border-bottom:1px solid #f0f2f7;gap:8px">'
+      +'<div style="font-size:11px;color:#9aa3b5;width:16px;flex-shrink:0;padding-top:2px;text-align:center">'+ru.n+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:#0b1628">'+escHtml(ru.name)+'</div>'
+      +'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(ru.jt)+'</div></div>'
+      +'<div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div><div style="font-size:9px;color:#9aa3b5;text-align:right;margin-top:1px">E/W</div></div>'
+    +'</div>';
+  }).join('');
+  el.innerHTML='<div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden">'
+    +'<div style="background:#0b1628;padding:11px 14px;display:flex;align-items:center;justify-content:space-between">'
+      +'<div><div style="font-size:14px;font-weight:600;color:#fff">'+r.t+' '+r.venue+'</div>'
+      +'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">'+r.dist+' '+r.type+' &middot; '+r.runners+' runners</div></div>'
+      +'<div style="font-size:11px;font-weight:600;color:#1e9e6b;background:rgba(30,158,107,.18);padding:4px 10px;border-radius:20px;white-space:nowrap">'+r.mins+' mins</div>'
+    +'</div>'
+    +runnersHtml
+    +'<div id="nr-extra" style="display:'+(nrMoreOpen?'block':'none')+'">'+extraHtml+'</div>'
+    +'<button onclick="nrToggleMore()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#fff;border:none;border-top:1px solid #e4e8f0;font-family:inherit;font-size:12px;font-weight:600;color:#0b1628;cursor:pointer">'
+      +'<span id="nr-more-icon" style="width:18px;height:18px;border-radius:50%;background:#0b1628;color:#fff;font-size:13px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">'+(nrMoreOpen?'−':'+')+'</span>'
+      +'<span id="nr-more-txt">'+(nrMoreOpen?'Show less':hidden.length+' more runners')+'</span>'
+    +'</button>'
+    +'<button class="fx-cta"><span style="color:var(--gold)">&#x2756;</span> Analyse '+r.t+' '+r.venue+' with AI &rarr;</button>'
+  +'</div>';
+}
+
+function nrToggleMore(){
+  nrMoreOpen=!nrMoreOpen;
+  var extra=document.getElementById('nr-extra');
+  var icon=document.getElementById('nr-more-icon');
+  var txt=document.getElementById('nr-more-txt');
+  if(extra) extra.style.display=nrMoreOpen?'block':'none';
+  if(icon) icon.textContent=nrMoreOpen?'−':'+';
+  if(txt) txt.textContent=nrMoreOpen?'Show less':(NR_RUNNERS.length-5)+' more runners';
 }
 
 </script>
