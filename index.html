@@ -1450,7 +1450,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .rc-meeting-info{flex:1}
 
-.rc-meeting-name{font-size:14px;font-weight:600;color:var(--navy)}
+.rc-meeting-name{font-size:16px;font-weight:600;color:var(--navy)}
 
 .rc-meeting-meta{font-size:11px;color:var(--muted);margin-top:2px}
 
@@ -6546,7 +6546,7 @@ function renderWinners(){
 // ── RACE CARDS ──
 
 var RC_MEETINGS=[
-  {id:'cork',flag:'IE',name:'Cork',races:[
+  {id:'cork',flag:'IE',name:'Cork',edge:'Mullins saddles 4 runners today · 44% strike rate at Cork this season',races:[
     {t:'13:15',r:13,next:true,name:'Cork Maiden Hurdle',dist:'2m'},
     {t:'13:50',r:23,name:'Cork Handicap Chase',dist:'2m4f'},
     {t:'14:25',r:9,name:'Cork Novice Chase',dist:'3m'},
@@ -6556,7 +6556,7 @@ var RC_MEETINGS=[
     {t:'16:45',r:7,name:'Cork Chase',dist:'3m'},
     {t:'17:20',r:10,name:'Cork Bumper',dist:'2m'}
   ]},
-  {id:'fairyhouse',flag:'IE',name:'Fairyhouse',races:[
+  {id:'fairyhouse',flag:'IE',name:'Fairyhouse',edge:'Ground changed to Soft overnight · Elliott 51% win rate on Soft at Fairyhouse',races:[
     {t:'14:05',r:20,next:true,name:'Fairyhouse Nov Hcap Hrd',dist:'2m4f'},
     {t:'14:40',r:7,name:'Fairyhouse Mares Chase',dist:'2m1f'},
     {t:'15:15',r:11,name:'Fairyhouse Hurdle',dist:'2m'},
@@ -6566,7 +6566,7 @@ var RC_MEETINGS=[
     {t:'17:40',r:8,name:'Fairyhouse Nov Chase',dist:'2m4f'},
     {t:'18:10',r:6,name:'Fairyhouse Bumper',dist:'2m'}
   ]},
-  {id:'kempton',flag:'GB',name:'Kempton',races:[
+  {id:'kempton',flag:'GB',name:'Kempton',edge:'Course specialist declares in 14:25 · won this race 3 of last 5 years',races:[
     {t:'13:45',r:12,next:true,name:'Kempton Stakes',dist:'1m'},
     {t:'14:20',r:10,name:'Kempton Handicap',dist:'1m2f'},
     {t:'14:55',r:7,name:'Kempton Novice Stakes',dist:'7f'},
@@ -6575,7 +6575,7 @@ var RC_MEETINGS=[
     {t:'16:40',r:11,name:'Kempton Stakes',dist:'6f'},
     {t:'17:10',r:6,name:'Kempton Bumper',dist:'2m'}
   ]},
-  {id:'aintree',flag:'GB',name:'Aintree',races:[
+  {id:'aintree',flag:'GB',name:'Aintree',edge:'3 unexposed handicappers step up in trip · AI flagging Aintree as value meeting',races:[
     {t:'13:30',r:9,next:true,name:'Aintree Hurdle',dist:'2m4f'},
     {t:'14:05',r:14,name:'Grand National Trial',dist:'4m2f'},
     {t:'14:40',r:8,name:'Aintree Chase',dist:'3m1f'},
@@ -6645,11 +6645,20 @@ function renderRacingMeetings(){
       +'<div class="rc-meeting-top" onclick="rcToggleMeeting(\''+m.id+'\')">'
         +'<div class="rc-meeting-flag">'+escHtml(m.flag)+'</div>'
         +'<div class="rc-meeting-info">'
-          +'<div class="rc-meeting-name">'+escHtml(m.name)+'</div>'
-          +'<div class="rc-meeting-meta">'+m.races.length+' races &middot; <span class="rc-meeting-next">Next '+escHtml(m.races[0].t)+'</span></div>'
+          +'<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'
+            +'<div class="rc-meeting-name">'+escHtml(m.name)+'</div>'
+            +'<div class="rc-meeting-meta" style="margin-top:0">'+m.races.length+' races &middot; <span class="rc-meeting-next">Next '+escHtml(m.races[0].t)+'</span></div>'
+          +'</div>'
         +'</div>'
         +'<div class="rc-meeting-chev'+(isOpen?' open':'')+'">&#x25BE;</div>'
       +'</div>'
+      +(m.edge?'<div style="padding:8px 14px;border-top:1px solid #c8ead9;background:#f0faf6;display:flex;align-items:flex-start;gap:8px">'
+        +'<div style="flex-shrink:0;background:#0b1628;border-radius:4px;padding:3px 7px;display:inline-flex;align-items:center;gap:4px;margin-top:1px">'
+          +'<span style="font-size:9px;color:#c9a84c">&#x2756;</span>'
+          +'<span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;letter-spacing:.04em">AI EDGE</span>'
+        +'</div>'
+        +'<span style="font-size:13px;font-weight:600;color:#085041;line-height:1.4">'+escHtml(m.edge)+'</span>'
+      +'</div>':'')
       +bodyHtml
     +'</div>';
   }).join('');
