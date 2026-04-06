@@ -1717,6 +1717,8 @@ function showRacingHome(){
 
   renderRacingMeetings();
 
+  renderRacingWinners();
+
 }
 
 </script>
@@ -1950,6 +1952,28 @@ function showRacingHome(){
       <div class="hero-banner-title">The most powerful <span style="color:#c9a84c">AI</span> horse racing research tool.</div>
 
       <div class="hero-banner-sub">Form, jockey stats, going &amp; trainer stats analysed instantly</div>
+
+    </div>
+
+    <!-- RACING WINNERS -->
+
+    <div class="home-section" style="margin:14px 0 4px">
+
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
+
+        <div>
+
+          <div style="font-size:18px;font-weight:600;color:var(--navy)">🏆 Recent Results</div>
+
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">AI picks · How they ran</div>
+
+        </div>
+
+        <div style="font-size:11px;font-weight:500;color:var(--green)">Swipe right →</div>
+
+      </div>
+
+      <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="racing-winners-carousel"></div>
 
     </div>
 
@@ -6710,6 +6734,49 @@ function nrToggleMore(){
   if(extra) extra.style.display=nrMoreOpen?'block':'none';
   if(icon) icon.textContent=nrMoreOpen?'−':'+';
   if(txt) txt.textContent=nrMoreOpen?'Show less':(NR_RUNNERS.length-5)+' more runners';
+}
+
+var RACING_WINNERS=[
+  {result:'Winner',pos:'1st',type:'Pick of the Day',date:'Yesterday',horse:'Majolique',time:'13:15',course:'Cork',race:'2m7f Maiden Hurdle',price:'2/1'},
+  {result:'Each Way',pos:'2nd',type:'Each Way Pick',date:'Mon 7 Apr',horse:'North Shore',time:'14:25',course:'Fairyhouse',race:'2m4f Handicap Hurdle',price:'8/1'},
+  {result:'Winner',pos:'1st',type:'Pick of the Day',date:'Sun 6 Apr',horse:'Proactif',time:'13:50',course:'Aintree',race:'2m4f Hurdle',price:'5/2'},
+  {result:'Each Way',pos:'3rd',type:'Dark Horse',date:'Sat 5 Apr',horse:'Kai Lung',time:'15:00',course:'Kempton',race:'1m2f Flat Handicap',price:'20/1'},
+  {result:'Winner',pos:'1st',type:'Each Way Pick',date:'Fri 4 Apr',horse:'Doctor Elvis',time:'16:10',course:'Cork',race:'3m Novice Chase',price:'10/1'},
+  {result:'Strong Run',pos:'4th',type:'Dark Horse',date:'Thu 3 Apr',horse:'Sky And Sand',time:'14:40',course:'Hereford',race:'2m1f Chase',price:'12/1'},
+];
+
+function renderRacingWinners(){
+  var el=document.getElementById('racing-winners-carousel');
+  if(!el) return;
+  el.innerHTML=RACING_WINNERS.map(function(w){
+    var isWin=w.result==='Winner';
+    var isEW=w.result==='Each Way';
+    var headBg=isWin?'#1e9e6b':isEW?'#0b1628':'#f0f2f7';
+    var headColor=isWin||isEW?'#fff':'#5a6478';
+    var subColor=isWin||isEW?'rgba(255,255,255,.55)':'#9aa3b5';
+    var trophy=isWin?'🏆':isEW?'★':'◎';
+    var posBg=isWin?'#e1f5ee':isEW?'#e8ecf4':'#f0f2f7';
+    var posColor=isWin?'#085041':isEW?'#0b1628':'#5a6478';
+    var priceColor=isWin?'#1e9e6b':'#0b1628';
+    return '<div style="flex-shrink:0;width:195px;height:215px;background:#fff;border-radius:12px;border:1px solid #e4e8f0;overflow:hidden;display:flex;flex-direction:column">'
+      +'<div style="background:'+headBg+';padding:9px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0">'
+        +'<div style="font-size:18px;line-height:1;flex-shrink:0">'+trophy+'</div>'
+        +'<div>'
+          +'<div style="font-size:13px;font-weight:600;color:'+headColor+';line-height:1">'+w.result+'</div>'
+          +'<div style="font-size:10px;color:'+subColor+';margin-top:2px">'+w.type+' · '+w.date+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;border-top:1px solid #f0f2f7">'
+        +'<div style="display:inline-flex;align-items:center;justify-content:center;background:'+posBg+';color:'+posColor+';font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:6px;width:fit-content">'+w.pos+'</div>'
+        +'<div style="font-size:15px;font-weight:600;color:#0b1628;margin-bottom:3px">'+escHtml(w.horse)+'</div>'
+        +'<div style="font-size:11px;color:#9aa3b5;line-height:1.5">'+w.time+' '+w.course+'<br>'+escHtml(w.race)+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid #f0f2f7;flex-shrink:0">'
+        +'<div style="font-size:10px;color:#9aa3b5">Price</div>'
+        +'<div style="font-size:16px;font-weight:600;color:'+priceColor+'">'+escHtml(w.price)+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
 }
 
 </script>
