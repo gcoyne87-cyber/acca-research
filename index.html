@@ -1640,9 +1640,19 @@ function switchSport(sport){
 
   updateSportStrip(sport);
 
-  if(sport==='racing'){showRacingHome();}
+  if(sport==='racing'){
 
-  else{showFootballHome();}
+    showPage('home');
+
+    showRacingHome();
+
+  }else{
+
+    showPage('home');
+
+    showFootballHome();
+
+  }
 
 }
 
@@ -1651,6 +1661,10 @@ function showFootballHome(){
   var fh=document.getElementById('football-home-content');
 
   var rh=document.getElementById('racing-home-content');
+
+  var ph=document.getElementById('page-home');
+
+  if(ph) ph.style.display='';
 
   if(fh) fh.style.display='';
 
@@ -1663,6 +1677,10 @@ function showRacingHome(){
   var fh=document.getElementById('football-home-content');
 
   var rh=document.getElementById('racing-home-content');
+
+  var ph=document.getElementById('page-home');
+
+  if(ph) ph.style.display='none';
 
   if(fh) fh.style.display='none';
 
@@ -1751,6 +1769,8 @@ function showRacingHome(){
   </div>
 
 </div>
+
+<div class="main" id="main-content" style="display:none">
 
   <!-- HOME PAGE -->
 
@@ -1910,15 +1930,15 @@ function showRacingHome(){
 
     </div>
 
-    <div style="padding:0 0 80px">
+    <div class="main">
 
-      <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:14px 0 10px">Today · UK &amp; Ireland</div>
+      <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:0 0 10px">Today · UK &amp; Ireland</div>
 
       <div id="racing-meetings-list"></div>
 
     </div>
 
-  </div>
+  </div><!-- /racing-home-content -->
 
   <!-- MY RESEARCH PAGE -->
 
@@ -6554,6 +6574,8 @@ function rcSelectRace(mid,ri){
 }
 
 </script>
+
+</div><!-- /main-content -->
 
 <!-- Mobile bottom nav -->
 
