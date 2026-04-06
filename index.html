@@ -1520,25 +1520,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#1e9e6b,#c9a84c,#1e9e6b,transparent);background-size:200%;animation:splashBar 2.5s linear infinite"></div>
 
-  <div style="position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(30,158,107,.14);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out infinite"></div>
-
-  <div style="position:absolute;width:330px;height:330px;border-radius:50%;border:1px solid rgba(30,158,107,.06);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out 1s infinite"></div>
-
-  <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(30,158,107,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-
   <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;padding:0 32px">
 
-    <div style="text-align:center;margin-bottom:52px">
+    <div style="position:relative;text-align:center;margin-bottom:52px;padding:80px 0">
 
-      <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Accu</span><span style="color:#c9a84c">Edge</span></div>
+      <div style="position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(30,158,107,.14);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out infinite;pointer-events:none"></div>
 
-      <div style="font-family:Outfit,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#1e9e6b;font-weight:500;margin-top:10px">Sports Research Tool</div>
+      <div style="position:absolute;width:330px;height:330px;border-radius:50%;border:1px solid rgba(30,158,107,.06);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out 1s infinite;pointer-events:none"></div>
 
-      <div style="width:28px;height:1.5px;background:linear-gradient(90deg,#c9a84c,#e0bc5a);border-radius:2px;margin:16px auto 0"></div>
+      <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(30,158,107,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none"></div>
+
+      <div style="position:relative;z-index:2">
+
+        <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Accu</span><span style="color:#c9a84c">Edge</span></div>
+
+        <div style="font-family:Outfit,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#1e9e6b;font-weight:500;margin-top:10px">Sports Research Tool</div>
+
+        <div style="width:28px;height:1.5px;background:linear-gradient(90deg,#c9a84c,#e0bc5a);border-radius:2px;margin:16px auto 0"></div>
+
+      </div>
 
     </div>
 
-    <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+    <div style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px">
 
       <button onclick="selectSport('football')" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px 20px;cursor:pointer;font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:14px"><span style="font-size:22px">⚽</span><span style="font-size:17px;font-weight:600;color:#fff">Football</span></div>
@@ -1573,6 +1577,8 @@ function selectSport(sport){
   _currentSport=sport;
 
   var o=document.getElementById('splash-overlay');
+
+  o.style.transition='opacity 0.4s ease';
 
   o.style.opacity='0';
 
@@ -1612,7 +1618,7 @@ function selectSport(sport){
 
     setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}},100);
 
-  },400);
+  },420);
 
 }
 
