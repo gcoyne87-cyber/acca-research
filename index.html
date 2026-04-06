@@ -1719,6 +1719,8 @@ function showRacingHome(){
 
   renderRacingWinners();
 
+  renderRacingPicks();
+
 }
 
 </script>
@@ -2008,6 +2010,24 @@ function showRacingHome(){
       <div id="next-race-strip" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px"></div>
 
       <div id="next-race-card"></div>
+
+    </div>
+
+    <!-- RACING PICKS -->
+
+    <div class="main" style="padding-top:0;padding-bottom:80px">
+
+      <div style="margin-bottom:16px">
+
+        <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
+
+        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's Picks</div>
+
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">AI-researched selections · Tap to add to slip</div>
+
+      </div>
+
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
 
     </div>
 
@@ -6744,6 +6764,38 @@ var RACING_WINNERS=[
   {result:'Winner',pos:'1st',type:'Each Way Pick',date:'Fri 4 Apr',horse:'Doctor Elvis',time:'16:10',course:'Cork',race:'3m Novice Chase',price:'10/1'},
   {result:'Strong Run',pos:'4th',type:'Dark Horse',date:'Thu 3 Apr',horse:'Sky And Sand',time:'14:40',course:'Hereford',race:'2m1f Chase',price:'12/1'},
 ];
+
+var RACING_PICKS=[
+  {type:'Pick of the Day',icon:'⚡',horse:'Majolique',detail:'13:15 Cork · 2m7f Maiden Hurdle',reasons:['Top AI rating across form, going and trainer stats','Won 3 of last 5 on Good to Yielding ground','JP Townend booked — strong jockey booking signal','Mullins yard in form with 5 winners this week','Weighted well at the bottom of the handicap'],odds:'2/1',border:'#1e9e6b'},
+  {type:'Each Way Pick',icon:'★',horse:'North Shore',detail:'14:25 Fairyhouse · 2m4f Handicap Hurdle',reasons:['Placed in 4 of last 6 starts — strong each way profile','Course and distance winner last April at this track','8/1 offers excellent value at 1/5 odds, 3 places','Trainer Cromwell has 28% strike rate here this season','Drop in trip suits based on recent run style'],odds:'8/1',border:'#c9a84c'},
+];
+
+function renderRacingPicks(){
+  var el=document.getElementById('racing-picks-container');
+  if(!el) return;
+  el.innerHTML=RACING_PICKS.map(function(p,i){
+    var rows=p.reasons.map(function(r){
+      return '<div style="display:flex;align-items:baseline;gap:6px;font-size:12px;color:#555;line-height:1.5"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0">✓</span><span>'+escHtml(r)+'</span></div>';
+    }).join('');
+    return '<div style="background:#fff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;border-left:4px solid '+p.border+'">'
+      +'<div style="padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f0f0">'
+        +'<div>'
+          +'<div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #e8eaed;border-radius:99px;padding:3px 10px;margin-bottom:8px"><span style="font-size:12px">'+p.icon+'</span><span style="font-size:11px;font-weight:600;color:#0b1628">'+escHtml(p.type)+'</span></div>'
+          +'<div style="font-size:19px;font-weight:700;color:#0b1628;line-height:1.1;margin-bottom:3px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:11px;color:#aaa">'+escHtml(p.detail)+'</div>'
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0;padding-left:12px">'
+          +'<div style="font-size:10px;color:#aaa;margin-bottom:2px;letter-spacing:.04em">PRICE</div>'
+          +'<div style="font-size:24px;font-weight:700;color:#1e9e6b;line-height:1">'+escHtml(p.odds)+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="padding:12px 16px;display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #f0f0f0">'+rows+'</div>'
+      +'<div style="padding:10px 16px 14px">'
+        +'<button style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
 
 function renderRacingWinners(){
   var el=document.getElementById('racing-winners-carousel');
