@@ -1442,6 +1442,72 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-section-wrap{background:var(--soft);padding:12px}
 
+.rc-meeting{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
+
+.rc-meeting-top{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+
+.rc-meeting-flag{font-size:11px;font-weight:600;color:var(--muted);flex-shrink:0;width:22px}
+
+.rc-meeting-info{flex:1}
+
+.rc-meeting-name{font-size:14px;font-weight:600;color:var(--navy)}
+
+.rc-meeting-meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+.rc-meeting-next{color:var(--green);font-weight:500}
+
+.rc-meeting-chev{font-size:11px;color:var(--muted);flex-shrink:0;transition:transform .2s}
+
+.rc-meeting-chev.open{transform:rotate(180deg)}
+
+.rc-meeting-body{border-top:1px solid var(--border);display:none}
+
+.rc-meeting-body.open{display:block}
+
+.rc-times-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);display:block;padding:6px 12px 5px}
+
+.rc-times-scroll{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:0 12px 12px}
+
+.rc-times-scroll::-webkit-scrollbar{display:none}
+
+.rc-t-box{flex-shrink:0;width:70px;border:1px solid var(--border);border-radius:8px;padding:9px 6px;text-align:center;cursor:pointer;background:var(--soft);transition:all .15s}
+
+.rc-t-box.next{border-color:var(--green);background:#f0faf6}
+
+.rc-t-box.sel{background:var(--navy);border-color:var(--navy)}
+
+.rc-t-time{font-size:13px;font-weight:600;color:var(--navy);display:block}
+
+.rc-t-time.next{color:var(--green)}
+
+.rc-t-box.sel .rc-t-time,.rc-t-box.sel .rc-t-rnrs{color:#fff}
+
+.rc-t-rnrs{font-size:10px;color:var(--muted);display:block;margin-top:3px}
+
+.rc-race-detail{border-top:1px solid var(--border);padding:12px}
+
+.rc-race-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:2px}
+
+.rc-race-sub{font-size:11px;color:var(--muted);margin-bottom:10px}
+
+.rc-runner{display:flex;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)}
+
+.rc-runner:last-of-type{border-bottom:none}
+
+.rc-r-num{font-size:11px;color:var(--muted);width:20px;flex-shrink:0;padding-top:2px}
+
+.rc-r-info{flex:1;min-width:0;padding-right:8px}
+
+.rc-r-name{font-size:14px;font-weight:500;color:var(--navy)}
+
+.rc-r-jt{font-size:11px;color:var(--muted);margin-top:2px}
+
+.rc-ai-pick{display:inline-block;font-size:9px;background:#e1f5ee;color:#085041;padding:2px 7px;border-radius:4px;font-weight:600;margin-top:3px}
+
+.rc-r-price{font-size:13px;font-weight:700;color:var(--navy);flex-shrink:0;text-align:right}
+
+.rc-r-ew{font-size:9px;color:var(--muted);text-align:right;margin-top:2px}
+
 </style>
 
 </head>
@@ -1460,15 +1526,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
   <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(30,158,107,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
 
-  <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;transition:opacity 0.4s ease">
+  <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;padding:0 32px">
 
-    <div style="text-align:center">
+    <div style="text-align:center;margin-bottom:52px">
 
       <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Accu</span><span style="color:#c9a84c">Edge</span></div>
 
       <div style="font-family:Outfit,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#1e9e6b;font-weight:500;margin-top:10px">Sports Research Tool</div>
 
       <div style="width:28px;height:1.5px;background:linear-gradient(90deg,#c9a84c,#e0bc5a);border-radius:2px;margin:16px auto 0"></div>
+
+    </div>
+
+    <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+
+      <button onclick="selectSport('football')" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px 20px;cursor:pointer;font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:14px"><span style="font-size:22px">⚽</span><span style="font-size:17px;font-weight:600;color:#fff">Football</span></div>
+        <span style="font-size:16px;color:rgba(255,255,255,.25)">→</span>
+      </button>
+
+      <button onclick="selectSport('racing')" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px 20px;cursor:pointer;font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:14px"><span style="font-size:22px">🐎</span><span style="font-size:17px;font-weight:600;color:#fff">Horse Racing</span></div>
+        <span style="font-size:16px;color:rgba(255,255,255,.25)">→</span>
+      </button>
 
     </div>
 
@@ -1486,45 +1566,111 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 <script>
 
-(function(){
+var _currentSport='football';
 
-  window.addEventListener('DOMContentLoaded',function(){
+function selectSport(sport){
 
-    setTimeout(function(){
+  _currentSport=sport;
 
-      var o=document.getElementById('splash-overlay');
+  var o=document.getElementById('splash-overlay');
 
-      o.style.opacity='0';
+  o.style.opacity='0';
 
-      setTimeout(function(){
+  setTimeout(function(){
 
-        o.style.display='none';
+    o.style.display='none';
 
-        var t=document.getElementById('main-topnav');
+    var t=document.getElementById('main-topnav');
 
-        var m=document.getElementById('main-content');
+    var m=document.getElementById('main-content');
 
-        var b=document.getElementById('main-bottom-nav');
+    var b=document.getElementById('main-bottom-nav');
 
-        if(t)t.style.display='';
+    if(t)t.style.display='';
 
-        if(m)m.style.display='';
+    if(m)m.style.display='';
 
-        if(b)b.style.display='';
+    if(b)b.style.display='';
 
-        var f=document.getElementById('main-rg-footer');if(f)f.style.display='';
+    var f=document.getElementById('main-rg-footer');if(f)f.style.display='';
 
-        // Re-render fixtures after reveal
+    updateSportStrip(sport);
 
-        setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}},100);
+    if(sport==='racing'){
 
-      },520);
+      showPage('home');
 
-    },2800);
+      showRacingHome();
+
+    }else{
+
+      showPage('home');
+
+      showFootballHome();
+
+    }
+
+    setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}},100);
+
+  },400);
+
+}
+
+function updateSportStrip(sport){
+
+  var strip=document.getElementById('sport-strip-inner');
+
+  if(!strip) return;
+
+  strip.querySelectorAll('.fstab').forEach(function(b){
+
+    b.classList.toggle('active',b.dataset.sport===sport);
 
   });
 
-})();
+  var racingStrip=document.getElementById('racing-section-strip');
+
+  if(racingStrip) racingStrip.style.display=sport==='racing'?'':'none';
+
+}
+
+function switchSport(sport){
+
+  _currentSport=sport;
+
+  updateSportStrip(sport);
+
+  if(sport==='racing'){showRacingHome();}
+
+  else{showFootballHome();}
+
+}
+
+function showFootballHome(){
+
+  var fh=document.getElementById('football-home-content');
+
+  var rh=document.getElementById('racing-home-content');
+
+  if(fh) fh.style.display='';
+
+  if(rh) rh.style.display='none';
+
+}
+
+function showRacingHome(){
+
+  var fh=document.getElementById('football-home-content');
+
+  var rh=document.getElementById('racing-home-content');
+
+  if(fh) fh.style.display='none';
+
+  if(rh) rh.style.display='';
+
+  renderRacingMeetings();
+
+}
 
 </script>
 
@@ -1574,11 +1720,43 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 </div>
 
-<div class="main" id="main-content" style="display:none">
+<!-- Sport strip -->
+
+<div style="background:var(--white);border-bottom:.5px solid var(--border)">
+
+  <div style="max-width:900px;margin:0 auto">
+
+    <div class="filter-strip" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+
+      <div class="filter-strip-inner" id="sport-strip-inner">
+
+        <button class="fstab active" data-sport="football" onclick="switchSport('football')">⚽ Football</button>
+
+        <button class="fstab" data-sport="racing" onclick="switchSport('racing')">🐎 Horse Racing</button>
+
+      </div>
+
+    </div>
+
+    <div class="filter-strip" id="racing-section-strip" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;display:none">
+
+      <div class="filter-strip-inner">
+
+        <button class="fstab active">Race Cards</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
 
   <!-- HOME PAGE -->
 
   <div id="page-home">
+
+  <div id="football-home-content"><!-- football content start -->
 
     <!-- HERO BANNER -->
 
@@ -1714,7 +1892,33 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
     </div><!-- /home-widgets -->
 
+  </div><!-- /football-home-content -->
+
   </div><!-- /page-home -->
+
+  <!-- RACING HOME PAGE -->
+
+  <div id="racing-home-content" style="display:none">
+
+    <div class="hero-banner">
+
+      <div class="hero-banner-tag">AI-Powered Research</div>
+
+      <div class="hero-banner-title">The most powerful <span style="color:#c9a84c">AI</span> horse racing research tool.</div>
+
+      <div class="hero-banner-sub">Form, jockey stats, going &amp; trainer stats analysed instantly</div>
+
+    </div>
+
+    <div style="padding:0 0 80px">
+
+      <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:14px 0 10px">Today · UK &amp; Ireland</div>
+
+      <div id="racing-meetings-list"></div>
+
+    </div>
+
+  </div>
 
   <!-- MY RESEARCH PAGE -->
 
@@ -6224,6 +6428,129 @@ function renderWinners(){
 
   }).join('');
 
+}
+
+// ── RACE CARDS ──
+
+var RC_MEETINGS=[
+  {id:'cork',flag:'IE',name:'Cork',races:[
+    {t:'13:15',r:13,next:true,name:'Cork Maiden Hurdle',dist:'2m'},
+    {t:'13:50',r:23,name:'Cork Handicap Chase',dist:'2m4f'},
+    {t:'14:25',r:9,name:'Cork Novice Chase',dist:'3m'},
+    {t:'15:00',r:11,name:'Cork Hurdle',dist:'2m'},
+    {t:'15:35',r:8,name:'Cork Flat Race',dist:'2m'},
+    {t:'16:10',r:14,name:'Cork Handicap Hurdle',dist:'2m4f'},
+    {t:'16:45',r:7,name:'Cork Chase',dist:'3m'},
+    {t:'17:20',r:10,name:'Cork Bumper',dist:'2m'}
+  ]},
+  {id:'fairyhouse',flag:'IE',name:'Fairyhouse',races:[
+    {t:'14:05',r:20,next:true,name:'Fairyhouse Nov Hcap Hrd',dist:'2m4f'},
+    {t:'14:40',r:7,name:'Fairyhouse Mares Chase',dist:'2m1f'},
+    {t:'15:15',r:11,name:'Fairyhouse Hurdle',dist:'2m'},
+    {t:'15:50',r:11,name:'Fairyhouse Handicap',dist:'2m4f'},
+    {t:'16:25',r:12,name:'Fairyhouse Chase',dist:'3m'},
+    {t:'17:00',r:9,name:'Fairyhouse Flat Race',dist:'1m4f'},
+    {t:'17:40',r:8,name:'Fairyhouse Nov Chase',dist:'2m4f'},
+    {t:'18:10',r:6,name:'Fairyhouse Bumper',dist:'2m'}
+  ]},
+  {id:'kempton',flag:'GB',name:'Kempton',races:[
+    {t:'13:45',r:12,next:true,name:'Kempton Stakes',dist:'1m'},
+    {t:'14:20',r:10,name:'Kempton Handicap',dist:'1m2f'},
+    {t:'14:55',r:7,name:'Kempton Novice Stakes',dist:'7f'},
+    {t:'15:30',r:9,name:'Kempton Flat Race',dist:'1m4f'},
+    {t:'16:05',r:8,name:'Kempton Handicap',dist:'1m'},
+    {t:'16:40',r:11,name:'Kempton Stakes',dist:'6f'},
+    {t:'17:10',r:6,name:'Kempton Bumper',dist:'2m'}
+  ]},
+  {id:'aintree',flag:'GB',name:'Aintree',races:[
+    {t:'13:30',r:9,next:true,name:'Aintree Hurdle',dist:'2m4f'},
+    {t:'14:05',r:14,name:'Grand National Trial',dist:'4m2f'},
+    {t:'14:40',r:8,name:'Aintree Chase',dist:'3m1f'},
+    {t:'15:15',r:12,name:'Aintree Handicap Hurdle',dist:'2m'},
+    {t:'15:50',r:7,name:'Aintree Mares Hurdle',dist:'2m4f'},
+    {t:'16:25',r:10,name:'Aintree Nov Chase',dist:'2m4f'},
+    {t:'17:00',r:9,name:'Aintree Flat Race',dist:'1m2f'},
+    {t:'17:35',r:8,name:'Aintree Bumper',dist:'2m'}
+  ]}
+];
+
+var RC_RUNNERS=[
+  {n:9,name:'Majolique',jt:'J.P. Townend / W.P. Mullins',price:'2/1',pick:true},
+  {n:7,name:'Proactif',jt:'M.P. Walsh / W.P. Mullins',price:'5/2',pick:false},
+  {n:3,name:'Macho Man',jt:'D.E. Mullins / W.P. Mullins',price:'4/1',pick:false},
+  {n:6,name:'North Shore',jt:'K. Donoghue / G. Cromwell',price:'8/1',pick:false},
+  {n:2,name:'Kai Lung',jt:'S. O\'Keeffe / W.P. Mullins',price:'20/1',pick:false}
+];
+
+var rcOpenMeeting=null;
+var rcOpenRace={};
+
+function renderRacingMeetings(){
+  var el=document.getElementById('racing-meetings-list');
+  if(!el) return;
+  el.innerHTML=RC_MEETINGS.map(function(m){
+    var isOpen=rcOpenMeeting===m.id;
+    var selRace=rcOpenRace[m.id];
+    var bodyHtml='';
+    if(isOpen){
+      var detailHtml='';
+      if(selRace!=null){
+        var race=m.races[selRace];
+        detailHtml='<div class="rc-race-detail">'
+          +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml(race.name)+'</div>'
+          +'<div class="rc-race-sub">'+escHtml(race.dist)+' &middot; '+race.r+' runners</div>'
+          +RC_RUNNERS.map(function(r){
+            return '<div class="rc-runner">'
+              +'<div class="rc-r-num">'+r.n+'</div>'
+              +'<div class="rc-r-info">'
+                +'<div class="rc-r-name">'+escHtml(r.name)+'</div>'
+                +'<div class="rc-r-jt">'+escHtml(r.jt)+'</div>'
+                +(r.pick?'<div class="rc-ai-pick">&#x2756; AI pick</div>':'')
+              +'</div>'
+              +'<div><div class="rc-r-price">'+escHtml(r.price)+'</div><div class="rc-r-ew">E/W</div></div>'
+            +'</div>';
+          }).join('')
+          +'<button class="fx-cta" style="margin-top:10px"><span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(race.t)+' '+escHtml(m.name)+' with AI &rarr;</button>'
+        +'</div>';
+      }
+      bodyHtml='<div class="rc-meeting-body open">'
+        +'<button class="fx-cta"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>'
+        +'<span class="rc-times-lbl">Select a race</span>'
+        +'<div class="rc-times-scroll">'
+        +m.races.map(function(race,ri){
+          var isSel=selRace===ri;
+          return '<div class="rc-t-box'+(isSel?' sel':race.next?' next':'')+'" onclick="rcSelectRace(\''+m.id+'\','+ri+')">'
+            +'<span class="rc-t-time'+(race.next&&!isSel?' next':'')+'">'+escHtml(race.t)+'</span>'
+            +'<span class="rc-t-rnrs">'+race.r+' rnrs</span>'
+          +'</div>';
+        }).join('')
+        +'</div>'
+        +detailHtml
+      +'</div>';
+    }
+    return '<div class="rc-meeting">'
+      +'<div class="rc-meeting-top" onclick="rcToggleMeeting(\''+m.id+'\')">'
+        +'<div class="rc-meeting-flag">'+escHtml(m.flag)+'</div>'
+        +'<div class="rc-meeting-info">'
+          +'<div class="rc-meeting-name">'+escHtml(m.name)+'</div>'
+          +'<div class="rc-meeting-meta">'+m.races.length+' races &middot; <span class="rc-meeting-next">Next '+escHtml(m.races[0].t)+'</span></div>'
+        +'</div>'
+        +'<div class="rc-meeting-chev'+(isOpen?' open':'')+'">&#x25BE;</div>'
+      +'</div>'
+      +bodyHtml
+    +'</div>';
+  }).join('');
+}
+
+function rcToggleMeeting(id){
+  rcOpenMeeting=rcOpenMeeting===id?null:id;
+  rcOpenRace={};
+  renderRacingMeetings();
+}
+
+function rcSelectRace(mid,ri){
+  rcOpenRace[mid]=rcOpenRace[mid]===ri?null:ri;
+  renderRacingMeetings();
 }
 
 </script>
