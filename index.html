@@ -1991,45 +1991,11 @@ function showRacingHome(){
 
     </div>
 
-    <div style="background:var(--white);border-bottom:.5px solid var(--border);margin:0 -8px">
+    <!-- RACING PICKS - moved above race cards -->
 
-      <div style="max-width:900px;margin:0 auto">
+    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:0;padding-right:0">
 
-        <div class="filter-strip" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
-
-          <div class="filter-strip-inner" id="racing-section-tabs">
-
-            <button class="fstab active" onclick="switchRacingTab('cards',this)">Race Cards</button>
-
-            <button class="fstab" onclick="switchRacingTab('next',this)">Next Race</button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-    <div class="main" style="padding-top:12px;padding-bottom:16px;padding-left:0;padding-right:0">
-
-      <div id="racing-meetings-list"></div>
-
-    </div>
-
-    <div id="next-race-content" style="display:none;padding:12px 0 16px">
-
-      <div id="next-race-strip" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px"></div>
-
-      <div id="next-race-card"></div>
-
-    </div>
-
-    <!-- RACING PICKS -->
-
-    <div class="main" style="padding-top:0;padding-bottom:80px;padding-left:0;padding-right:0">
-
-      <div style="margin-bottom:16px">
+      <div style="margin-bottom:12px">
 
         <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
 
@@ -2040,6 +2006,14 @@ function showRacingHome(){
       </div>
 
       <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
+
+    </div>
+
+    <!-- RACE CARDS SECTION -->
+
+    <div class="main" style="padding-top:16px;padding-bottom:80px;padding-left:0;padding-right:0">
+
+      <div id="racing-meetings-list"></div>
 
     </div>
 
@@ -6558,8 +6532,15 @@ function renderWinners(){
 // ── RACE CARDS ──
 
 var RC_MEETINGS=[
-  {id:'cork',flag:'IE',name:'Cork',edge:'Mullins saddles 4 runners today · 44% strike rate at Cork this season',races:[
-    {t:'13:15',r:13,next:true,name:'Cork Maiden Hurdle',dist:'2m'},
+  {id:'cork',flag:'IE',name:'Cork',going:'Good to Yielding',feature:true,nextMins:22,
+   insights:[
+     'Willie Mullins saddles 4 runners today — 44% strike rate at Cork this season, well above track average',
+     'Going changed to Good to Yielding overnight — suits front-runners, 3 of last 5 Cork winners led throughout',
+     'JP Townend riding in 3 races — 38% win rate at Cork on Yielding ground in last 2 seasons',
+     '13:15 Maiden Hurdle — 2 unexposed Mullins runners with strong bumper form, market expected to compress'
+   ],
+   races:[
+    {t:'13:15',r:13,name:'Cork Maiden Hurdle',dist:'2m7f'},
     {t:'13:50',r:23,name:'Cork Handicap Chase',dist:'2m4f'},
     {t:'14:25',r:9,name:'Cork Novice Chase',dist:'3m'},
     {t:'15:00',r:11,name:'Cork Hurdle',dist:'2m'},
@@ -6568,8 +6549,14 @@ var RC_MEETINGS=[
     {t:'16:45',r:7,name:'Cork Chase',dist:'3m'},
     {t:'17:20',r:10,name:'Cork Bumper',dist:'2m'}
   ]},
-  {id:'fairyhouse',flag:'IE',name:'Fairyhouse',edge:'Ground changed to Soft overnight · Elliott 51% win rate on Soft at Fairyhouse',races:[
-    {t:'14:05',r:20,next:true,name:'Fairyhouse Nov Hcap Hrd',dist:'2m4f'},
+  {id:'fairyhouse',flag:'IE',name:'Fairyhouse',going:'Soft',feature:false,nextMins:72,
+   insights:[
+     'Elliott 51% win rate on Soft at Fairyhouse — going changed overnight, strongly favours his yard',
+     'Grade 2 hurdle at 15:30 — 4 unexposed novices, market likely to drift pre-race',
+     'Low draws winning 62% of flat races on Soft here in last 3 seasons'
+   ],
+   races:[
+    {t:'14:05',r:20,name:'Fairyhouse Nov Hcap Hrd',dist:'2m4f'},
     {t:'14:40',r:7,name:'Fairyhouse Mares Chase',dist:'2m1f'},
     {t:'15:15',r:11,name:'Fairyhouse Hurdle',dist:'2m'},
     {t:'15:50',r:11,name:'Fairyhouse Handicap',dist:'2m4f'},
@@ -6578,8 +6565,14 @@ var RC_MEETINGS=[
     {t:'17:40',r:8,name:'Fairyhouse Nov Chase',dist:'2m4f'},
     {t:'18:10',r:6,name:'Fairyhouse Bumper',dist:'2m'}
   ]},
-  {id:'kempton',flag:'GB',name:'Kempton',edge:'Course specialist declares in 14:25 · won this race 3 of last 5 years',races:[
-    {t:'13:45',r:12,next:true,name:'Kempton Stakes',dist:'1m'},
+  {id:'kempton',flag:'GB',name:'Kempton',going:'Standard (AW)',feature:false,nextMins:52,
+   insights:[
+     'Course specialist in 14:25 — won this race 3 of last 5 years, same connections',
+     'Hold-up horses win 71% on this all-weather track — avoid front-runners today',
+     'Stoute has 3 runners — 41% Kempton strike rate in last 12 months'
+   ],
+   races:[
+    {t:'13:45',r:12,name:'Kempton Stakes',dist:'1m'},
     {t:'14:20',r:10,name:'Kempton Handicap',dist:'1m2f'},
     {t:'14:55',r:7,name:'Kempton Novice Stakes',dist:'7f'},
     {t:'15:30',r:9,name:'Kempton Flat Race',dist:'1m4f'},
@@ -6587,8 +6580,14 @@ var RC_MEETINGS=[
     {t:'16:40',r:11,name:'Kempton Stakes',dist:'6f'},
     {t:'17:10',r:6,name:'Kempton Bumper',dist:'2m'}
   ]},
-  {id:'aintree',flag:'GB',name:'Aintree',edge:'3 unexposed handicappers step up in trip · AI flagging Aintree as value meeting',races:[
-    {t:'13:30',r:9,next:true,name:'Aintree Hurdle',dist:'2m4f'},
+  {id:'aintree',flag:'GB',name:'Aintree',going:'Good to Soft',feature:false,nextMins:37,
+   insights:[
+     '3 unexposed handicappers stepping up in trip — AI flagging Aintree as value meeting today',
+     'Horses with prior Aintree experience win 58% vs 28% for course debutants',
+     'Henderson saddles 2 — 34% win rate at Aintree over last 3 festivals'
+   ],
+   races:[
+    {t:'13:30',r:9,name:'Aintree Hurdle',dist:'2m4f'},
     {t:'14:05',r:14,name:'Grand National Trial',dist:'4m2f'},
     {t:'14:40',r:8,name:'Aintree Chase',dist:'3m1f'},
     {t:'15:15',r:12,name:'Aintree Handicap Hurdle',dist:'2m'},
@@ -6610,8 +6609,120 @@ var RC_RUNNERS=[
 var rcOpenMeeting=null;
 var rcOpenRace={};
 
+function rcPillsHtml(m){
+  var p='<div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #f0f2f7;flex-wrap:wrap">';
+  p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(m.going)+'</span>';
+  if(m.feature) p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#f0faf6;color:#085041;border:1px solid #c8ead9">Feature Meeting</span>';
+  p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#eef4ff;color:#1a4fa0;border:1px solid #c0d4f8">Next in '+m.nextMins+' mins</span>';
+  return p+'</div>';
+}
+
+function rcInsightsHtml(m,small){
+  var fs=small?'12px':'13px';
+  var out='<div style="display:inline-flex;align-items:center;gap:5px;background:#0b1628;border-radius:4px;padding:3px 8px;margin-bottom:10px">'
+    +'<span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.08em">&#x2756; AI EDGE</span></div>';
+  m.insights.forEach(function(txt){
+    out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">'
+      +'<div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;margin-top:5px"></div>'
+      +'<div style="font-size:'+fs+';color:#0b1628;line-height:1.45;font-weight:500">'+escHtml(txt)+'</div>'
+    +'</div>';
+  });
+  return out;
+}
+
+function rcTimesHtml(m,large){
+  var selRace=rcOpenRace[m.id];
+  var sz=large?'64':'58';
+  var fs=large?'13':'12';
+  var out='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9aa3b5;padding:10px 14px 6px;border-top:1px solid #f0f2f7;margin-top:10px">Select a race</div>';
+  out+='<div style="display:flex;gap:7px;overflow-x:auto;padding:0 14px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+  m.races.forEach(function(race,ri){
+    var isSel=selRace===ri;
+    out+='<div style="flex-shrink:0;width:'+sz+'px;border:1px solid '+(isSel?'#0b1628':'#e4e8f0')+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?'#0b1628':'#f5f7fb')+'" onclick="rcSelectRace(\''+m.id+'\','+ri+')">'
+      +'<div style="font-size:'+fs+'px;font-weight:600;color:'+(isSel?'#fff':'#0b1628')+'">'+escHtml(race.t)+'</div>'
+      +'<div style="font-size:10px;color:'+(isSel?'rgba(255,255,255,.55)':'#9aa3b5')+';margin-top:1px">'+race.r+' rnrs</div>'
+    +'</div>';
+  });
+  return out+'</div>';
+}
+
+function rcRaceDetailHtml(m){
+  var selRace=rcOpenRace[m.id];
+  if(selRace==null) return '';
+  var race=m.races[selRace];
+  var out='<div style="margin:0 14px;background:#f5f7fb;border-radius:8px;border:1px solid #e4e8f0;overflow:hidden">'
+    +'<div style="background:#0b1628;border-radius:8px 8px 0 0;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="font-size:13px;font-weight:600;color:#fff">'+escHtml(race.t)+' '+escHtml(m.name)+' &middot; '+escHtml(race.dist)+'</span>'
+      +'<span style="background:#1e9e6b;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;color:#fff">'+race.r+' rnrs</span>'
+    +'</div>';
+  RC_RUNNERS.forEach(function(r,i){
+    var last=i===RC_RUNNERS.length-1;
+    out+='<div style="display:flex;align-items:center;padding:9px 12px;border-bottom:'+(last?'none':'1px solid #e8ecf2')+';background:#fff;'+(last?'border-radius:0 0 8px 8px':'')+'">'
+      +'<span style="font-size:11px;color:#9aa3b5;width:18px;flex-shrink:0">'+r.n+'</span>'
+      +'<span style="flex:1">'
+        +'<span style="font-size:13px;font-weight:600;color:#0b1628;display:block">'+escHtml(r.name)+'</span>'
+        +'<span style="font-size:11px;color:#9aa3b5;display:block">'+escHtml(r.jt)+'</span>'
+        +(r.pick?'<span style="font-size:10px;font-weight:700;color:#1e9e6b;background:#f0faf6;border:1px solid #c8ead9;border-radius:99px;padding:2px 7px;margin-top:3px;display:inline-block">&#x2756; AI pick</span>':'')
+      +'</span>'
+      +'<span><span style="font-size:13px;font-weight:700;color:#0b1628;display:block;text-align:right">'+escHtml(r.price)+'</span><span style="font-size:10px;color:#9aa3b5;display:block;text-align:right">E/W</span></span>'
+    +'</div>';
+  });
+  out+='</div>';
+  out+='<button class="fx-cta" style="margin:10px 14px 14px;width:calc(100% - 28px)">'
+    +'<span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(race.t)+' '+escHtml(m.name)+' with AI &rarr;</button>';
+  return out;
+}
+
 function renderRacingMeetings(){
   var el=document.getElementById('racing-meetings-list');
+  if(!el) return;
+
+  var featured=RC_MEETINGS[0];
+  var collapsed=RC_MEETINGS.slice(1);
+
+  var fHtml='<div style="background:#fff;border-radius:12px;border:1px solid #e4e8f0;overflow:hidden;margin-bottom:4px">'
+    +'<div style="padding:12px 14px 10px;display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #f0f2f7">'
+      +'<span style="font-size:11px;font-weight:700;color:#9aa3b5;flex-shrink:0;width:24px">'+escHtml(featured.flag)+'</span>'
+      +'<span style="font-size:18px;font-weight:700;color:#0b1628">'+escHtml(featured.name)+'</span>'
+      +'<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; Next <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>'
+    +'</div>'
+    +rcPillsHtml(featured)
+    +'<div style="padding:12px 14px 0">'+rcInsightsHtml(featured,false)+'</div>'
+    +'<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
+    +rcTimesHtml(featured,true)
+    +rcRaceDetailHtml(featured)
+  +'</div>';
+
+  var cHtml='<div style="background:#fff;border-radius:12px;border:1px solid #e4e8f0;overflow:hidden">';
+  collapsed.forEach(function(m,ci){
+    var isOpen=rcOpenMeeting===m.id;
+    var isLast=ci===collapsed.length-1;
+    cHtml+='<div>'
+      +'<div style="display:flex;align-items:center;padding:13px 14px;border-bottom:'+(isOpen||!isLast?'1px solid #f0f2f7':'none')+';cursor:pointer" onclick="rcToggleMeeting(\''+m.id+'\')">'
+        +'<span style="font-size:11px;font-weight:700;color:#9aa3b5;width:24px;flex-shrink:0">'+escHtml(m.flag)+'</span>'
+        +'<span style="font-size:15px;font-weight:600;color:#0b1628;flex:1">'+escHtml(m.name)+'</span>'
+        +'<span style="font-size:9px;font-weight:700;color:#c9a84c;background:#0b1628;border-radius:3px;padding:2px 5px;margin-right:8px;flex-shrink:0">&#x2756; AI</span>'
+        +'<span style="font-size:11px;color:#9aa3b5;margin-right:8px;white-space:nowrap">'+m.races.length+' races &middot; Next <span style="color:#1e9e6b;font-weight:600">'+escHtml(m.races[0].t)+'</span></span>'
+        +'<span style="color:'+(isOpen?'#1e9e6b':'#c8c8c8')+';font-size:16px">'+(isOpen?'&#x02C5;':'&#x203A;')+'</span>'
+      +'</div>';
+    if(isOpen){
+      cHtml+='<div style="border-bottom:'+(isLast?'none':'1px solid #f0f2f7')+'">'
+        +rcPillsHtml(m)
+        +'<div style="padding:10px 14px 0">'+rcInsightsHtml(m,true)+'</div>'
+        +'<button class="fx-cta" style="margin:10px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>'
+        +rcTimesHtml(m,false)
+        +rcRaceDetailHtml(m)
+      +'</div>';
+    }
+    cHtml+='</div>';
+  });
+  cHtml+='</div>';
+
+  el.innerHTML=fHtml+cHtml;
+}
+
+function _old_unused_renderRacingMeetings(){
+  var el=document.getElementById('racing-meetings-list-old');
   if(!el) return;
   el.innerHTML=RC_MEETINGS.map(function(m){
     var isOpen=rcOpenMeeting===m.id;
@@ -6677,8 +6788,7 @@ function renderRacingMeetings(){
 }
 
 function rcToggleMeeting(id){
-  rcOpenMeeting=rcOpenMeeting===id?null:id;
-  rcOpenRace={};
+  if(rcOpenMeeting===id){rcOpenMeeting=null;}else{rcOpenMeeting=id;rcOpenRace={};}
   renderRacingMeetings();
 }
 
