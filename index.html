@@ -7717,10 +7717,10 @@ function nrRenderCard(){
         +'</div>'
         +'<div id="nr-badge" style="background:#0b1628;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
       +'</div>'
+      +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
       +rHtml
       +'<div id="nr-extra" style="display:'+(nrMoreOpen?"block":"none")+'">'+xHtml+'</div>'
       +moreBtn
-      +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
     +'</div>';
 
   nrFetchAIEdge(r);
