@@ -7653,6 +7653,28 @@ function nrFormHtml(form){
     return '<span style="color:'+col+';font-weight:'+fw+';font-size:11px">'+c+'</span>';
   }).join('');
 }
+function runnerRow(ru){
+  var silk=ru.silk?nrSilk(ru.silk):'';
+  var jockey=ru.jockey||ru.jt||'';
+  var trainer=ru.trainer?'Tr: '+ru.trainer:'';
+  var form=ru.form?nrFormHtml(ru.form):'';
+  return '<div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f2f7;gap:10px">'
+    +'<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'
+      +silk
+      +'<span style="font-size:9px;color:#9aa3b5;font-weight:600">'+ru.n+'</span>'
+    +'</div>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:14px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</div>'
+      +'<div style="font-size:11px;color:#555;margin-top:2px">'+escHtml(jockey)+'</div>'
+      +(trainer?'<div style="font-size:11px;color:#888;margin-top:1px">'+escHtml(trainer)+'</div>':'')
+      +(form?'<div style="margin-top:3px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
+      +'<div id="nr-insight-'+ru.n+'"></div>'
+    +'</div>'
+    +'<button onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
+      +'<div style="font-size:14px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
+    +'</button>'
+  +'</div>';
+}
 function nrRenderCard(){
   var card=document.getElementById("nr-card");
   if(!card) return;
