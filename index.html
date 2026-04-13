@@ -1710,6 +1710,15 @@ function switchSport(sport){
 
 }
 
+function goHome(){
+  var rh=document.getElementById('racing-home-content');
+  if(rh) rh.style.display='none';
+  var tn=document.getElementById('main-topnav');
+  if(tn) tn.classList.remove('racing-mode');
+  showFootballHome();
+  showPage('home');
+}
+
 function showFootballHome(){
 
   var fh=document.getElementById('football-home-content');
@@ -1776,7 +1785,7 @@ function showRacingHome(){
 
   <div class="topnav-inner">
 
-    <div class="topnav-logo" onclick="showPage('home')" style="cursor:pointer">
+    <div class="topnav-logo" onclick="goHome()" style="cursor:pointer">
 
       <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
 
@@ -8131,8 +8140,8 @@ function renderInlineTomorrowMeeting(){
   fHtml+='<span style="font-size:18px;font-weight:700;color:#0b1628">'+escHtml(featured.name)+'</span>';
   fHtml+='<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; First <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>';
   fHtml+='</div>';
-  fHtml+=rcPillsHtml(featured);
   fHtml+='<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>';
+  fHtml+=rcPillsHtml(featured);
   fHtml+=tmTimesHtml(featured);
   fHtml+='</div>';
   fHtml+=tmRaceDetailHtml(featured);
