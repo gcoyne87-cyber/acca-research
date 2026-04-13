@@ -1972,10 +1972,10 @@ function showRacingHome(){
     </div>
     <!-- DATE PILLS -->
 
-    <div style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0">
+    <div style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
       <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Today</button>
       <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button><button id="pill-winners" onclick="selectRacingDate('winners')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Winners</button>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button><button id="pill-winners" onclick="selectRacingDate('winners')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Winners</button><div style="margin-left:auto;padding:0 12px;flex-shrink:0"><button onclick="openRacingMenu()" style="background:none;border:none;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center"><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span></button></div>
     </div>
 
   <div id="racing-today-content">
@@ -2100,6 +2100,24 @@ function showRacingHome(){
         <div id="ai-feed-msg" style="font-size:13px;color:#1a5c3a;font-weight:500;line-height:1.4;position:relative"></div>
       </div>
     </div>
+    </div>
+
+    <!-- RACING PICKS -->
+
+    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:12px;padding-right:12px">
+
+      <div style="margin-bottom:12px">
+
+        <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
+
+        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
+
+        <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
+
+      </div>
+
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
+
     </div>
 
     <!-- NEXT RACE -->
@@ -2246,24 +2264,6 @@ function showRacingHome(){
 
     </div>
 
-
-    <!-- RACING PICKS -->
-
-    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:12px;padding-right:12px">
-
-      <div style="margin-bottom:12px">
-
-        <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
-
-        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
-
-        <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
-
-      </div>
-
-      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
-
-    </div>
 
   <!-- TOMORROW WINNERS -->
 
@@ -7868,7 +7868,7 @@ function renderRacingPicks(){
 
       +'<div style="padding:10px 16px 14px">'
 
-        +'<button style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
+        +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
 
       +'</div>'
 
@@ -8131,6 +8131,19 @@ function navigateToTomorrowMeeting(id){
   inline.style.maxHeight='2400px';
   setTimeout(function(){inline.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
 }
+
+function openRacingMenu(){
+  var ov=document.getElementById('racing-menu-overlay');
+  var dr=document.getElementById('racing-menu-drawer');
+  if(ov) ov.style.display='block';
+  if(dr) dr.style.transform='translateX(0)';
+}
+function closeRacingMenu(){
+  var ov=document.getElementById('racing-menu-overlay');
+  var dr=document.getElementById('racing-menu-drawer');
+  if(ov) ov.style.display='none';
+  if(dr) dr.style.transform='translateX(100%)';
+}
 </script>
 
 </div><!-- /main-content -->
@@ -8223,6 +8236,25 @@ function navigateToTomorrowMeeting(id){
 
 </div>
 
+
+
+<!-- RACING MENU DRAWER -->
+<div id="racing-menu-overlay" onclick="closeRacingMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:600"></div>
+<div id="racing-menu-drawer" style="position:fixed;top:0;right:0;bottom:0;width:260px;background:#fff;z-index:601;transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column">
+<div style="background:#0b1628;padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between">
+<div style="font-family:Outfit,sans-serif;font-size:20px;font-weight:700"><span style="color:#fff">Accu</span><span style="color:#c9a84c">Edge</span></div>
+<button onclick="closeRacingMenu()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px;line-height:1">&times;</button>
+</div>
+<div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:8px">
+<button onclick="closeRacingMenu()" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
+<button onclick="closeRacingMenu()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Sign Up — Free</button>
+<div style="height:1px;background:#e4e8f0;margin:8px 0"></div>
+<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">My Selections</button>
+<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">Settings</button>
+<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">Responsible Gambling</button>
+</div>
+<div style="padding:16px;border-top:1px solid #e4e8f0;font-size:10px;color:#b0b8c8;text-align:center">18+ · Gamble Responsibly</div>
+</div>
 </body>
 
 </html>
