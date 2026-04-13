@@ -2288,7 +2288,7 @@ function showRacingHome(){
 
   <div id="racing-winners-content" style="display:none;padding:0">
     <!-- RACING WINNERS -->
-    <div style="padding:0 12px 8px">
+    <div style="padding:16px 12px 8px">
 
       <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
 
@@ -7720,12 +7720,7 @@ function nrRenderCard(){
       +rHtml
       +'<div id="nr-extra" style="display:'+(nrMoreOpen?"block":"none")+'">'+xHtml+'</div>'
       +moreBtn
-      +'<div style="padding:12px 16px">'
-        +'<button onclick="nrAnalyse()" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">'
-          +'<div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>'
-          +"Analyse this race with AI"
-        +'</button>'
-      +'</div>'
+      +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
     +'</div>';
 
   nrFetchAIEdge(r);
