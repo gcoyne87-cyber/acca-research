@@ -1975,7 +1975,7 @@ function showRacingHome(){
     <div style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0">
       <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Today</button>
       <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button><button id="pill-winners" onclick="selectRacingDate('winners')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Winners</button>
     </div>
 
   <div id="racing-today-content">
@@ -2102,47 +2102,6 @@ function showRacingHome(){
     </div>
     </div>
 
-    <!-- RACING WINNERS -->
-
-    <div style="padding:18px 12px 4px">
-
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
-
-        <div>
-
-          <div style="font-size:20px;font-weight:700;color:var(--navy)">AI Picks · Latest Winners</div>
-
-          <div style="font-size:12px;color:#9aa3b5;margin-top:3px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
-
-        </div>
-
-        <div style="font-size:12px;font-weight:500;color:var(--green)">Swipe right →</div>
-
-      </div>
-
-      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="racing-winners-carousel"></div>
-
-    </div>
-
-
-    <!-- RACING PICKS -->
-
-    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:12px;padding-right:12px">
-
-      <div style="margin-bottom:12px">
-
-        <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
-
-        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
-
-        <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
-
-      </div>
-
-      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
-
-    </div>
-
     <!-- NEXT RACE -->
 
     <div id="next-race-section" style="padding:16px 0 0">
@@ -2260,6 +2219,51 @@ function showRacingHome(){
   <div id="racing-tomorrow-inline-meeting" style="max-height:0;overflow:hidden;transition:max-height 0.35s ease"><div id="tm-inline-venue-pill-bar" style="display:flex;gap:8px;overflow-x:auto;padding:8px 12px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div><div id="tm-inline-meetings-list"></div></div>
 
   </div>
+
+  </div>
+
+  <div id="racing-winners-content" style="display:none;padding:0">
+
+    <!-- RACING WINNERS -->
+
+    <div style="padding:18px 12px 4px">
+
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
+
+        <div>
+
+          <div style="font-size:20px;font-weight:700;color:var(--navy)">AI Picks · Latest Winners</div>
+
+          <div style="font-size:12px;color:#9aa3b5;margin-top:3px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
+
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:var(--green)">Swipe right →</div>
+
+      </div>
+
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="racing-winners-carousel"></div>
+
+    </div>
+
+
+    <!-- RACING PICKS -->
+
+    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:12px;padding-right:12px">
+
+      <div style="margin-bottom:12px">
+
+        <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
+
+        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
+
+        <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
+
+      </div>
+
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
+
+    </div>
 
   <!-- TOMORROW WINNERS -->
 
@@ -7909,9 +7913,11 @@ function renderRacingWinners(){
 function selectRacingDate(d){
   var today=document.getElementById("racing-today-content");
   var tmrw=document.getElementById("racing-tomorrow-content");
+  var winners=document.getElementById("racing-winners-content");
   var pt=document.getElementById("pill-today");
   var pm=document.getElementById("pill-tomorrow");
   var pu=document.getElementById("pill-upcoming");
+  var pw=document.getElementById("pill-winners");
   var lbl=document.querySelector("#ai-feed-strip span[data-feed-label]");
   var dot=document.querySelector("#ai-feed-strip span[data-feed-live]");
   var pillActive="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit";
@@ -7919,8 +7925,10 @@ function selectRacingDate(d){
   if(pt) pt.style.cssText=d==="today"?pillActive:pillInactive;
   if(pm) pm.style.cssText=d==="tomorrow"?pillActive:pillInactive;
   if(pu) pu.style.cssText=d==="upcoming"?pillActive:pillInactive;
+  if(pw) pw.style.cssText=d==="winners"?pillActive:pillInactive;
   if(today) today.style.display=d==="today"?"":"none";
   if(tmrw) tmrw.style.display=d==="tomorrow"?"":"none";
+  if(winners) winners.style.display=d==="winners"?"":"none";
   var feedLbl=document.getElementById("feed-date-label");
   var feedLive=document.getElementById("feed-live-badge");
   if(feedLbl) feedLbl.textContent=d==="tomorrow"?"Tomorrow's Racing":"Today's Racing";
