@@ -1747,6 +1747,8 @@ function showRacingHome(){
   if(rd) rd.style.display='none';
 
   if(rh) rh.style.display='';
+  var tn=document.getElementById('main-topnav');
+  if(tn) tn.style.display='none';
 
   renderRacingWinners();
 
@@ -2235,6 +2237,55 @@ function showRacingHome(){
   </div>
 
   <div id="racing-tomorrow-inline-meeting" style="max-height:0;overflow:hidden;transition:max-height 0.35s ease"><div id="tm-inline-venue-pill-bar" style="display:flex;gap:8px;overflow-x:auto;padding:8px 12px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div><div id="tm-inline-meetings-list"></div></div>
+
+  </div>
+
+  </div>
+
+  <div id="racing-winners-content" style="display:none;padding:0">
+
+    <!-- RACING WINNERS -->
+
+    <div style="padding:18px 12px 4px">
+
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
+
+        <div>
+
+          <div style="font-size:20px;font-weight:700;color:var(--navy)">AI Picks · Latest Winners</div>
+
+          <div style="font-size:12px;color:#9aa3b5;margin-top:3px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
+
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:var(--green)">Swipe right →</div>
+
+      </div>
+
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="racing-winners-carousel"></div>
+
+    </div>
+
+
+  <!-- TOMORROW WINNERS -->
+
+  <div style="padding:18px 12px 4px">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
+
+      <div>
+
+        <div style="font-size:20px;font-weight:700;color:var(--navy)">AI Picks · Latest Winners</div>
+
+        <div style="font-size:12px;color:#9aa3b5;margin-top:3px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
+
+      </div>
+
+      <div style="font-size:12px;font-weight:500;color:var(--green)">Swipe right →</div>
+
+    </div>
+
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="racing-tomorrow-winners"><div style="flex-shrink:0;width:160px;background:#ffffff;border-radius:12px;border:1px solid #e4e8f0;border-top:3px solid #1e9e6b;padding:10px 12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px"><div style="font-size:11px;font-weight:700;color:#1e9e6b">WON</div></div><div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">Galopin Des Champs</div><div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">14:00 · Cheltenham</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;color:#9aa3b5">Pick of the Day</div><div style="font-size:17px;font-weight:700;color:#1e9e6b">6/4</div></div></div><div style="flex-shrink:0;width:160px;background:#ffffff;border-radius:12px;border:1px solid #e4e8f0;border-top:3px solid #1e9e6b;padding:10px 12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px"><div style="font-size:11px;font-weight:700;color:#1e9e6b">WON</div></div><div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">Jonbon</div><div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">13:30 · Cheltenham</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;color:#9aa3b5">Each Way Pick</div><div style="font-size:17px;font-weight:700;color:#1e9e6b">5/2</div></div></div><div style="flex-shrink:0;width:160px;background:#ffffff;border-radius:12px;border:1px solid #e4e8f0;border-top:3px solid #b8e0cc;padding:10px 12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px"><div style="font-size:11px;font-weight:700;color:#4a8c6a">E/W</div></div><div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">El Fabiolo</div><div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">15:20 · Punchestown</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;color:#9aa3b5">Dark Horse</div><div style="font-size:17px;font-weight:700;color:#4a8c6a">7/2</div></div></div></div>
 
   </div>
 
@@ -7836,7 +7887,7 @@ function renderRacingPicks(){
 
     var rows=p.reasons.map(function(r){
 
-      return '<div style="display:flex;align-items:baseline;gap:6px;font-size:12px;color:#555;line-height:1.5"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0">✓</span><span>'+escHtml(r)+'</span></div>';
+      return '<div style="display:flex;align-items:baseline;gap:4px;font-size:10px;color:#555;line-height:1.4"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0;font-size:10px">✓</span><span>'+escHtml(r)+'</span></div>';
 
     }).join('');
 
@@ -8248,10 +8299,6 @@ function closeRacingMenu(){
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:8px">
 <button onclick="closeRacingMenu()" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
 <button onclick="closeRacingMenu()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Sign Up — Free</button>
-<div style="height:1px;background:#e4e8f0;margin:8px 0"></div>
-<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">My Selections</button>
-<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">Settings</button>
-<button onclick="closeRacingMenu()" style="width:100%;background:none;color:#0b1628;border:none;padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left">Responsible Gambling</button>
 </div>
 <div style="padding:16px;border-top:1px solid #e4e8f0;font-size:10px;color:#b0b8c8;text-align:center">18+ · Gamble Responsibly</div>
 </div>
