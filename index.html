@@ -7024,50 +7024,49 @@ function renderTodayMeetingsList(){
     var imgSrc=getMeetingImg(m.id);
     var firstT=m.races[0]?m.races[0].t:"";
     var lastT=m.races[m.races.length-1]?m.races[m.races.length-1].t:"";
-    // Row
-    out+='<div style="border-bottom:1px solid #f0f2f7">';
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;background:#fff">';
-    // Thumbnail with AI EDGE badge
-    out+='<div style="position:relative;flex-shrink:0;width:60px;height:60px;border-radius:8px;overflow:hidden;background:#0b1628">';
-    if(imgSrc) out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover">';
-    out+='<div style="position:absolute;top:4px;left:4px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:4px;padding:1px 5px;display:inline-flex;align-items:center;gap:3px">';
-    out+='<div style="width:3px;height:3px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>';
-    out+='<span style="font-size:7px;font-weight:700;color:#fff;letter-spacing:0.08em">AI EDGE</span></div></div>';
-    // Course info
-    out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0b1628">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+escHtml(m.going)+' &middot; '+m.races.length+' races &middot; '+firstT+'&ndash;'+lastT+'</div>';
+    var hasRace=rcOpenRace[m.id]!=null;
+    var selRace=rcOpenRace[m.id];
+    // Full-width banner card
+    out+='<div style="margin:0 12px 10px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(11,22,40,0.12)">';
+    // Image banner — tappable
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="position:relative;height:130px;background:#0b1628;overflow:hidden;cursor:pointer">';
+    if(imgSrc) out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">';
+    out+='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.06) 0%,rgba(11,22,40,0.80) 100%)"></div>';
+    // AI EDGE badge top-left
+    out+='<div style="position:absolute;top:10px;left:10px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:4px;padding:2px 7px;display:inline-flex;align-items:center;gap:3px">';
+    out+='<div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>';
+    out+='<span style="font-size:8px;font-weight:700;color:#fff;letter-spacing:0.08em">AI EDGE</span></div>';
+    // +/- circle top-right
+    out+='<div style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center">';
+    out+='<span style="font-size:18px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
+    // Venue name + meta bottom-left
+    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 12px 12px">';
+    out+='<div style="font-size:22px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.3px">'+escHtml(m.name)+'</div>';
+    out+='<div style="margin-top:5px;display:flex;align-items:center;gap:8px">';
+    out+='<span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.82)">'+m.races.length+' races &middot; '+firstT+'&ndash;'+lastT+'</span>';
+    if(m.feature) out+='<span style="font-size:9px;font-weight:700;background:#1e9e6b;color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">FEATURE</span>';
+    out+='</div></div>';
     out+='</div>';
-    // Plus/minus
-    out+='<div style="font-size:22px;font-weight:300;color:#1e9e6b;flex-shrink:0;width:28px;text-align:center;line-height:1">'+( isOpen?"&minus;":"+" )+"</div>";
-    out+='</div>';
-    // Expanded content
+    // Expanded white panel below banner
     if(isOpen){
-      var hasRace=rcOpenRace[m.id]!=null;
-      var selRace=rcOpenRace[m.id];
-      out+='<div style="background:#fff">';
-      // Analyse CTA
-      out+='<button class="fx-cta" style="margin:8px 12px 4px;width:calc(100% - 24px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>';
-      // Going / feature pills
-      out+='<div style="display:flex;gap:6px;padding:8px 12px;flex-wrap:wrap">';
+      out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
+      out+='<button class="fx-cta" style="margin:10px 12px 4px;width:calc(100% - 24px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>';
+      out+='<div style="display:flex;gap:6px;padding:6px 12px 8px;flex-wrap:wrap">';
       out+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(m.going)+'</span>';
-      if(m.feature) out+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#f0faf6;color:#085041;border:1px solid #c8ead9">Feature Meeting</span>';
       out+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#eef4ff;color:#1a4fa0;border:1px solid #c0d4f8">Next in '+m.nextMins+' mins</span>';
       out+='</div>';
-      // Race time pills — sticky when a race is selected
       var pillStyle=hasRace
         ?"position:sticky;top:56px;z-index:10;background:#fff;border-bottom:1px solid #f0f2f7;"
         :"border-top:1px solid #f0f2f7;";
       out+='<div id="tdpills-'+m.id+'" style="'+pillStyle+'display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
-        out+='<div style="flex-shrink:0;width:58px;border:1px solid '+( isSel?"#0b1628":"#e4e8f0" )+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+( isSel?"#0b1628":"#f5f7fb" )+'" onclick="todaySelectRace(\''+m.id+'\','+ri+')">';
-        out+='<div style="font-size:12px;font-weight:600;color:'+( isSel?"#fff":"#0b1628" )+'">'+escHtml(race.t)+'</div>';
-        out+='<div style="font-size:10px;color:'+( isSel?"rgba(255,255,255,.55)":"#9aa3b5" )+';margin-top:1px">'+race.r+' rnrs</div>';
+        out+='<div style="flex-shrink:0;width:58px;border:1px solid '+(isSel?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?"#0b1628":"#f5f7fb")+'" onclick="todaySelectRace(\''+m.id+'\','+ri+')">';
+        out+='<div style="font-size:12px;font-weight:600;color:'+(isSel?"#fff":"#0b1628")+'">'+escHtml(race.t)+'</div>';
+        out+='<div style="font-size:10px;color:'+(isSel?"rgba(255,255,255,.55)":"#9aa3b5")+';margin-top:1px">'+race.r+' rnrs</div>';
         out+='</div>';
       });
       out+='</div>';
-      // Race detail (runners) when a time is selected
       if(hasRace) out+=rcRaceDetailHtml(m);
       out+='</div>';
     }
@@ -7075,7 +7074,6 @@ function renderTodayMeetingsList(){
   });
   el.innerHTML=out;
 }
-
 function rcPillsHtml(m){
 
   var p='<div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #f0f2f7;flex-wrap:wrap">';
