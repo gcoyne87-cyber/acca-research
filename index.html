@@ -1710,7 +1710,7 @@ function switchSport(sport){
 
 }
 
-function goHome(){
+function goRacingHome(){
   var rh=document.getElementById('racing-home-content');
   if(rh) rh.style.display='none';
   var tn=document.getElementById('main-topnav');
@@ -1785,7 +1785,7 @@ function showRacingHome(){
 
   <div class="topnav-inner">
 
-    <div class="topnav-logo" onclick="goHome()" style="cursor:pointer">
+    <div class="topnav-logo" onclick="goRacingHome()" style="cursor:pointer">
 
       <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
 
@@ -8088,6 +8088,7 @@ function tmRaceDetailHtml(m){
   out+='<div style="font-size:16px;font-weight:700;color:#0b1628">'+escHtml(race.t)+' &middot; '+escHtml(m.name)+'</div>';
   out+='<div style="font-size:11px;color:#9aa3b5;margin-top:3px">'+escHtml(race.dist)+' &middot; '+race.r+' runners</div>';
   out+='</div></div>';
+  out+='<button class="fx-cta" style="margin:0 14px 4px;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(race.t)+' '+escHtml(m.name)+' with AI &rarr;</button>';
   TM_RUNNERS.forEach(function(r,i){
     var last=i===TM_RUNNERS.length-1;
     var silk=r.silk?nrSilk(r.silk):'';
@@ -8108,10 +8109,7 @@ function tmRaceDetailHtml(m){
     out+='<div style="font-size:14px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>';
     out+='</button></div>';
   });
-  out+='<div style="padding:12px 16px">';
-  out+='<button class="fx-cta" style="width:100%">';
-  out+='<span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(race.t)+' '+escHtml(m.name)+' with AI &rarr;';
-  out+='</button></div></div>';
+  out+='</div>';
   return out;
 }
 
