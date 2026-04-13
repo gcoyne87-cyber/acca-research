@@ -818,6 +818,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .auth-signup:hover{background:#f0faf6}
 
+/* ── RACING MODE TOP BAR ── */
+.topnav.racing-mode{background:#0b1628;border-bottom-color:#1a2a45}
+.topnav.racing-mode .topnav-logo span:first-child{color:#fff !important}
+.topnav.racing-mode .topnav-link{color:rgba(255,255,255,0.6)}
+.topnav.racing-mode .topnav-link:hover{color:#fff;background:rgba(255,255,255,0.08)}
+.topnav.racing-mode .topnav-link.active{color:#fff;border-bottom-color:#c9a84c}
+.topnav.racing-mode .topnav-auth div div{background:#fff !important}
+
 @media(max-width:600px){
 
   .topnav-links{display:none}
@@ -1748,7 +1756,7 @@ function showRacingHome(){
 
   if(rh) rh.style.display='';
   var tn=document.getElementById('main-topnav');
-  if(tn) tn.style.display='none';
+  if(tn){tn.style.display='';tn.classList.add('racing-mode');}
 
   renderRacingWinners();
 
@@ -1977,7 +1985,7 @@ function showRacingHome(){
     <div style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
       <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Today</button>
       <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button><button id="pill-winners" onclick="selectRacingDate('winners')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Winners</button><div style="margin-left:auto;padding:0 12px;flex-shrink:0"><button onclick="openRacingMenu()" style="background:none;border:none;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center"><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span><span style="display:block;width:20px;height:2px;background:#0b1628;border-radius:2px"></span></button></div>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Upcoming</button><button id="pill-winners" onclick="selectRacingDate('winners')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Winners</button>
     </div>
 
   <div id="racing-today-content">
@@ -1992,6 +2000,8 @@ function showRacingHome(){
         <div>
 
           <div style="font-size:20px;font-weight:700;color:#0b1628;line-height:1.1">Today's Meetings</div>
+
+        <div style="font-size:13px;color:#4a8c6a;margin-top:4px">Tap a course to jump to its race card</div>
 
         </div>
 
@@ -2238,8 +2248,6 @@ function showRacingHome(){
 
   <div id="racing-tomorrow-inline-meeting" style="max-height:0;overflow:hidden;transition:max-height 0.35s ease"><div id="tm-inline-venue-pill-bar" style="display:flex;gap:8px;overflow-x:auto;padding:8px 12px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div><div id="tm-inline-meetings-list"></div></div>
 
-  </div>
-
   <!-- AI FEED STRIP TOMORROW -->
 
   <div id="ai-feed-strip-tomorrow" style="padding:8px 16px;display:flex;align-items:center;gap:10px">
@@ -2250,6 +2258,8 @@ function showRacingHome(){
     <div style="padding:8px 12px;flex:1;min-width:0">
       <div id="ai-feed-msg-tomorrow" style="font-size:13px;color:#1a5c3a;font-weight:500;line-height:1.4;position:relative"></div>
     </div>
+
+  </div>
 
   </div>
 
@@ -2646,6 +2656,10 @@ function showPage(page){
     if(navSpinner) navSpinner.style.display='none';
 
   }
+
+  // Remove racing mode from topnav when back on main app
+  var _tn=document.getElementById('main-topnav');
+  if(_tn) _tn.classList.remove('racing-mode');
 
   // Sync top nav
 
@@ -7138,8 +7152,6 @@ function rcRaceDetailHtml(m){
     var jockey=r.jockey||r.jt||'';
     var trainer=r.trainer?'Tr: '+r.trainer:'';
     var form=r.form?nrFormHtml(r.form):'';
-    var insightHtml=r.insight?'<div style="font-size:11px;color:#4a8c6a;line-height:1.4;margin-top:4px">'+escHtml(r.insight)+'</div>':'';
-
     out+='<div style="display:flex;align-items:center;padding:10px 14px;border-bottom:'+(last?'none':'1px solid #f0f2f7')+';background:#fff;gap:10px">'
       +'<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'
         +silk
@@ -7150,7 +7162,6 @@ function rcRaceDetailHtml(m){
         +'<div style="font-size:11px;color:#555;margin-top:2px">'+escHtml(jockey)+'</div>'
         +(trainer?'<div style="font-size:11px;color:#888;margin-top:1px">'+escHtml(trainer)+'</div>':'')
         +(form?'<div style="margin-top:3px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
-        +insightHtml
       +'</div>'
       +'<button onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
         +'<div style="font-size:14px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>'
@@ -7243,8 +7254,6 @@ function renderRacingMeetings(){
 
     +rcPillsHtml(featured)
 
-    +'<div style="padding:12px 14px 0">'+rcInsightsHtml(featured,false)+'</div>'
-
     +'<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
 
     +rcTimesHtml(featured,true)
@@ -7305,7 +7314,6 @@ function renderInlineMeeting(){
       +'<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; Next <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>'
     +'</div>'
     +rcPillsHtml(featured)
-    +'<div style="padding:12px 14px 0">'+rcInsightsHtml(featured,false)+'</div>'
     +'<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
     +rcTimesHtml(featured,true)
   +'</div>'
@@ -7736,12 +7744,18 @@ function nrToggleMore(){
 }
 
 function nrAddToSlip(name,price){
-  if(typeof addToSlip==="function"){addToSlip(name,price);return;}
-  var toast=document.createElement("div");
-  toast.textContent=name+" ("+price+") added to slip";
-  toast.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0b1628;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;transition:opacity .3s";
-  document.body.appendChild(toast);
-  setTimeout(function(){toast.style.opacity="0";setTimeout(function(){toast.remove();},300);},1800);
+  var legId='nr_'+name.replace(/\s+/g,'_');
+  var already=slipLegs.some(function(s){return s.legId===legId;});
+  if(already){
+    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+    renderSlip();
+    return;
+  }
+  var parts=(price||'EVS').split('/');
+  var num=parseInt(parts[0])||1,den=parseInt(parts[1])||1;
+  slipLegs.push({legId:legId,team:name,match:'Horse Racing',odds:price||'EVS',num:num,den:den});
+  renderSlip();
+  if(slipLegs.length===1&&!slipOpen) toggleSlip();
 }
 
 function nrAnalyse(){
@@ -8113,7 +8127,6 @@ function renderInlineTomorrowMeeting(){
   fHtml+='<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; First <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>';
   fHtml+='</div>';
   fHtml+=rcPillsHtml(featured);
-  fHtml+='<div style="padding:12px 14px 0">'+rcInsightsHtml(featured,false)+'</div>';
   fHtml+='<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>';
   fHtml+=tmTimesHtml(featured);
   fHtml+='</div>';
