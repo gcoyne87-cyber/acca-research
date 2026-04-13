@@ -7048,10 +7048,10 @@ function renderTodayMeetingsList(){
     out+='<div style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center">';
     out+='<span style="font-size:18px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     // Venue name + meta bottom-left
-    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 12px 12px">';
-    out+='<div style="font-size:22px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.3px">'+escHtml(m.name)+'</div>';
-    out+='<div style="margin-top:5px;display:flex;align-items:center;gap:8px">';
-    out+='<span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.82)">'+m.races.length+' races</span>';
+    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:4px 10px 5px">';
+    out+='<div style="font-size:15px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.2px">'+escHtml(m.name)+'</div>';
+    out+='<div style="margin-top:2px;display:flex;align-items:center;gap:6px">';
+    out+='<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.75)">'+m.races.length+' races</span>';
     if(m.feature) out+='<span style="font-size:9px;font-weight:700;background:#1e9e6b;color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">FEATURE</span>';
     out+='</div></div>';
     out+='</div>';
