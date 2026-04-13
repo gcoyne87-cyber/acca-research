@@ -1805,7 +1805,7 @@ function showRacingHome(){
     </div>
 
     <div class="topnav-auth">
-      <div onclick="toggleMenu()" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:4px">
+      <div onclick="openRacingMenu()" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:4px">
         <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
         <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
         <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
@@ -7744,18 +7744,28 @@ function nrToggleMore(){
 }
 
 function nrAddToSlip(name,price){
-  var legId='nr_'+name.replace(/\s+/g,'_');
-  var already=slipLegs.some(function(s){return s.legId===legId;});
-  if(already){
-    slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+  try{
+    var legId='nr_'+name.replace(/\s+/g,'_');
+    var already=slipLegs.some(function(s){return s.legId===legId;});
+    if(already){
+      slipLegs=slipLegs.filter(function(s){return s.legId!==legId;});
+      renderSlip();
+      return;
+    }
+    var parts=(price||'EVS').split('/');
+    var num=parseInt(parts[0])||1,den=parseInt(parts[1])||1;
+    slipLegs.push({legId:legId,team:name,match:'Horse Racing',odds:price||'EVS',num:num,den:den});
     renderSlip();
-    return;
+    var tog=document.getElementById('slip-toggle');
+    if(tog) tog.style.display='flex';
+    if(!slipOpen) toggleSlip();
+  }catch(e){
+    var t=document.createElement('div');
+    t.textContent=name+' ('+price+') added';
+    t.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#0b1628;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none';
+    document.body.appendChild(t);
+    setTimeout(function(){t.remove();},2000);
   }
-  var parts=(price||'EVS').split('/');
-  var num=parseInt(parts[0])||1,den=parseInt(parts[1])||1;
-  slipLegs.push({legId:legId,team:name,match:'Horse Racing',odds:price||'EVS',num:num,den:den});
-  renderSlip();
-  if(slipLegs.length===1&&!slipOpen) toggleSlip();
 }
 
 function nrAnalyse(){
@@ -8271,7 +8281,7 @@ function closeRacingMenu(){
 </div>
 <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:8px">
 <button onclick="closeRacingMenu()" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
-<button onclick="closeRacingMenu()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Sign Up — Free</button>
+<button onclick="closeRacingMenu()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Sign Up</button>
 </div>
 <div style="padding:16px;border-top:1px solid #e4e8f0;font-size:10px;color:#b0b8c8;text-align:center">18+ · Gamble Responsibly</div>
 </div>
