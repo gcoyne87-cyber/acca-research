@@ -2010,9 +2010,9 @@ function showRacingHome(){
     <!-- DATE PILLS -->
 
     <div id="racing-datepills-bar" style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
-      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-today" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:inline-block"></span>Today</button>
-      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-tomorrow" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-upcoming" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Upcoming</button>
+      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Today</button>
+      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:400;cursor:pointer;font-family:inherit">Tomorrow</button>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:400;cursor:pointer;font-family:inherit">Upcoming</button>
     </div>
 
   <div id="racing-today-content">
@@ -6980,10 +6980,9 @@ function renderTodayMeetingsList(){
     out+='<span style="font-size:18px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     // Venue name + meta bottom-left
     out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 10px 8px">';
-    out+='<div style="font-size:15px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.2px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:24px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.5px">'+escHtml(m.name)+'</div>';
     out+='<div style="margin-top:2px;display:flex;align-items:center;gap:6px">';
     out+='<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.75)">'+m.races.length+' races</span>';
-    if(m.feature) out+='<span style="font-size:9px;font-weight:700;background:#1e9e6b;color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">FEATURE</span>';
     out+='</div></div>';
     out+='</div>';
     // Expanded white panel below banner
@@ -7018,8 +7017,6 @@ function rcPillsHtml(m){
   var p='<div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #f0f2f7;flex-wrap:wrap">';
 
   p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(m.going)+'</span>';
-
-  if(m.feature) p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#f0faf6;color:#085041;border:1px solid #c8ead9">Feature Meeting</span>';
 
   p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#eef4ff;color:#1a4fa0;border:1px solid #c0d4f8">Next in '+m.nextMins+' mins</span>';
 
@@ -7914,18 +7911,11 @@ function selectRacingDate(d){
   var pu=document.getElementById("pill-upcoming");
   var lbl=document.querySelector("#ai-feed-strip span[data-feed-label]");
   var dot=document.querySelector("#ai-feed-strip span[data-feed-live]");
-  var pillActive="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
-  var pillInactive="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
+  var pillActive="background:none;color:#0b1628;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;";
+  var pillInactive="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:400;cursor:pointer;font-family:inherit;";
   if(pt) pt.style.cssText=d==="today"?pillActive:pillInactive;
   if(pm) pm.style.cssText=d==="tomorrow"?pillActive:pillInactive;
   if(pu) pu.style.cssText=d==="upcoming"?pillActive:pillInactive;
-  // Active dot indicator
-  var dtToday=document.getElementById("pdot-today");
-  var dtTmrw=document.getElementById("pdot-tomorrow");
-  var dtUp=document.getElementById("pdot-upcoming");
-  if(dtToday) dtToday.style.display=d==="today"?"inline-block":"none";
-  if(dtTmrw) dtTmrw.style.display=d==="tomorrow"?"inline-block":"none";
-  if(dtUp) dtUp.style.display=d==="upcoming"?"inline-block":"none";
   if(today) today.style.display=d==="today"?"":"none";
   if(tmrw) tmrw.style.display=d==="tomorrow"?"":"none";
   if(d==="tomorrow"){ aiFeedInitTomorrow(); renderTomorrowMeetingsList(); }
@@ -8215,10 +8205,9 @@ function renderTomorrowMeetingsList(){
     out+='<span style="font-size:16px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     // Venue name bottom-left
     out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 14px 10px">';
-    out+='<div style="font-size:20px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.3px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:24px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.5px">'+escHtml(m.name)+'</div>';
     out+='<div style="margin-top:3px;display:flex;align-items:center;gap:6px">';
     out+='<span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.82)">'+m.races.length+' races</span>';
-    if(m.feature) out+='<span style="font-size:9px;font-weight:700;background:#1e9e6b;color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">FEATURE</span>';
     out+='</div></div>';
     out+='</div>';
     // Expanded white panel
@@ -8227,7 +8216,6 @@ function renderTomorrowMeetingsList(){
       out+='<button class="fx-cta" style="margin:10px 12px 4px;width:calc(100% - 24px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>';
       out+='<div style="display:flex;gap:6px;padding:6px 12px 8px;flex-wrap:wrap">';
       out+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(m.going)+'</span>';
-      if(m.feature) out+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#f0faf6;color:#085041;border:1px solid #c8ead9">Feature Meeting</span>';
       out+='</div>';
       var pillStyle=hasRace
         ?"position:sticky;top:56px;z-index:10;background:#fff;border-bottom:1px solid #f0f2f7;"
