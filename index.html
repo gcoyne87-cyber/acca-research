@@ -7739,7 +7739,7 @@ function aiFeedTick(){
   setTimeout(function(){
     aiFeedIdx=(aiFeedIdx+1)%AI_FEED_MESSAGES.length;
     msg.textContent=AI_FEED_MESSAGES[aiFeedIdx];
-    msg.style.animation="aiFeedFadeUp 0.35s ease forwards";
+    msg.style.animation="aiFeedFadeUp 0.35s ease";
     var ctr=document.getElementById("ai-feed-counter");
     if(ctr) ctr.textContent=(aiFeedIdx+1)+" / "+AI_FEED_MESSAGES.length;
     aiFeedResetProgress("ai-feed-progress");
@@ -7763,7 +7763,7 @@ function aiFeedInitTomorrow(){
     setTimeout(function(){
       aiFeedTmrwIdx=(aiFeedTmrwIdx+1)%AI_FEED_MESSAGES.length;
       m.textContent=AI_FEED_MESSAGES[aiFeedTmrwIdx];
-      m.style.animation="aiFeedFadeUp 0.35s ease forwards";
+      m.style.animation="aiFeedFadeUp 0.35s ease";
       var c=document.getElementById("ai-feed-counter-tomorrow");
       if(c) c.textContent=(aiFeedTmrwIdx+1)+" / "+AI_FEED_MESSAGES.length;
       aiFeedResetProgress("ai-feed-progress-tomorrow");
