@@ -7843,13 +7843,12 @@ function renderRacingPicks(){
   if(!el) return;
   el.innerHTML=RACING_PICKS.map(function(p){
     var sigRows=p.signals.map(function(s){
-      var bg=s.col.replace('#','');
       return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:0">'
-        +'<span style="font-size:8px;font-weight:700;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;margin-top:2px;border-radius:4px;padding:2px 6px;color:'+s.col+';border:1px solid '+s.col+';opacity:0.9">'+s.tag+'</span>'
+        +'<span style="font-size:8px;font-weight:700;letter-spacing:.06em;white-space:nowrap;flex-shrink:0;margin-top:2px;border-radius:4px;padding:2px 7px;color:#334155;background:#eef1f7;border:1px solid #c8d0e0">'+s.tag+'</span>'
         +'<span style="font-size:12px;color:#333;line-height:1.45">'+escHtml(s.text)+'</span>'
         +'</div>';
     }).join('');
-    var confCol=p.confidence>=80?'#1e9e6b':p.confidence>=65?'#c9a84c':'#e03131';
+    var confCol='#1e9e6b';
     return '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:14px;overflow:hidden;border-left:4px solid '+p.border+';box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
       +'<div style="padding:14px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f2f7">'
         +'<div style="min-width:0;flex:1">'
