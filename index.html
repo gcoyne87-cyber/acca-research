@@ -2018,7 +2018,7 @@ function showRacingHome(){
 
   <div id="racing-today-content">
 
-    <div style="background:#e8f5ef;padding-bottom:4px;">
+    <div id="racing-today-meetings" style="background:#e8f5ef;padding-bottom:4px;">
     <!-- TODAY'S MEETINGS CAROUSEL -->
 
     <div style="padding:8px 0 4px">
@@ -8050,7 +8050,7 @@ function selectRacingSection(s){
   if(s==="racecards"){
     if(datepills) datepills.style.display="flex";
     // Restore any elements hidden by pickofday
-    var e8f=document.querySelector("#racing-today-content div[style*='background:#e8f5ef']");
+    var e8f=document.getElementById("racing-today-meetings");
     var aiFeedWrap=document.getElementById("ai-feed-strip");
     if(e8f) e8f.style.display="";
     if(aiFeedWrap&&aiFeedWrap.parentElement) aiFeedWrap.parentElement.style.display="";
@@ -8066,7 +8066,7 @@ function selectRacingSection(s){
     var meetImgWrap=document.querySelector("#racing-today-content .main");
     var tmlEl=document.getElementById("today-meetings-list");
     var aiFeedWrap=document.getElementById("ai-feed-strip");
-    var e8f=document.querySelector("#racing-today-content div[style*='background:#e8f5ef']");
+    var e8f=document.getElementById("racing-today-meetings");
     if(e8f) e8f.style.display="none";
     if(aiFeedWrap&&aiFeedWrap.parentElement) aiFeedWrap.parentElement.style.display="none";
   }
