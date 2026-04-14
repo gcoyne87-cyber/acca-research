@@ -7816,62 +7816,70 @@ var RACING_WINNERS=[
 
 var RACING_PICKS=[
 
-  {type:'NAP · Pick of the Day',icon:'⚡',horse:'Majolique',detail:'13:15 Cork · 2m7f Maiden Hurdle',reasons:['Top AI rating across form, going and trainer stats','Won 3 of last 5 on Good to Yielding ground','JP Townend booked — strong jockey booking signal','Mullins yard in form with 5 winners this week','Weighted well at the bottom of the handicap'],odds:'2/1',border:'#1e9e6b'},
+  {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
+   confidence:88,odds:"2/1",border:"#1e9e6b",
+   signals:[
+     {tag:"FORM",   col:"#1763c4", text:"Top AI rating across form, going and trainer stats — highest score on today’s card"},
+     {tag:"GOING",  col:"#1e9e6b", text:"Won 3 of last 5 on Good to Yielding ground — conditions ideal today at Cork"},
+     {tag:"JOCKEY", col:"#b07d12", text:"JP Townend booked — Mullins doesn’t put his number one up without reason"},
+     {tag:"TRAINER",col:"#7c3aed", text:"Mullins yard running at 52% strike rate this season — 5 winners in last 7 days"},
+     {tag:"MARKET", col:"#dc6b00", text:"Weighted well at bottom of handicap — 3lb lower than last winning mark"}
+   ]},
 
-  {type:'NB · Next Best',icon:'★',horse:'Proactif',detail:'13:50 Cork · 2m4f Handicap Chase',reasons:['Second highest AI rating on today\'s card','Course and distance winner — won here twice last season','Mullins booking Walsh — retained jockey is key signal','Drops in class today after near miss at Leopardstown','Strong finishing profile suits this track\'s long run-in'],odds:'5/2',border:'#0b1628'},
+  {type:"NB · Next Best",icon:"★",horse:"Proactif",detail:"13:50 Cork · 2m4f Handicap Chase",
+   confidence:74,odds:"5/2",border:"#0b1628",
+   signals:[
+     {tag:"FORM",   col:"#1763c4", text:"Second highest AI rating on today’s card — strong profile across three key metrics"},
+     {tag:"CLASS",  col:"#c0392b", text:"Course and distance winner — won here twice last season, track suits his jumping style"},
+     {tag:"JOCKEY", col:"#b07d12", text:"Mullins puts Walsh up — retained jockey booking is the strongest signal in jump racing"},
+     {tag:"CLASS",  col:"#c0392b", text:"Drops in class after near miss at Leopardstown — easier opportunity today"},
+     {tag:"GOING",  col:"#1e9e6b", text:"Strong finishing profile suits the long run-in at Cork on today’s ground"}
+   ]},
 
 ];
 
 function renderRacingPicks(){
-
   var el=document.getElementById('racing-picks-container');
-
   if(!el) return;
-
-  el.innerHTML=RACING_PICKS.map(function(p,i){
-
-    var rows=p.reasons.map(function(r){
-
-      return '<div style="display:flex;align-items:baseline;gap:4px;font-size:10px;color:#555;line-height:1.4"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0;font-size:10px">✓</span><span>'+escHtml(r)+'</span></div>';
-
+  el.innerHTML=RACING_PICKS.map(function(p){
+    var sigRows=p.signals.map(function(s){
+      var bg=s.col.replace('#','');
+      return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:0">'
+        +'<span style="font-size:8px;font-weight:700;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;margin-top:2px;border-radius:4px;padding:2px 6px;color:'+s.col+';border:1px solid '+s.col+';opacity:0.9">'+s.tag+'</span>'
+        +'<span style="font-size:12px;color:#333;line-height:1.45">'+escHtml(s.text)+'</span>'
+        +'</div>';
     }).join('');
-
-    return '<div style="background:#fff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;border-left:4px solid '+p.border+'">'
-
-      +'<div style="padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f0f0">'
-
-        +'<div>'
-
-          +'<div style="display:inline-flex;align-items:center;gap:6px;border:1px solid #e8eaed;border-radius:99px;padding:3px 10px;margin-bottom:8px"><span style="font-size:12px">'+p.icon+'</span><span style="font-size:11px;font-weight:600;color:#0b1628">'+escHtml(p.type)+'</span></div>'
-
-          +'<div style="font-size:19px;font-weight:700;color:#0b1628;line-height:1.1;margin-bottom:3px">'+escHtml(p.horse)+'</div>'
-
-          +'<div style="font-size:11px;color:#aaa">'+escHtml(p.detail)+'</div>'
-
+    var confCol=p.confidence>=80?'#1e9e6b':p.confidence>=65?'#c9a84c':'#e03131';
+    return '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:14px;overflow:hidden;border-left:4px solid '+p.border+';box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
+      +'<div style="padding:14px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f2f7">'
+        +'<div style="min-width:0;flex:1">'
+          +'<div style="display:inline-flex;align-items:center;gap:5px;border:1px solid #e4e8f0;border-radius:99px;padding:3px 10px;margin-bottom:8px">'
+            +'<span style="font-size:13px;line-height:1">'+p.icon+'</span>'
+            +'<span style="font-size:11px;font-weight:600;color:#0b1628;letter-spacing:.01em">'+escHtml(p.type)+'</span>'
+          +'</div>'
+          +'<div style="font-size:21px;font-weight:800;color:#0b1628;line-height:1.1;margin-bottom:4px;letter-spacing:-0.3px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:12px;color:#9aa3b5;font-weight:500">'+escHtml(p.detail)+'</div>'
         +'</div>'
-
-        +'<div style="text-align:right;flex-shrink:0;padding-left:12px">'
-
-          +'<div style="font-size:10px;color:#aaa;margin-bottom:2px;letter-spacing:.04em">PRICE</div>'
-
-          +'<div style="font-size:24px;font-weight:700;color:#1e9e6b;line-height:1">'+escHtml(p.odds)+'</div>'
-
+        +'<div style="text-align:right;flex-shrink:0;padding-left:14px">'
+          +'<div style="font-size:9px;color:#9aa3b5;margin-bottom:2px;letter-spacing:.06em;font-weight:600">PRICE</div>'
+          +'<div style="font-size:26px;font-weight:800;color:#1e9e6b;line-height:1;letter-spacing:-0.5px">'+escHtml(p.odds)+'</div>'
         +'</div>'
-
       +'</div>'
-
-      +'<div style="padding:12px 16px;display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #f0f0f0">'+rows+'</div>'
-
-      +'<div style="padding:10px 16px 14px">'
-
-        +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
-
+      +'<div style="padding:11px 16px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+          +'<span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#9aa3b5;text-transform:uppercase">AI Confidence Score</span>'
+          +'<span style="font-size:15px;font-weight:800;color:'+confCol+'">'+p.confidence+'%</span>'
+        +'</div>'
+        +'<div style="height:5px;border-radius:99px;background:#e8edf2">'
+          +'<div style="height:100%;width:'+p.confidence+'%;border-radius:99px;background:linear-gradient(90deg,'+confCol+',#c9a84c)"></div>'
+        +'</div>'
       +'</div>'
-
+      +'<div style="padding:12px 16px 14px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid #f0f2f7">'+sigRows+'</div>'
+      +'<div style="padding:12px 16px 14px">'
+        +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
+      +'</div>'
     +'</div>';
-
   }).join('');
-
 }
 
 function renderRacingWinners(){
