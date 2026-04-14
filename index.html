@@ -2051,9 +2051,9 @@ function showRacingHome(){
 
     <!-- RACING PICKS -->
 
-    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:12px;padding-right:12px">
+    <div class="main" style="padding-top:12px;padding-bottom:0;padding-left:0;padding-right:0">
 
-      <div style="margin-bottom:12px">
+      <div style="margin-bottom:12px;padding:0 16px">
 
         <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
 
@@ -2063,7 +2063,7 @@ function showRacingHome(){
 
       </div>
 
-      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:0"></div>
 
     </div>
 
@@ -7849,7 +7849,7 @@ function renderRacingPicks(){
         +'</div>';
     }).join('');
     var confCol='#1e9e6b';
-    return '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:14px;overflow:hidden;border-left:4px solid '+p.border+';box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
+    return '<div style="background:#fff;border:none;border-left:4px solid '+p.border+';border-bottom:1px solid #edf0f5;overflow:hidden;">'
       +'<div style="padding:14px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f2f7">'
         +'<div style="min-width:0;flex:1">'
           +'<div style="display:inline-flex;align-items:center;gap:5px;border:1px solid #e4e8f0;border-radius:99px;padding:3px 10px;margin-bottom:8px">'
