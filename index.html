@@ -7725,6 +7725,19 @@ var RACING_PICKS=[
 
 ];
 
+function nrViewMeetingCard(courseId,courseName){
+  selectRacingSection('racecards');
+  selectRacingDate('today');
+  if(todayOpenMeeting!==courseId) toggleTodayMeeting(courseId);
+  setTimeout(function(){
+    var el=document.getElementById('racing-today-meetings');
+    if(el){
+      var top=el.getBoundingClientRect().top+window.pageYOffset-56;
+      window.scrollTo({top:top,behavior:'smooth'});
+    }
+  },80);
+}
+
 function renderRacingPicks(){
 
   var el=document.getElementById('racing-picks-container');
@@ -7732,6 +7745,10 @@ function renderRacingPicks(){
   if(!el) return;
 
   el.innerHTML=RACING_PICKS.map(function(p,i){
+
+    var detailFirst=(p.detail.split(' · ')[0]||p.detail).trim();
+    var courseName=detailFirst.split(' ').slice(1).join(' ')||'';
+    var courseId=courseName.toLowerCase();
 
     var isNap=p.type.indexOf('NAP')>=0;
     var tagBg=isNap?'#fef9e7':'#f0faf5';
@@ -7756,7 +7773,7 @@ function renderRacingPicks(){
         +'</div>'
       +'</div>'
 
-      +'<div style="height:1px;background:#f3f4f6;margin:0 15px"></div>'
+      +'<div style="height:1px;background:#f3f4f6;margin:0 14px"></div>'
 
       +'<div style="padding:7px 14px 10px">'
         +'<div style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px">'
@@ -7767,6 +7784,7 @@ function renderRacingPicks(){
       +'</div>'
 
       +'<div style="padding:0 14px 13px">'
+        +(courseName ? '<div onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\')" style="font-size:12px;color:#1e9e6b;font-weight:500;cursor:pointer;margin-bottom:10px;letter-spacing:.01em">→ View full '+escHtml(courseName)+' card</div>' : '')
         +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
       +'</div>'
 
