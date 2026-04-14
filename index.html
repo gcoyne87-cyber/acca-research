@@ -7816,9 +7816,25 @@ var RACING_WINNERS=[
 
 var RACING_PICKS=[
 
-  {type:'NAP · Pick of the Day',icon:'⚡',horse:'Majolique',detail:'13:15 Cork · 2m7f Maiden Hurdle',reasons:['Top AI rating across form, going and trainer stats','Won 3 of last 5 on Good to Yielding ground','JP Townend booked — strong jockey booking signal','Mullins yard in form with 5 winners this week','Weighted well at the bottom of the handicap'],odds:'2/1',border:'#1e9e6b'},
+  {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
+   confidence:88,odds:"2/1",border:"#1e9e6b",
+   signals:[
+     {tag:"FORM",    text:"Top AI rating across form, going and trainer stats — highest score on today’s card"},
+     {tag:"GOING",   text:"Won 3 of last 5 on Good to Yielding ground — conditions ideal today at Cork"},
+     {tag:"JOCKEY",  text:"JP Townend booked — Mullins doesn’t put his number one up without reason"},
+     {tag:"TRAINER", text:"Mullins yard running at 52% strike rate this season — 5 winners in last 7 days"},
+     {tag:"MARKET",  text:"Weighted well at bottom of handicap — 3lb lower than last winning mark"}
+   ]},
 
-  {type:'NB · Next Best',icon:'★',horse:'Proactif',detail:'13:50 Cork · 2m4f Handicap Chase',reasons:['Second highest AI rating on today\'s card','Course and distance winner — won here twice last season','Mullins booking Walsh — retained jockey is key signal','Drops in class today after near miss at Leopardstown','Strong finishing profile suits this track\'s long run-in'],odds:'5/2',border:'#0b1628'},
+  {type:"NB · Next Best",icon:"★",horse:"Proactif",detail:"13:50 Cork · 2m4f Handicap Chase",
+   confidence:74,odds:"5/2",border:"#0b1628",
+   signals:[
+     {tag:"FORM",    text:"Second highest AI rating on today’s card — strong profile across three key metrics"},
+     {tag:"CLASS",   text:"Course and distance winner — won here twice last season, track suits his jumping style"},
+     {tag:"JOCKEY",  text:"Mullins puts Walsh up — retained jockey booking is the strongest signal in jump racing"},
+     {tag:"CLASS",   text:"Drops in class after near miss at Leopardstown — easier opportunity today"},
+     {tag:"GOING",   text:"Strong finishing profile suits the long run-in at Cork on today’s ground"}
+   ]},
 
 ];
 
@@ -7830,10 +7846,11 @@ function renderRacingPicks(){
 
   el.innerHTML=RACING_PICKS.map(function(p,i){
 
-    var rows=p.reasons.map(function(r){
-
-      return '<div style="display:flex;align-items:baseline;gap:4px;font-size:10px;color:#555;line-height:1.4"><span style="color:#1e9e6b;font-weight:700;flex-shrink:0;font-size:10px">✓</span><span>'+escHtml(r)+'</span></div>';
-
+    var sigRows=p.signals.map(function(s){
+      return '<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:8px;font-weight:700;letter-spacing:.06em;white-space:nowrap;flex-shrink:0;margin-top:2px;border-radius:4px;padding:2px 7px;color:#334155;background:#eef1f7;border:1px solid #c8d0e0">'+s.tag+'</span>'
+        +'<span style="font-size:12px;color:#444;line-height:1.45">'+escHtml(s.text)+'</span>'
+        +'</div>';
     }).join('');
 
     return '<div style="background:#fff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;border-left:4px solid '+p.border+'">'
@@ -7860,7 +7877,15 @@ function renderRacingPicks(){
 
       +'</div>'
 
-      +'<div style="padding:12px 16px;display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #f0f0f0">'+rows+'</div>'
+      +'<div style="padding:9px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f0f0;background:#fafbfc">'
+        +'<span style="font-size:9px;font-weight:700;letter-spacing:.07em;color:#9aa3b5;white-space:nowrap;text-transform:uppercase">AI Confidence</span>'
+        +'<div style="flex:1;height:4px;border-radius:99px;background:#e8edf2">'
+          +'<div style="height:100%;width:'+p.confidence+'%;border-radius:99px;background:linear-gradient(90deg,#1e9e6b,#c9a84c)"></div>'
+        +'</div>'
+        +'<span style="font-size:13px;font-weight:800;color:#1e9e6b;white-space:nowrap">'+p.confidence+'%</span>'
+      +'</div>'
+
+      +'<div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #f0f0f0">'+sigRows+'</div>'
 
       +'<div style="padding:10px 16px 14px">'
 
