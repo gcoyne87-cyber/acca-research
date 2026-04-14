@@ -306,7 +306,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .lb-meta{font-size:10px;color:var(--muted);font-weight:400}
 
-.lb-score{font-size:12px;font-weight:600;color:var(--green);flex-shrink:0}
+.lb-score{font-size:13px;font-weight:600;color:var(--green);flex-shrink:0}
 
 .lb-streak{font-size:10px;color:var(--muted);font-weight:400;flex-shrink:0}
 
@@ -656,7 +656,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .ac-stat-lbl{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:4px}
 
-.ac-stat-val{font-size:12px;font-weight:600;color:var(--navy)}
+.ac-stat-val{font-size:13px;font-weight:600;color:var(--navy)}
 
 /* Body */
 
@@ -720,7 +720,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .slip-panel-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between}
 
-.slip-panel-title{font-size:12px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.08em}
+.slip-panel-title{font-size:13px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.08em}
 
 .slip-panel-close{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;line-height:1;padding:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}.slip-panel-close:hover{background:rgba(255,255,255,0.28)}
 
@@ -736,7 +736,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .sli-match{font-size:10px;color:rgba(255,255,255,0.28);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.sli-odds{font-size:12px;font-weight:600;color:var(--gold);flex-shrink:0}
+.sli-odds{font-size:13px;font-weight:600;color:var(--gold);flex-shrink:0}
 
 .sli-remove{background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;padding:0}
 
@@ -784,7 +784,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);border-bottom:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
 
-.topnav-inner{max-width:900px;margin:0 auto;padding:0 10px;display:flex;align-items:center;gap:20px;height:54px}
+.topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:62px}
 
 .topnav-logo{flex-shrink:0;line-height:1.2}
 
@@ -1444,7 +1444,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-odd:active,.fx-odd.selected{background:var(--navy);color:#fff}
 
-.fx-more{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;background:#fff;border:none;border-top:1px solid var(--border);font-family:inherit;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer}
+.fx-more{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;background:#fff;border:none;border-top:1px solid var(--border);font-family:inherit;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer}
 
 .fx-more-circle{width:18px;height:18px;border-radius:50%;background:var(--navy);color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 
@@ -1798,7 +1798,7 @@ function showRacingHome(){
 
     <div class="topnav-logo" onclick="goRacingHome()" style="cursor:pointer">
 
-      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
 
       <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-top:3px">Sports Research Tool</div>
 
@@ -2002,17 +2002,17 @@ function showRacingHome(){
     </div>
     <!-- SECTION NAV -->
     <div id="racing-section-nav" style="background:#fff;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #e4e8f0">
-      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid #c9a84c;color:#0b1628;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
-      <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Next Race</button>
-      <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Winners</button>
-      <button id="secnav-pickofday" onclick="selectRacingSection('pickofday')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Pick of the Day</button>
+      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid #c9a84c;color:#0b1628;padding:13px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
+      <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Next Race</button>
+      <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Winners</button>
+      <button id="secnav-pickofday" onclick="selectRacingSection('pickofday')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Pick of the Day</button>
     </div>
     <!-- DATE PILLS -->
 
     <div id="racing-datepills-bar" style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
-      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-today" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:inline-block"></span>Today</button>
-      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-tomorrow" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-upcoming" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Upcoming</button>
+      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-today" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:inline-block"></span>Today</button>
+      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-tomorrow" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Tomorrow</button>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span id="pdot-upcoming" style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;display:none"></span>Upcoming</button>
     </div>
 
   <div id="racing-today-content">
@@ -2029,15 +2029,15 @@ function showRacingHome(){
     </div>
     <!-- AI FEED STRIP -->
     <div id="ai-feed-strip" style="margin:0 12px 6px;border-radius:10px;overflow:hidden;position:relative;background:#f4fbf7;border:1px solid #d4edd9">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 14px">
+      <div style="display:flex;align-items:center;gap:10px;padding:13px 14px 17px">
         <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="background:#0b1628;border:1.5px solid #c9a84c;color:#fff;font-size:9px;font-weight:700;letter-spacing:.07em;padding:3px 7px;border-radius:5px;display:flex;align-items:center;gap:4px"><div style="position:relative;width:6px;height:6px;flex-shrink:0"><div class="ai-feed-ripple"></div><div class="ai-feed-dot" style="position:relative;z-index:1;width:6px;height:6px;border-radius:50%;background:#1e9e6b"></div></div>AI EDGE</div>
+          <div style="background:#0b1628;border:1.5px solid #c9a84c;color:#fff;font-size:10px;font-weight:700;letter-spacing:.07em;padding:4px 9px;border-radius:5px;display:flex;align-items:center;gap:4px"><div style="position:relative;width:6px;height:6px;flex-shrink:0"><div class="ai-feed-ripple"></div><div class="ai-feed-dot" style="position:relative;z-index:1;width:6px;height:6px;border-radius:50%;background:#1e9e6b"></div></div>AI EDGE</div>
           <span style="font-size:8px;font-weight:800;color:#e03131;letter-spacing:.04em">● LIVE</span>
         </div>
         <div style="flex:1;min-width:0">
-          <div id="ai-feed-msg" style="font-size:12.5px;color:#0b2a18;font-weight:500;line-height:1.45;overflow:hidden"></div>
+          <div id="ai-feed-msg" style="font-size:14px;color:#0b2a18;font-weight:500;line-height:1.45;overflow:hidden"></div>
         </div>
-        <div id="ai-feed-counter" style="flex-shrink:0;font-size:10px;font-weight:600;color:#9aa3b5;min-width:24px;text-align:right"></div>
+        <div id="ai-feed-counter" style="flex-shrink:0;font-size:13px;font-weight:600;color:#9aa3b5;min-width:28px;text-align:right"></div>
       </div>
       <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#ddeee4">
         <div id="ai-feed-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#c9a84c);width:0"></div>
@@ -2057,7 +2057,7 @@ function showRacingHome(){
 
         <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
 
-        <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
+        <div style="font-size:22px;font-weight:700;color:var(--navy);line-height:1.1">Today's NAP &amp; NB</div>
 
         <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
 
@@ -2085,15 +2085,15 @@ function showRacingHome(){
 
   <!-- AI FEED STRIP TOMORROW -->
   <div id="ai-feed-strip-tomorrow" style="margin:0 12px 6px;border-radius:10px;overflow:hidden;position:relative;background:#f4fbf7;border:1px solid #d4edd9">
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 14px">
+    <div style="display:flex;align-items:center;gap:10px;padding:13px 14px 17px">
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
-        <div style="background:#0b1628;border:1.5px solid #c9a84c;color:#fff;font-size:9px;font-weight:700;letter-spacing:.07em;padding:3px 7px;border-radius:5px;display:flex;align-items:center;gap:4px"><div style="position:relative;width:6px;height:6px;flex-shrink:0"><div class="ai-feed-ripple"></div><div style="position:relative;z-index:1;width:6px;height:6px;border-radius:50%;background:#1e9e6b"></div></div>AI EDGE</div>
+        <div style="background:#0b1628;border:1.5px solid #c9a84c;color:#fff;font-size:10px;font-weight:700;letter-spacing:.07em;padding:4px 9px;border-radius:5px;display:flex;align-items:center;gap:4px"><div style="position:relative;width:6px;height:6px;flex-shrink:0"><div class="ai-feed-ripple"></div><div style="position:relative;z-index:1;width:6px;height:6px;border-radius:50%;background:#1e9e6b"></div></div>AI EDGE</div>
         <span style="font-size:8px;font-weight:800;color:#e03131;letter-spacing:.04em">● LIVE</span>
       </div>
       <div style="flex:1;min-width:0">
-        <div id="ai-feed-msg-tomorrow" style="font-size:12.5px;color:#0b2a18;font-weight:500;line-height:1.45;overflow:hidden"></div>
+        <div id="ai-feed-msg-tomorrow" style="font-size:14px;color:#0b2a18;font-weight:500;line-height:1.45;overflow:hidden"></div>
       </div>
-      <div id="ai-feed-counter-tomorrow" style="flex-shrink:0;font-size:10px;font-weight:600;color:#9aa3b5;min-width:24px;text-align:right"></div>
+      <div id="ai-feed-counter-tomorrow" style="flex-shrink:0;font-size:13px;font-weight:600;color:#9aa3b5;min-width:28px;text-align:right"></div>
     </div>
     <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#ddeee4">
       <div id="ai-feed-progress-tomorrow" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#c9a84c);width:0"></div>
@@ -2113,7 +2113,7 @@ function showRacingHome(){
 
       <span style="font-size:24px;line-height:1;display:block;margin-bottom:6px">🎯</span>
 
-      <div style="font-size:20px;font-weight:700;color:var(--navy);line-height:1.1">Tomorrow's NAP &amp; NB</div>
+      <div style="font-size:22px;font-weight:700;color:var(--navy);line-height:1.1">Tomorrow's NAP &amp; NB</div>
 
       <div style="font-size:13px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px">With <div style="background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div></div>
 
@@ -2160,7 +2160,7 @@ function showRacingHome(){
     <div id="next-race-section" style="padding:16px 0 0">
 
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;margin-bottom:12px">
-        <div style="font-size:20px;font-weight:700;color:var(--navy)">Next Race</div>
+        <div style="font-size:20px;font-weight:700;color:var(--navy)" style="font-size:22px">Next Race</div>
         <div id="nr-hdr-cd" style="font-size:13px;font-weight:600;color:#1e9e6b"></div>
       </div>
 
@@ -6960,7 +6960,7 @@ function renderTodayMeetingsList(){
     // Full-width banner card
     out+='<div style="margin:0 0 2px;border-radius:0;overflow:hidden">';
     // Image banner — tappable
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="position:relative;height:72px;background:#0b1628;overflow:hidden;cursor:pointer">';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="position:relative;height:96px;background:#0b1628;overflow:hidden;cursor:pointer">';
     if(imgSrc){
       out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">';
     } else {
@@ -7000,8 +7000,8 @@ function renderTodayMeetingsList(){
       out+='<div id="tdpills-'+m.id+'" style="'+pillStyle+'display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
-        out+='<div style="flex-shrink:0;width:58px;border:1px solid '+(isSel?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?"#0b1628":"#f5f7fb")+'" onclick="todaySelectRace(\''+m.id+'\','+ri+')">';
-        out+='<div style="font-size:12px;font-weight:600;color:'+(isSel?"#fff":"#0b1628")+'">'+escHtml(race.t)+'</div>';
+        out+='<div style="flex-shrink:0;width:66px;border:1px solid '+(isSel?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:11px 4px;text-align:center;cursor:pointer;background:'+(isSel?"#0b1628":"#f5f7fb")+'" onclick="todaySelectRace(\''+m.id+'\','+ri+')">';
+        out+='<div style="font-size:13px;font-weight:600;color:'+(isSel?"#fff":"#0b1628")+'">'+escHtml(race.t)+'</div>';
         out+='<div style="font-size:10px;color:'+(isSel?"rgba(255,255,255,.55)":"#9aa3b5")+';margin-top:1px">'+race.r+' rnrs</div>';
         out+='</div>';
       });
@@ -7067,7 +7067,7 @@ function rcTimesHtml(m,large){
 
     var isSel=selRace===ri;
 
-    out+='<div style="flex-shrink:0;width:'+sz+'px;border:1px solid '+(isSel?'#0b1628':'#e4e8f0')+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?'#0b1628':'#f5f7fb')+'" onclick="rcSelectRace(\''+m.id+'\','+ri+')">'
+    out+='<div style="flex-shrink:0;width:'+sz+'px;border:1px solid '+(isSel?'#0b1628':'#e4e8f0')+';border-radius:8px;padding:11px 4px;text-align:center;cursor:pointer;background:'+(isSel?'#0b1628':'#f5f7fb')+'" onclick="rcSelectRace(\''+m.id+'\','+ri+')">'
 
       +'<div style="font-size:'+fs+'px;font-weight:600;color:'+(isSel?'#fff':'#0b1628')+'">'+escHtml(race.t)+'</div>'
 
@@ -7651,7 +7651,7 @@ function nrRenderCard(){
   var xHtml=hidden.map(runnerRow).join("");
 
   var moreBtn=hidden.length>0
-    ?'<button onclick="nrToggleMore()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;background:#fff;border:none;border-top:1px solid #f0f2f7;border-bottom:1px solid #f0f2f7;font-family:inherit;font-size:12px;font-weight:600;color:#0b1628;cursor:pointer">'
+    ?'<button onclick="nrToggleMore()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;background:#fff;border:none;border-top:1px solid #f0f2f7;border-bottom:1px solid #f0f2f7;font-family:inherit;font-size:13px;font-weight:600;color:#0b1628;cursor:pointer">'
       +'<span id="nr-more-icon" style="width:18px;height:18px;border-radius:50%;background:#0b1628;color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">'+(nrMoreOpen?"−":"+")+'</span>'
       +'<span id="nr-more-txt">'+(nrMoreOpen?"Show less":hidden.length+" more runners")+'</span>'
     +'</button>'
@@ -7664,7 +7664,7 @@ function nrRenderCard(){
           +'<div style="font-size:16px;font-weight:700;color:#0b1628">'+ escHtml(r.t) +' · '+ escHtml(r.venue) +'</div>'
           +'<div style="font-size:11px;color:#9aa3b5;margin-top:3px">'+ escHtml(r.dist) +' '+ escHtml(r.type) +' · '+ r.runners +' runners</div>'
         +'</div>'
-        +'<div id="nr-badge" style="background:#0b1628;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
+        +'<div id="nr-badge" style="background:#0b1628;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
       +'</div>'
       +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
       +rHtml
@@ -7914,8 +7914,8 @@ function selectRacingDate(d){
   var pu=document.getElementById("pill-upcoming");
   var lbl=document.querySelector("#ai-feed-strip span[data-feed-label]");
   var dot=document.querySelector("#ai-feed-strip span[data-feed-live]");
-  var pillActive="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
-  var pillInactive="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
+  var pillActive="background:none;color:#0b1628;border:none;border-bottom:2px solid #1e9e6b;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
+  var pillInactive="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px";
   if(pt) pt.style.cssText=d==="today"?pillActive:pillInactive;
   if(pm) pm.style.cssText=d==="tomorrow"?pillActive:pillInactive;
   if(pu) pu.style.cssText=d==="upcoming"?pillActive:pillInactive;
@@ -8031,8 +8031,8 @@ function selectRacingSection(s){
   var winnersC=document.getElementById("racing-winners-content");
   var nrPanel=document.getElementById("section-nextrace-panel");
   // Section nav button styles
-  var active="background:none;border:none;border-bottom:2px solid #c9a84c;color:#0b1628;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em";
-  var inactive="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em";
+  var active="background:none;border:none;border-bottom:2px solid #c9a84c;color:#0b1628;padding:13px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em";
+  var inactive="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em";
   var bRC=document.getElementById("secnav-racecards");
   var bNR=document.getElementById("secnav-nextrace");
   var bWN=document.getElementById("secnav-winners");
@@ -8078,7 +8078,7 @@ function tmTimesHtml(m){
   out+='<div style="display:flex;gap:7px;overflow-x:auto;padding:0 14px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   m.races.forEach(function(race,ri){
     var isSel=selRace===ri;
-    out+='<div style="flex-shrink:0;width:64px;border:1px solid '+(isSel?'#0b1628':'#e4e8f0')+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?'#0b1628':'#f5f7fb')+'" onclick="tmSelectRace(\''+m.id+'\','+ri+')">';
+    out+='<div style="flex-shrink:0;width:64px;border:1px solid '+(isSel?'#0b1628':'#e4e8f0')+';border-radius:8px;padding:11px 4px;text-align:center;cursor:pointer;background:'+(isSel?'#0b1628':'#f5f7fb')+'" onclick="tmSelectRace(\''+m.id+'\','+ri+')">';
     out+='<div style="font-size:13px;font-weight:700;color:'+(isSel?'#fff':'#0b1628')+'">'+escHtml(race.t)+'</div>';
     out+='<div style="font-size:10px;color:'+(isSel?'rgba(255,255,255,0.7)':'#9aa3b5')+';margin-top:2px">'+race.r+' rnrs</div>';
     out+='</div>';
@@ -8203,7 +8203,7 @@ function renderTomorrowMeetingsList(){
     // Full-width banner card
     out+='<div style="margin:0 0 2px;border-radius:0;overflow:hidden">';
     // Image banner — tappable
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="position:relative;height:72px;background:#0b1628;overflow:hidden;cursor:pointer">';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="position:relative;height:96px;background:#0b1628;overflow:hidden;cursor:pointer">';
     if(imgSrc) out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">';
     out+='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.06) 0%,rgba(11,22,40,0.72) 100%)"></div>';
     // AI EDGE badge top-left
@@ -8214,10 +8214,10 @@ function renderTomorrowMeetingsList(){
     out+='<div style="position:absolute;top:6px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center">';
     out+='<span style="font-size:16px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     // Venue name bottom-left
-    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px 8px">';
-    out+='<div style="font-size:16px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.3px">'+escHtml(m.name)+'</div>';
+    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 14px 10px">';
+    out+='<div style="font-size:20px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.3px">'+escHtml(m.name)+'</div>';
     out+='<div style="margin-top:3px;display:flex;align-items:center;gap:6px">';
-    out+='<span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.82)">'+m.races.length+' races</span>';
+    out+='<span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.82)">'+m.races.length+' races</span>';
     if(m.feature) out+='<span style="font-size:9px;font-weight:700;background:#1e9e6b;color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">FEATURE</span>';
     out+='</div></div>';
     out+='</div>';
@@ -8235,8 +8235,8 @@ function renderTomorrowMeetingsList(){
       out+='<div id="tmpills-'+m.id+'" style="'+pillStyle+'display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
-        out+='<div style="flex-shrink:0;width:58px;border:1px solid '+(isSel?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(isSel?"#0b1628":"#f5f7fb")+'" onclick="tomorrowSelectRace(\''+m.id+'\','+ri+')">';
-        out+='<div style="font-size:12px;font-weight:600;color:'+(isSel?"#fff":"#0b1628")+'">'+escHtml(race.t)+'</div>';
+        out+='<div style="flex-shrink:0;width:66px;border:1px solid '+(isSel?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:11px 4px;text-align:center;cursor:pointer;background:'+(isSel?"#0b1628":"#f5f7fb")+'" onclick="tomorrowSelectRace(\''+m.id+'\','+ri+')">';
+        out+='<div style="font-size:13px;font-weight:600;color:'+(isSel?"#fff":"#0b1628")+'">'+escHtml(race.t)+'</div>';
         out+='<div style="font-size:10px;color:'+(isSel?"rgba(255,255,255,.55)":"#9aa3b5")+';margin-top:1px">'+race.r+' rnrs</div>';
         out+='</div>';
       });
