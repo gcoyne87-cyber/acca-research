@@ -7727,6 +7727,7 @@ var AI_FEED_MESSAGES=[
   "Two unexposed Mullins bumper horses step up in trip for the first time today at 13:15"
 ];
 var aiFeedIdx=0;
+var aiFeedTmrwIdx=0;
 
 function aiFeedResetProgress(id){
   var pb=document.getElementById(id);
@@ -7753,21 +7754,25 @@ function aiFeedTick(){
 function aiFeedInitTomorrow(){
   var msg=document.getElementById("ai-feed-msg-tomorrow");
   if(!msg) return;
-  var ctr=document.getElementById("ai-feed-counter-tomorrow");
-  if(ctr) ctr.textContent="1 / "+(AI_FEED_TOMORROW_MESSAGES||AI_FEED_MESSAGES).length;
-  aiFeedResetProgress("ai-feed-progress-tomorrow");
-  if(msg.textContent) return;
+  aiFeedTmrwIdx=0;
   msg.textContent=AI_FEED_MESSAGES[0];
   msg.style.animation="";
-  if(!window._aiFeedTimerTm) window._aiFeedTimerTm=setInterval(function(){
+  var ctr=document.getElementById("ai-feed-counter-tomorrow");
+  if(ctr) ctr.textContent="1 / "+AI_FEED_MESSAGES.length;
+  aiFeedResetProgress("ai-feed-progress-tomorrow");
+  if(window._aiFeedTimerTm) clearInterval(window._aiFeedTimerTm);
+  window._aiFeedTimerTm=setInterval(function(){
     var m=document.getElementById("ai-feed-msg-tomorrow");
     if(!m) return;
-    m.style.animation="aiFeedSlideOut 0.4s ease forwards";
+    m.style.animation="aiFeedFadeDown 0.3s ease forwards";
     setTimeout(function(){
-      aiFeedIdx=(aiFeedIdx+1)%AI_FEED_MESSAGES.length;
-      m.textContent=AI_FEED_MESSAGES[aiFeedIdx];
-      m.style.animation="aiFeedSlideIn 0.4s ease forwards";
-    },400);
+      aiFeedTmrwIdx=(aiFeedTmrwIdx+1)%AI_FEED_MESSAGES.length;
+      m.textContent=AI_FEED_MESSAGES[aiFeedTmrwIdx];
+      m.style.animation="aiFeedFadeUp 0.35s ease forwards";
+      var c=document.getElementById("ai-feed-counter-tomorrow");
+      if(c) c.textContent=(aiFeedTmrwIdx+1)+" / "+AI_FEED_MESSAGES.length;
+      aiFeedResetProgress("ai-feed-progress-tomorrow");
+    },300);
   },8000);
 }
 function aiFeedInit(){
