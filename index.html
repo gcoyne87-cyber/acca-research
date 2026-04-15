@@ -1777,6 +1777,7 @@ function showRacingHome(){
 
   renderRacingWinners();
   renderTodayMeetingsList();
+  _wcStart();
 
   selectRacingSection('racecards');
 
@@ -1796,7 +1797,7 @@ function showRacingHome(){
 
     <div class="topnav-logo" onclick="goRacingHome()" style="cursor:pointer">
 
-      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
+      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:var(--navy)">Accu</span><span style="color:var(--gold)">Edge</span></div>
 
       <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-top:3px">Sports Research Tool</div>
 
@@ -2014,6 +2015,29 @@ function showRacingHome(){
     </div>
 
   <div id="racing-today-content">
+
+    <!-- WINNERS FEED -->
+    <div style="margin:12px 12px 0;border-radius:12px;overflow:hidden;position:relative;background:#f0faf6;border:1px solid #b8dece">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+          <span style="font-size:9px;font-weight:700;color:#0b5e3a;text-transform:uppercase;letter-spacing:.1em">Our Picks Won</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 12px;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div id="wf-horse" style="font-size:19px;font-weight:800;color:#0b1628;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="wf-detail" style="font-size:10px;color:#6eaa8a;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:3px">
+          <div id="wf-result" style="font-size:26px;font-weight:800;color:#1e9e6b;line-height:1"></div>
+          <div id="wf-price" style="font-size:10px;color:#6eaa8a;line-height:1.4"></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#c8e8d8">
+        <div id="wf-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
+      </div>
+    </div>
 
     <div id="racing-today-meetings" style="background:#e8f5ef;padding-bottom:4px;">
     <!-- TODAY'S MEETINGS CAROUSEL -->
@@ -6655,6 +6679,52 @@ var RECENT_WINNERS=[
   {type:'Best Value',date:'Tue 1 Apr',legs:[{team:'Leeds United',detail:'v Millwall · Championship'}],price:'8/11'},
 
 ];
+
+var WINNERS_STRIP=[
+  {name:'Majolique',course:'Cork',race:'Grade 3 Hurdle',date:'14 Apr',price:'2/1',result:'WIN'},
+  {name:'Proactif',course:'Aintree',race:'Grade 1 Novice Chase',date:'6 Apr',price:'5/2',result:'WIN'},
+  {name:'Doctor Elvis',course:'Cork',race:'Class 3 Handicap',date:'4 Apr',price:'10/1',result:'WIN'},
+  {name:'Espoir De Romay',course:'Punchestown',race:'Grade 2 Chase',date:'7 Apr',price:'5/1',result:'WIN'},
+  {name:'Banbridge',course:'Fairyhouse',race:'Grade 1 Chase',date:'5 Apr',price:'7/2',result:'WIN'},
+  {name:'Galopin Des Champs',course:'Cheltenham',race:'Gold Cup',date:'14 Mar',price:'6/4',result:'WIN'},
+  {name:'Teahupoo',course:'Punchestown',race:'Grade 1 Hurdle',date:'23 Mar',price:'3/1',result:'WIN'},
+  {name:'Willie\'s Warrior',course:'Naas',race:'Class 4 Hurdle',date:'29 Mar',price:'9/2',result:'E/W'},
+  {name:'Brighterdaysahead',course:'Leopardstown',race:'Grade 2 Hurdle',date:'31 Mar',price:'7/1',result:'WIN'},
+  {name:'Captain Guinness',course:'Cheltenham',race:'Champion Chase',date:'13 Mar',price:'4/1',result:'WIN'},
+];
+
+var _wcIdx=0,_wcTimer=null,_wcInterval=4000;
+
+function _wcTick(){
+  var horse=document.getElementById('wf-horse');
+  var detail=document.getElementById('wf-detail');
+  var price=document.getElementById('wf-price');
+  var result=document.getElementById('wf-result');
+  var bar=document.getElementById('wf-progress');
+  if(!horse) return;
+  var w=WINNERS_STRIP[_wcIdx];
+  // Fade out
+  [horse,detail,price,result].forEach(function(el){if(el){el.style.transition='opacity .35s';el.style.opacity='0';}});
+  // Swap content after fade-out completes, then fade in
+  setTimeout(function(){
+    horse.textContent=w.name;
+    detail.textContent=w.course+' · '+w.race+' · '+w.date;
+    price.textContent=w.price;
+    if(result) result.textContent=w.result;
+    [horse,detail,price,result].forEach(function(el){if(el){el.style.transition='opacity .35s';el.style.opacity='1';}});
+  },380);
+  if(bar){bar.style.transition='none';bar.style.width='0';bar.offsetHeight;bar.style.transition='width '+_wcInterval+'ms linear';bar.style.width='100%';}
+  _wcIdx=(_wcIdx+1)%WINNERS_STRIP.length;
+}
+
+function _wcStart(){
+  if(_wcTimer) clearInterval(_wcTimer);
+  _wcIdx=0;
+  setTimeout(function(){
+    _wcTick();
+    _wcTimer=setInterval(_wcTick,_wcInterval);
+  },60);
+}
 
 function renderWinners(){
 
