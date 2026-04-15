@@ -2014,30 +2014,31 @@ function showRacingHome(){
       <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit">Upcoming</button>
     </div>
 
-  <div id="racing-today-content">
-
-    <!-- WINNERS FEED -->
-    <div style="margin:12px 12px 0;border-radius:12px;overflow:hidden;position:relative;background:#f0faf6;border:1px solid #b8dece">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-          <span style="font-size:9px;font-weight:700;color:#0b5e3a;text-transform:uppercase;letter-spacing:.1em">Our Picks Won</span>
-        </div>
+  <!-- WINNERS FEED (shared: Today + Tomorrow) -->
+  <div id="racing-winners-feed" style="margin:8px 12px 0;border-radius:10px;overflow:hidden;position:relative;background:#f0faf6;border:1px solid #b8dece">
+    <div style="display:flex;align-items:center;gap:7px;padding:5px 12px 0">
+      <div style="display:inline-flex;align-items:center;gap:3px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:2px 7px;flex-shrink:0">
+        <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+        <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 12px;gap:12px">
-        <div style="flex:1;min-width:0">
-          <div id="wf-horse" style="font-size:19px;font-weight:800;color:#0b1628;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-          <div id="wf-detail" style="font-size:10px;color:#6eaa8a;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:3px">
-          <div id="wf-result" style="font-size:26px;font-weight:800;color:#1e9e6b;line-height:1"></div>
-          <div id="wf-price" style="font-size:10px;color:#6eaa8a;line-height:1.4"></div>
-        </div>
+      <span style="font-size:10px;font-weight:600;color:#0b5e3a;letter-spacing:.01em">Picks of the Day · Won</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 12px 6px;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div id="wf-horse" style="font-size:15px;font-weight:800;color:#0b1628;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <div id="wf-detail" style="font-size:10px;color:#6eaa8a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
       </div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#c8e8d8">
-        <div id="wf-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+        <div id="wf-result" style="font-size:19px;font-weight:800;color:#1e9e6b;line-height:1"></div>
+        <div id="wf-price" style="font-size:10px;color:#6eaa8a;line-height:1.4"></div>
       </div>
     </div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#c8e8d8">
+      <div id="wf-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
+    </div>
+  </div>
+
+  <div id="racing-today-content">
 
     <div id="racing-today-meetings" style="background:#e8f5ef;padding-bottom:4px;">
     <!-- TODAY'S MEETINGS CAROUSEL -->
@@ -7899,6 +7900,8 @@ function selectRacingDate(d){
   if(pu) pu.style.cssText=d==="upcoming"?pillActive:pillInactive;
   if(today) today.style.display=d==="today"?"":"none";
   if(tmrw) tmrw.style.display=d==="tomorrow"?"":"none";
+  var wfeed=document.getElementById("racing-winners-feed");
+  if(wfeed) wfeed.style.display=d==="upcoming"?"none":"";
   if(d==="tomorrow"){ renderTomorrowMeetingsList(); }
 
 }
