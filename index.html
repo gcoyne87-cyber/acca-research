@@ -737,13 +737,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .sli-match{font-size:10px;color:rgba(255,255,255,0.28);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.sli-odds{font-size:13px;font-weight:600;color:var(--gold);flex-shrink:0}
+.sli-odds{font-size:13px;font-weight:600;color:rgba(255,255,255,0.45);flex-shrink:0}
 
 .sli-remove{background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;padding:0}
 
 .sli-remove:hover{color:#ff6b6b}
 
 .slip-divider{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:10px 0}
+
+.slip-add-btn{width:100%;background:#f0f2f7;color:#0b1628;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
+@media(hover:hover){.slip-add-btn:hover{background:#0b1628;color:#fff}}
 
 .stake-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
 
@@ -800,6 +803,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .topnav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--green);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
 
 @keyframes flashPill{0%,100%{background:var(--green);color:#fff}50%{background:transparent;color:var(--green)}}
+@keyframes hwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
 
 .research-pill{display:none;align-items:center;gap:5px;background:var(--green);color:#fff;border:2px solid var(--green);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;margin-left:4px;vertical-align:middle;cursor:pointer}
 
@@ -820,12 +824,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .auth-signup:hover{background:#f0faf6}
 
 /* ── RACING MODE TOP BAR ── */
-.topnav.racing-mode{background:#0b1628;border-bottom-color:#1a2a45}
-.topnav.racing-mode .topnav-logo span:first-child{color:#fff !important}
-.topnav.racing-mode .topnav-link{color:rgba(255,255,255,0.6)}
-.topnav.racing-mode .topnav-link:hover{color:#fff;background:rgba(255,255,255,0.08)}
-.topnav.racing-mode .topnav-link.active{color:#fff;border-bottom-color:#c9a84c}
-.topnav.racing-mode .topnav-auth div div{background:#fff !important}
+.topnav.racing-mode{background:#fff;border-bottom-color:#e4e8f0}
+.topnav.racing-mode .topnav-logo span:first-child{color:var(--navy) !important}
+.topnav.racing-mode .topnav-link{color:var(--mid)}
+.topnav.racing-mode .topnav-link:hover{color:var(--navy);background:var(--soft)}
+.topnav.racing-mode .topnav-link.active{color:var(--navy);border-bottom-color:#c9a84c}
+.topnav.racing-mode .topnav-auth div div{background:#0b1628 !important}
 
 @media(max-width:600px){
 
@@ -1778,6 +1782,7 @@ function showRacingHome(){
   renderRacingWinners();
   renderTodayMeetingsList();
   _wcStart();
+  _hwStart();
 
   selectRacingSection('racecards');
 
@@ -1858,27 +1863,6 @@ function showRacingHome(){
 
     </div>
 
-    <!-- RECENT WINNERS -->
-
-    <div class="home-section" id="winners-section" style="margin-bottom:20px">
-
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
-
-        <div>
-
-          <div style="font-size:18px;font-weight:600;color:var(--navy)">🏆 Recent Winners</div>
-
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">AI picks that landed</div>
-
-        </div>
-
-        <div style="font-size:11px;font-weight:500;color:var(--green)">Swipe right →</div>
-
-      </div>
-
-      <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="winners-carousel"></div>
-
-    </div>
 
     <!-- TOP FIXTURE SECTION -->
 
@@ -2001,7 +1985,7 @@ function showRacingHome(){
     </div>
     <!-- SECTION NAV -->
     <div id="racing-section-nav" style="background:#fff;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #e4e8f0">
-      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid #c9a84c;color:#0b1628;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
+      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid transparent;color:#0b1628;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
       <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Next Race</button>
       <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Winners</button>
       <button id="secnav-pickofday" onclick="selectRacingSection('pickofday')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Pick of the Day</button>
@@ -2015,32 +1999,54 @@ function showRacingHome(){
     </div>
 
   <!-- WINNERS FEED (shared: Today + Tomorrow) -->
-  <div id="racing-winners-feed" style="margin:8px 12px 0;border-radius:10px;overflow:hidden;position:relative;background:#f0faf6;border:1px solid #b8dece">
-    <div style="display:flex;align-items:center;gap:7px;padding:5px 12px 0">
-      <div style="display:inline-flex;align-items:center;gap:3px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:2px 7px;flex-shrink:0">
-        <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-        <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+  <!-- WINNERS SLIDER -->
+  <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:8px 12px 0;border-radius:12px">
+
+    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.35) 0%,rgba(11,22,40,0.75) 100%);pointer-events:none"></div>
+
+    <div style="padding:22px 16px 24px 18px;position:relative;min-height:200px;display:flex;flex-direction:column;justify-content:space-between">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:hwPulse 1.8s ease-in-out infinite"></div>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+        </div>
+        <div id="hw-result" style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#fff;background:#1e9e6b;padding:4px 12px;border-radius:99px">WIN</div>
       </div>
-      <span style="font-size:10px;font-weight:600;color:#0b5e3a;letter-spacing:.01em">Picks of the Day · Won</span>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 12px 6px;gap:10px">
-      <div style="flex:1;min-width:0">
-        <div id="wf-horse" style="font-size:15px;font-weight:800;color:#0b1628;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-        <div id="wf-detail" style="font-size:10px;color:#6eaa8a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div style="flex:1;min-width:0">
+          <div id="hw-horse" style="font-size:26px;font-weight:800;color:#fff;line-height:1.05;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.38);margin-top:7px;line-height:1.5"></div>
+        </div>
+        <div style="flex-shrink:0;text-align:right;padding-top:2px">
+          <div style="font-size:9px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,0.22);text-transform:uppercase;margin-bottom:4px">PRICE</div>
+          <div id="hw-price" style="font-size:28px;font-weight:800;color:#c9a84c;letter-spacing:-0.5px;line-height:1"></div>
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
-        <div id="wf-result" style="font-size:19px;font-weight:800;color:#1e9e6b;line-height:1"></div>
-        <div id="wf-price" style="font-size:10px;color:#6eaa8a;line-height:1.4"></div>
+
+      <div style="display:flex;align-items:center;justify-content:flex-end">
+        <div id="hw-counter" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:.05em">1 / 10</div>
       </div>
+
     </div>
-    <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#c8e8d8">
-      <div id="wf-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
+
+    <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.07)">
+      <div id="hw-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
     </div>
+
   </div>
 
   <div id="racing-today-content">
 
-    <div id="racing-today-meetings" style="background:#e8f5ef;padding-bottom:4px;">
+    <div style="padding:16px 16px 8px">
+      <div class="home-section-head-a">
+        <div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 9px;margin-bottom:8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
+        <div class="sec-title">Today's Racing</div>
+      </div>
+    </div>
+
+    <div id="racing-today-meetings" style="background:#f5f6f8;padding-bottom:4px;">
     <!-- TODAY'S MEETINGS CAROUSEL -->
 
     <div style="padding:8px 0 4px">
@@ -2076,7 +2082,14 @@ function showRacingHome(){
 
   <div id="racing-tomorrow-content" style="display:none;padding:0">
 
-  <div style="background:#e8f5ef;padding-bottom:4px;">
+    <div style="padding:16px 16px 8px">
+      <div class="home-section-head-a">
+        <div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 9px;margin-bottom:8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
+        <div class="sec-title">Tomorrow's Racing</div>
+      </div>
+    </div>
+
+  <div style="background:#f5f6f8;padding-bottom:4px;">
   <!-- TOMORROW MEETINGS -->
 
   <div style="padding:8px 0 4px">
@@ -2105,7 +2118,7 @@ function showRacingHome(){
       <div style="font-size:21px;font-weight:700;color:#0b1628;line-height:1.2">Tomorrow's Picks of the Day</div>
     </div>
 
-    <div id="racing-tomorrow-nap" style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px"><div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden"><div style="padding:12px 14px 7px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#fef9e7;border:1px solid #c9a84c;color:#7a5800">NAP · Pick of the Day</div><div style="font-size:20px;font-weight:800;color:#0b1628;line-height:1.1;margin-bottom:4px">Galopin Des Champs</div><div style="font-size:11px;color:#9aa3b5;line-height:1.4">14:00 Cheltenham · 3m Gold Cup Chase</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:#1e9e6b;line-height:1">6/4</div></div></div><div style="height:1px;background:#f3f4f6;margin:0 15px"></div><div style="padding:7px 14px 10px"><div style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div><div style="font-size:12px;color:#1a6b4a;line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div></div><div style="padding:0 14px 13px"><button style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button></div></div><div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden"><div style="padding:12px 14px 7px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46">NB · Next Best</div><div style="font-size:20px;font-weight:800;color:#0b1628;line-height:1.1;margin-bottom:4px">Jonbon</div><div style="font-size:11px;color:#9aa3b5;line-height:1.4">13:30 Cheltenham · 2m Champion Chase</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:#1e9e6b;line-height:1">5/2</div></div></div><div style="height:1px;background:#f3f4f6;margin:0 15px"></div><div style="padding:7px 14px 10px"><div style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div><div style="font-size:12px;color:#1a6b4a;line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div></div><div style="padding:0 14px 13px"><button style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button></div></div></div>
+    <div id="racing-tomorrow-nap" style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px"><div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden"><div style="padding:12px 14px 7px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#fef9e7;border:1px solid #c9a84c;color:#7a5800">NAP · Pick of the Day</div><div style="font-size:20px;font-weight:800;color:#0b1628;line-height:1.1;margin-bottom:4px">Galopin Des Champs</div><div style="font-size:11px;color:#9aa3b5;line-height:1.4">14:00 Cheltenham · 3m Gold Cup Chase</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:#1e9e6b;line-height:1">6/4</div></div></div><div style="height:1px;background:#f3f4f6;margin:0 15px"></div><div style="padding:7px 14px 10px"><div style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div><div style="font-size:12px;color:#1a6b4a;line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div></div><div style="padding:0 14px 13px"><button class="slip-add-btn">+ Add to My Slip</button></div></div><div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden"><div style="padding:12px 14px 7px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46">NB · Next Best</div><div style="font-size:20px;font-weight:800;color:#0b1628;line-height:1.1;margin-bottom:4px">Jonbon</div><div style="font-size:11px;color:#9aa3b5;line-height:1.4">13:30 Cheltenham · 2m Champion Chase</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:#1e9e6b;line-height:1">5/2</div></div></div><div style="height:1px;background:#f3f4f6;margin:0 15px"></div><div style="padding:7px 14px 10px"><div style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px"><div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span></div><div style="font-size:12px;color:#1a6b4a;line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:#6dbf96"> &middot; </span><strong style="font-weight:700;color:#0a5c38;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div></div><div style="padding:0 14px 13px"><button class="slip-add-btn">+ Add to My Slip</button></div></div></div>
 
   </div>
 </div>
@@ -2873,7 +2886,7 @@ function renderDailyPicks(){
 
       +'<div style="padding:10px 16px 14px">'
 
-      +'<button class="dp-add-btn" id="dp-btn-'+i+'" onclick="addDailyPick('+i+',this)" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s">+ Add to My Slip</button>'
+      +'<button class="dp-add-btn slip-add-btn" id="dp-btn-'+i+'" onclick="addDailyPick('+i+',this)">+ Add to My Slip</button>'
 
       +'</div>'
 
@@ -2899,7 +2912,7 @@ function addDailyPick(idx,btn){
 
     if(ob){ob.textContent=p.odds;ob.style.background='#fff';ob.style.color='var(--green)';}
 
-    if(sb){sb.textContent='+ Add to My Slip';sb.style.background='var(--green)';}
+    if(sb){sb.textContent='+ Add to My Slip';sb.style.background='';sb.style.color='';}
 
     renderSlip();return;
 
@@ -4472,6 +4485,7 @@ function setRiskFilter(risk,btn){
   renderTrendingAccas();
 
   renderWinners();
+  _hwStart();
 
   renderDailyPicks();
 
@@ -6630,6 +6644,7 @@ window.addEventListener('DOMContentLoaded',function(){
   renderTrendingAccas();
 
   renderWinners();
+  _hwStart();
 
   renderDailyPicks();
 
@@ -6725,6 +6740,55 @@ function _wcStart(){
     _wcTick();
     _wcTimer=setInterval(_wcTick,_wcInterval);
   },60);
+}
+
+// ── HOME WINNERS SLIDER ──────────────────────────────────────────────────────
+var _hwIdx=0,_hwTimer=null,_hwInterval=4500;
+
+function _hwTick(){
+  var horse=document.getElementById('hw-horse');
+  var detail=document.getElementById('hw-detail');
+  var price=document.getElementById('hw-price');
+  var result=document.getElementById('hw-result');
+  var counter=document.getElementById('hw-counter');
+  var bar=document.getElementById('hw-progress');
+  if(!horse) return;
+  var w=WINNERS_STRIP[_hwIdx];
+  var capturedIdx=_hwIdx;
+  // fade out text elements
+  [horse,detail,price].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
+  setTimeout(function(){
+    horse.textContent=w.name;
+    detail.textContent=w.course+' \u00b7 '+w.race+' \u00b7 '+w.date;
+    price.textContent=w.price;
+    if(result){
+      result.textContent=w.result;
+      result.style.background=w.result==='WIN'?'#1e9e6b':'#c9a84c';
+      result.style.color=w.result==='WIN'?'#fff':'#0b1628';
+    }
+    if(counter) counter.textContent=(capturedIdx+1)+' / '+WINNERS_STRIP.length;
+    [horse,detail,price].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
+  },310);
+  if(bar){bar.style.transition='none';bar.style.width='0';bar.offsetHeight;bar.style.transition='width '+_hwInterval+'ms linear';bar.style.width='100%';}
+  _hwIdx=(_hwIdx+1)%WINNERS_STRIP.length;
+}
+
+function _hwStart(){
+  if(_hwTimer) clearInterval(_hwTimer);
+  _hwIdx=0;
+  var slider=document.getElementById('winners-slider');
+  if(slider){
+    var imgEl=document.getElementById('img-cheltenham');
+    if(imgEl&&imgEl.src&&imgEl.src.length>10){
+      slider.style.backgroundImage='url('+imgEl.src+')';
+      slider.style.backgroundSize='cover';
+      slider.style.backgroundPosition='center 30%';
+    }
+  }
+  setTimeout(function(){
+    _hwTick();
+    _hwTimer=setInterval(_hwTick,_hwInterval);
+  },80);
 }
 
 function renderWinners(){
@@ -6990,34 +7054,17 @@ function renderTodayMeetingsList(){
     var hasRace=rcOpenRace[m.id]!=null;
     var selRace=rcOpenRace[m.id];
     // Full-width banner card
-    out+='<div style="margin:0 0 2px;border-radius:0;overflow:hidden">';
+    out+='<div style="margin:0 12px 8px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08)">';
     // Image banner — tappable
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="position:relative;height:96px;background:#0b1628;overflow:hidden;cursor:pointer">';
-    if(imgSrc){
-      out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">';
-    } else {
-      out+='<div style="position:absolute;inset:0;background:linear-gradient(150deg,#0b2a18 0%,#0d3b22 60%,#0b1628 100%)"></div>';
-      out+='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px">';
-      out+='<span style="font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">'+escHtml(m.name)+'</span>';
-      out+='<span style="font-size:10px;color:rgba(255,255,255,0.5)">'+escHtml(m.going)+'</span>';
-      out+='</div>';
-    }
-    out+='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.06) 0%,rgba(11,22,40,0.80) 100%)"></div>';
-    // AI EDGE badge top-left
-    out+='<div style="position:absolute;top:10px;left:10px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:4px;padding:2px 7px;display:inline-flex;align-items:center;gap:3px">';
-    out+='<div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>';
-    out+='<span style="font-size:8px;font-weight:700;color:#fff;letter-spacing:0.08em">AI EDGE</span></div>';
-    // +/- circle top-right
-    out+='<div style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center">';
-    out+='<span style="font-size:18px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
-    // Venue name + meta bottom-left
-    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 10px 8px">';
-    out+='<div style="font-size:24px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.5px">'+escHtml(m.name)+'</div>';
-    out+='<div style="margin-top:2px;display:flex;align-items:center;gap:6px">';
-    out+='<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.75)">'+m.races.length+' races</span>';
-    out+='</div>';
-    out+='<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:2px">'+escHtml(m.going)+' &middot; Next in '+m.nextMins+' mins</div>';
-    out+='</div>';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;height:58px;cursor:pointer;background:#fff">';
+    out+='<div style="min-width:0">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="margin-top:4px;display:flex;align-items:center;gap:8px">';
+    out+='<span style="font-size:10px;font-weight:600;color:#1e9e6b">'+m.races.length+' races</span>';
+    out+='<span style="font-size:10px;color:#9aa3b5">'+escHtml(m.going)+'</span>';
+    out+='</div></div>';
+    out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(11,22,40,0.05);border:1.5px solid rgba(11,22,40,0.12);display:flex;align-items:center;justify-content:center;margin-left:10px">';
+    out+='<span style="font-size:16px;line-height:1;color:#0b1628;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     out+='</div>';
     // Expanded white panel below banner
     if(isOpen){
@@ -7845,7 +7892,7 @@ function renderRacingPicks(){
 
       +'<div style="padding:0 14px 13px">'
         +(courseName ? '<div onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\')" style="font-size:12px;color:#1e9e6b;font-weight:500;cursor:pointer;margin-bottom:10px;letter-spacing:.01em">→ View full '+escHtml(courseName)+' card</div>' : '')
-        +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
+        +'<button class="slip-add-btn" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to My Slip</button>'
       +'</div>'
 
     +'</div>';
@@ -8157,24 +8204,16 @@ function renderTomorrowMeetingsList(){
     var hasRace=tmOpenRace[m.id]!=null;
     var selRace=tmOpenRace[m.id];
     // Full-width banner card
-    out+='<div style="margin:0 0 2px;border-radius:0;overflow:hidden">';
+    out+='<div style="margin:0 12px 8px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08)">';
     // Image banner — tappable
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="position:relative;height:96px;background:#0b1628;overflow:hidden;cursor:pointer">';
-    if(imgSrc) out+='<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">';
-    out+='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.06) 0%,rgba(11,22,40,0.72) 100%)"></div>';
-    // AI EDGE badge top-left
-    out+='<div style="position:absolute;top:8px;left:10px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:4px;padding:2px 7px;display:inline-flex;align-items:center;gap:3px">';
-    out+='<div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>';
-    out+='<span style="font-size:8px;font-weight:700;color:#fff;letter-spacing:0.08em">AI EDGE</span></div>';
-    // +/- circle top-right
-    out+='<div style="position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center">';
-    out+='<span style="font-size:16px;line-height:1;color:#fff;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
-    // Venue name bottom-left
-    out+='<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 10px 8px">';
-    out+='<div style="font-size:24px;font-weight:700;color:#fff;line-height:1;letter-spacing:-0.5px">'+escHtml(m.name)+'</div>';
-    out+='<div style="margin-top:3px;display:flex;align-items:center;gap:6px">';
-    out+='<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.75)">'+m.races.length+' races</span>';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;height:58px;cursor:pointer;background:#fff">';
+    out+='<div style="min-width:0">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="margin-top:4px;display:flex;align-items:center;gap:8px">';
+    out+='<span style="font-size:10px;font-weight:600;color:#1e9e6b">'+m.races.length+' races</span>';
     out+='</div></div>';
+    out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(11,22,40,0.05);border:1.5px solid rgba(11,22,40,0.12);display:flex;align-items:center;justify-content:center;margin-left:10px">';
+    out+='<span style="font-size:16px;line-height:1;color:#0b1628;font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     out+='</div>';
     // Expanded white panel
     if(isOpen){
