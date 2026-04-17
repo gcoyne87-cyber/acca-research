@@ -1423,7 +1423,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-cta-wrap{padding:0}
 
-.fx-cta{display:block;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;margin:8px 12px;width:calc(100% - 24px);transition:all .18s}
+.fx-cta{display:block;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;margin:4px 12px 4px;width:calc(100% - 24px);transition:all .18s}
 
 .fx-cta span{color:var(--gold)}
 
@@ -2012,7 +2012,7 @@ function showRacingHome(){
       </div>
 
       <!-- CTA -->
-      <button onclick="document.getElementById('today-picks-section').scrollIntoView({behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;letter-spacing:-.01em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+      <button onclick="var el=document.getElementById('today-picks-section');var y=el.getBoundingClientRect().top+window.scrollY-56;window.scrollTo({top:y,behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;letter-spacing:-.01em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
         See Today's Picks
         <span style="font-size:14px;line-height:1">→</span>
       </button>
@@ -2072,6 +2072,15 @@ function showRacingHome(){
 
       <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:10px;padding:0 6px 8px"></div>
 
+    </div>
+
+    <!-- HOMEPAGE NEXT RACE -->
+    <div class="main" style="padding:0">
+      <div style="padding:10px 6px 4px">
+        <div class="sec-title">Next Race</div>
+      </div>
+      <div id="nr-strip-home" style="display:flex;gap:6px;overflow-x:auto;padding:0 6px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+      <div id="nr-card-home" style="margin:0 6px 12px"></div>
     </div>
 
   </div>
@@ -2177,9 +2186,8 @@ function showRacingHome(){
 
     <div id="next-race-section" style="padding:16px 0 0">
 
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;margin-bottom:12px">
-        <div style="font-size:20px;font-weight:700;color:var(--navy)" style="font-size:22px">Next Race</div>
-        <div id="nr-hdr-cd" style="font-size:13px;font-weight:600;color:#1e9e6b"></div>
+      <div style="padding:0 16px;margin-bottom:12px">
+        <div style="font-size:20px;font-weight:700;color:var(--navy)">Next Race</div>
       </div>
 
       <div id="nr-strip" style="display:flex;gap:6px;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
@@ -7609,22 +7617,29 @@ function nrFmtBadge(secs){
 }
 
 function nrTick(){
+  var secs=nrSecsLeft(nrSelected);
   var hdr=document.getElementById("nr-hdr-cd");
-  if(hdr) hdr.textContent=nrFmtCd(nrSecsLeft(nrSelected));
+  if(hdr) hdr.textContent=nrFmtCd(secs);
+  var hdrHome=document.getElementById("nr-hdr-cd-home");
+  if(hdrHome) hdrHome.textContent=nrFmtCd(secs);
   var badge=document.getElementById("nr-badge");
-  if(badge) badge.textContent=nrFmtBadge(nrSecsLeft(nrSelected));
+  if(badge) badge.textContent=nrFmtBadge(secs);
+  var badgeHome=document.querySelectorAll("#nr-badge");
+  badgeHome.forEach(function(b){b.textContent=nrFmtBadge(secs);});
 }
 
 function nrRenderStrip(){
-  var strip=document.getElementById("nr-strip");
-  if(!strip) return;
-  strip.innerHTML=NR_RACES.map(function(r,i){
+  var html=NR_RACES.map(function(r,i){
     var a=i===nrSelected;
     return '<div onclick="nrSelect('+i+')" style="flex-shrink:0;background:'+(a?"#0b1628":"#fff")+';border:1px solid '+(a?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:7px 14px;text-align:center;cursor:pointer">'
       +'<div style="font-size:13px;font-weight:600;color:'+(a?"#fff":"#0b1628")+'">'+ escHtml(r.t) +'</div>'
       +'<div style="font-size:10px;color:'+(a?"rgba(255,255,255,0.45)":"#9aa3b5")+';margin-top:1px">'+escHtml(r.venue)+'</div>'
     +'</div>';
   }).join("");
+  var strip=document.getElementById("nr-strip");
+  if(strip) strip.innerHTML=html;
+  var stripHome=document.getElementById("nr-strip-home");
+  if(stripHome) stripHome.innerHTML=html;
 }
 
 function nrAiTag(){
@@ -7736,56 +7751,45 @@ function runnerRow(ru){
   var jockey=ru.jockey||ru.jt||'';
   var trainer=ru.trainer?'Tr: '+ru.trainer:'';
   var form=ru.form?nrFormHtml(ru.form):'';
-  return '<div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f2f7;gap:10px">'
-    +'<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'
+  return '<div style="display:flex;align-items:center;padding:7px 14px;border-bottom:1px solid #f0f2f7;gap:10px">'
+    +'<div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;width:26px">'
       +silk
       +'<span style="font-size:9px;color:#9aa3b5;font-weight:600">'+ru.n+'</span>'
     +'</div>'
     +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:14px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</div>'
-      +'<div style="font-size:11px;color:#555;margin-top:2px">'+escHtml(jockey)+'</div>'
-      +(trainer?'<div style="font-size:11px;color:#888;margin-top:1px">'+escHtml(trainer)+'</div>':'')
-      +(form?'<div style="margin-top:3px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
-      +'<div id="nr-insight-'+ru.n+'"></div>'
+      +'<div style="font-size:13px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</div>'
+      +(jockey?'<div style="font-size:10px;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'')
+      +(trainer?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(trainer)+'</div>':'')
+      +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
     +'</div>'
-    +'<button onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
-      +'<div style="font-size:14px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
+    +'<button onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
+      +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
     +'</button>'
   +'</div>';
 }
 function nrRenderCard(){
   var card=document.getElementById("nr-card");
-  if(!card) return;
+  var cardHome=document.getElementById("nr-card-home");
+  if(!card&&!cardHome) return;
   var r=NR_RACES[nrSelected];
   var secs=nrSecsLeft(nrSelected);
-  var shown=NR_RUNNERS.slice(0,4);
-  var hidden=NR_RUNNERS.slice(4);
+  var rHtml=NR_RUNNERS.map(runnerRow).join("");
 
-  var rHtml=shown.map(runnerRow).join("");
-  var xHtml=hidden.map(runnerRow).join("");
-
-  var moreBtn=hidden.length>0
-    ?'<button onclick="nrToggleMore()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;background:#fff;border:none;border-top:1px solid #f0f2f7;border-bottom:1px solid #f0f2f7;font-family:inherit;font-size:13px;font-weight:600;color:#0b1628;cursor:pointer">'
-      +'<span id="nr-more-icon" style="width:18px;height:18px;border-radius:50%;background:#0b1628;color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">'+(nrMoreOpen?"−":"+")+'</span>'
-      +'<span id="nr-more-txt">'+(nrMoreOpen?"Show less":hidden.length+" more runners")+'</span>'
-    +'</button>'
-    :"";
-
-  card.innerHTML=
-    '<div style="background:#fff;border-top:1px solid #e4e8f0;border-bottom:1px solid #e4e8f0">'
-      +'<div style="padding:14px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between">'
+  var cardHtml=
+    '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden">'
+      +'<div style="padding:10px 14px 8px;display:flex;align-items:flex-start;justify-content:space-between">'
         +'<div>'
           +'<div style="font-size:16px;font-weight:700;color:#0b1628">'+ escHtml(r.t) +' · '+ escHtml(r.venue) +'</div>'
           +'<div style="font-size:11px;color:#9aa3b5;margin-top:3px">'+ escHtml(r.dist) +' '+ escHtml(r.type) +' · '+ r.runners +' runners</div>'
         +'</div>'
-        +'<div id="nr-badge" style="background:#0b1628;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
+        +'<div id="nr-badge" style="font-size:12px;font-weight:700;color:#1e9e6b;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
       +'</div>'
       +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
       +rHtml
-      +'<div id="nr-extra" style="display:'+(nrMoreOpen?"block":"none")+'">'+xHtml+'</div>'
-      +moreBtn
     +'</div>';
 
+  if(card) card.innerHTML=cardHtml;
+  if(cardHome) cardHome.innerHTML=cardHtml;
   nrFetchAIEdge(r);
 }
 
