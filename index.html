@@ -2006,11 +2006,14 @@ function showRacingHome(){
 
     <div style="padding:18px 14px 20px;position:relative">
 
-      <!-- title -->
-      <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-.01em;margin-bottom:10px">Our Recent Winners</div>
-
-      <!-- NAP/NB pill -->
-      <div id="hw-type" style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46"></div>
+      <!-- title row: label left, NAP/NB pill right -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:3px;height:16px;background:#1e9e6b;border-radius:2px;flex-shrink:0"></div>
+          <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em">Our Recent Winners</span>
+        </div>
+        <div id="hw-type" style="display:inline-flex;align-items:center;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46"></div>
+      </div>
 
       <!-- horse + details left | WON + price right -->
       <div style="display:flex;align-items:stretch;justify-content:space-between;gap:14px">
