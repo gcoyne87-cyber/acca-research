@@ -1729,16 +1729,7 @@ function switchSport(sport){
 }
 
 function goRacingHome(){
-  var rh=document.getElementById('racing-home-content');
-  if(rh) rh.style.display='none';
-  var tn=document.getElementById('main-topnav');
-  if(tn) tn.classList.remove('racing-mode');
-  var mc=document.getElementById('main-content');
-  if(mc) mc.style.display='';
-  var bn=document.getElementById('main-bottom-nav');
-  if(bn) bn.style.display='';
-  showFootballHome();
-  showPage('home');
+  showRacingHome();
 }
 
 function showFootballHome(){
@@ -1838,10 +1829,10 @@ function showRacingHome(){
     </div>
 
     <div class="topnav-auth">
-      <div onclick="openRacingMenu()" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:4px">
-        <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
-        <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
-        <div style="width:20px;height:2px;background:#0b1628;border-radius:2px"></div>
+      <div onclick="openRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:28px;height:28px">
+        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
+        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
+        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
       </div>
     </div>
 
@@ -1993,39 +1984,44 @@ function showRacingHome(){
 
     </div>
   <!-- WINNERS SLIDER -->
-  <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:0;border-radius:0">
+  <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:0">
 
-    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.30) 0%,rgba(11,22,40,0.82) 100%);pointer-events:none"></div>
+    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.25) 0%,rgba(11,22,40,0.6) 40%,rgba(11,22,40,0.96) 75%,#0b1628 100%);pointer-events:none;z-index:1"></div>
 
-    <div style="padding:22px 14px 18px;position:relative">
+    <div style="position:relative;z-index:2;padding:18px 16px 20px;display:flex;flex-direction:column;min-height:270px">
 
-      <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-.01em;margin-bottom:10px">Our Recent Winners</div>
+      <!-- Top label -->
+      <div style="font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#c9a84c">Picks of the Day</div>
 
-      <div id="hw-type" style="display:inline-flex;align-items:center;margin-bottom:8px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46"></div>
+      <!-- Centre section: horse left, WON right — vertically centred in remaining space -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:16px 0">
 
-      <div style="display:flex;align-items:stretch;justify-content:space-between;gap:14px;margin-bottom:22px">
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">
-          <div id="hw-horse" style="font-size:24px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px"></div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
-            <span id="hw-price" style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-0.2px;line-height:1;flex-shrink:0"></span>
-            <span style="font-size:11px;color:rgba(255,255,255,0.35);line-height:1">·</span>
-            <span id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+        <div style="flex:1;min-width:0">
+          <div id="hw-horse" style="font-size:27px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px"></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="hw-price" style="font-size:15px;font-weight:800;color:#c9a84c;flex-shrink:0;line-height:1"></span>
+            <span style="color:rgba(255,255,255,0.18);font-size:12px">·</span>
+            <span id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3"></span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <div id="hw-result" style="font-size:16px;font-weight:900;color:#fff;background:#1e9e6b;padding:5px 11px;border-radius:6px;letter-spacing:.02em;line-height:1;text-align:center"></div>
+
+        <!-- WON — unmissable -->
+        <div id="hw-result" style="flex-shrink:0;background:#1e9e6b;border-radius:12px;padding:14px 18px;text-align:center;box-shadow:0 4px 24px rgba(30,158,107,0.45)">
+          <div id="hw-result-text" style="font-size:22px;font-weight:900;color:#fff;letter-spacing:.05em;line-height:1"></div>
+          <div style="font-size:8.5px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:.14em;margin-top:4px;text-transform:uppercase">Result</div>
         </div>
+
       </div>
 
-      <button onclick="var el=document.getElementById('today-picks-section');var y=el.getBoundingClientRect().top+window.scrollY-56;window.scrollTo({top:y,behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;letter-spacing:-.01em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
-        See Today's Picks
-        <span style="font-size:14px;line-height:1">→</span>
+      <!-- CTA -->
+      <button onclick="var el=document.getElementById('today-picks-section');var y=el.getBoundingClientRect().top+window.scrollY-56;window.scrollTo({top:y,behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-.01em">
+        See Today's Picks <span style="font-size:14px">→</span>
       </button>
 
     </div>
 
-    <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.07)">
-      <div id="hw-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0"></div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.05);z-index:3">
+      <div id="hw-progress" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0;transition:none"></div>
     </div>
 
   </div>
@@ -2080,7 +2076,7 @@ function showRacingHome(){
     </div>
 
     <!-- HOMEPAGE NEXT RACE -->
-    <div class="main" style="padding:0">
+    <div id="nr-home-section" class="main" style="padding:0">
       <div style="padding:10px 6px 4px">
         <div class="sec-title">Next Race</div>
       </div>
@@ -2162,16 +2158,9 @@ function showRacingHome(){
 
 <div id="racing-winners-content" style="display:none;padding:0;background:#f5f7fb;min-height:300px">
     <div style="padding:16px 14px 32px">
-      <!-- record strip -->
-      <div style="background:#0b1628;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:2px">Last 30 Days</div>
-          <div style="font-size:16px;font-weight:800;color:#fff">10 Winners <span style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.5)">from 12 tips</span></div>
-        </div>
-        <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border:1.5px solid #c9a84c;border-radius:5px;padding:4px 9px">
-          <div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b"></div>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
-        </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:#9aa3b5;font-weight:500;margin-bottom:4px">Last 30 Days</div>
+        <div class="sec-title">Our Winners</div>
       </div>
       <div id="winners-list" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
@@ -6884,32 +6873,19 @@ function _hwTick(){
   var horse=document.getElementById('hw-horse');
   var detail=document.getElementById('hw-detail');
   var price=document.getElementById('hw-price');
-  var result=document.getElementById('hw-result');
-  var typeEl=document.getElementById('hw-type');
+  var resultBox=document.getElementById('hw-result');
+  var resultText=document.getElementById('hw-result-text');
   var bar=document.getElementById('hw-progress');
-  var dotsEl=document.getElementById('hw-dots');
   if(!horse) return;
   var currentIdx=_hwIdx;
   var w=WINNERS_STRIP[currentIdx];
-  [horse,detail,price,typeEl,result].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
+  [horse,detail,price,resultBox].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
   setTimeout(function(){
     horse.textContent=w.name;
-    detail.textContent=w.course+' \u00b7 '+w.race+' \u00b7 '+w.date;
+    detail.textContent=w.course+' · '+w.race+' · '+w.date;
     price.textContent=w.price;
-    if(typeEl) typeEl.textContent=w.type||'NAP \u00b7 Pick of the Day';
-    if(result){
-      result.textContent=w.result==='WIN'?'WON':w.result;
-      result.style.background='#1e9e6b';
-    }
-    if(dotsEl){
-      var dots=dotsEl.children;
-      for(var i=0;i<dots.length;i++){
-        var active=i===currentIdx;
-        dots[i].style.background=active?'#fff':'rgba(255,255,255,0.3)';
-        dots[i].style.width=active?'16px':'5px';
-      }
-    }
-    [horse,detail,price,typeEl,result].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
+    if(resultText) resultText.textContent=w.result==='WIN'?'WON':w.result;
+    [horse,detail,price,resultBox].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
   },310);
   if(bar){bar.style.transition='none';bar.style.width='0';bar.offsetHeight;bar.style.transition='width '+_hwInterval+'ms linear';bar.style.width='100%';}
   _hwIdx=(currentIdx+1)%WINNERS_STRIP.length;
@@ -6925,15 +6901,6 @@ function _hwStart(){
       slider.style.backgroundImage='url('+imgEl.src+')';
       slider.style.backgroundSize='cover';
       slider.style.backgroundPosition='center 30%';
-    }
-  }
-  var dotsEl=document.getElementById('hw-dots');
-  if(dotsEl){
-    dotsEl.innerHTML='';
-    for(var i=0;i<WINNERS_STRIP.length;i++){
-      var d=document.createElement('div');
-      d.style.cssText='height:5px;border-radius:3px;background:rgba(255,255,255,0.3);transition:width .3s,background .3s;width:5px';
-      dotsEl.appendChild(d);
     }
   }
   setTimeout(function(){
@@ -7140,15 +7107,45 @@ var RC_MEETINGS=[
 
 var RC_RUNNERS=[
 
-  {n:9,name:'Majolique',jockey:'J.P. Townend',trainer:'W.P. Mullins',price:'2/1',pick:true,form:'1-2111',silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'},insight:'JP Townend booked — 38% win rate at Cork on Yielding, Mullins in top form this season'},
+  {n:9,name:'Majolique',jockey:'J.P. Townend',trainer:'W.P. Mullins',price:'2/1',pick:true,form:'1-2111',wt:'11-12',or:145,silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'},history:[
+    {year:'2025',date:'06 Apr',course:'Punchestown',hand:'LH',dist:'2m4f',going:'Yielding',pos:1,ran:8,wt:'11-10',or:143},
+    {year:'2025',date:'15 Mar',course:'Cheltenham',hand:'LH',dist:'2m5f',going:'Soft',pos:2,ran:14,wt:'11-7',or:142},
+    {year:'2025',date:'01 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:1,ran:9,wt:'11-4',or:140},
+    {year:'2024',date:'28 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Heavy',pos:1,ran:7,wt:'11-0',or:138},
+    {year:'2024',date:'17 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:2,ran:10,wt:'10-12',or:135},
+  ]},
 
-  {n:7,name:'Proactif',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'5/2',pick:false,form:'2-1122',silk:{body:'#1a3a8f',sleeve:'#f0c040',cap:'#1a3a8f'},insight:'Second Mullins runner — solid form, watch for market move pre-race'},
+  {n:7,name:'Proactif',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'5/2',pick:false,form:'2-1122',wt:'11-10',or:142,silk:{body:'#1a3a8f',sleeve:'#f0c040',cap:'#1a3a8f'},history:[
+    {year:'2025',date:'06 Apr',course:'Fairyhouse',hand:'RH',dist:'2m4f',going:'Yielding',pos:2,ran:11,wt:'11-8',or:140},
+    {year:'2025',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m5f',going:'Soft',pos:1,ran:16,wt:'11-5',or:139},
+    {year:'2025',date:'25 Jan',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:8,wt:'11-2',or:137},
+    {year:'2024',date:'28 Dec',course:'Leopardstown',hand:'LH',dist:'2m',going:'Heavy',pos:1,ran:9,wt:'11-0',or:135},
+    {year:'2024',date:'03 Nov',course:'Down Royal',hand:'RH',dist:'2m',going:'Gd/Firm',pos:2,ran:7,wt:'10-10',or:132},
+  ]},
 
-  {n:3,name:'Macho Man',jockey:'D.E. Mullins',trainer:'W.P. Mullins',price:'4/1',pick:false,form:'3-2113',silk:{body:'#1e6b3a',sleeve:'#ffffff',cap:'#1e6b3a'}},
+  {n:3,name:'Macho Man',jockey:'D.E. Mullins',trainer:'W.P. Mullins',price:'4/1',pick:false,form:'3-2113',wt:'11-8',or:139,silk:{body:'#1e6b3a',sleeve:'#ffffff',cap:'#1e6b3a'},history:[
+    {year:'2025',date:'30 Mar',course:'Naas',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:10,wt:'11-6',or:137},
+    {year:'2025',date:'08 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:12,wt:'11-3',or:136},
+    {year:'2025',date:'12 Jan',course:'Gowran Park',hand:'RH',dist:'2m',going:'Heavy',pos:1,ran:8,wt:'11-0',or:134},
+    {year:'2024',date:'29 Dec',course:'Limerick',hand:'LH',dist:'2m4f',going:'Heavy',pos:3,ran:9,wt:'10-12',or:132},
+    {year:'2024',date:'10 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:2,ran:11,wt:'10-9',or:129},
+  ]},
 
-  {n:6,name:'North Shore',jockey:'K. Donoghue',trainer:'G. Cromwell',price:'8/1',pick:false,form:'1-3214',silk:{body:'#1a1a1a',sleeve:'#e07020',cap:'#1a1a1a'},insight:'Won twice on Good to Yielding — conditions ideal today'},
+  {n:6,name:'North Shore',jockey:'K. Donoghue',trainer:'G. Cromwell',price:'8/1',pick:false,form:'1-3214',wt:'11-4',or:134,silk:{body:'#1a1a1a',sleeve:'#e07020',cap:'#1a1a1a'},history:[
+    {year:'2025',date:'22 Mar',course:'Navan',hand:'RH',dist:'2m4f',going:'Yielding',pos:1,ran:9,wt:'11-2',or:132},
+    {year:'2025',date:'16 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:13,wt:'10-13',or:130},
+    {year:'2025',date:'19 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:8,wt:'10-10',or:128},
+    {year:'2024',date:'30 Dec',course:'Fairyhouse',hand:'RH',dist:'2m4f',going:'Heavy',pos:1,ran:10,wt:'10-7',or:126},
+    {year:'2024',date:'17 Nov',course:'Punchestown',hand:'LH',dist:'2m',going:'Gd/Yielding',pos:4,ran:12,wt:'10-4',or:123},
+  ]},
 
-  {n:2,name:'Kai Lung',jockey:"S. O'Keeffe",trainer:'W.P. Mullins',price:'20/1',pick:false,form:'0-4032',silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'}}
+  {n:2,name:'Kai Lung',jockey:"S. O'Keeffe",trainer:'W.P. Mullins',price:'20/1',pick:false,form:'0-4032',wt:'10-12',or:122,silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'},history:[
+    {year:'2025',date:'29 Mar',course:'Clonmel',hand:'RH',dist:'2m4f',going:'Soft',pos:4,ran:11,wt:'10-10',or:120},
+    {year:'2025',date:'01 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:0,ran:14,wt:'10-7',or:119},
+    {year:'2025',date:'05 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Heavy',pos:3,ran:9,wt:'10-4',or:117},
+    {year:'2024',date:'26 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:13,wt:'10-2',or:115},
+    {year:'2024',date:'10 Nov',course:'Thurles',hand:'RH',dist:'2m',going:'Heavy',pos:0,ran:8,wt:'9-13',or:113},
+  ]},
 
 ];
 
@@ -7335,30 +7332,7 @@ function rcRaceDetailHtml(m){
   var out='<div id="rc-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">'
     +(m.races.length>1?'<div style="font-size:11px;color:#1e9e6b;font-weight:600;padding:6px 12px 2px;text-align:right">← swipe for next race →</div>':'');
 
-  RC_RUNNERS.forEach(function(r,i){
-
-    var last=i===RC_RUNNERS.length-1;
-    var silk=r.silk?nrSilk(r.silk):'';
-    var jockey=r.jockey||r.jt||'';
-    var trainer=r.trainer?'Tr: '+r.trainer:'';
-    var form=r.form?nrFormHtml(r.form):'';
-    out+='<div style="display:flex;align-items:center;padding:7px 12px;border-bottom:'+(last?'none':'1px solid #f0f2f7')+';background:#fff;gap:8px">'
-      +'<div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;min-width:18px">'
-        +silk
-        +'<span style="font-size:9px;color:#b0b8c8;font-weight:600">'+r.n+'</span>'
-      +'</div>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.name)+'</div>'
-        +(jockey?'<div style="font-size:10px;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'')
-        +(trainer?'<div style="font-size:10px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'')
-        +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
-      +'</div>'
-      +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')">'
-        +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>'
-      +'</button>'
-    +'</div>';
-
-  });
+  out+=RC_RUNNERS.map(function(r){return runnerRow(r,'rc');}).join('');
 
   out+='</div>';
 
@@ -7692,21 +7666,69 @@ var NR_RACES=[
 
 var NR_RUNNERS=[
 
-  {n:9,name:'Majolique',jockey:'J.P. Townend',trainer:'W.P. Mullins',price:'2/1',pick:true,form:'1-2111',silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'}},
+  {n:9,name:'Majolique',jockey:'J.P. Townend',trainer:'W.P. Mullins',price:'2/1',pick:true,form:'1-2111',wt:'11-12',or:145,silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'},history:[
+    {year:'2025',date:'06 Apr',course:'Punchestown',hand:'LH',dist:'2m4f',going:'Yielding',pos:1,ran:8,wt:'11-10',or:143},
+    {year:'2025',date:'15 Mar',course:'Cheltenham',hand:'LH',dist:'2m5f',going:'Soft',pos:2,ran:14,wt:'11-7',or:142},
+    {year:'2025',date:'01 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:1,ran:9,wt:'11-4',or:140},
+    {year:'2024',date:'28 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Heavy',pos:1,ran:7,wt:'11-0',or:138},
+    {year:'2024',date:'17 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:2,ran:10,wt:'10-12',or:135},
+  ]},
 
-  {n:7,name:'Proactif',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'5/2',pick:false,form:'2-1122',silk:{body:'#1a3a8f',sleeve:'#f0c040',cap:'#1a3a8f'}},
+  {n:7,name:'Proactif',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'5/2',pick:false,form:'2-1122',wt:'11-10',or:142,silk:{body:'#1a3a8f',sleeve:'#f0c040',cap:'#1a3a8f'},history:[
+    {year:'2025',date:'06 Apr',course:'Fairyhouse',hand:'RH',dist:'2m4f',going:'Yielding',pos:2,ran:11,wt:'11-8',or:140},
+    {year:'2025',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m5f',going:'Soft',pos:1,ran:16,wt:'11-5',or:139},
+    {year:'2025',date:'25 Jan',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:8,wt:'11-2',or:137},
+    {year:'2024',date:'28 Dec',course:'Leopardstown',hand:'LH',dist:'2m',going:'Heavy',pos:1,ran:9,wt:'11-0',or:135},
+    {year:'2024',date:'03 Nov',course:'Down Royal',hand:'RH',dist:'2m',going:'Gd/Firm',pos:2,ran:7,wt:'10-10',or:132},
+  ]},
 
-  {n:3,name:'Macho Man',jockey:'D.E. Mullins',trainer:'W.P. Mullins',price:'4/1',pick:false,form:'3-2113',silk:{body:'#1e6b3a',sleeve:'#ffffff',cap:'#1e6b3a'}},
+  {n:3,name:'Macho Man',jockey:'D.E. Mullins',trainer:'W.P. Mullins',price:'4/1',pick:false,form:'3-2113',wt:'11-8',or:139,silk:{body:'#1e6b3a',sleeve:'#ffffff',cap:'#1e6b3a'},history:[
+    {year:'2025',date:'30 Mar',course:'Naas',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:10,wt:'11-6',or:137},
+    {year:'2025',date:'08 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:12,wt:'11-3',or:136},
+    {year:'2025',date:'12 Jan',course:'Gowran Park',hand:'RH',dist:'2m',going:'Heavy',pos:1,ran:8,wt:'11-0',or:134},
+    {year:'2024',date:'29 Dec',course:'Limerick',hand:'LH',dist:'2m4f',going:'Heavy',pos:3,ran:9,wt:'10-12',or:132},
+    {year:'2024',date:'10 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:2,ran:11,wt:'10-9',or:129},
+  ]},
 
-  {n:6,name:'North Shore',jockey:'K. Donoghue',trainer:'G. Cromwell',price:'8/1',pick:false,form:'1-3214',silk:{body:'#1a1a1a',sleeve:'#e07020',cap:'#1a1a1a'}},
+  {n:6,name:'North Shore',jockey:'K. Donoghue',trainer:'G. Cromwell',price:'8/1',pick:false,form:'1-3214',wt:'11-4',or:134,silk:{body:'#1a1a1a',sleeve:'#e07020',cap:'#1a1a1a'},history:[
+    {year:'2025',date:'22 Mar',course:'Navan',hand:'RH',dist:'2m4f',going:'Yielding',pos:1,ran:9,wt:'11-2',or:132},
+    {year:'2025',date:'16 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:13,wt:'10-13',or:130},
+    {year:'2025',date:'19 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:8,wt:'10-10',or:128},
+    {year:'2024',date:'30 Dec',course:'Fairyhouse',hand:'RH',dist:'2m4f',going:'Heavy',pos:1,ran:10,wt:'10-7',or:126},
+    {year:'2024',date:'17 Nov',course:'Punchestown',hand:'LH',dist:'2m',going:'Gd/Yielding',pos:4,ran:12,wt:'10-4',or:123},
+  ]},
 
-  {n:2,name:'Kai Lung',jockey:"S. O'Keeffe",trainer:'W.P. Mullins',price:'20/1',pick:false,form:'0-4032',silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'}},
+  {n:2,name:'Kai Lung',jockey:"S. O'Keeffe",trainer:'W.P. Mullins',price:'20/1',pick:false,form:'0-4032',wt:'10-12',or:122,silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'},history:[
+    {year:'2025',date:'29 Mar',course:'Clonmel',hand:'RH',dist:'2m4f',going:'Soft',pos:4,ran:11,wt:'10-10',or:120},
+    {year:'2025',date:'01 Feb',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:0,ran:14,wt:'10-7',or:119},
+    {year:'2025',date:'05 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Heavy',pos:3,ran:9,wt:'10-4',or:117},
+    {year:'2024',date:'26 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:2,ran:13,wt:'10-2',or:115},
+    {year:'2024',date:'10 Nov',course:'Thurles',hand:'RH',dist:'2m',going:'Heavy',pos:0,ran:8,wt:'9-13',or:113},
+  ]},
 
-  {n:4,name:'Doctor Elvis',jockey:'J.W. Kennedy',trainer:'G. Elliott',price:'10/1',pick:false,form:'2-1420',silk:{body:'#e8c020',sleeve:'#1a1a1a',cap:'#e8c020'}},
+  {n:4,name:'Doctor Elvis',jockey:'J.W. Kennedy',trainer:'G. Elliott',price:'10/1',pick:false,form:'2-1420',wt:'11-2',or:131,silk:{body:'#e8c020',sleeve:'#1a1a1a',cap:'#e8c020'},history:[
+    {year:'2025',date:'01 Apr',course:'Fairyhouse',hand:'RH',dist:'2m4f',going:'Yielding',pos:2,ran:10,wt:'11-0',or:129},
+    {year:'2025',date:'05 Mar',course:'Cheltenham',hand:'LH',dist:'2m5f',going:'Soft',pos:1,ran:18,wt:'10-11',or:128},
+    {year:'2025',date:'29 Jan',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:4,ran:12,wt:'10-8',or:126},
+    {year:'2024',date:'26 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Heavy',pos:2,ran:9,wt:'10-5',or:124},
+    {year:'2024',date:'03 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:0,ran:11,wt:'10-2',or:121},
+  ]},
 
-  {n:1,name:'Sky And Sand',jockey:'D. Gilligan',trainer:"R. O'Sullivan",price:'12/1',pick:false,form:'4-3221',silk:{body:'#f0f0f0',sleeve:'#0b1628',cap:'#0b1628'}},
+  {n:1,name:'Sky And Sand',jockey:'D. Gilligan',trainer:"R. O'Sullivan",price:'12/1',pick:false,form:'4-3221',wt:'10-10',or:118,silk:{body:'#f0f0f0',sleeve:'#0b1628',cap:'#0b1628'},history:[
+    {year:'2025',date:'23 Mar',course:'Clonmel',hand:'RH',dist:'2m4f',going:'Soft',pos:4,ran:9,wt:'10-8',or:116},
+    {year:'2025',date:'26 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Heavy',pos:3,ran:10,wt:'10-5',or:115},
+    {year:'2025',date:'29 Dec',course:'Limerick',hand:'LH',dist:'2m4f',going:'Heavy',pos:2,ran:8,wt:'10-2',or:113},
+    {year:'2024',date:'24 Nov',course:'Punchestown',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:12,wt:'9-13',or:111},
+    {year:'2024',date:'27 Oct',course:'Galway',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:1,ran:10,wt:'9-11',or:109},
+  ]},
 
-  {n:5,name:'Umpires Call',jockey:'K. Donoghue',trainer:'J.P. Dempsey',price:'16/1',pick:false,form:'0-0341',silk:{body:'#7a1a2e',sleeve:'#c9a84c',cap:'#7a1a2e'}},
+  {n:5,name:'Umpires Call',jockey:'K. Donoghue',trainer:'J.P. Dempsey',price:'16/1',pick:false,form:'0-0341',wt:'10-8',or:114,silk:{body:'#7a1a2e',sleeve:'#c9a84c',cap:'#7a1a2e'},history:[
+    {year:'2025',date:'15 Mar',course:'Thurles',hand:'RH',dist:'2m4f',going:'Heavy',pos:0,ran:11,wt:'10-6',or:112},
+    {year:'2025',date:'12 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Heavy',pos:0,ran:9,wt:'10-3',or:111},
+    {year:'2024',date:'29 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:14,wt:'10-0',or:109},
+    {year:'2024',date:'17 Nov',course:'Navan',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:4,ran:10,wt:'9-12',or:107},
+    {year:'2024',date:'13 Oct',course:'Gowran Park',hand:'RH',dist:'2m4f',going:'Soft',pos:1,ran:8,wt:'9-10',or:105},
+  ]},
 
 ];
 
@@ -7753,9 +7775,9 @@ function nrTick(){
 function nrRenderStrip(){
   var html=NR_RACES.map(function(r,i){
     var a=i===nrSelected;
-    return '<div onclick="nrSelect('+i+')" style="flex-shrink:0;background:'+(a?"#e8f5ef":"#fff")+';border:1px solid '+(a?"#1e9e6b":"#e4e8f0")+';border-radius:8px;padding:7px 14px;text-align:center;cursor:pointer">'
-      +'<div style="font-size:13px;font-weight:600;color:'+(a?"#1e9e6b":"#0b1628")+'">'+ escHtml(r.t) +'</div>'
-      +'<div style="font-size:10px;color:'+(a?"#1e9e6b":"#9aa3b5")+';margin-top:1px;opacity:'+(a?".7":"1")+'">'+escHtml(r.venue)+'</div>'
+    return '<div onclick="nrSelect('+i+')" style="flex-shrink:0;background:'+(a?"#e9ebef":"#fff")+';border:1px solid '+(a?"#c4c9d4":"#e4e8f0")+';border-radius:8px;padding:7px 14px;text-align:center;cursor:pointer">'
+      +'<div style="font-size:13px;font-weight:600;color:'+(a?"#3a4055":"#0b1628")+'">'+ escHtml(r.t) +'</div>'
+      +'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(r.venue)+'</div>'
     +'</div>';
   }).join("");
   var strip=document.getElementById("nr-strip");
@@ -7868,26 +7890,74 @@ function nrFormHtml(form){
     return '<span style="font-size:11px;color:#9aa3b5;font-weight:500">'+c+'</span>';
   }).join('');
 }
-function runnerRow(ru){
+function runnerRow(ru,ctx){
+  var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var silk=ru.silk?nrSilk(ru.silk):'';
   var jockey=ru.jockey||ru.jt||'';
-  var trainer=ru.trainer?'Tr: '+ru.trainer:'';
+  var trainer=ru.trainer||'';
   var form=ru.form?nrFormHtml(ru.form):'';
-  return '<div style="display:flex;align-items:center;padding:7px 14px;border-bottom:1px solid #f0f2f7;gap:10px">'
-    +'<div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;width:26px">'
-      +silk
-      +'<span style="font-size:9px;color:#9aa3b5;font-weight:600">'+ru.n+'</span>'
+
+  var metaLine='';
+  if(jockey&&trainer){
+    metaLine='<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>'
+      +'<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tr: '+escHtml(trainer)+'</div>';
+  } else if(jockey){
+    metaLine='<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>';
+  }
+
+  var histCarousel='';
+  if(ru.history&&ru.history.length){
+    var cards=ru.history.map(function(h){
+      var posStr=h.pos===0?'F':String(h.pos);
+      return '<div style="flex-shrink:0;width:114px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">'
+        +'<div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">'+escHtml(h.year)+' · '+escHtml(h.date)+'</div>'
+        +'<div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">'+escHtml(h.course)+'</div>'
+        +'<div style="font-size:9px;color:#555;margin-bottom:1px">'+escHtml(h.hand)+' · '+escHtml(h.dist)+'</div>'
+        +'<div style="font-size:9px;color:#555;margin-bottom:5px">'+escHtml(h.going)+'</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between">'
+          +'<span style="font-size:12px;font-weight:800;color:#0b1628">'+posStr+'<span style="font-size:9px;font-weight:500;color:#9aa3b5">/'+escHtml(String(h.ran))+'</span></span>'
+          +'<div style="text-align:right">'
+            +'<div style="font-size:9px;color:#9aa3b5">Wt '+escHtml(h.wt)+'</div>'
+            +'<div style="font-size:9px;color:#9aa3b5">OR '+escHtml(String(h.or))+'</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+    histCarousel='<div id="nrh-'+pfx+'" style="display:none;padding:8px 14px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">'
+      +'<div style="font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;margin-bottom:6px">RECENT FORM</div>'
+      +'<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+        +'<div style="display:flex;gap:7px;padding-bottom:3px">'+cards+'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  return '<div>'
+    +'<div style="display:flex;align-items:center;padding:5px 14px;border-bottom:1px solid #f0f2f7;gap:10px">'
+      +'<div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;width:26px">'
+        +silk
+        +'<span style="font-size:9px;color:#9aa3b5;font-weight:600">'+ru.n+'</span>'
+      +'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</div>'
+        +metaLine
+        +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
+        +(ru.history&&ru.history.length?'<button id="nrh-btn-'+pfx+'" onclick="nrToggleHistory(\''+pfx+'\')" style="margin-top:4px;background:none;border:none;padding:0;font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer;font-family:inherit;letter-spacing:.01em">More info ›</button>':'')
+      +'</div>'
+      +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')">'
+        +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
+      +'</button>'
     +'</div>'
-    +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</div>'
-      +(jockey?'<div style="font-size:10px;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'')
-      +(trainer?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(trainer)+'</div>':'')
-      +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
-    +'</div>'
-    +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')">'
-      +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
-    +'</button>'
+    +histCarousel
   +'</div>';
+}
+
+function nrToggleHistory(pfx){
+  var el=document.getElementById('nrh-'+pfx);
+  var btn=document.getElementById('nrh-btn-'+pfx);
+  if(!el) return;
+  var opening=el.style.display==='none'||el.style.display==='';
+  el.style.display=opening?'block':'none';
+  if(btn) btn.textContent=opening?'Less info ‹':'More info ›';
 }
 function nrRenderCard(){
   var card=document.getElementById("nr-card");
@@ -7895,10 +7965,9 @@ function nrRenderCard(){
   if(!card&&!cardHome) return;
   var r=NR_RACES[nrSelected];
   var secs=nrSecsLeft(nrSelected);
-  var rHtml=NR_RUNNERS.map(runnerRow).join("");
-
-  var cardHtml=
-    '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden">'
+  function buildNrCard(runnerCtx){
+    var runners=NR_RUNNERS.map(function(ru){return runnerRow(ru,runnerCtx);}).join('');
+    return '<div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden">'
       +'<div style="padding:10px 14px 8px;display:flex;align-items:flex-start;justify-content:space-between">'
         +'<div>'
           +'<div style="font-size:16px;font-weight:700;color:#0b1628">'+ escHtml(r.t) +' · '+ escHtml(r.venue) +'</div>'
@@ -7907,11 +7976,12 @@ function nrRenderCard(){
         +'<div id="nr-badge" style="font-size:12px;font-weight:700;color:#1e9e6b;white-space:nowrap;flex-shrink:0;margin-left:10px">'+ nrFmtBadge(secs) +'</div>'
       +'</div>'
       +'<button class="fx-cta" onclick="nrAnalyse()"><span>&#x2756;</span> Analyse this race with AI &rarr;</button>'
-      +rHtml
+      +runners
     +'</div>';
+  }
 
-  if(card) card.innerHTML=cardHtml;
-  if(cardHome) cardHome.innerHTML=cardHtml;
+  if(card) card.innerHTML=buildNrCard('nr');
+  if(cardHome) cardHome.innerHTML=buildNrCard('nrhome');
   nrFetchAIEdge(r);
 }
 
@@ -8223,11 +8293,41 @@ var TM_MEETINGS=[
 ];
 
 var TM_RUNNERS=[
-  {n:3,name:'Constitution Hill',jockey:'N. de Boinville',trainer:'N. Henderson',price:'5/4',pick:true,form:'1-1111',silk:{body:'#1a3a8f',sleeve:'#ffffff',cap:'#c9a84c'}},
-  {n:1,name:'Energumene',jockey:'P. Townend',trainer:'W.P. Mullins',price:'7/2',pick:false,form:'1-2121',silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'}},
-  {n:5,name:'Edwardstone',jockey:'T. Cannon',trainer:'A. King',price:'5/1',pick:false,form:'2-1132',silk:{body:'#1e6b3a',sleeve:'#f0c040',cap:'#1e6b3a'}},
-  {n:7,name:'Chacun Pour Soi',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'8/1',pick:false,form:'3-2213',silk:{body:'#0b1628',sleeve:'#c9a84c',cap:'#0b1628'}},
-  {n:2,name:'Shishkin',jockey:'J. Burke',trainer:'N. Henderson',price:'10/1',pick:false,form:'1-3224',silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'}}
+  {n:3,name:'Constitution Hill',jockey:'N. de Boinville',trainer:'N. Henderson',price:'5/4',pick:true,form:'1-1111',wt:'11-10',or:175,silk:{body:'#1a3a8f',sleeve:'#ffffff',cap:'#c9a84c'},history:[
+    {year:'2025',date:'12 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:8,wt:'11-10',or:173},
+    {year:'2025',date:'25 Jan',course:'Kempton',hand:'RH',dist:'2m',going:'Good',pos:1,ran:6,wt:'11-7',or:172},
+    {year:'2024',date:'14 Dec',course:'Sandown',hand:'RH',dist:'1m7f',going:'Soft',pos:1,ran:7,wt:'11-4',or:170},
+    {year:'2024',date:'08 Nov',course:'Ascot',hand:'RH',dist:'2m',going:'Good to Soft',pos:1,ran:9,wt:'11-2',or:168},
+    {year:'2024',date:'13 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:10,wt:'11-0',or:165},
+  ]},
+  {n:1,name:'Energumene',jockey:'P. Townend',trainer:'W.P. Mullins',price:'7/2',pick:false,form:'1-2121',wt:'11-8',or:168,silk:{body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'},history:[
+    {year:'2025',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:9,wt:'11-8',or:166},
+    {year:'2025',date:'02 Feb',course:'Leopardstown',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:7,wt:'11-5',or:165},
+    {year:'2024',date:'29 Dec',course:'Leopardstown',hand:'LH',dist:'2m',going:'Heavy',pos:2,ran:8,wt:'11-3',or:163},
+    {year:'2024',date:'03 Nov',course:'Down Royal',hand:'RH',dist:'2m',going:'Good',pos:1,ran:6,wt:'11-0',or:161},
+    {year:'2024',date:'10 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:11,wt:'10-12',or:159},
+  ]},
+  {n:5,name:'Edwardstone',jockey:'T. Cannon',trainer:'A. King',price:'5/1',pick:false,form:'2-1132',wt:'11-5',or:158,silk:{body:'#1e6b3a',sleeve:'#f0c040',cap:'#1e6b3a'},history:[
+    {year:'2025',date:'08 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:12,wt:'11-5',or:156},
+    {year:'2025',date:'18 Jan',course:'Ascot',hand:'RH',dist:'2m',going:'Good to Soft',pos:1,ran:8,wt:'11-2',or:155},
+    {year:'2024',date:'15 Dec',course:'Sandown',hand:'RH',dist:'1m7f',going:'Soft',pos:1,ran:7,wt:'11-0',or:153},
+    {year:'2024',date:'10 Nov',course:'Wincanton',hand:'RH',dist:'2m',going:'Soft',pos:3,ran:9,wt:'10-12',or:151},
+    {year:'2024',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:14,wt:'10-10',or:149},
+  ]},
+  {n:7,name:'Chacun Pour Soi',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'8/1',pick:false,form:'3-2213',wt:'11-3',or:155,silk:{body:'#0b1628',sleeve:'#c9a84c',cap:'#0b1628'},history:[
+    {year:'2025',date:'02 Feb',course:'Leopardstown',hand:'LH',dist:'2m',going:'Soft',pos:3,ran:8,wt:'11-3',or:153},
+    {year:'2024',date:'26 Dec',course:'Leopardstown',hand:'LH',dist:'2m',going:'Heavy',pos:2,ran:9,wt:'11-0',or:152},
+    {year:'2024',date:'10 Nov',course:'Down Royal',hand:'RH',dist:'2m',going:'Good',pos:2,ran:7,wt:'10-12',or:150},
+    {year:'2024',date:'13 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:12,wt:'10-10',or:148},
+    {year:'2023',date:'29 Jan',course:'Leopardstown',hand:'LH',dist:'2m',going:'Soft',pos:3,ran:8,wt:'10-8',or:146},
+  ]},
+  {n:2,name:'Shishkin',jockey:'J. Burke',trainer:'N. Henderson',price:'10/1',pick:false,form:'1-3224',wt:'11-0',or:148,silk:{body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'},history:[
+    {year:'2025',date:'18 Jan',course:'Ascot',hand:'RH',dist:'2m',going:'Good to Soft',pos:3,ran:8,wt:'11-0',or:146},
+    {year:'2024',date:'14 Dec',course:'Sandown',hand:'RH',dist:'1m7f',going:'Soft',pos:2,ran:7,wt:'10-12',or:145},
+    {year:'2024',date:'02 Nov',course:'Wetherby',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:6,wt:'10-10',or:143},
+    {year:'2024',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:4,ran:11,wt:'10-8',or:141},
+    {year:'2023',date:'27 Jan',course:'Ascot',hand:'RH',dist:'2m',going:'Good to Soft',pos:1,ran:9,wt:'10-5',or:138},
+  ]},
 ];
 
 var tmActiveVenue='cheltenham';
@@ -8258,9 +8358,10 @@ function selectRacingSection(s){
   if(nrPanel) nrPanel.style.display="none";
   if(s==="racecards"){
     if(datepills) datepills.style.display="flex";
-    // Restore any elements hidden by pickofday
     var e8f=document.getElementById("racing-today-meetings");
     if(e8f) e8f.style.display="";
+    var nrHome=document.getElementById("nr-home-section");
+    if(nrHome) nrHome.style.display="";
     selectRacingDate("today");
   } else if(s==="nextrace"){
     if(nrPanel) nrPanel.style.display="";
@@ -8270,11 +8371,10 @@ function selectRacingSection(s){
     renderWinnersCards();
   } else if(s==="pickofday"){
     if(todayC) todayC.style.display="";
-    // Hide meeting banners and AI strip, show only picks section
-    var meetImgWrap=document.querySelector("#racing-today-content .main");
-    var tmlEl=document.getElementById("today-meetings-list");
     var e8f=document.getElementById("racing-today-meetings");
     if(e8f) e8f.style.display="none";
+    var nrHome=document.getElementById("nr-home-section");
+    if(nrHome) nrHome.style.display="none";
   }
 }
 
@@ -8299,26 +8399,7 @@ function tmRaceDetailHtml(m){
   var race=m.races[selRace];
   var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">'
     +(m.races.length>1?'<div style="font-size:11px;color:#1e9e6b;font-weight:600;padding:6px 12px 2px;text-align:right">\u2190 swipe for next race \u2192</div>':'');
-  TM_RUNNERS.forEach(function(r,i){
-    var last=i===TM_RUNNERS.length-1;
-    var silk=r.silk?nrSilk(r.silk):'';
-    var jockey=r.jockey||'';
-    var trainer=r.trainer?'Tr: '+r.trainer:'';
-    var form=r.form?nrFormHtml(r.form):'';
-    var meta=[jockey,trainer].filter(Boolean).join(' · ');
-    out+='<div style="display:flex;align-items:center;padding:7px 12px;border-bottom:'+(last?'none':'1px solid #f0f2f7')+';background:#fff;gap:8px">';
-    out+='<div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;min-width:18px">';
-    out+=silk+'<span style="font-size:9px;color:#b0b8c8;font-weight:600">'+r.n+'</span>';
-    out+='</div>';
-    out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:13px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.name)+'</div>';
-    out+=(meta?'<div style="font-size:10px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(meta)+'</div>':'');
-    out+=(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'');
-    out+='</div>';
-    out+='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')">';
-    out+='<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>';
-    out+='</button></div>';
-  });
+  out+=TM_RUNNERS.map(function(r){return runnerRow(r,'tm');}).join('');
   out+='</div>';
   return out;
 }
