@@ -804,6 +804,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 @keyframes flashPill{0%,100%{background:var(--green);color:#fff}50%{background:transparent;color:var(--green)}}
 @keyframes hwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+@keyframes aiEdgePulse{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.5)}60%{box-shadow:0 0 0 7px rgba(201,168,76,0)}}
 
 .research-pill{display:none;align-items:center;gap:5px;background:var(--green);color:#fff;border:2px solid var(--green);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;margin-left:4px;vertical-align:middle;cursor:pointer}
 
@@ -1423,13 +1424,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .fx-cta-wrap{padding:0}
 
-.fx-cta{display:block;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;margin:4px 12px 4px;width:calc(100% - 24px);transition:all .18s}
+.fx-cta{display:block;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;white-space:nowrap;margin:4px 12px 4px;width:calc(100% - 24px);transition:box-shadow .18s,transform .18s}
 
 .fx-cta span{color:var(--gold)}
 
-.fx-cta:hover{background:var(--gold);color:#fff}
+.fx-cta:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
 
-.fx-cta:hover span{color:#fff}
+.ai-cta-light{display:block;width:100%;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
+.ai-cta-light span{color:var(--gold)}
+.ai-cta-light:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
+.ai-cta-dark{display:block;width:100%;background:#0b1628;color:#fff;border:1.5px solid #0b1628;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
+.ai-cta-dark span{color:#c9a84c}
+.ai-cta-dark:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 12px rgba(11,22,40,0.25);transform:translateY(-1px)}
+.price-btn{background:#f0f2f7;border:1px solid #e4e8f0;border-radius:7px;padding:6px 10px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0;transition:box-shadow .18s,transform .18s}
+.price-btn:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 8px rgba(0,0,0,0.07);transform:translateY(-1px)}
+.slip-btn{width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:box-shadow .18s,transform .18s}
+.slip-btn:hover{box-shadow:0 0 0 3px rgba(30,158,107,0.25),0 2px 10px rgba(0,0,0,0.1);transform:translateY(-1px)}
 
 .fx-hda{display:flex;padding:0 12px;border-bottom:1px solid var(--border);border-top:none}
 
@@ -2131,7 +2141,7 @@ function showRacingHome(){
           <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div>
         </div>
-        <div style="padding:0 14px 13px"><button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button></div>
+        <div style="padding:0 14px 13px"><button class="slip-btn">+ Add to My Slip</button></div>
       </div>
       <div style="background:#0b1628;border-radius:12px;border:1px solid rgba(201,168,76,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">
         <div style="padding:12px 14px 5px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
@@ -2147,7 +2157,7 @@ function showRacingHome(){
           <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div>
         </div>
-        <div style="padding:0 14px 13px"><button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to My Slip</button></div>
+        <div style="padding:0 14px 13px"><button class="slip-btn">+ Add to My Slip</button></div>
       </div>
     </div>
 
@@ -7141,8 +7151,8 @@ function renderTodayMeetingsList(){
       if(hasRace){
         var sr=m.races[selRace];
         out+='<div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">';
-        out+='<button onclick="void(0)" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #0b1628;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center"><span style="color:#c9a84c">&#x2756;</span> Analyse '+escHtml(m.name)+' Card with AI &rarr;</button>';
-        out+='<button onclick="void(0)" style="width:100%;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center"><span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
+        out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\'full\')"><span>&#x2756;</span> Analyse '+escHtml(m.name)+' Card with AI &rarr;</button>';
+        out+='<button class="ai-cta-light" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
         out+='<div style="font-size:11px;color:#9aa3b5;padding:0 2px">'+escHtml(m.name)+' &middot; '+escHtml(sr.name.indexOf(m.name+' ')===0?sr.name.slice(m.name.length+1):sr.name)+' &middot; '+escHtml(sr.dist)+' &middot; '+sr.r+' runners &middot; '+escHtml(m.going)+'</div>';
         out+='</div>';
       }
@@ -7248,7 +7258,7 @@ function rcRaceDetailHtml(m){
         +(trainer?'<div style="font-size:10px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'')
         +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
       +'</div>'
-      +'<button onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:7px;padding:6px 10px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
+      +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')">'
         +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>'
       +'</button>'
     +'</div>';
@@ -7329,7 +7339,7 @@ function renderRacingMeetings(){
 
     +rcPillsHtml(featured)
 
-    +'<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
+    +'<button class="fx-cta" onclick="rcAnalyse(\''+featured.id+'\',\'full\')" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
 
     +rcTimesHtml(featured,true)
 
@@ -7357,6 +7367,22 @@ function rcAttachSwipe(mid){
     var cur=rcOpenRace[mid]!=null?rcOpenRace[mid]:0;
     if(dx<0&&cur<m.races.length-1) rcSelectRace(mid,cur+1);
     else if(dx>0&&cur>0) rcSelectRace(mid,cur-1);
+  },{passive:true});
+}
+function tmAttachSwipe(mid){
+  var el=document.getElementById('tm-detail-'+mid);
+  if(!el) return;
+  var m=TM_MEETINGS.find(function(x){return x.id===mid;});
+  if(!m) return;
+  var sx=0,sy=0;
+  el.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  el.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-sx;
+    var dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)) return;
+    var cur=tmOpenRace[mid]!=null?tmOpenRace[mid]:0;
+    if(dx<0&&cur<m.races.length-1) tmSelectRace(mid,cur+1);
+    else if(dx>0&&cur>0) tmSelectRace(mid,cur-1);
   },{passive:true});
 }
 function inlineSetVenue(id){
@@ -7389,7 +7415,7 @@ function renderInlineMeeting(){
       +'<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; Next <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>'
     +'</div>'
     +rcPillsHtml(featured)
-    +'<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
+    +'<button class="fx-cta" onclick="rcAnalyse(\''+featured.id+'\',\'full\')" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>'
     +rcTimesHtml(featured,true)
   +'</div>'
   +rcRaceDetailHtml(featured);
@@ -7456,7 +7482,7 @@ function _old_unused_renderRacingMeetings(){
 
       bodyHtml='<div class="rc-meeting-body open">'
 
-        +'<button class="fx-cta"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>'
+        +'<button class="fx-cta" onclick="rcAnalyse(\''+m.id+'\',\'full\')"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(m.name)+' Card with AI &rarr;</button>'
 
         +'<span class="rc-times-lbl">Select a race</span>'
 
@@ -7632,9 +7658,9 @@ function nrTick(){
 function nrRenderStrip(){
   var html=NR_RACES.map(function(r,i){
     var a=i===nrSelected;
-    return '<div onclick="nrSelect('+i+')" style="flex-shrink:0;background:'+(a?"#0b1628":"#fff")+';border:1px solid '+(a?"#0b1628":"#e4e8f0")+';border-radius:8px;padding:7px 14px;text-align:center;cursor:pointer">'
-      +'<div style="font-size:13px;font-weight:600;color:'+(a?"#fff":"#0b1628")+'">'+ escHtml(r.t) +'</div>'
-      +'<div style="font-size:10px;color:'+(a?"rgba(255,255,255,0.45)":"#9aa3b5")+';margin-top:1px">'+escHtml(r.venue)+'</div>'
+    return '<div onclick="nrSelect('+i+')" style="flex-shrink:0;background:'+(a?"#e8f5ef":"#fff")+';border:1px solid '+(a?"#1e9e6b":"#e4e8f0")+';border-radius:8px;padding:7px 14px;text-align:center;cursor:pointer">'
+      +'<div style="font-size:13px;font-weight:600;color:'+(a?"#1e9e6b":"#0b1628")+'">'+ escHtml(r.t) +'</div>'
+      +'<div style="font-size:10px;color:'+(a?"#1e9e6b":"#9aa3b5")+';margin-top:1px;opacity:'+(a?".7":"1")+'">'+escHtml(r.venue)+'</div>'
     +'</div>';
   }).join("");
   var strip=document.getElementById("nr-strip");
@@ -7763,7 +7789,7 @@ function runnerRow(ru){
       +(trainer?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+escHtml(trainer)+'</div>':'')
       +(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'')
     +'</div>'
-    +'<button onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">'
+    +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')">'
       +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
     +'</button>'
   +'</div>';
@@ -7833,7 +7859,31 @@ function nrAddToSlip(name,price){
 
 function nrAnalyse(){
   var r=NR_RACES[nrSelected];
-  if(typeof analyseRace==="function"){analyseRace(r);return;}
+  if(!r) return;
+  _aiTimers.forEach(clearTimeout); _aiTimers=[];
+  _aiCtx={direct:r};
+  document.getElementById('ai-panel-ready').style.display='none';
+  document.getElementById('ai-panel-results').style.display='none';
+  document.getElementById('ai-panel-progress').style.display='block';
+  var b=document.getElementById('ai-panel-bar');
+  if(b){b.style.transition='none';b.style.width='0';}
+  _aiPanelExpanded=false;
+  var panel=document.getElementById('ai-panel');
+  panel.style.pointerEvents='all';
+  panel.style.transform='translateY(0)';
+  _aiSetCount(r.t+' — '+r.venue,r.type+' · '+r.dist+' · '+r.runners+' runners');
+  var steps=['Checking '+r.runners+' runners…','Analysing recent form…','Reviewing going conditions…','Checking jockey / trainer combos…','Calculating AI edge score…','Finalising report…'];
+  var TOTAL=90000;
+  var perStep=TOTAL/steps.length;
+  steps.forEach(function(step,si){
+    var pct=Math.round(((si+1)/steps.length)*100);
+    (function(d,s,p){ _aiT(function(){ _aiSetStep(s); _aiSetBar(Math.min(p,99),perStep/1000); },d); })(si*perStep,step,pct);
+  });
+  _aiT(function(){
+    _aiSetStep('Analysis complete ✓');
+    _aiSetBar(100,1);
+    _aiT(function(){ var rd=document.getElementById('ai-panel-ready'); if(rd) rd.style.display='block'; },1200);
+  },TOTAL);
 }var aiFeedTmrwIdx=0;
 
 function renderNextRaceSection(){
@@ -8151,7 +8201,8 @@ function tmRaceDetailHtml(m){
   var selRace=tmOpenRace[m.id];
   if(selRace==null) return '';
   var race=m.races[selRace];
-  var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
+  var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">'
+    +(m.races.length>1?'<div style="font-size:11px;color:#1e9e6b;font-weight:600;padding:6px 12px 2px;text-align:right">\u2190 swipe for next race \u2192</div>':'');
   TM_RUNNERS.forEach(function(r,i){
     var last=i===TM_RUNNERS.length-1;
     var silk=r.silk?nrSilk(r.silk):'';
@@ -8168,7 +8219,7 @@ function tmRaceDetailHtml(m){
     out+=(meta?'<div style="font-size:10px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(meta)+'</div>':'');
     out+=(form?'<div style="margin-top:2px;display:flex;align-items:center;gap:1px">'+form+'</div>':'');
     out+='</div>';
-    out+='<button onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')" style="background:#f0f2f7;border:1px solid #e4e8f0;border-radius:7px;padding:6px 10px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0">';
+    out+='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(r.name)+'\',\''+escHtml(r.price)+'\')">';
     out+='<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(r.price)+'</div>';
     out+='</button></div>';
   });
@@ -8201,12 +8252,13 @@ function renderInlineTomorrowMeeting(){
   fHtml+='<span style="font-size:18px;font-weight:700;color:#0b1628">'+escHtml(featured.name)+'</span>';
   fHtml+='<span style="font-size:12px;color:#9aa3b5;margin-left:2px">'+featured.races.length+' races &middot; First <span style="color:#1e9e6b;font-weight:600">'+escHtml(featured.races[0].t)+'</span></span>';
   fHtml+='</div>';
-  fHtml+='<button class="fx-cta" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>';
+  fHtml+='<button class="fx-cta" onclick="rcAnalyse(\''+featured.id+'\',\'full\')" style="margin:12px 14px 0;width:calc(100% - 28px)"><span style="color:var(--gold)">&#x2756;</span> Analyse Full '+escHtml(featured.name)+' Card with AI &rarr;</button>';
   fHtml+=rcPillsHtml(featured);
   fHtml+=tmTimesHtml(featured);
   fHtml+='</div>';
   fHtml+=tmRaceDetailHtml(featured);
   el.innerHTML=fHtml;
+  tmAttachSwipe(featured.id);
 }
 
 function inlineTmSetVenue(id){
@@ -8300,8 +8352,8 @@ function renderTomorrowMeetingsList(){
       if(hasRace){
         var sr=m.races[selRace];
         out+='<div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">';
-        out+='<button onclick="void(0)" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #0b1628;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center"><span style="color:#c9a84c">&#x2756;</span> Analyse '+escHtml(m.name)+' Card with AI &rarr;</button>';
-        out+='<button onclick="void(0)" style="width:100%;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center"><span style="color:var(--gold)">&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
+        out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\'full\')"><span>&#x2756;</span> Analyse '+escHtml(m.name)+' Card with AI &rarr;</button>';
+        out+='<button class="ai-cta-light" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
         out+='<div style="font-size:11px;color:#9aa3b5;padding:0 2px">'+escHtml(m.name)+' &middot; '+escHtml(sr.name.indexOf(m.name+' ')===0?sr.name.slice(m.name.length+1):sr.name)+' &middot; '+escHtml(sr.dist)+' &middot; '+sr.r+' runners &middot; '+escHtml(m.going)+'</div>';
         out+='</div>';
       }
@@ -8311,6 +8363,7 @@ function renderTomorrowMeetingsList(){
     out+='</div>';
   });
   el.innerHTML=out;
+  TM_MEETINGS.forEach(function(m){ if(tmOpenRace[m.id]!=null) tmAttachSwipe(m.id); });
 }
 
 function navigateToTomorrowMeeting(id){
@@ -8329,6 +8382,191 @@ function navigateToTomorrowMeeting(id){
   setTimeout(function(){inline.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
 }
 
+// ── AI RESEARCH PANEL ──────────────────────────────────────────────────
+var _aiPanelExpanded=false;
+var _aiTimers=[];
+var _aiCtx={};
+var _aiSubSteps=['Checking runners & SP…','Analysing recent form…','Reviewing jockey / trainer combo…','Calculating AI edge score…'];
+
+function _aiSetStep(txt){
+  var el=document.getElementById('ai-panel-step');
+  if(!el) return;
+  el.style.transition='none';el.style.opacity='0';
+  setTimeout(function(){el.textContent=txt;el.style.transition='opacity .35s';el.style.opacity='1';},180);
+}
+function _aiSetCount(big,small){
+  var c=document.getElementById('ai-panel-race-count');
+  var n=document.getElementById('ai-panel-race-name');
+  if(c){c.style.transition='none';c.style.opacity='0';setTimeout(function(){c.textContent=big;c.style.transition='opacity .4s';c.style.opacity='1';},200);}
+  if(n){n.style.transition='none';n.style.opacity='0';setTimeout(function(){n.textContent=small;n.style.transition='opacity .4s';n.style.opacity='1';},220);}
+}
+function _aiSetBar(pct,dur){
+  var b=document.getElementById('ai-panel-bar');
+  if(!b) return;
+  b.style.transition='width '+(dur||2)+'s linear';
+  b.style.width=pct+'%';
+}
+function _aiT(fn,ms){ var t=setTimeout(fn,ms); _aiTimers.push(t); }
+
+function rcAnalyse(mid,type){
+  var m=RC_MEETINGS.find(function(x){return x.id===mid;})||TM_MEETINGS.find(function(x){return x.id===mid;});
+  if(!m) return;
+  _aiCtx={m:m,type:type,isFull:type==='full'};
+  _aiTimers.forEach(clearTimeout); _aiTimers=[];
+  var isFull=type==='full';
+  document.getElementById('ai-panel-ready').style.display='none';
+  document.getElementById('ai-panel-results').style.display='none';
+  document.getElementById('ai-panel-progress').style.display='block';
+  var b=document.getElementById('ai-panel-bar');
+  if(b){b.style.transition='none';b.style.width='0';}
+  _aiPanelExpanded=false;
+  var panel=document.getElementById('ai-panel');
+  panel.style.pointerEvents='all';
+  panel.style.transform='translateY(0)';
+
+  var TOTAL=90000;
+
+  if(isFull){
+    var races=m.races;
+    var perRace=TOTAL/races.length;
+    var perStep=perRace/_aiSubSteps.length;
+    races.forEach(function(race,ri){
+      _aiSubSteps.forEach(function(step,si){
+        var t=ri*perRace+si*perStep;
+        var pct=Math.round(((ri*perRace+si*perStep+perStep)/TOTAL)*100);
+        (function(delay,r,rIdx,tot,s,p,isFirstStep){
+          _aiT(function(){
+            if(isFirstStep) _aiSetCount('Race '+(rIdx+1)+' of '+tot,r.t+' · '+r.name+' · '+r.dist);
+            _aiSetStep(s);
+            _aiSetBar(Math.min(p,99),perStep/1000);
+          },delay);
+        })(t,race,ri,races.length,step,pct,si===0);
+      });
+    });
+    _aiT(function(){
+      _aiSetCount('Complete ✓','All '+races.length+' races analysed');
+      _aiSetStep('Building your AI edge report…');
+      _aiSetBar(100,1.5);
+      _aiT(function(){
+        var r=document.getElementById('ai-panel-ready');
+        if(r) r.style.display='block';
+      },1800);
+    },TOTAL);
+
+  } else {
+    var ri=m.races.findIndex(function(r){return r.t===type;});
+    var race=ri>=0?m.races[ri]:{t:type,name:type,dist:'',r:'?'};
+    var singleSteps=['Checking '+race.r+' runners…','Analysing recent form…','Reviewing going: '+m.going+'…','Checking jockey / trainer combos…','Calculating AI edge score…','Finalising report…'];
+    var perStep2=TOTAL/singleSteps.length;
+    _aiSetCount(type,m.name+(race.dist?' · '+race.dist:''));
+    singleSteps.forEach(function(step,si){
+      var t=si*perStep2;
+      var pct=Math.round(((si+1)/singleSteps.length)*100);
+      (function(delay,s,p){
+        _aiT(function(){
+          _aiSetStep(s);
+          _aiSetBar(Math.min(p,99),perStep2/1000);
+        },delay);
+      })(t,step,pct);
+    });
+    _aiT(function(){
+      _aiSetStep('Analysis complete ✓');
+      _aiSetBar(100,1);
+      _aiT(function(){
+        var r=document.getElementById('ai-panel-ready');
+        if(r) r.style.display='block';
+      },1200);
+    },TOTAL);
+  }
+}
+function aiPanelExpand(){
+  _aiPanelExpanded=true;
+  document.getElementById('ai-panel-progress').style.display='none';
+  var res=document.getElementById('ai-panel-results');
+  res.style.display='block';
+  res.innerHTML=_aiMockResults(_aiCtx);
+}
+function aiPanelClose(){
+  _aiTimers.forEach(clearTimeout); _aiTimers=[];
+  var panel=document.getElementById('ai-panel');
+  panel.style.transform='translateY(100%)';
+  setTimeout(function(){panel.style.pointerEvents='none';},380);
+  _aiPanelExpanded=false;
+}
+function _aiMockResults(ctx){
+  if(ctx.direct){
+    var r=ctx.direct;
+    return '<div style="padding:8px 0 16px">'
+      +'<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">'+escHtml(r.venue+' '+r.type)+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:16px">'+r.t+' · '+escHtml(r.dist)+' · '+r.runners+' runners</div>'
+      +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">KEY FINDINGS</div>'
+      +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">'
+      +_aiRow('Unexposed field — majority of runners lightly raced this season')
+      +_aiRow('Going conditions favour prominent racers — 3 of last 4 won from front')
+      +_aiRow('Top jockey booking noted — 40%+ strike rate in this race type')
+      +_aiRow('Market likely to drift pre-race — watch for late support')
+      +'</div>'
+      +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">AI TOP SELECTION</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +_aiPick(r.t,'Trial pick','9/4','NAP')
+      +'</div>'
+      +'<div style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.25);text-align:center">Trial research — always bet responsibly.</div>'
+      +'</div>';
+  }
+  var m=ctx.m||{};
+  var isFull=ctx.isFull;
+  var type=ctx.type;
+  var html='<div style="padding:8px 0 16px">';
+  if(isFull){
+    html+='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">KEY FINDINGS — '+escHtml((m.name||'').toUpperCase())+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">';
+    (m.insights||[]).forEach(function(ins){ html+=_aiRow(ins); });
+    html+='</div>'
+      +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">AI TOP SELECTIONS</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">';
+    (m.races||[]).slice(0,3).forEach(function(race,i){
+      var badges=['NAP','VALUE','EW'];
+      var prices=['9/4','2/1','11/8'];
+      html+=_aiPick(race.t,'Trial pick',prices[i]||'5/2',badges[i]||'TIP');
+    });
+    html+='</div>';
+  } else {
+    var ri=(m.races||[]).findIndex(function(r){return r.t===type;});
+    var race=ri>=0?m.races[ri]:{t:type,name:type,dist:'',r:'?'};
+    html+='<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">'+escHtml(race.name||type)+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:16px">'+escHtml(m.name||'')+' · '+escHtml(race.dist||'')+' · '+race.r+' runners · '+escHtml(m.going||'')+'</div>'
+      +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">KEY FINDINGS</div>'
+      +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">'
+      +_aiRow('Unexposed field — 7 of 13 runners with fewer than 3 starts over hurdles')
+      +_aiRow('Going suits on-pace runners — last 4 renewals won by leaders')
+      +_aiRow('Townend booked on market fav — 42% strike rate in maidens this season')
+      +_aiRow('Mullins yard form strong — 3 winners from last 8 runners at Cork')
+      +'</div>'
+      +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">AI TOP SELECTION</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +_aiPick(type,'Trial pick','9/4','NAP')
+      +'</div>';
+  }
+  html+='<div style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.25);text-align:center">Trial research — always bet responsibly.</div></div>';
+  return html;
+}
+function _aiRow(txt){
+  return '<div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#1e9e6b;font-size:11px;margin-top:2px;flex-shrink:0">✓</span><span style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5;font-weight:400">'+txt+'</span></div>';
+}
+function _aiPick(time,horse,price,badge){
+  var isNap=badge==='NAP';
+  var bc=isNap?'#c9a84c':'#1e9e6b';
+  var bg=isNap?'rgba(201,168,76,0.15)':'rgba(30,158,107,0.15)';
+  return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:600;margin-bottom:2px">'+time+'</div>'
+    +'<div style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(horse)+'</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
+    +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:'+bg+';color:'+bc+';border:1px solid '+bc+'">'+badge+'</span>'
+    +'<div style="font-size:14px;font-weight:800;color:#fff">'+escHtml(price)+'</div>'
+    +'</div></div>';
+}
 function openRacingMenu(){
   var ov=document.getElementById('racing-menu-overlay');
   var dr=document.getElementById('racing-menu-drawer');
@@ -8344,6 +8582,33 @@ function closeRacingMenu(){
 </script>
 
 </div><!-- /main-content -->
+
+<!-- AI Research Panel -->
+<div id="ai-panel" style="position:fixed;bottom:0;left:0;right:0;z-index:2000;transform:translateY(100%);transition:transform .35s cubic-bezier(.22,1,.36,1);pointer-events:none">
+  <div style="background:#0b1628;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 28px rgba(0,0,0,0.35)">
+    <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:16px 16px 4px">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:6px;padding:5px 11px;animation:aiEdgePulse 2s ease-in-out infinite">
+        <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+      </div>
+      <button onclick="aiPanelClose()" style="position:absolute;right:16px;top:14px;background:none;border:none;color:#b0b8c8;font-size:20px;cursor:pointer;font-family:inherit;line-height:1;padding:0">&times;</button>
+    </div>
+    <div id="ai-panel-progress" style="padding:12px 16px 20px">
+      <div style="text-align:center;padding:8px 0 4px">
+        <div id="ai-panel-race-count" style="font-size:15px;font-weight:600;color:#fff;letter-spacing:-0.1px;min-height:22px"></div>
+        <div id="ai-panel-race-name" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px;min-height:16px"></div>
+        <div id="ai-panel-step" style="font-size:11px;color:rgba(255,255,255,0.45);font-weight:400;margin-top:8px;min-height:16px"></div>
+      </div>
+      <div style="margin-top:14px;background:rgba(255,255,255,0.08);border-radius:99px;height:2px;overflow:hidden">
+        <div id="ai-panel-bar" style="height:100%;background:linear-gradient(90deg,#1e9e6b,#2dc87e);width:0;border-radius:99px"></div>
+      </div>
+      <div id="ai-panel-ready" style="display:none;margin-top:16px">
+        <button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #c9a84c;border-radius:99px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px"><span style="color:#c9a84c">&#x2756;</span> View AI Edge Report &rarr;</button>
+      </div>
+    </div>
+    <div id="ai-panel-results" style="display:none;max-height:65vh;overflow-y:auto;padding:0 16px 40px;background:#0b1628"></div>
+  </div>
+</div>
 
 <!-- Mobile bottom nav -->
 
