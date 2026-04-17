@@ -7055,6 +7055,16 @@ var rcActiveVenue=RC_MEETINGS[0].id;
 
 // ── TODAY MEETINGS VERTICAL LIST ────────────────────────────────────
 var todayOpenMeeting="";
+var _rcTouchX=null;
+function rcTouchStart(e){_rcTouchX=e.touches[0].clientX;}
+function rcTouchEnd(e,mid,ri,total){
+  if(_rcTouchX===null) return;
+  var dx=e.changedTouches[0].clientX-_rcTouchX;
+  _rcTouchX=null;
+  if(Math.abs(dx)<40) return;
+  var next=dx<0?Math.min(ri+1,total-1):Math.max(ri-1,0);
+  if(next!==ri) todaySelectRace(mid,next);
+}
 
 function getMeetingImg(id){
   var el=document.getElementById("img-"+id);
@@ -7419,11 +7429,13 @@ function _old_unused_renderRacingMeetings(){
 
         var race=m.races[selRace];
 
-        detailHtml='<div class="rc-race-detail">'
+        detailHtml='<div class="rc-race-detail" ontouchstart="rcTouchStart(event)" ontouchend="rcTouchEnd(event,\''+m.id+'\','+selRace+','+m.races.length+')">'
 
           +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml(race.name)+'</div>'
 
           +'<div class="rc-race-sub">'+escHtml(race.dist)+' &middot; '+race.r+' runners</div>'
+
+          +(m.races.length>1?'<div class="sec-swipe">swipe for next race</div>':'')
 
           +RC_RUNNERS.map(function(r){
 
