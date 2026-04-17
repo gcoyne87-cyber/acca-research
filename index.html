@@ -2002,40 +2002,35 @@ function showRacingHome(){
   <!-- WINNERS SLIDER -->
   <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:8px 0 0;border-radius:0">
 
-    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.35) 0%,rgba(11,22,40,0.75) 100%);pointer-events:none"></div>
+    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.55) 0%,rgba(11,22,40,0.88) 100%);pointer-events:none"></div>
 
-    <div style="padding:18px 16px 22px 18px;position:relative;display:flex;flex-direction:column;gap:14px">
+    <div style="padding:14px 14px 16px;position:relative">
 
-      <!-- title row -->
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.15em;color:#c9a84c;text-transform:uppercase">Our Recent Winners</div>
-        <div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #c9a84c;border-radius:5px;padding:3px 8px">
-          <div style="width:5px;height:5px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:hwPulse 1.8s ease-in-out infinite"></div>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+      <!-- header: title + AI EDGE -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;line-height:1">🏆</span>
+          <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em">Recent Winners</span>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:3px;background:rgba(11,22,40,0.6);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px">
+          <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:hwPulse 1.8s ease-in-out infinite"></div>
+          <span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
         </div>
       </div>
 
-      <!-- main content row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+      <!-- horse name -->
+      <div id="hw-horse" style="font-size:22px;font-weight:800;color:#fff;line-height:1.05;letter-spacing:-0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px"></div>
 
-        <!-- left: pick type + horse name + detail -->
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
-            <span style="font-size:14px;line-height:1">🐎</span>
-            <span id="hw-type" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,0.5)">NAP · Pick of the Day</span>
-          </div>
-          <div id="hw-horse" style="font-size:24px;font-weight:800;color:#fff;line-height:1.05;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-          <div id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.38);margin-top:5px;line-height:1.5"></div>
+      <!-- detail: course · race · date -->
+      <div id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.4;margin-bottom:10px"></div>
+
+      <!-- bottom row: type left, WIN + price right -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span id="hw-type" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:.04em"></span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="hw-result" style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff;background:#1e9e6b;padding:3px 9px;border-radius:99px">WIN</div>
+          <div id="hw-price" style="font-size:20px;font-weight:800;color:#c9a84c;letter-spacing:-0.3px;line-height:1"></div>
         </div>
-
-        <!-- right: unified WIN + price box -->
-        <div style="flex-shrink:0">
-          <div id="hw-win-box" style="background:rgba(30,158,107,0.15);border:1.5px solid #1e9e6b;border-radius:12px;padding:11px 16px;text-align:center;min-width:72px">
-            <div id="hw-result" style="font-size:9px;font-weight:700;letter-spacing:.14em;color:#1e9e6b;text-transform:uppercase;margin-bottom:4px">WIN</div>
-            <div id="hw-price" style="font-size:28px;font-weight:800;color:#c9a84c;letter-spacing:-0.5px;line-height:1"></div>
-          </div>
-        </div>
-
       </div>
 
     </div>
@@ -6746,7 +6741,6 @@ function _hwTick(){
   var price=document.getElementById('hw-price');
   var result=document.getElementById('hw-result');
   var typeEl=document.getElementById('hw-type');
-  var winBox=document.getElementById('hw-win-box');
   var bar=document.getElementById('hw-progress');
   if(!horse) return;
   var w=WINNERS_STRIP[_hwIdx];
@@ -6756,12 +6750,9 @@ function _hwTick(){
     detail.textContent=w.course+' \u00b7 '+w.race+' \u00b7 '+w.date;
     price.textContent=w.price;
     if(typeEl) typeEl.textContent=w.type||'AI Selection';
-    var isWin=w.result==='WIN';
-    var rc=isWin?'#1e9e6b':'#c9a84c';
-    if(result){result.textContent=w.result;result.style.color=rc;}
-    if(winBox){
-      winBox.style.background=isWin?'rgba(30,158,107,0.15)':'rgba(201,168,76,0.12)';
-      winBox.style.borderColor=rc;
+    if(result){
+      result.textContent=w.result;
+      result.style.background=w.result==='WIN'?'#1e9e6b':'#c9a84c';
     }
     [horse,detail,price,typeEl].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
   },310);
