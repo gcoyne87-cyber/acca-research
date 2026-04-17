@@ -1983,24 +1983,8 @@ function showRacingHome(){
   <div id="racing-home-content" style="display:none;padding:0">
 
     </div>
-    <!-- SECTION NAV -->
-    <div id="racing-section-nav" style="background:#fff;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #e4e8f0">
-      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid transparent;color:#0b1628;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
-      <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Next Race</button>
-      <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Winners</button>
-      <button id="secnav-pickofday" onclick="selectRacingSection('pickofday')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Pick of the Day</button>
-    </div>
-    <!-- DATE PILLS -->
-
-    <div id="racing-datepills-bar" style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
-      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Today</button>
-      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit">Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit">Upcoming</button>
-    </div>
-
-  <!-- WINNERS FEED (shared: Today + Tomorrow) -->
   <!-- WINNERS SLIDER -->
-  <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:8px 0 0;border-radius:0">
+  <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:0;border-radius:0">
 
     <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.30) 0%,rgba(11,22,40,0.82) 100%);pointer-events:none"></div>
 
@@ -2033,7 +2017,6 @@ function showRacingHome(){
         <span style="font-size:14px;line-height:1">→</span>
       </button>
 
-
     </div>
 
     <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.07)">
@@ -2041,6 +2024,21 @@ function showRacingHome(){
     </div>
 
   </div>
+
+    <!-- SECTION NAV -->
+    <div id="racing-section-nav" style="background:#fff;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #e4e8f0">
+      <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid transparent;color:#0b1628;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Racecards</button>
+      <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Next Race</button>
+      <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Winners</button>
+      <button id="secnav-pickofday" onclick="selectRacingSection('pickofday')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;letter-spacing:.01em">Pick of the Day</button>
+    </div>
+    <!-- DATE PILLS -->
+
+    <div id="racing-datepills-bar" style="background:#fff;border-bottom:1px solid #e4e8f0;display:flex;gap:0;align-items:center">
+      <button id="pill-today" onclick="selectRacingDate('today')" style="background:none;color:#0b1628;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Today</button>
+      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit">Tomorrow</button>
+      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:none;color:#b0b8c8;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit">Upcoming</button>
+    </div>
 
   <div id="racing-today-content">
 
