@@ -2002,20 +2002,20 @@ function showRacingHome(){
   <!-- WINNERS SLIDER -->
   <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:8px 0 0;border-radius:0">
 
-    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.38) 0%,rgba(11,22,40,0.80) 100%);pointer-events:none"></div>
+    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.30) 0%,rgba(11,22,40,0.82) 100%);pointer-events:none"></div>
 
-    <div style="padding:18px 14px 20px;position:relative">
+    <div style="padding:22px 14px 18px;position:relative">
 
       <!-- title -->
       <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-.01em;margin-bottom:10px">Our Recent Winners</div>
 
       <!-- NAP/NB pill -->
-      <div id="hw-type" style="display:inline-flex;align-items:center;margin-bottom:6px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46"></div>
+      <div id="hw-type" style="display:inline-flex;align-items:center;margin-bottom:8px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:#f0faf5;border:1px solid #1e9e6b;color:#065f46"></div>
 
       <!-- horse + price + details left | WON right -->
-      <div style="display:flex;align-items:stretch;justify-content:space-between;gap:14px">
+      <div style="display:flex;align-items:stretch;justify-content:space-between;gap:14px;margin-bottom:16px">
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">
-          <div id="hw-horse" style="font-size:24px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px"></div>
+          <div id="hw-horse" style="font-size:24px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px"></div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
             <span id="hw-price" style="font-size:14px;font-weight:800;color:#c9a84c;letter-spacing:-0.2px;line-height:1;flex-shrink:0"></span>
             <span style="font-size:11px;color:rgba(255,255,255,0.35);line-height:1">·</span>
@@ -2026,6 +2026,15 @@ function showRacingHome(){
           <div id="hw-result" style="font-size:16px;font-weight:900;color:#fff;background:#1e9e6b;padding:5px 11px;border-radius:6px;letter-spacing:.02em;line-height:1;text-align:center"></div>
         </div>
       </div>
+
+      <!-- CTA -->
+      <button onclick="document.getElementById('today-picks-section').scrollIntoView({behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;letter-spacing:-.01em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+        See Today's Picks
+        <span style="font-size:14px;line-height:1">→</span>
+      </button>
+
+      <!-- dots -->
+      <div id="hw-dots" style="display:flex;justify-content:center;align-items:center;gap:5px;margin-top:12px"></div>
 
     </div>
 
@@ -2059,7 +2068,7 @@ function showRacingHome(){
 
     <!-- RACING PICKS -->
 
-    <div class="main" style="padding:0">
+    <div id="today-picks-section" class="main" style="padding:0">
 
       <div style="padding:10px 6px 4px">
         <div class="sec-title">Picks of the Day</div>
@@ -6736,8 +6745,10 @@ function _hwTick(){
   var result=document.getElementById('hw-result');
   var typeEl=document.getElementById('hw-type');
   var bar=document.getElementById('hw-progress');
+  var dotsEl=document.getElementById('hw-dots');
   if(!horse) return;
-  var w=WINNERS_STRIP[_hwIdx];
+  var currentIdx=_hwIdx;
+  var w=WINNERS_STRIP[currentIdx];
   [horse,detail,price,typeEl,result].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
   setTimeout(function(){
     horse.textContent=w.name;
@@ -6748,10 +6759,18 @@ function _hwTick(){
       result.textContent=w.result==='WIN'?'WON':w.result;
       result.style.background=w.result==='WIN'?'#1e9e6b':'#c9a84c';
     }
+    if(dotsEl){
+      var dots=dotsEl.children;
+      for(var i=0;i<dots.length;i++){
+        var active=i===currentIdx;
+        dots[i].style.background=active?'#fff':'rgba(255,255,255,0.3)';
+        dots[i].style.width=active?'16px':'5px';
+      }
+    }
     [horse,detail,price,typeEl,result].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
   },310);
   if(bar){bar.style.transition='none';bar.style.width='0';bar.offsetHeight;bar.style.transition='width '+_hwInterval+'ms linear';bar.style.width='100%';}
-  _hwIdx=(_hwIdx+1)%WINNERS_STRIP.length;
+  _hwIdx=(currentIdx+1)%WINNERS_STRIP.length;
 }
 
 function _hwStart(){
@@ -6764,6 +6783,15 @@ function _hwStart(){
       slider.style.backgroundImage='url('+imgEl.src+')';
       slider.style.backgroundSize='cover';
       slider.style.backgroundPosition='center 30%';
+    }
+  }
+  var dotsEl=document.getElementById('hw-dots');
+  if(dotsEl){
+    dotsEl.innerHTML='';
+    for(var i=0;i<WINNERS_STRIP.length;i++){
+      var d=document.createElement('div');
+      d.style.cssText='height:5px;border-radius:3px;background:rgba(255,255,255,0.3);transition:width .3s,background .3s;width:5px';
+      dotsEl.appendChild(d);
     }
   }
   setTimeout(function(){
