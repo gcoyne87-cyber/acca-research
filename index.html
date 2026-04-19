@@ -1988,38 +1988,41 @@ function showRacingHome(){
   <div id="racing-home-content" style="display:none;padding:0">
 
     </div>
-  <!-- WINNERS SLIDER -->
+  <!-- AI ANALYSIS SLIDER -->
   <div id="winners-slider" style="background:#0b1628;position:relative;overflow:hidden;margin:0">
 
-    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.25) 0%,rgba(11,22,40,0.6) 40%,rgba(11,22,40,0.96) 75%,#0b1628 100%);pointer-events:none;z-index:1"></div>
+    <div id="hw-img-overlay" style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.35) 0%,rgba(11,22,40,0.65) 40%,rgba(11,22,40,0.97) 75%,#0b1628 100%);pointer-events:none;z-index:1"></div>
 
-    <div style="position:relative;z-index:2;padding:16px 16px 18px;display:flex;flex-direction:column;min-height:242px">
+    <div style="position:relative;z-index:2;padding:16px 16px 18px;display:flex;flex-direction:column;min-height:260px">
 
       <!-- Top label -->
-      <div style="font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#fff">Picks of the <span style="color:#c9a84c">Day</span></div>
-
-      <!-- Centre section: horse left, WON right — vertically centred in remaining space -->
-      <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:16px 0">
-
-        <div style="flex:1;min-width:0">
-          <div id="hw-horse" style="font-size:27px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px"></div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span id="hw-price" style="font-size:15px;font-weight:800;color:#c9a84c;flex-shrink:0;line-height:1"></span>
-            <span style="color:rgba(255,255,255,0.18);font-size:12px">·</span>
-            <span id="hw-detail" style="font-size:11px;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3"></span>
-          </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 7px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
+          <span style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-.3px">Today's Analysis</span>
         </div>
-
-        <!-- WON — unmissable -->
-        <div id="hw-result" style="flex-shrink:0;background:#1e9e6b;border-radius:12px;padding:10px 16px;text-align:center;box-shadow:0 4px 24px rgba(30,158,107,0.45)">
-          <div id="hw-result-text" style="font-size:18px;font-weight:900;color:#fff;letter-spacing:.05em;line-height:1"></div>
-        </div>
-
+        <span id="hw-counter" style="font-size:10px;color:rgba(255,255,255,0.3);font-weight:500;letter-spacing:.03em"></span>
       </div>
 
+      <!-- Pick type badge -->
+      <div id="hw-label" style="margin-bottom:14px"></div>
+
+      <!-- Horse name -->
+      <div id="hw-horse" style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.05;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+
+      <!-- Time · venue · odds row -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span id="hw-price" style="font-size:20px;font-weight:800;color:#1e9e6b;line-height:1;flex-shrink:0"></span>
+        <span style="color:rgba(255,255,255,0.2)">·</span>
+        <span id="hw-detail" style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.3"></span>
+      </div>
+
+      <!-- Key signals -->
+      <div id="hw-signals" style="margin-bottom:14px;display:flex;flex-direction:column;gap:4px"></div>
+
       <!-- CTA -->
-      <button onclick="var el=document.getElementById('today-picks-section');var y=el.getBoundingClientRect().top+window.scrollY-56;window.scrollTo({top:y,behavior:'smooth'})" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-.01em">
-        See Today's Picks <span style="font-size:14px">→</span>
+      <button id="hw-cta" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-.01em">
+        Go to Race <span style="font-size:14px">→</span>
       </button>
 
     </div>
@@ -2136,7 +2139,10 @@ function showRacingHome(){
           <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div>
         </div>
-        <div style="padding:0 14px 13px"><button class="slip-btn">+ Add to My Slip</button></div>
+        <div style="padding:0 14px 13px;display:flex;flex-direction:column;gap:8px">
+          <button class="slip-btn">+ Add to My Slip</button>
+          <button class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px" onclick="tmViewMeetingCard(‘cheltenham’,’14:00’)"><span>&#x2756;</span> Go to 14:00 Cheltenham</button>
+        </div>
       </div>
       <div style="background:#0b1628;border-radius:12px;border:1px solid rgba(201,168,76,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">
         <div style="padding:12px 14px 5px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
@@ -2152,7 +2158,10 @@ function showRacingHome(){
           <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
           <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:rgba(201,168,76,0.5)"> &middot; </span><strong style="font-weight:700;color:#c9a84c;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div>
         </div>
-        <div style="padding:0 14px 13px"><button class="slip-btn">+ Add to My Slip</button></div>
+        <div style="padding:0 14px 13px;display:flex;flex-direction:column;gap:8px">
+          <button class="slip-btn">+ Add to My Slip</button>
+          <button class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px" onclick="tmViewMeetingCard(‘cheltenham’,’13:30’)"><span>&#x2756;</span> Go to 13:30 Cheltenham</button>
+        </div>
       </div>
     </div>
 
@@ -6873,28 +6882,39 @@ function _wcStart(){
 }
 
 // ── HOME WINNERS SLIDER ──────────────────────────────────────────────────────
-var _hwIdx=0,_hwTimer=null,_hwInterval=4500;
+var _hwIdx=0,_hwTimer=null,_hwInterval=13000;
 
 function _hwTick(){
   var horse=document.getElementById('hw-horse');
   var detail=document.getElementById('hw-detail');
   var price=document.getElementById('hw-price');
-  var resultBox=document.getElementById('hw-result');
-  var resultText=document.getElementById('hw-result-text');
+  var labelEl=document.getElementById('hw-label');
+  var signalsEl=document.getElementById('hw-signals');
+  var ctaBtn=document.getElementById('hw-cta');
   var bar=document.getElementById('hw-progress');
   if(!horse) return;
   var currentIdx=_hwIdx;
-  var w=WINNERS_STRIP[currentIdx];
-  [horse,detail,price,resultBox].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
+  var h=AI_EDGE_HIGHLIGHTS[currentIdx];
+  var fadeEls=[horse,detail,price,labelEl,signalsEl];
+  fadeEls.forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='0';}});
   setTimeout(function(){
-    horse.textContent=w.name;
-    detail.textContent=w.course+' · '+w.race+' · '+w.date;
-    price.textContent=w.price;
-    if(resultText) resultText.textContent=w.result==='WIN'?'WON':w.result;
-    [horse,detail,price,resultBox].forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
+    horse.textContent=h.horse;
+    detail.textContent=h.time+' · '+h.venue;
+    price.textContent=h.odds;
+    if(labelEl) labelEl.innerHTML='';
+    if(signalsEl){
+      var sigs=h.signals||[h.signal];
+      signalsEl.innerHTML=sigs.slice(0,3).map(function(s){
+        return '<div style="display:flex;align-items:flex-start;gap:5px"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">&#x2756;</span><span style="font-size:11px;color:rgba(255,255,255,0.88);line-height:1.35">'+s+'</span></div>';
+      }).join('');
+    }
+    if(ctaBtn){ctaBtn.onclick=function(){nrViewMeetingCard(h.mid,h.venue,h.raceTime);};ctaBtn.innerHTML='Go to '+h.raceTime+' '+h.venue+' <span style="font-size:14px">→</span>';}
+    var counter=document.getElementById('hw-counter');
+    if(counter) counter.textContent=(currentIdx+1)+' of '+AI_EDGE_HIGHLIGHTS.length;
+    fadeEls.forEach(function(el){if(el){el.style.transition='opacity .3s';el.style.opacity='1';}});
   },310);
   if(bar){bar.style.transition='none';bar.style.width='0';bar.offsetHeight;bar.style.transition='width '+_hwInterval+'ms linear';bar.style.width='100%';}
-  _hwIdx=(currentIdx+1)%WINNERS_STRIP.length;
+  _hwIdx=(currentIdx+1)%AI_EDGE_HIGHLIGHTS.length;
 }
 
 function _hwStart(){
@@ -8089,6 +8109,38 @@ var RACING_WINNERS=[
 
 ];
 
+var AI_EDGE_HIGHLIGHTS=[
+  {label:"NAP",horse:"Majolique",time:"13:15",venue:"Cork",odds:"2/1",
+   signals:["JP Townend booked — Mullins doesn't put his number one up without reason","Top AI rating across form, going and trainer stats — highest score on today's card","Mullins yard running at 52% strike rate — 5 winners in last 7 days"],
+   border:"#c9a84c",mid:"cork",raceTime:"13:15"},
+  {label:"NB",horse:"Proactif",time:"13:50",venue:"Cork",odds:"5/2",
+   signals:["Course and distance winner — won here twice last season","Market held firm all week — no drift, confidence behind this","Drops in class after near miss at Leopardstown — easier opportunity today"],
+   border:"#1e9e6b",mid:"cork",raceTime:"13:50"},
+  {label:"AI EDGE",horse:"Facile Vega",time:"14:20",venue:"Cork",odds:"3/1",
+   signals:["Market mover — drifted in from 4/1 this morning","Second highest AI form rating on the card","Willie Mullins second string but big yard in fine form"],
+   border:"rgba(255,255,255,0.15)",mid:"cork",raceTime:"14:20"},
+  {label:"AI EDGE",horse:"Galopin Des Champs",time:"15:05",venue:"Cork",odds:"6/4",
+   signals:["Highest confidence score on today's entire card","De Bromhead yard 52% strike rate this week","Won on this ground twice — conditions ideal"],
+   border:"rgba(255,255,255,0.15)",mid:"cork",raceTime:"15:05"},
+  {label:"AI EDGE",horse:"Banbridge",time:"15:40",venue:"Cork",odds:"4/1",
+   signals:["Top AI form rating in the 15:40","Weighted 3lb lower than last winning mark","Strong finishing profile suits Cork's long run-in"],
+   border:"rgba(255,255,255,0.15)",mid:"cork",raceTime:"15:40"},
+];
+
+function renderAiEdgeCarousel(){
+  var el=document.getElementById('ai-edge-carousel');
+  if(!el) return;
+  el.innerHTML=AI_EDGE_HIGHLIGHTS.map(function(h){
+    return '<div onclick="nrViewMeetingCard(\''+h.mid+'\',\''+h.venue+'\',\''+h.raceTime+'\')" style="flex-shrink:0;width:148px;background:rgba(255,255,255,0.05);border:1px solid '+h.border+';border-radius:12px;padding:11px 12px;cursor:pointer;scroll-snap-align:start;transition:transform .15s" onmouseenter="this.style.transform=\'translateY(-2px)\'" onmouseleave="this.style.transform=\'\'">'
+      +'<div style="display:inline-flex;align-items:center;margin-bottom:7px;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.06em;background:'+h.labelBg+';color:'+h.labelColor+'">'+h.label+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:#fff;line-height:1.1;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.horse+'</div>'
+      +'<div style="font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:6px">'+h.time+' · '+h.venue+'</div>'
+      +'<div style="font-size:17px;font-weight:800;color:#1e9e6b;margin-bottom:5px">'+h.odds+'</div>'
+      +'<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.35">'+h.signal+'</div>'
+    +'</div>';
+  }).join('');
+}
+
 var RACING_PICKS=[
 
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
@@ -8113,26 +8165,49 @@ var RACING_PICKS=[
 
 ];
 
-function nrViewMeetingCard(courseId,courseName,raceTime){
-  selectRacingSection('racecards');
-  selectRacingDate('today');
-  if(todayOpenMeeting!==courseId) toggleTodayMeeting(courseId);
+function tmViewMeetingCard(courseId,raceTime){
+  selectRacingDate('tomorrow');
+  if(tmOpenMeeting!==courseId) toggleTomorrowMeeting(courseId);
   setTimeout(function(){
     if(raceTime){
-      var meeting=RC_MEETINGS.filter(function(m){return m.id===courseId;})[0];
+      var meeting=TM_MEETINGS.filter(function(m){return m.id===courseId;})[0];
       if(meeting){
         var ri=-1;
         meeting.races.forEach(function(r,i){if(r.t===raceTime) ri=i;});
-        if(ri>=0) todaySelectRace(courseId,ri);
+        if(ri>=0) tomorrowSelectRace(courseId,ri);
       }
     }
     setTimeout(function(){
-      var el=document.getElementById('today-meetings-list');
+      var el=document.getElementById('tomorrow-meetings-list');
       if(el){
         var top=el.getBoundingClientRect().top+window.pageYOffset-56;
         window.scrollTo({top:top,behavior:'smooth'});
       }
     },80);
+  },80);
+}
+
+function nrViewMeetingCard(courseId,courseName,raceTime){
+  selectRacingSection('racecards');
+  selectRacingDate('today');
+  // Find race index first
+  var meeting=RC_MEETINGS.filter(function(m){return m.id===courseId;})[0];
+  var ri=0;
+  if(meeting&&raceTime){
+    meeting.races.forEach(function(r,i){if(r.t===raceTime) ri=i;});
+  }
+  // Open meeting with the correct race pre-selected
+  todayOpenMeeting=courseId;
+  rcOpenRace={};
+  rcOpenRace[courseId]=ri;
+  renderTodayMeetingsList();
+  setTimeout(function(){
+    rcAttachSwipe(courseId);
+    var el=document.getElementById('today-meetings-list');
+    if(el){
+      var top=el.getBoundingClientRect().top+window.pageYOffset-56;
+      window.scrollTo({top:top,behavior:'smooth'});
+    }
   },80);
 }
 
