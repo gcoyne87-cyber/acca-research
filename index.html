@@ -1943,12 +1943,10 @@ window.addEventListener('load',function(){
       authHideOverlay();
       authUpdateUserUI(user);
     } else {
-      // Check for invite/recovery token in URL
+      // Check for invite/recovery token in URL — open widget for those flows only
       var hash=window.location.hash;
       if(hash&&(hash.indexOf('invite_token')>=0||hash.indexOf('recovery_token')>=0||hash.indexOf('confirmation_token')>=0)){
         netlifyIdentity.open();
-      } else {
-        authShowOverlay();
       }
     }
   });
@@ -1959,7 +1957,6 @@ window.addEventListener('load',function(){
   });
   netlifyIdentity.on('logout',function(){
     authUpdateUserUI(null);
-    authShowOverlay();
   });
   netlifyIdentity.on('error',function(e){
     authSetError(e.message||'An error occurred.');
