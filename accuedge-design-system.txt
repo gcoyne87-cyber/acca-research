@@ -1,0 +1,854 @@
+================================================================
+ACCUEDGE — COMPLETE DESIGN SYSTEM
+AI Racing Intelligence App
+================================================================
+Save this file as accuedge-design-system.txt and upload to your
+Claude project. This document fully describes every visual
+element, component, layout and interaction in the app.
+================================================================
+
+
+================================================================
+1. BRAND & IDENTITY
+================================================================
+
+App Name: AccuEdge
+Tagline: AI Racing Intelligence
+Logo treatment: "Accu" in white or navy, "Edge" in gold (#c9a84c)
+Font size for logo: 26–40px, font-weight 900, letter-spacing -0.5px
+
+Brand personality: Premium, analytical, data-driven. Like a
+Bloomberg terminal crossed with a high-end sports app. Dark,
+confident, gold accents signal exclusivity.
+
+
+================================================================
+2. COLOUR PALETTE
+================================================================
+
+--- PRIMARY COLOURS ---
+
+Navy (Primary Dark):      #0b1628
+  Used for: page backgrounds (dark sections), nav backgrounds,
+  dark cards, CTA buttons (dark variant), slip panel, auth screen
+
+Gold (Accent):            #c9a84c
+  Used for: logo "Edge", CTA borders, AI EDGE badge borders,
+  NAP labels, price/odds on dark backgrounds, section title
+  bubble text colour (#7a5800 on light bg), highlights
+
+Gold 2 (Lighter gold):    #e0bc5a
+  Used for: hover states on gold elements
+
+Green (Action/Positive):  #1e9e6b
+  Used for: selected states, active tabs underlines, positive
+  results (WON), AI EDGE dot, NB label borders, slip add button,
+  confidence fills, "swipe for next race" hint text, progress bar
+
+--- LIGHT SURFACE COLOURS ---
+
+White:                    #ffffff
+  Used for: card backgrounds, expanded panels, CTA light variant
+
+Background (Page):        #f5f7fb
+  Used for: page-level background between cards
+
+Soft (Subtle surface):    #f0f2f7
+  Used for: input backgrounds, odds buttons, section soft areas
+
+Border:                   #e4e8f0
+  Used for: card borders, dividers, input borders
+
+--- TEXT COLOURS ---
+
+Primary text:             #0b1628  (navy — same as primary dark)
+Mid text:                 #5a6478
+Muted text:               #9aa3b5
+Section title text:       #7a5800  (on gold bubble background)
+
+--- DARK SURFACE TEXT ---
+
+White primary:            #ffffff
+White 88%:                rgba(255,255,255,0.88)  — signal text
+White 70%:                rgba(255,255,255,0.7)   — detail text
+White 55%:                rgba(255,255,255,0.55)  — sub-labels
+White 45%:                rgba(255,255,255,0.45)  — muted on dark
+White 30%:                rgba(255,255,255,0.3)   — very subtle
+White 20%:                rgba(255,255,255,0.2)   — dividers
+
+--- SEMANTIC COLOURS ---
+
+Winner / Positive:        #1e9e6b (green)
+Error / Risk:             #b02020 / #ff7070
+Warning:                  #c9a84c (gold)
+
+
+================================================================
+3. TYPOGRAPHY
+================================================================
+
+Font Family: 'Outfit', sans-serif
+Google Fonts import weights: 300, 400, 500, 600, 700
+Applied to: body, all buttons (font-family: inherit)
+
+Base font size: 16px (html), responsive, no change below 600px
+
+--- SCALE (most common sizes used) ---
+
+28–30px  weight 700–900   Hero/slider horse names, large headings
+22px     weight 900        Slider horse name (scaled)
+20px     weight 800        Odds in hero, large prices
+18px     weight 800        Section sub-labels like "Today's Analysis"
+17px     weight 700        Venue card names, pick card horse names
+16px     weight 700        Race title in expanded card header
+15px     weight 700        Section nav buttons, body CTAs
+14px     weight 500–700    Body text, fixture rows, runner names
+13px     weight 500–700    Standard buttons, labels, analysis text
+12px     weight 400–600    Metadata, sub-labels, detail lines
+11px     weight 400–600    Small metadata (going, runners, distance)
+10px     weight 600–700    Badge text, uppercase labels
+9px      weight 700        Micro labels, AI EDGE badge text
+8px      weight 700        AI EDGE badge text (smallest usage)
+7px      weight 700        Smallest label (compact slider context)
+
+--- TEXT TRANSFORMS ---
+
+Uppercase + letter-spacing: used for section eyebrows, badge labels
+Letter-spacing values: .01em (subtle) up to .2em (eyebrow labels)
+
+--- FONT WEIGHTS IN USE ---
+
+300  — light (rare, subtle body text)
+400  — regular (body, metadata)
+500  — medium (nav links, fixture rows)
+600  — semibold (section titles, odds)
+700  — bold (headings, CTAs, venue names)
+800  — extrabold (slider title, odds highlights)
+900  — black (horse names in slider, logo)
+
+
+================================================================
+4. SPACING & LAYOUT
+================================================================
+
+Max content width: 900px, centred
+Page padding: 0 on mobile, 24px top, 80px bottom (space for
+  fixed bottom nav)
+
+Mobile padding: 12px 0 80px (bottom nav clearance)
+Section gap: 5–14px between cards
+
+--- BORDER RADIUS ---
+
+4px    — micro badges (AI EDGE, NAP/NB tags)
+5–6px  — small pill badges, tag labels
+7–8px  — small buttons, odds chips
+9–10px — medium inputs, auth buttons
+11–12px — standard cards, panels
+14px   — large cards, slip panel
+16px   — hero sections
+18px   — drawer, large overlays
+20px   — auth card
+99px   — fully rounded (pill) CTAs — used for all main CTAs
+
+--- PADDING PATTERNS ---
+
+Card inner padding:  11–14px vertical, 12–14px horizontal
+CTA buttons:         10–13px vertical, 14px horizontal
+Badge/tag padding:   2–4px vertical, 6–12px horizontal
+Section title:       4px vertical, 12px horizontal
+
+--- SHADOWS ---
+
+Standard card:    box-shadow: 0 1px 4px rgba(11,22,40,0.08)
+Slip panel:       box-shadow: 0 8px 40px rgba(11,22,40,0.35)
+Slip toggle:      box-shadow: 0 4px 20px rgba(11,22,40,0.25)
+WON result badge: box-shadow: 0 4px 24px rgba(30,158,107,0.45)
+CTA hover gold:   box-shadow: 0 0 0 3px rgba(201,168,76,0.22), 0 2px 10px rgba(0,0,0,0.07)
+CTA hover green:  box-shadow: 0 0 0 3px rgba(30,158,107,0.22), 0 2px 10px rgba(0,0,0,0.07)
+CTA hover navy:   box-shadow: 0 0 0 3px rgba(201,168,76,0.22), 0 2px 12px rgba(11,22,40,0.25)
+
+
+================================================================
+5. BUTTON SYSTEM
+================================================================
+
+All buttons use: font-family: inherit, cursor: pointer
+All main CTAs use: border-radius: 99px (fully rounded pill)
+All CTAs animate on hover: transform: translateY(-1px) with
+  transition: box-shadow .18s, transform .18s
+
+--- CTA VARIANTS ---
+
+AI CTA LIGHT (gold outline, white bg) — class: ai-cta-light
+  background: #fff
+  color: #0b1628
+  border: 1.5px solid #c9a84c
+  border-radius: 99px
+  font-weight: 700
+  The ✦ icon inside spans inherit gold colour (#c9a84c)
+  Hover: gold glow shadow + translateY(-1px)
+  Usage: primary card-level CTA ("Analyse Cork Card with AI")
+
+AI CTA DARK (navy filled) — class: ai-cta-dark
+  background: #0b1628
+  color: #fff
+  border: 1.5px solid #0b1628
+  border-radius: 99px
+  font-weight: 700
+  The ✦ icon is gold (#c9a84c)
+  Hover: gold glow shadow + translateY(-1px)
+  Usage: race-level CTA ("Analyse 13:15 with AI")
+
+AI CTA GREEN (green outline) — class: ai-cta-green
+  background: #fff
+  color: #0b1628
+  border: 1.5px solid #1e9e6b
+  border-radius: 99px
+  font-weight: 700
+  Hover: green glow shadow + translateY(-1px)
+  Usage: secondary / alternative actions
+
+SLIP BUTTON — class: slip-btn
+  background: #1e9e6b
+  color: #fff
+  border: none
+  border-radius: 99px
+  padding: 12px
+  font-size: 13px, font-weight: 600
+  Hover: green glow + translateY(-1px)
+  Usage: "Add to My Slip" inside pick cards
+
+PRICE BUTTON — class: price-btn
+  background: #f0f2f7
+  border: 1px solid #e4e8f0
+  border-radius: 7px
+  padding: 8px 12px
+  Usage: odds display in runner rows, clickable price chips
+
+SLIP ADD BUTTON (inside slip panel)
+  background: #f0f2f7
+  color: #0b1628
+  border: none
+  border-radius: 99px
+  padding: 12px
+  font-size: 13px, font-weight: 600
+  Hover (non-touch): background #0b1628, color #fff
+
+AUTH SOCIAL BUTTON
+  background: rgba(255,255,255,0.06)
+  border: 1px solid rgba(255,255,255,0.15)
+  border-radius: 10px
+  color: #fff, font-size: 14px, font-weight: 600
+  Hover: background rgba(255,255,255,0.1) + translateY(-1px)
+  Contains icon (Google SVG or Apple SVG) + text label
+
+AUTH SUBMIT BUTTON
+  background: #c9a84c (gold)
+  color: #0b1628
+  border: none
+  border-radius: 10px
+  padding: 13px
+  font-size: 14px, font-weight: 800
+  Hover: translateY(-1px) + gold box-shadow
+
+SECTION NAV BUTTON (active state)
+  background: none
+  border-bottom: 2px solid #1e9e6b
+  color: #0b1628
+  padding: 14px 18px
+  font-size: 15px, font-weight: 600
+
+SECTION NAV BUTTON (inactive)
+  same but border-bottom: 2px solid transparent
+  color: #9aa3b5
+  font-weight: 500
+
+TIME TAB — class: time-tab
+  No background, just border-bottom underline for selected
+  Selected: border-bottom: 2px solid #1e9e6b, color: #1e9e6b, font-weight: 700
+  Inactive: border-bottom: transparent, color: #9aa3b5, font-weight: 500
+  Hover: translateY(-2px), opacity 0.8
+  transition: transform .15s, opacity .15s
+
+
+================================================================
+6. BADGE & LABEL SYSTEM
+================================================================
+
+--- SECTION TITLE BUBBLE --- class: sec-title
+  display: inline-block
+  background: #fef9e7 (warm yellow)
+  border: 1px solid #c9a84c
+  border-radius: 6px
+  padding: 4px 12px
+  font-size: 13px, font-weight: 700
+  color: #7a5800 (dark amber)
+  Usage: "Today's Racing", "Next Race", "Picks of the Day",
+         "Tomorrow's Racing", "Our Winners"
+
+--- AI EDGE BADGE ---
+  display: inline-flex, align-items: center, gap: 3px
+  background: rgba(11,22,40,0.92) (near-black navy)
+  border: 1px solid #c9a84c
+  border-radius: 4px
+  padding: 2px 6–7px
+  Contains: green dot (4×4px circle, #1e9e6b) + "AI EDGE" text
+  Text: font-size 8px, font-weight 700, letter-spacing .1em, color #fff
+  Usage: section title area, expanded card header, pick cards,
+         slider hero top row
+
+--- NAP TAG (inline, slider context) ---
+  display: inline span
+  border: 1px solid #c9a84c
+  border-radius: 4px
+  padding: 2px 6px
+  font-size: 10px, font-weight: 800
+  color: #c9a84c
+  Usage: appears next to horse name in slider when NAP slide active
+
+--- NB TAG (inline, slider context) ---
+  Same as NAP but:
+  border: 1px solid #1e9e6b
+  color: #1e9e6b
+
+--- NAP BADGE (pick card, standalone) ---
+  display: inline-flex
+  background: rgba(201,168,76,0.15)
+  border: 1px solid #c9a84c
+  border-radius: 5px
+  padding: 2px 8px
+  font-size: 10px, font-weight: 700
+  color: #c9a84c
+  letter-spacing: .05em
+  Label text: "NAP · Pick of the Day"
+
+--- NB BADGE (pick card, standalone) ---
+  Same structure but:
+  background: rgba(30,158,107,0.15)
+  border: 1px solid #1e9e6b
+  color: #1e9e6b
+  Label text: "NB · Next Best"
+
+--- AI SIGNAL BULLET ROW ---
+  display: flex, align-items: flex-start, gap: 5px
+  Gold diamond icon ✦ (color: #c9a84c, font-size: 9px, flex-shrink: 0, margin-top: 2px)
+  Text: font-size: 11px, color: rgba(255,255,255,0.88) on dark,
+        or #4a5568 on light
+  line-height: 1.3–1.35
+
+--- SLIDE COUNTER (top right of slider) ---
+  font-size: 10px
+  color: rgba(255,255,255,0.3)
+  font-weight: 500
+  Format: "1 of 5", "2 of 5" etc
+  Updates dynamically per slide
+
+--- EXPAND TOGGLE CIRCLE ---
+  width: 26px, height: 26px
+  border-radius: 50%
+  Closed: background: rgba(11,22,40,0.06), border: 1.5px solid rgba(11,22,40,0.12)
+          icon: "+" in #0b1628, font-size: 16px
+  Open:   background: #0b1628, border: 1.5px solid #0b1628
+          icon: "−" in #fff, font-size: 16px
+
+
+================================================================
+7. CARD COMPONENTS
+================================================================
+
+--- VENUE CARD (collapsed — Today & Tomorrow) ---
+  Outer: border-radius: 12px, overflow: hidden
+         box-shadow: 0 1px 4px rgba(11,22,40,0.08)
+         background: #fff, margin-bottom: 5px
+
+  Tap row: padding: 14px 12px 14px 14px
+           display: flex, align-items: center, justify-content: space-between
+           background: #fff, cursor: pointer
+
+  Venue name: font-size: 17px, font-weight: 700, color: #0b1628
+              letter-spacing: -0.2px, margin-bottom: 3px
+
+  Sub-line: font-size: 11px, color: #9aa3b5
+            Format: "Good to Yielding · 6 races · First 13:15"
+
+  Right: expand toggle circle (see badge system above)
+
+--- VENUE CARD (expanded) ---
+  Immediately below collapsed row, background: #fff
+  border-top: 1px solid #e4e8f0
+
+  AI EDGE section (if insights exist):
+    padding: 12px 14px 4px
+    AI EDGE badge (see above)
+    2 insight bullet rows (gold ✦ + text)
+    Then: full-width ai-cta-light button
+    Button margin: 0 14px 10px, width: calc(100% - 28px)
+    Button text: "✦ Analyse [Venue] Card with AI →"
+
+  Race time tabs (sticky):
+    position: sticky, top: 56px, z-index: 20
+    background: #fff
+    display: flex, border-bottom: 1px solid #f0f2f7
+    Each tab: class time-tab, padding: 6px 10px
+    Selected: border-bottom: 2px solid #1e9e6b, color: #1e9e6b, font-weight: 700
+    Inactive: color: #9aa3b5, font-weight: 500
+
+  Race header (when race selected):
+    padding: 10px 14px 6px, background: #fff
+    border-top: 1px solid #f0f2f7 (NO border-bottom — runners feel joined)
+    Line 1: "[Venue] · [Time]" — font-size: 16px, font-weight: 700, color: #0b1628
+    Line 2: "[Race name] · [Distance]" — font-size: 12px, color: #9aa3b5
+    Line 3: "[Going] · [X] runners" — font-size: 11px, color: #9aa3b5, margin-bottom: 8px
+    Then: ai-cta-dark full-width button
+    Text: "✦ Analyse [Time] with AI →"
+    If multiple races: green "swipe for next race ›" text-align: right, margin-top: 5px
+
+--- PICK CARD (dark navy — Picks of Day tab) ---
+  background: #0b1628
+  border-radius: 12px
+  border: 1px solid rgba(201,168,76,0.25)
+  box-shadow: 0 2px 20px rgba(0,0,0,0.18)
+  overflow: hidden
+
+  Top section (padding: 12px 14px 5px):
+    display: flex, align-items: flex-start, justify-content: space-between
+    Left: NAP or NB badge (see badges above)
+          Horse name: font-size 17px, font-weight 700, color #fff
+          Detail: "[Time] [Venue] · [Race type]"
+                  font-size: 10px, color: rgba(255,255,255,0.5)
+    Right: Odds — font-size: 17px, font-weight: 700, color: #1e9e6b
+
+  Divider: height: 1px, background: rgba(255,255,255,0.07), margin: 0 14px
+
+  AI EDGE section (padding: 4px 14px 10px):
+    AI EDGE badge: background rgba(255,255,255,0.06), border #c9a84c
+    Signal text: font-size: 11px, color: rgba(255,255,255,0.72)
+    Signals separated by " · " in rgba(201,168,76,0.5)
+    Signal tags in bold gold: font-size: 10.5px, font-weight: 700,
+                               letter-spacing: .05em, color: #c9a84c
+
+  Bottom CTAs (padding: 0 14px 10px):
+    Stack of 2 buttons:
+    1. slip-btn: "+ Add to My Slip" (green filled, full-width)
+    2. ai-cta-light: "✦ Go to [Time] [Venue]" (gold outline)
+
+--- WINNER CARD ---
+  Background: #fff
+  border-radius: 12px
+  border: 1px solid #e4e8f0
+  border-top: 3px solid #1e9e6b (win) or #b8e0cc (each way) or #e4e8f0 (placed)
+  padding: 10px 12px, flex-shrink: 0
+
+  WON badge: background #1e9e6b, border-radius: 6px, padding: 3px 8px
+             font-size: 10px, font-weight: 900, color: #fff, letter-spacing: .04em
+
+  Horse name: font-size: 14px, font-weight: 700, color: #0b1628
+  Detail: course, race, date — font-size: 10px, color: #9aa3b5
+  Price: font-size: 15px, font-weight: 700, color: #1e9e6b
+
+--- RUNNER ROW ---
+  display: flex, align-items: flex-start
+  padding: 8px 0, border-bottom: 1px solid #f0f2f7
+  Last row: no border
+
+  Number: font-size: 11px, color: #9aa3b5, width: 20px, flex-shrink: 0
+  Name: font-size: 14px, font-weight: 500, color: #0b1628
+  Jockey (line below): font-size: 11px, color: #9aa3b5
+  Trainer (line below jockey): font-size: 11px, color: #9aa3b5
+  Price button: right side, background: #f0f2f7, border: 1px solid #e4e8f0
+                border-radius: 7px, padding: 8px 12px, font-size: 12px
+                font-weight: 700, color: #0b1628
+
+  Form history toggle: "More info ›" / "Less info ‹"
+    font-size: 10px, color: #1e9e6b, cursor: pointer
+  Form carousel: slides in below runner on tap, grey bg panel
+
+
+================================================================
+8. HERO SLIDER (AI Analysis)
+================================================================
+
+Container: id="winners-slider"
+  background: #0b1628
+  position: relative, overflow: hidden
+
+Background image overlay (on dark bg image):
+  gradient: linear-gradient(to bottom,
+    rgba(11,22,40,0.35) 0%,
+    rgba(11,22,40,0.65) 40%,
+    rgba(11,22,40,0.97) 75%,
+    #0b1628 100%)
+  pointer-events: none, z-index: 1
+
+Content area (z-index: 2):
+  padding: 12px 14px 14px
+  display: flex, flex-direction: column
+  min-height: 230px
+
+--- TOP ROW ---
+  display: flex, align-items: center, justify-content: space-between
+  margin-bottom: 8px
+
+  Left: AI EDGE badge (compact 7px text variant) + "TODAY'S ANALYSIS"
+        "Today's Analysis" — font-size: 11px, font-weight: 600,
+        color: rgba(255,255,255,0.5), letter-spacing: .04em,
+        text-transform: uppercase
+
+  Right: slide counter e.g. "1 of 5" — id="hw-counter"
+         font-size: 10px, color: rgba(255,255,255,0.3), font-weight: 500
+
+--- HORSE NAME ROW ---
+  display: flex, align-items: center, gap: 7px, margin-bottom: 3px
+  Horse name: id="hw-horse", font-size: 22px, font-weight: 900,
+              color: #fff, letter-spacing: -.3px, line-height: 1.1
+              white-space: nowrap, overflow: hidden, text-overflow: ellipsis
+  NAP/NB inline tag: id="hw-label" — see badge system above
+                     Only appears for NAP and NB slides, empty otherwise
+
+--- PRICE + DETAIL ROW ---
+  display: flex, align-items: center, gap: 6px, margin-bottom: 8px
+  Odds: id="hw-price" — font-size: 15px, font-weight: 800, color: #c9a84c
+  Separator dot: rgba(255,255,255,0.2), font-size: 11px
+  Detail: id="hw-detail" — "[Time] · [Venue]"
+          font-size: 11px, color: rgba(255,255,255,0.55)
+
+--- SIGNAL BULLETS ---
+  id="hw-signals", margin-bottom: 10px
+  flex: 1 (takes remaining space before CTAs)
+  3 bullet rows, each:
+    display: flex, gap: 5px
+    Gold ✦ icon: color: #c9a84c, font-size: 9px, flex-shrink: 0, margin-top: 2px
+    Text: font-size: 11px, color: rgba(255,255,255,0.88), line-height: 1.35
+
+--- CTA STACK ---
+  display: flex, flex-direction: column, gap: 6px
+  Button 1 — "Go to Race →": id="hw-cta"
+    class: ai-cta-light (gold outline, white bg)
+    padding: 10px 14px, font-size: 13px, full-width
+    Text updates dynamically: "Go to 13:15 Cork →"
+    onclick: navigates to that exact race in racecards tab
+  Button 2 — "+ Add to Slip": id="hw-slip-cta"
+    background: transparent, color: #fff
+    border: 1.5px solid rgba(255,255,255,0.25)
+    border-radius: 99px, padding: 10px 14px, font-size: 13px
+    font-weight: 700, full-width
+    Hover: translateY(-1px) via onmouseenter/onmouseleave
+    onclick: adds current horse + odds to betting slip
+
+--- PROGRESS BAR ---
+  position: absolute, bottom: 0, left: 0, right: 0, height: 3px
+  Track: background rgba(255,255,255,0.05), z-index: 3
+  Fill: id="hw-progress"
+        background: linear-gradient(90deg, #1e9e6b, #2dc87e)
+        Animates from 0% to 100% width over 13 seconds per slide
+
+--- ROTATION ---
+  5 slides total, auto-rotates every 13 seconds
+  Transitions: all content fades out (opacity 0) then fades in (opacity 1)
+               fade transition: 0.3s
+
+
+================================================================
+9. SECTION NAVIGATION
+================================================================
+
+--- MAIN SECTION NAV BAR ---
+  id="racing-section-nav"
+  background: #fff, border-bottom: 1px solid #e4e8f0
+  display: flex, overflow-x: auto, scrollbar-width: none
+  Sticky below top nav
+
+  4 tabs: Racecards | Next Race | Winners | Pick of the Day
+  Active: border-bottom: 2px solid #1e9e6b, color: #0b1628, font-weight: 600
+  Inactive: border-bottom: 2px solid transparent, color: #9aa3b5, font-weight: 500
+  Padding: 14px 18px, font-size: 15px
+
+--- DATE PILLS BAR ---
+  id="racing-datepills-bar"
+  background: #fff, border-bottom: 1px solid #e4e8f0
+  display: flex, align-items: center
+  3 pills: Today | Tomorrow | Upcoming
+  Today active: font-weight: 700, color: #0b1628, border-bottom: 2px solid #1e9e6b
+  Others: color: #b0b8c8, font-weight: 400
+  Font-size: 13px (Today/Tomorrow), 12px (Upcoming)
+
+--- TOP NAV BAR ---
+  class: topnav (sticky, top: 0, z-index: 999)
+  background: #fff, border-bottom: 2px solid #e4e8f0
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06)
+  Height: 62px desktop, 56–60px mobile
+
+  Logo: "Accu" navy + "Edge" gold, font-size varies by context
+  Right side: Sign In button (pill outline) + hamburger menu icon
+
+  Racing mode modifier (.topnav.racing-mode):
+    background: #fff, border-bottom-color: #e4e8f0
+    Hamburger lines become #0b1628
+
+  Sign In button (top right):
+    border: 1px solid #e4e8f0, border-radius: 99px
+    padding: 5px 12px, font-size: 11px, font-weight: 600
+    color: #0b1628, background: none
+    When logged in: shows user email, click to log out
+
+
+================================================================
+10. AUTH SCREEN
+================================================================
+
+Overlay: id="auth-overlay"
+  position: fixed, inset: 0, background: #0b1628, z-index: 99999
+  display: flex, flex-direction: column
+  align-items: center, justify-content: center
+  padding: 24px, overflow-y: auto
+
+Auth card (.auth-card):
+  width: 100%, max-width: 380px
+  background: rgba(255,255,255,0.04)
+  border: 1px solid rgba(255,255,255,0.08)
+  border-radius: 20px, padding: 28px 24px
+
+Logo area (.auth-logo):
+  text-align: center, margin-bottom: 24px
+  "AccuEdge" in 26px weight 900 — "Accu" white, "Edge" gold
+  Tagline: "AI Racing Intelligence" — 11px, rgba(255,255,255,0.35),
+           letter-spacing: .08em, uppercase, margin-top: 4px
+
+Title: 18px, font-weight: 800, color: #fff, text-align: center
+  Login: "Welcome back"  |  Signup: "Create account"
+
+Subtitle: 12px, rgba(255,255,255,0.4), text-align: center
+
+Social buttons (.auth-social-btn):
+  Full-width, padding: 12px, border-radius: 10px
+  background: rgba(255,255,255,0.06), border: 1px solid rgba(255,255,255,0.15)
+  color: #fff, font-size: 14px, font-weight: 600
+  Gap: 10px between icon and text
+  Two buttons: Google (coloured SVG icon) and Apple (white SVG icon)
+  Hover: darker bg + translateY(-1px)
+
+Divider: "or" centred between two horizontal lines
+  Lines: rgba(255,255,255,0.1), text: rgba(255,255,255,0.3), font-size: 11px
+
+Inputs (.auth-input):
+  Full-width, background: rgba(255,255,255,0.06)
+  border: 1px solid rgba(255,255,255,0.12), border-radius: 10px
+  padding: 12px 14px, font-size: 14px, color: #fff
+  Placeholder: rgba(255,255,255,0.3)
+  Focus: border-color: #c9a84c
+
+Forgot password: text-align right, font-size: 12px, color rgba(255,255,255,0.4)
+  Hover: color: #c9a84c
+
+Submit button (.auth-submit):
+  Gold background (#c9a84c), color: #0b1628, full-width
+  border-radius: 10px, padding: 13px, font-size: 14px, font-weight: 800
+
+Error message (.auth-error):
+  background: rgba(220,50,50,0.15), border: 1px solid rgba(220,50,50,0.3)
+  border-radius: 8px, padding: 10px 12px, font-size: 12px, color: #ff7070
+
+Success message (.auth-success):
+  background: rgba(30,158,107,0.15), border: 1px solid rgba(30,158,107,0.3)
+  font-size: 12px, color: #1e9e6b
+
+Toggle link at bottom: "Don't have an account? Sign Up"
+  14px, rgba(255,255,255,0.4) base, link in #c9a84c, font-weight: 600
+
+
+================================================================
+11. SLIP PANEL
+================================================================
+
+Floating toggle button (.slip-toggle):
+  position: fixed, bottom: 22px (75px on mobile), right: 22px (12px mobile)
+  background: #0b1628, border-radius: 50px
+  padding: 11px 18px, font-size: 13px, color: #fff
+  box-shadow: 0 4px 20px rgba(11,22,40,0.25)
+  Contains: "My Slip" text + green badge count circle
+
+Slip panel (.slip-panel):
+  position: fixed, bottom: 70px, right: 22px, width: 310px
+  On mobile: bottom: 135px, left: 8px, right: 8px, width: auto
+  background: #0b1628, border-radius: 14px
+  box-shadow: 0 8px 40px rgba(11,22,40,0.35)
+
+Panel header:
+  padding: 14px 16px, border-bottom: 1px solid rgba(255,255,255,0.07)
+  Title: "MY SLIP" — 13px, font-weight: 600, uppercase, letter-spacing: .08em
+  Close button: 28×28px circle, background rgba(255,255,255,0.15)
+
+Leg items (.slip-leg-item):
+  background: rgba(255,255,255,0.06), border-radius: 8px, padding: 8px 10px
+  Horse name: 12px, font-weight: 500, #fff
+  Match detail: 10px, rgba(255,255,255,0.28)
+  Odds: 13px, font-weight: 600, rgba(255,255,255,0.45)
+  Remove button: ×, rgba(255,255,255,0.2), hover: #ff6b6b
+
+Returns section:
+  2-column grid (Total Odds | Potential Return)
+  Neutral box: background rgba(255,255,255,0.05)
+  Win box: background rgba(30,158,107,0.1), border rgba(30,158,107,0.25)
+  Value: 20px, font-weight: 600, #fff
+
+
+================================================================
+12. HOMEPAGE FLOW (section order)
+================================================================
+
+1. TOP NAV BAR (sticky)
+   Logo + Sign In button + hamburger
+
+2. AI ANALYSIS HERO SLIDER
+   Full-width, navy bg with optional course image underneath
+   Auto-rotates 5 slides × 13 seconds
+   Content: AI EDGE label, Today's Analysis, horse name + NAP/NB tag,
+            odds (gold) + time/venue, 3 signal bullets,
+            "Go to Race" CTA + "Add to Slip" CTA, progress bar
+
+3. SECTION NAV (sticky below top nav when scrolled)
+   Racecards | Next Race | Winners | Pick of the Day
+
+4. DATE PILLS (only visible on Racecards section)
+   Today | Tomorrow | Upcoming
+
+5. SECTION TITLE (gold bubble)
+   "Today's Racing" + AI EDGE badge (inline, same row)
+
+6. VENUE CARDS (4 cards, stacked)
+   Each: venue name + going/race count (collapsed)
+   Tap → expands to show AI Edge insights + CTAs + race tabs + runners
+
+7. PICKS OF THE DAY SECTION (inside racing-today-content, hidden when Picks tab active via separate section nav)
+
+8. SECTION TITLE
+   "Next Race"
+
+9. NEXT RACE CARD
+   Race time strip + swipeable card with horse list
+
+
+================================================================
+13. ANIMATIONS & TRANSITIONS
+================================================================
+
+Hover lift (all CTAs):
+  transition: box-shadow .18s, transform .18s
+  :hover → transform: translateY(-1px)
+
+Time tab hover:
+  transition: transform .15s, opacity .15s
+  :hover → translateY(-2px), opacity: .8
+
+Slider content fade:
+  opacity: 0 → 1 over 0.3s per element
+
+Slide progress bar:
+  width: 0% → 100% over 13000ms linear
+
+Feed items:
+  @keyframes feedIn — from opacity 0 + translateY(-5px) to normal
+
+Spinner:
+  @keyframes spin — 0.8s linear infinite rotate
+
+Drawer:
+  transform: translateY(100%) → translateY(0) over 0.3s ease
+
+Button hover glow (all CTAs):
+  Gold glow: box-shadow 0 0 0 3px rgba(201,168,76,0.22)
+  Green glow: box-shadow 0 0 0 3px rgba(30,158,107,0.22)
+
+
+================================================================
+14. MOBILE-FIRST RULES
+================================================================
+
+Breakpoint: 600px
+Below 600px:
+  - Bottom nav becomes visible (fixed, z-index: 300)
+  - Main content gets 80px bottom padding for nav clearance
+  - Top nav height: 56–60px
+  - Slip panel goes full-width near bottom
+  - Font sizes scale up slightly for tap targets
+  - All CTAs are full-width stacked (never side-by-side)
+  - Tap targets minimum 44px height
+  - All carousels: scroll-snap, -webkit-overflow-scrolling: touch
+  - Scrollbars hidden: scrollbar-width: none
+
+Touch interactions:
+  - Swipe left/right on race cards to move between races
+  - Swipe triggers at dx > 40px and dx > dy (not a scroll)
+  - All swipe containers: touchstart + touchend listeners
+  - Element cloned before re-attaching listeners to prevent accumulation
+
+
+================================================================
+15. KEY INTERACTION PATTERNS
+================================================================
+
+VENUE CARD EXPAND:
+  Tap collapsed card → opens in-place (no page navigation)
+  First shows: AI EDGE badge + 2 insight bullets + "Analyse Card" CTA
+  Then: sticky race time tabs + runner list
+  Only one venue open at a time
+
+RACE SELECTION:
+  Tap a time tab → shows race header (name, distance, going, runners)
+  + navy CTA ("Analyse 13:15 with AI")
+  + runner rows with price buttons
+  Swipe left/right to move between races at same venue
+
+PICKS OF DAY → RACE NAVIGATION:
+  "Go to [Time] [Venue]" button:
+  1. Switches to Racecards tab
+  2. Selects Today date
+  3. Opens correct venue
+  4. Pre-selects the exact race by time index
+  5. Scrolls to meeting list
+
+SLIDER → RACE NAVIGATION:
+  "Go to Race →" CTA on slider does same race navigation as above
+
+ADD TO SLIP:
+  Any price button or "Add to Slip" CTA adds horse + odds to slip panel
+  Slip badge count updates
+  Slip toggle button visible fixed bottom-right
+
+AUTH GATE:
+  On page load: if not authenticated, auth overlay covers everything
+  On login: overlay hides, app content appears
+  Invite/recovery tokens in URL hash: auto-opens netlify identity widget
+
+
+================================================================
+16. DATA STRUCTURE REFERENCE
+================================================================
+
+RC_MEETINGS (Today's racecards):
+  { id, name, going, nextMins, insights: [], races: [
+    { t (time), name, dist, r (runners), n (race number) }
+  ]}
+
+TM_MEETINGS (Tomorrow's racecards):
+  Same structure as RC_MEETINGS
+
+NR_RACES (Next Race):
+  { venue, t (time), type, dist, going, runners }
+
+NR_RUNNERS (shared, rotated per race):
+  { num, name, jockey, trainer, form, price, formHistory: [] }
+
+RACING_PICKS (Picks of Day cards):
+  { type, icon, horse, detail, confidence, odds, border, signals: [] }
+
+AI_EDGE_HIGHLIGHTS (slider data):
+  { label, horse, time, venue, odds, signals: [], border, mid, raceTime }
+
+WINNERS_STRIP:
+  { name, course, race, date, price, result }
+
+================================================================
+END OF DESIGN SYSTEM
+================================================================
