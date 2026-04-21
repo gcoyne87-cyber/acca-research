@@ -2152,14 +2152,14 @@ window.addEventListener('load',function(){
   </div>
 
 
-  <div id="racing-today-content">
-    <!-- DATE PILLS (in-content, scroll with page) -->
-    <div id="racing-datepills-bar" style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
-      <button id="pill-today" onclick="selectRacingDate('today')" style="background:#0b1628;color:#fff;border:1px solid #0b1628;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Today</button>
-      <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
-      <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Upcoming</button>
-    </div>
+  <!-- DATE PILLS (always visible) -->
+  <div id="racing-datepills-bar" style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
+    <button id="pill-today" onclick="selectRacingDate('today')" style="background:#0b1628;color:#fff;border:1px solid #0b1628;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Today</button>
+    <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
+    <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Upcoming</button>
+  </div>
 
+  <div id="racing-today-content">
     <div id="todays-racing-title" style="padding:10px 6px 4px">
       <div class="sec-title">Today's Racing</div> <div style="display:inline-flex;align-items:center;gap:3px;vertical-align:middle;background:rgba(11,22,40,0.92);border:1px solid #c9a84c;border-radius:4px;padding:2px 7px"><div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
     </div>
@@ -8708,6 +8708,8 @@ function selectRacingSection(s){
   if(winnersC) winnersC.style.display="none";
   if(picksC) picksC.style.display="none";
   if(nrPanel) nrPanel.style.display="none";
+  var dpb=document.getElementById("racing-datepills-bar");
+  if(dpb) dpb.style.display=s==="racecards"?"":"none";
   if(s==="racecards"){
     if(todayC) todayC.style.display="";
     var e8f=document.getElementById("racing-today-meetings");
