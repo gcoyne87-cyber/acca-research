@@ -1063,9 +1063,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── TRENDING STACKED CARDS ── */
 
-.trend-carousel-outer{}
+.trend-carousel-outer{margin:0 -12px;overflow:hidden}
 
-.trend-carousel{display:flex;flex-direction:column;gap:12px}
+.trend-carousel{display:flex;flex-direction:row;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 
 .trend-carousel::-webkit-scrollbar{display:none}
 
@@ -1334,6 +1334,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .home-section{margin-bottom:14px!important}
 
 .home-section-head-a{margin-bottom:4px!important}
+
+#trending-section .home-section-head-a{margin-bottom:0!important}
 
 .rg-footer{background:#0b1628;color:rgba(255,255,255,.55);padding:24px 20px 120px;font-family:'Outfit',sans-serif;font-size:11px;line-height:1.6;text-align:center}
 
@@ -2100,6 +2102,8 @@ window.addEventListener('load',function(){
 
           <div class="trend-carousel" id="trending-stacked"></div>
 
+          <div id="trend-dots" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 4px;background:#fff"></div>
+
         </div>
 
       </div>
@@ -2161,86 +2165,109 @@ window.addEventListener('load',function(){
   <div id="racing-home-content" style="display:none;padding:0">
   <!-- AI ANALYSIS SLIDER -->
   <!-- CAROUSEL -->
-  <div style="background:#f5f7fb;padding:4px 0 10px 10px;overflow:hidden">
-    <div id="carousel-track" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;padding-right:10px">
+  <div style="background:#f5f7fb;padding:0;overflow:hidden">
+    <div id="carousel-track" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;padding-right:0">
 
       <!-- SLIDE 1: TODAY'S NAP -->
-      <div class="carousel-card" id="carousel-card-0" data-idx="0" style="scroll-snap-align:start;flex-shrink:0;width:92%;height:300px;background:#0b1628;border-radius:14px;overflow:hidden;border:1px solid rgba(201,168,76,0.25);position:relative">
+      <div class="carousel-card" id="carousel-card-0" data-idx="0" style="scroll-snap-align:start;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;position:relative">
         <div id="carousel-bg-0" style="position:absolute;inset:0;background-size:cover;background-position:center 30%"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
-        <div class="card-inner" style="position:relative;z-index:2;padding:14px 14px 0;padding-bottom:92px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;color:rgba(201,168,76,0.7);letter-spacing:0.06em">TODAY'S PICKS OF THE DAY</div>
-            <span style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:500">1 / 3</span>
+        <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
+          <!-- TITLE -->
+          <div style="flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:16px;font-weight:800;color:#c9a84c;letter-spacing:0.07em">Today's Pick of the Day</div>
+              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em">NAP</div>
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-            <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Majolique</div>
-            <div style="font-size:14px;font-weight:800;color:#c9a84c;letter-spacing:-0.3px;line-height:1;flex-shrink:0;margin-left:8px">2/1</div>
+          <div style="flex:0 0 27px"></div>
+          <!-- HORSE / JOCKEY BLOCK -->
+          <div style="flex-shrink:0">
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+              <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Majolique</div>
+              <div style="font-size:13px;font-weight:600;color:#c9a84c;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">2/1</div>
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:15 · Cork · Grade 1</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend &nbsp;·&nbsp; W Mullins</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">Form: 111</div>
           </div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:15 · Cork · Grade 1</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend &nbsp;·&nbsp; W Mullins &nbsp;·&nbsp; <span style="color:#1e9e6b;font-weight:700">1-1-1</span></div>
-          <div style="display:flex;flex-direction:column;gap:5px">
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">JP Townend booked — Mullins doesn't put his number one up without reason</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">Top AI rating across form, going and trainer stats — highest score on today's card</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">Mullins yard running at 52% strike rate — 5 winners in last 7 days</span></div>
+          <div style="flex:0 0 16px"></div>
+          <!-- 3 KEY FACTS -->
+          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend booked — Mullins doesn't put his number one up without reason</span></div>
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Top AI rating across form, going and trainer stats — highest score on today's card</span></div>
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mullins yard running at 52% strike rate — 5 winners in last 7 days</span></div>
           </div>
         </div>
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:5px">
-          <button class="ai-cta-light" style="width:100%;padding:8px 10px;font-size:11px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:15')">✦ Go to 13:15 Cork →</button>
-          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:8px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Majolique','2/1')">+ Add to Slip</button>
+        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
+          <button class="ai-cta-light" style="width:100%;padding:10px 10px;font-size:14px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:15')">✦ Go to 13:15 Cork →</button>
+          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px 10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Majolique','2/1')">+ Add to Slip</button>
         </div>
       </div>
 
       <!-- SLIDE 2: WINNERS -->
-      <div class="carousel-card" id="carousel-card-1" data-idx="1" style="scroll-snap-align:start;flex-shrink:0;width:92%;height:300px;background:#0b1628;border-radius:16px;overflow:hidden;border:1px solid rgba(30,158,107,0.3);border-top:4px solid #1e9e6b;position:relative;display:flex;flex-direction:column">
+      <div class="carousel-card" id="carousel-card-1" data-idx="1" style="scroll-snap-align:start;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;border-top:4px solid #1e9e6b;position:relative;display:flex;flex-direction:column">
         <div id="carousel-bg-1" style="position:absolute;inset:0;background-size:cover;background-position:center 50%"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.92) 0%,rgba(11,22,40,0.45) 35%,rgba(11,22,40,0.45) 60%,rgba(11,22,40,0.96) 100%)"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
 
         <!-- SLOT COUNTER CENTRE -->
         <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:10px;padding-bottom:90px">
-          <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px">
-            <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-            <span style="font-size:8px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:56px;height:56px;border-radius:10px;background:#1e9e6b;overflow:hidden;position:relative;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:18px">
+            <div style="width:72px;height:72px;border-radius:12px;background:#1e9e6b;overflow:hidden;position:relative;flex-shrink:0">
               <div id="winners-slot-inner" style="position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center"></div>
             </div>
-            <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.2">Winners<br>This Month</div>
+            <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.2">Winners<br>This Month</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:3px 8px">
+              <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+              <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:.02em">Our AI-researched picks · this month so far</div>
           </div>
         </div>
 
         <!-- CTA BOTTOM -->
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 10px 12px">
-          <button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="selectRacingSection('winners')">See All Recent Winners →</button>
+        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 16px 16px">
+          <button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:14px 10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="selectRacingSection('winners')">See All Recent Winners →</button>
         </div>
 
       </div>
 
             <!-- SLIDE 3: TODAY'S NB -->
-      <div class="carousel-card" id="carousel-card-2" data-idx="2" style="scroll-snap-align:start;flex-shrink:0;width:92%;height:300px;background:#0b1628;border-radius:14px;overflow:hidden;border:1px solid rgba(201,168,76,0.25);position:relative">
+      <div class="carousel-card" id="carousel-card-2" data-idx="2" style="scroll-snap-align:start;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;position:relative">
         <div id="carousel-bg-2" style="position:absolute;inset:0;background-size:cover;background-position:center 30%"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
-        <div class="card-inner" style="position:relative;z-index:2;padding:14px 14px 0;padding-bottom:92px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;color:rgba(201,168,76,0.7);letter-spacing:0.06em">TODAY'S PICKS OF THE DAY</div>
-            <span style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:500">3 / 3</span>
+        <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
+          <!-- TITLE -->
+          <div style="flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:16px;font-weight:800;color:#c9a84c;letter-spacing:0.07em">Today's Pick of the Day</div>
+              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em">NB</div>
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-            <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Proactif</div>
-            <div style="font-size:14px;font-weight:800;color:#c9a84c;letter-spacing:-0.3px;line-height:1;flex-shrink:0;margin-left:8px">5/2</div>
+          <div style="flex:0 0 27px"></div>
+          <!-- HORSE / JOCKEY BLOCK -->
+          <div style="flex-shrink:0">
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+              <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Proactif</div>
+              <div style="font-size:13px;font-weight:600;color:#c9a84c;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">5/2</div>
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:50 · Cork · Grade 2</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">R Walsh &nbsp;·&nbsp; W Mullins</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">Form: 211</div>
           </div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:50 · Cork · Grade 2</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">R Walsh &nbsp;·&nbsp; W Mullins &nbsp;·&nbsp; <span style="color:#1e9e6b;font-weight:700">2-1-1</span></div>
-          <div style="display:flex;flex-direction:column;gap:5px">
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">Course and distance winner — won here twice last season</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">Market held firm all week — no drift, confidence behind this</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:3px">✦</span><span style="font-size:10px;color:rgba(255,255,255,0.88);line-height:1.35">Drops in class after near miss at Leopardstown — easier opportunity today</span></div>
+          <div style="flex:0 0 16px"></div>
+          <!-- 3 KEY FACTS -->
+          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course and distance winner — won here twice last season</span></div>
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Market held firm all week — no drift, confidence behind this</span></div>
+            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Drops in class after near miss at Leopardstown — easier opportunity today</span></div>
           </div>
         </div>
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:5px">
-          <button class="ai-cta-light" style="width:100%;padding:8px 10px;font-size:11px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:50')">✦ Go to 13:50 Cork →</button>
-          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:8px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Proactif','5/2')">+ Add to Slip</button>
+        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
+          <button class="ai-cta-light" style="width:100%;padding:10px 10px;font-size:14px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:50')">✦ Go to 13:50 Cork →</button>
+          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px 10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Proactif','5/2')">+ Add to Slip</button>
         </div>
       </div>
 
@@ -2302,9 +2329,6 @@ window.addEventListener('load',function(){
     </div>
 
     <!-- HOMEPAGE NEXT RACE -->
-    <div id="next-race-title" style="padding:10px 6px 4px">
-      <div class="sec-title">Next Race</div>
-    </div>
     <div id="nr-home-section" style="padding:0;margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
       <div id="nr-strip-home" style="display:flex;overflow-x:auto;padding:0 4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7"></div>
       <div id="nr-card-home" style="margin:0"></div>
@@ -2390,7 +2414,7 @@ window.addEventListener('load',function(){
 
   <!-- PICKS OF THE DAY SECTION -->
   <div id="racing-picks-content" style="display:none;padding:0">
-    <div style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
+    <div id="picks-datepills-bar" style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
       <button id="picks-pill-today" onclick="selectPicksDate('today')" style="background:#0b1628;color:#fff;border:1px solid #0b1628;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Today</button>
       <button id="picks-pill-tomorrow" onclick="selectPicksDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
     </div>
@@ -2406,7 +2430,9 @@ window.addEventListener('load',function(){
 
     <!-- NEXT RACE PANEL (section tab) -->
     <div id="section-nextrace-panel" style="display:none;padding:0 0 16px">
-<!-- NEXT RACE -->
+    <div style="padding:10px 6px 4px">
+      <div class="sec-title">Next Race</div>
+    </div>
 
     <div id="next-race-section" style="padding:0;margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
 
@@ -4859,7 +4885,9 @@ function renderTrendingAccas(){
 
     }).join('');
 
-    return '<div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden;margin-bottom:12px">'
+    return '<div style="flex-shrink:0;width:100%;scroll-snap-align:start;box-sizing:border-box;padding:0 12px 12px;background:#fff">'
+
+      +'<div style="background:#fff;border-radius:12px;border:1px solid #e8eaed;overflow:hidden">'
 
       +'<div style="padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f0f0f0;border-left:4px solid '+borderCol+'">'
 
@@ -4889,10 +4917,52 @@ function renderTrendingAccas(){
 
       +'</div>'
 
+      +'</div>'
+
       +'</div>';
 
   }).join('');
 
+  _startTrendRotate();
+
+}
+
+var _trendTimer=null,_trendIdx=0;
+
+function _updateTrendDots(idx,total){
+  var dotsEl=document.getElementById('trend-dots');
+  if(!dotsEl) return;
+  dotsEl.innerHTML='';
+  for(var i=0;i<total;i++){
+    var d=document.createElement('div');
+    d.style.cssText=i===idx?'width:14px;height:5px;border-radius:99px;background:#1e9e6b;transition:width 0.2s ease':'width:5px;height:5px;border-radius:50%;background:rgba(11,22,40,0.15);transition:width 0.2s ease';
+    dotsEl.appendChild(d);
+  }
+}
+
+function _startTrendRotate(){
+  var track=document.getElementById('trending-stacked');
+  if(!track||track.children.length<2) return;
+  var total=track.children.length;
+  _trendIdx=0;
+  _updateTrendDots(0,total);
+  if(_trendTimer) clearInterval(_trendTimer);
+  _trendTimer=setInterval(function(){
+    _trendIdx=(_trendIdx+1)%total;
+    var card=track.children[_trendIdx];
+    if(card) track.scrollTo({left:card.offsetLeft,behavior:'smooth'});
+    _updateTrendDots(_trendIdx,total);
+  },6000);
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        var idx=Array.prototype.indexOf.call(track.children,entry.target);
+        if(idx>=0){_trendIdx=idx;_updateTrendDots(idx,total);}
+      }
+    });
+  },{threshold:0.6,root:track});
+  Array.prototype.forEach.call(track.children,function(c){observer.observe(c);});
+  track.addEventListener('touchstart',function(){clearInterval(_trendTimer);_trendTimer=null;},{once:true,passive:true});
 }
 
 function addTrendingAcca(idx,btn){
@@ -7113,20 +7183,20 @@ function buildWinnersSlot(){
   if(!inner) return;
   inner.style.top='0px';
   inner.innerHTML='';
-  var DIGIT_H=56;
+  var DIGIT_H=72;
   var target=WINNERS_STRIP.length;
   var digits=[];
-  for(var i=0;i<22;i++) digits.push(Math.floor(Math.random()*10));
+  for(var i=0;i<40;i++) digits.push(Math.floor(Math.random()*10));
   digits.push(target);
   digits.forEach(function(d){
     var div=document.createElement('div');
-    div.style.cssText='height:56px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1;width:100%;font-family:inherit;';
+    div.style.cssText='height:72px;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1;width:100%;font-family:inherit;';
     div.textContent=d;
     inner.appendChild(div);
   });
   var endPos=-((digits.length-1)*DIGIT_H);
   var st=null;
-  var dur=1400;
+  var dur=2600;
   function ease(t){return 1-Math.pow(1-t,4);}
   function animate(ts){
     if(!st) st=ts;
@@ -8798,10 +8868,12 @@ function selectRacingSection(s){
     var todaysTitle=document.getElementById("todays-racing-title");
     var nextRaceTitle=document.getElementById("next-race-title");
     if(todaysTitle) todaysTitle.style.display="";
-    if(nextRaceTitle) nextRaceTitle.style.display="";
+    if(nextRaceTitle) nextRaceTitle.style.display="none";
     selectRacingDate("today");
-    if(picksC) picksC.style.display="";
-    selectPicksDate("today");
+    if(picksC){picksC.style.display="";}
+    var ppb=document.getElementById("picks-datepills-bar");
+    if(ppb) ppb.style.display="none";
+    renderRacingPicks();
     if(nrPanel) nrPanel.style.display="";
     renderNextRaceSection();
   } else if(s==="nextrace"){
@@ -8812,6 +8884,8 @@ function selectRacingSection(s){
     renderWinnersCards();
   } else if(s==="pickofday"){
     if(picksC) picksC.style.display="";
+    var ppb=document.getElementById("picks-datepills-bar");
+    if(ppb) ppb.style.display="";
     selectPicksDate("today");
   }
 }
