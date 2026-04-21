@@ -1637,7 +1637,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div style="position:relative;z-index:2">
 
-        <img src="racing-edge-logo.png" alt="RacingEdge" style="height:72px;object-fit:contain">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 64" style="height:72px;overflow:visible">
+          <defs>
+            <linearGradient id="sp-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#ffe066"/>
+              <stop offset="18%"  stop-color="#c9a84c"/>
+              <stop offset="42%"  stop-color="#f5d458"/>
+              <stop offset="62%"  stop-color="#7a5200"/>
+              <stop offset="82%"  stop-color="#d4a83a"/>
+              <stop offset="100%" stop-color="#a07820"/>
+            </linearGradient>
+            <filter id="sp-bevel" x="-5%" y="-10%" width="115%" height="130%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="blur"/>
+              <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1.6" specularExponent="35" lighting-color="#fff" result="light">
+                <fePointLight x="60" y="-40" z="90"/>
+              </feSpecularLighting>
+              <feComposite in="light" in2="SourceAlpha" operator="in" result="lc"/>
+              <feBlend in="SourceGraphic" in2="lc" mode="screen"/>
+            </filter>
+            <filter id="sp-shadow">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.4"/>
+            </filter>
+          </defs>
+          <text x="2" y="50" font-family="Outfit,sans-serif" font-size="52" font-weight="800" fill="#ffffff" filter="url(#sp-shadow)">Racing</text>
+          <text x="200" y="50" font-family="Outfit,sans-serif" font-size="52" font-weight="800" fill="url(#sp-gold)" filter="url(#sp-bevel)">Edge</text>
+        </svg>
 
         <div style="font-family:Outfit,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#1e9e6b;font-weight:500;margin-top:10px">AI Horse Racing Research</div>
 
@@ -1974,7 +1998,28 @@ window.addEventListener('load',function(){
 
     <div class="topnav-logo" onclick="goRacingHome()" style="cursor:pointer">
 
-      <img src="racing-edge-logo.png" alt="RacingEdge" style="height:36px;object-fit:contain;display:block">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 64" style="height:36px;display:block;overflow:visible">
+        <defs>
+          <linearGradient id="nav-gold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#ffe066"/>
+            <stop offset="18%"  stop-color="#c9a84c"/>
+            <stop offset="42%"  stop-color="#f5d458"/>
+            <stop offset="62%"  stop-color="#7a5200"/>
+            <stop offset="82%"  stop-color="#d4a83a"/>
+            <stop offset="100%" stop-color="#a07820"/>
+          </linearGradient>
+          <filter id="nav-bevel" x="-5%" y="-10%" width="115%" height="130%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="blur"/>
+            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1.6" specularExponent="35" lighting-color="#fff" result="light">
+              <fePointLight x="60" y="-40" z="90"/>
+            </feSpecularLighting>
+            <feComposite in="light" in2="SourceAlpha" operator="in" result="lc"/>
+            <feBlend in="SourceGraphic" in2="lc" mode="screen"/>
+          </filter>
+        </defs>
+        <text x="2" y="50" font-family="Outfit,sans-serif" font-size="52" font-weight="800" fill="#ffffff">Racing</text>
+        <text x="200" y="50" font-family="Outfit,sans-serif" font-size="52" font-weight="800" fill="url(#nav-gold)" filter="url(#nav-bevel)">Edge</text>
+      </svg>
 
     </div>
 
