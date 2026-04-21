@@ -1427,6 +1427,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .fx-cta span{color:var(--gold)}
 
 .fx-cta:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
+.fx-cta:active{transform:translateY(1px);box-shadow:none}
 
 .ai-cta-light{display:block;width:100%;background:#fff;color:var(--navy);border:1.5px solid var(--gold);border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
 .slot-counter-wrap{display:flex;align-items:center;gap:4px;margin-bottom:4px}
@@ -1437,6 +1438,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .slot-label-text{font-size:13px;font-weight:900;color:#0b1628;letter-spacing:-0.5px;line-height:1;font-family:'Outfit',sans-serif}
 .ai-cta-light span{color:var(--gold)}
 .ai-cta-light:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
+.ai-cta-light:active{transform:translateY(1px);box-shadow:none}
 .ai-cta-green{display:block;width:100%;background:#fff;color:#0b1628;border:1.5px solid #1e9e6b;border-radius:99px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
 .time-tab{transition:transform .15s,opacity .15s;cursor:pointer}
 .time-tab:hover{transform:translateY(-2px);opacity:.8}
@@ -1445,10 +1447,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ai-cta-dark{display:block;width:100%;background:#0b1628;color:#fff;border:1.5px solid #0b1628;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
 .ai-cta-dark span{color:#c9a84c}
 .ai-cta-dark:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 12px rgba(11,22,40,0.25);transform:translateY(-1px)}
+.ai-cta-dark:active{transform:translateY(1px);box-shadow:none}
 .price-btn{background:#f0f2f7;border:1px solid #e4e8f0;border-radius:7px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0;transition:box-shadow .18s,transform .18s}
 .price-btn:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.22),0 2px 8px rgba(0,0,0,0.07);transform:translateY(-1px)}
 .slip-btn{width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:box-shadow .18s,transform .18s}
 .slip-btn:hover{box-shadow:0 0 0 3px rgba(30,158,107,0.25),0 2px 10px rgba(0,0,0,0.1);transform:translateY(-1px)}
+.slip-btn:active{transform:translateY(1px);box-shadow:none}
+.cta-gold{transition:box-shadow .18s,transform .18s}
+.cta-gold:hover{box-shadow:0 0 0 3px rgba(201,168,76,0.28),0 2px 10px rgba(0,0,0,0.15);transform:translateY(-1px)}
+.cta-gold:active{transform:translateY(1px);box-shadow:none}
+.cta-outline-white{transition:box-shadow .18s,transform .18s}
+.cta-outline-white:hover{box-shadow:0 0 0 3px rgba(255,255,255,0.12),0 2px 10px rgba(0,0,0,0.12);transform:translateY(-1px)}
+.cta-outline-white:active{transform:translateY(1px);box-shadow:none}
 
 .fx-hda{display:flex;padding:0 12px;border-bottom:1px solid var(--border);border-top:none}
 
@@ -1634,7 +1644,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
         <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Racing</span><span style="color:#c9a84c">Edge</span></div>
 
-        <div style="font-family:Outfit,sans-serif;font-size:16px;color:#1e9e6b;font-weight:500;margin-top:14px;letter-spacing:0.01em">AI-powered analysis. Your edge, every race.</div>
+        <div style="font-family:Outfit,sans-serif;font-size:16px;color:#1e9e6b;font-weight:500;margin-top:14px;letter-spacing:0.01em">AI-powered horse racing analysis.</div>
 
 
       </div>
@@ -2009,28 +2019,28 @@ window.addEventListener('load',function(){
         <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
           <!-- TITLE -->
           <div style="flex-shrink:0">
+            <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Today's</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-size:16px;font-weight:800;color:#c9a84c;letter-spacing:0.07em">Today's Pick of the Day</div>
-              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em">NAP</div>
+              <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Pick of the Day</div>
+              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em;flex-shrink:0">NAP</div>
             </div>
           </div>
-          <div style="flex:0 0 27px"></div>
+          <div style="flex:0 0 20px"></div>
           <!-- HORSE / JOCKEY BLOCK -->
           <div style="flex-shrink:0">
-            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-              <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Majolique</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:15 · Cork · Grade 1</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+              <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Majolique</div>
               <div style="font-size:13px;font-weight:600;color:#c9a84c;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">2/1</div>
             </div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:15 · Cork · Grade 1</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend &nbsp;·&nbsp; W Mullins</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">Form: 111</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend &nbsp;·&nbsp; W Mullins</div>
           </div>
           <div style="flex:0 0 16px"></div>
           <!-- 3 KEY FACTS -->
-          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend booked — Mullins doesn't put his number one up without reason</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Top AI rating across form, going and trainer stats — highest score on today's card</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mullins yard running at 52% strike rate — 5 winners in last 7 days</span></div>
+          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend booked — Mullins doesn't put his number one up without reason</span></div>
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Top AI rating across form, going and trainer stats — highest score on today's card</span></div>
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mullins yard running at 52% strike rate — 5 winners in last 7 days</span></div>
           </div>
         </div>
         <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
@@ -2044,20 +2054,22 @@ window.addEventListener('load',function(){
         <div id="carousel-bg-1" style="position:absolute;inset:0;background-size:cover;background-position:center 50%"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
 
+        <!-- TITLE TOP LEFT -->
+        <div class="card-inner" style="position:absolute;top:0;left:0;right:0;z-index:2;padding:18px 20px 0">
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">This Month's</div>
+          <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Winners</div>
+        </div>
+
         <!-- SLOT COUNTER CENTRE -->
-        <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:10px;padding-bottom:90px">
-          <div style="display:flex;align-items:center;gap:18px">
-            <div style="width:72px;height:72px;border-radius:12px;background:#1e9e6b;overflow:hidden;position:relative;flex-shrink:0">
+        <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;padding:10px;padding-bottom:90px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:52px;height:52px;border-radius:10px;background:#1e9e6b;overflow:hidden;position:relative;flex-shrink:0">
               <div id="winners-slot-inner" style="position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center"></div>
             </div>
-            <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.2">Winners<br>This Month</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-            <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:3px 8px">
-              <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-              <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.2">AI-picked winners</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px">this month so far</div>
             </div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:.02em">Our AI-researched picks · this month so far</div>
           </div>
         </div>
 
@@ -2075,28 +2087,28 @@ window.addEventListener('load',function(){
         <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
           <!-- TITLE -->
           <div style="flex-shrink:0">
+            <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Today's</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-size:16px;font-weight:800;color:#c9a84c;letter-spacing:0.07em">Today's Pick of the Day</div>
-              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em">NB</div>
+              <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Pick of the Day</div>
+              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#c9a84c;border-radius:4px;padding:2px 7px;letter-spacing:0.06em;flex-shrink:0">NB</div>
             </div>
           </div>
-          <div style="flex:0 0 27px"></div>
+          <div style="flex:0 0 20px"></div>
           <!-- HORSE / JOCKEY BLOCK -->
           <div style="flex-shrink:0">
-            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-              <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Proactif</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:50 · Cork · Grade 2</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+              <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Proactif</div>
               <div style="font-size:13px;font-weight:600;color:#c9a84c;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">5/2</div>
             </div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:50 · Cork · Grade 2</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">R Walsh &nbsp;·&nbsp; W Mullins</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">Form: 211</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">R Walsh &nbsp;·&nbsp; W Mullins</div>
           </div>
           <div style="flex:0 0 16px"></div>
           <!-- 3 KEY FACTS -->
-          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course and distance winner — won here twice last season</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Market held firm all week — no drift, confidence behind this</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#c9a84c;font-size:9px;flex-shrink:0;margin-top:2px">✦</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Drops in class after near miss at Leopardstown — easier opportunity today</span></div>
+          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course and distance winner — won here twice last season</span></div>
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Market held firm all week — no drift, confidence behind this</span></div>
+            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#1e9e6b;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Drops in class after near miss at Leopardstown — easier opportunity today</span></div>
           </div>
         </div>
         <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
@@ -2252,9 +2264,85 @@ window.addEventListener('load',function(){
       <div style="padding:10px 6px 4px"><div class="sec-title">Picks of the Day</div></div>
       <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:10px;padding:0 6px 8px"></div>
     </div>
-    <div id="picks-tomorrow-content" style="display:none">
-      <div style="padding:10px 6px 4px"><div class="sec-title">Tomorrow's Picks</div></div>
-      <div id="racing-tm-picks-container" style="display:flex;flex-direction:column;gap:10px;padding:0 6px 8px"></div>
+    <div id="picks-tomorrow-content" style="display:none;padding:0 6px 8px">
+
+      <!-- COUNTDOWN CARD -->
+      <div id="tomorrow-countdown" style="background:#0b1628;border-radius:12px;border:1px solid rgba(201,168,76,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">
+
+        <!-- Header -->
+        <div style="padding:12px 14px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:6px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px">
+              <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+              <span style="font-size:8px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Pick of the Day</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:3px">Tomorrow's Pick of the Day</div>
+            <div id="countdown-date" style="font-size:12px;font-weight:700;color:#c9a84c"></div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.07);margin:0 14px"></div>
+
+        <!-- Timer -->
+        <div style="display:flex;align-items:center;padding:14px 14px 12px">
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 4px">
+            <div id="countdown-hrs" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
+            <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Hours</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:#c9a84c;padding:0 6px;margin-bottom:10px">:</div>
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 4px">
+            <div id="countdown-mins" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
+            <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Mins</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:#c9a84c;padding:0 6px;margin-bottom:10px">:</div>
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 4px">
+            <div id="countdown-secs" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
+            <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Secs</div>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:8px">
+          <button onclick="showSignupScreen()" class="cta-gold" style="width:100%;background:#c9a84c;color:#0b1628;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🔔 Notify Me at 8am</button>
+          <button onclick="showSignupScreen()" class="cta-outline-white" style="width:100%;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Sign Up — It's Free →</button>
+        </div>
+
+      </div>
+
+      <!-- SIGNUP CARD -->
+      <div id="tomorrow-signup" style="display:none;background:#0b1628;border-radius:12px;border:1px solid rgba(201,168,76,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">
+
+        <!-- Back row -->
+        <div style="padding:12px 14px 0;display:flex;align-items:center;gap:10px">
+          <button onclick="showCountdownScreen()" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:none;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
+          <div style="font-size:13px;font-weight:700;color:#fff">Create Your Free Account</div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.07);margin:12px 14px"></div>
+
+        <!-- Centre block -->
+        <div style="text-align:center;padding:4px 14px 16px">
+          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:12px;background:rgba(255,255,255,0.06);border:1px solid #c9a84c;border-radius:4px;padding:2px 6px">
+            <div style="width:4px;height:4px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+            <span style="font-size:8px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:5px">One tap and you're in</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:20px">Free account · Notified at 8am · Daily picks</div>
+
+          <!-- AUTH BUTTONS GO HERE — Google OAuth, Apple OAuth, email input -->
+          <!-- Wire to Netlify Identity or chosen auth provider when ready -->
+
+          <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6">
+            Already have an account?
+            <span onclick="/* wire to auth sign in when ready */" style="color:#c9a84c;font-weight:600;cursor:pointer">Sign in →</span>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -8500,7 +8588,7 @@ function renderRacingPicks(){
       +'</div>'
 
       +'<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:8px">'
-        +'<button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:box-shadow .18s,transform .18s" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to My Slip</button>'
+        +'<button class="slip-btn" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to My Slip</button>'
         +(courseName?'<button class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px" onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')"><span>&#x2756;</span> Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+'</button>':'')
       +'</div>'
 
@@ -8724,6 +8812,60 @@ function selectRacingSection(s){
   }
 }
 
+// ── TOMORROW COUNTDOWN ──────────────────────────────────────────────────────
+var countdownInterval;
+
+function getTomorrowLabel(){
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d=new Date();
+  d.setDate(d.getDate()+1);
+  return days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' · Available 8am';
+}
+
+function startCountdown(){
+  clearInterval(countdownInterval);
+  var dateEl=document.getElementById('countdown-date');
+  if(dateEl) dateEl.textContent=getTomorrowLabel();
+  function getRemaining(){
+    var now=new Date();
+    var target=new Date();
+    target.setDate(target.getDate()+1);
+    target.setHours(8,0,0,0);
+    var secs=Math.max(0,Math.floor((target-now)/1000));
+    return{
+      h:String(Math.floor(secs/3600)).padStart(2,'0'),
+      m:String(Math.floor((secs%3600)/60)).padStart(2,'0'),
+      s:String(secs%60).padStart(2,'0')
+    };
+  }
+  function tick(){
+    var t=getRemaining();
+    var h=document.getElementById('countdown-hrs');
+    var m=document.getElementById('countdown-mins');
+    var s=document.getElementById('countdown-secs');
+    if(h) h.textContent=t.h;
+    if(m) m.textContent=t.m;
+    if(s) s.textContent=t.s;
+  }
+  tick();
+  countdownInterval=setInterval(tick,1000);
+}
+
+function showSignupScreen(){
+  var cd=document.getElementById('tomorrow-countdown');
+  var su=document.getElementById('tomorrow-signup');
+  if(cd) cd.style.display='none';
+  if(su) su.style.display='block';
+}
+
+function showCountdownScreen(){
+  var cd=document.getElementById('tomorrow-countdown');
+  var su=document.getElementById('tomorrow-signup');
+  if(su) su.style.display='none';
+  if(cd) cd.style.display='block';
+}
+
 function selectPicksDate(d){
   var todayPills=document.getElementById("picks-pill-today");
   var tmPills=document.getElementById("picks-pill-tomorrow");
@@ -8735,8 +8877,8 @@ function selectPicksDate(d){
   var tmContent=document.getElementById("picks-tomorrow-content");
   if(todayContent) todayContent.style.display=d==="today"?"":"none";
   if(tmContent) tmContent.style.display=d==="tomorrow"?"":"none";
-  if(d==="today") renderRacingPicks();
-  if(d==="tomorrow") renderTomorrowPicks();
+  if(d==="today"){ clearInterval(countdownInterval); renderRacingPicks(); }
+  if(d==="tomorrow"){ showCountdownScreen(); startCountdown(); }
 }
 
 function tmTimesHtml(m){
