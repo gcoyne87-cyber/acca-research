@@ -1551,30 +1551,34 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .rc-r-ew{font-size:9px;color:var(--muted);text-align:right;margin-top:2px}
 
 /* ── AUTH SCREEN ── */
-#auth-overlay{position:fixed;inset:0;background:#0b1628;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
-.auth-card{width:100%;max-width:380px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px 24px}
-.auth-logo{text-align:center;margin-bottom:24px}
-.auth-logo-text{font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px}
-.auth-logo-text span{color:#c9a84c}
-.auth-title{font-size:18px;font-weight:800;color:#fff;text-align:center;margin-bottom:4px}
-.auth-sub{font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:22px}
-.auth-social-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px;transition:background .18s,transform .18s}
-.auth-social-btn:hover{background:rgba(255,255,255,0.1);transform:translateY(-1px)}
+#auth-overlay{position:fixed;inset:0;background:rgba(11,22,40,0.72);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0;overflow-y:auto;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.auth-card{width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 40px;box-shadow:0 -4px 40px rgba(0,0,0,0.18)}
+.auth-logo{text-align:center;margin-bottom:20px}
+.auth-logo-text{font-size:22px;font-weight:900;letter-spacing:-.5px}
+.auth-logo-text .re-w{color:#0b1628}
+.auth-logo-text .re-g{color:#c9a84c}
+.auth-title{font-size:20px;font-weight:800;color:#0b1628;text-align:center;margin-bottom:4px}
+.auth-sub{font-size:13px;color:#8a94a6;text-align:center;margin-bottom:22px}
+.auth-google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#0b1628;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px;transition:background .18s,transform .18s,box-shadow .18s;box-shadow:0 1px 3px rgba(0,0,0,0.07)}
+.auth-google-btn:hover{background:#f8fafc;transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.1)}
+.auth-google-btn:active{transform:translateY(1px);box-shadow:none}
+.auth-apple-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:10px;border:none;background:#000;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:0;transition:background .18s,transform .18s,box-shadow .18s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.auth-apple-btn:hover{background:#1a1a1a;transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.2)}
+.auth-apple-btn:active{transform:translateY(1px);box-shadow:none}
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0}
-.auth-divider-line{flex:1;height:1px;background:rgba(255,255,255,0.1)}
-.auth-divider-text{font-size:11px;color:rgba(255,255,255,0.3);font-weight:500}
-.auth-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;font-size:14px;color:#fff;font-family:inherit;box-sizing:border-box;margin-bottom:10px;outline:none;transition:border-color .18s}
-.auth-input::placeholder{color:rgba(255,255,255,0.3)}
-.auth-input:focus{border-color:#c9a84c}
-.auth-submit{width:100%;background:#c9a84c;color:#0b1628;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px;transition:transform .18s,box-shadow .18s}
-.auth-submit:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,0.35)}
-.auth-forgot{text-align:right;margin-bottom:14px}
-.auth-forgot a{font-size:12px;color:rgba(255,255,255,0.4);cursor:pointer;text-decoration:none}
-.auth-forgot a:hover{color:#c9a84c}
-.auth-toggle{text-align:center;margin-top:18px;font-size:13px;color:rgba(255,255,255,0.4)}
-.auth-toggle a{color:#c9a84c;cursor:pointer;font-weight:600;text-decoration:none}
-.auth-error{background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:8px;padding:10px 12px;font-size:12px;color:#ff7070;margin-bottom:12px;display:none}
-.auth-success{background:rgba(30,158,107,0.15);border:1px solid rgba(30,158,107,0.3);border-radius:8px;padding:10px 12px;font-size:12px;color:#1e9e6b;margin-bottom:12px;display:none}
+.auth-divider-line{flex:1;height:1px;background:#e2e8f0}
+.auth-divider-text{font-size:12px;color:#b0b8c8;font-weight:500}
+.auth-input{width:100%;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:13px 14px;font-size:14px;color:#0b1628;font-family:inherit;box-sizing:border-box;margin-bottom:10px;outline:none;transition:border-color .18s}
+.auth-input::placeholder{color:#b0b8c8}
+.auth-input:focus{border-color:#0b1628;background:#fff}
+.auth-submit{width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s}
+.auth-submit:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(11,22,40,0.3)}
+.auth-submit:active{transform:translateY(1px);box-shadow:none}
+.auth-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:#f1f4f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#6b7280;font-family:inherit}
+.auth-close:active{background:#e2e8f0}
+.auth-error{background:#fff0f0;border:1px solid #fcc;border-radius:8px;padding:10px 12px;font-size:12px;color:#c0392b;margin-bottom:12px;display:none}
+.auth-success{background:#f0fff8;border:1px solid #a8e6cf;border-radius:8px;padding:10px 12px;font-size:12px;color:#0b6e4f;margin-bottom:12px;display:none}
+.auth-terms{font-size:11px;color:#b0b8c8;text-align:center;margin-top:16px;line-height:1.5}
 </style>
 
 </head>
@@ -1582,44 +1586,53 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 <body>
 
 <!-- AUTH OVERLAY -->
-<div id="auth-overlay" style="display:none">
-  <div class="auth-card">
+<div id="auth-overlay" style="display:none" onclick="authOverlayClick(event)">
+  <div class="auth-card" style="position:relative">
+    <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
+
     <div class="auth-logo">
-      <div class="auth-logo-text">Accu<span>Edge</span></div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:.08em;text-transform:uppercase">AI Racing Intelligence</div>
+      <div class="auth-logo-text"><span class="re-w">Racing</span><span class="re-g">Edge</span></div>
     </div>
 
-    <div id="auth-error" class="auth-error"></div>
-    <div id="auth-success" class="auth-success"></div>
+    <!-- Default view: sign in/up options -->
+    <div id="auth-main-view">
+      <div id="auth-error" class="auth-error"></div>
+      <div id="auth-success" class="auth-success"></div>
 
-    <div id="auth-title" class="auth-title">Welcome back</div>
-    <div id="auth-sub" class="auth-sub">Sign in to access your picks</div>
+      <div class="auth-title">Welcome to RacingEdge</div>
+      <div class="auth-sub">Sign in or create a free account</div>
 
-    <!-- Social -->
-    <button class="auth-social-btn" onclick="authSocial('google')">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-      Continue with Google
-    </button>
-    <button class="auth-social-btn" onclick="authSocial('apple')">
-      <svg width="18" height="18" viewBox="0 0 814 1000" fill="#fff"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 376.7 0 249.9 0 130.3c0-107.2 65.4-163.9 128.5-163.9 66.9 0 113.4 44.4 166.5 44.4 50.4 0 105-47.2 171.7-47.2zm-474.6-68.6c1.9-69.3 53.2-135.3 120.5-150.6 7.7-1.6 15.5-2.6 23.2-2.6 5.8 0 11.6.6 17.3 1.9-1.3 75.3-53.9 142.9-121.8 160.7-6.4 1.6-13.5 2.6-20.5 2.6-6.1 0-12.2-.7-18.7-1.9z"/></svg>
-      Continue with Apple
-    </button>
+      <!-- Google -->
+      <button class="auth-google-btn" onclick="authGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+        Continue with Google
+      </button>
 
-    <div class="auth-divider">
-      <div class="auth-divider-line"></div>
-      <div class="auth-divider-text">or</div>
-      <div class="auth-divider-line"></div>
+      <!-- Apple -->
+      <button class="auth-apple-btn" onclick="authApple()">
+        <svg width="16" height="18" viewBox="0 0 814 1000" fill="#fff"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 376.7 0 249.9 0 130.3c0-107.2 65.4-163.9 128.5-163.9 66.9 0 113.4 44.4 166.5 44.4 50.4 0 105-47.2 171.7-47.2zm-474.6-68.6c1.9-69.3 53.2-135.3 120.5-150.6 7.7-1.6 15.5-2.6 23.2-2.6 5.8 0 11.6.6 17.3 1.9-1.3 75.3-53.9 142.9-121.8 160.7-6.4 1.6-13.5 2.6-20.5 2.6-6.1 0-12.2-.7-18.7-1.9z"/></svg>
+        Continue with Apple
+      </button>
+
+      <div class="auth-divider">
+        <div class="auth-divider-line"></div>
+        <div class="auth-divider-text">or</div>
+        <div class="auth-divider-line"></div>
+      </div>
+
+      <!-- Email magic link -->
+      <input id="auth-email" class="auth-input" type="email" placeholder="Your email address" autocomplete="email"/>
+      <button class="auth-submit" id="auth-submit-btn" onclick="authEmailSubmit()">Continue with email</button>
+
+      <div class="auth-terms">By continuing you agree to our Terms of Service and Privacy Policy.</div>
     </div>
 
-    <!-- Email form -->
-    <input id="auth-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email"/>
-    <input id="auth-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password"/>
-    <div id="auth-name-wrap" style="display:none"><input id="auth-name" class="auth-input" type="text" placeholder="Full name" autocomplete="name"/></div>
-    <div class="auth-forgot" id="auth-forgot-wrap"><a onclick="authForgotPassword()">Forgot password?</a></div>
-    <button class="auth-submit" id="auth-submit-btn" onclick="authSubmit()">Sign In</button>
-
-    <div class="auth-toggle" id="auth-toggle-text">
-      Don't have an account? <a onclick="authToggleMode()">Sign Up</a>
+    <!-- Check email view -->
+    <div id="auth-check-email-view" style="display:none;text-align:center;padding:16px 0">
+      <div style="font-size:40px;margin-bottom:16px">&#x2709;&#xFE0F;</div>
+      <div style="font-size:18px;font-weight:800;color:#0b1628;margin-bottom:8px">Check your email</div>
+      <div style="font-size:14px;color:#8a94a6;line-height:1.6;margin-bottom:24px">We sent a magic link to <strong id="auth-sent-email" style="color:#0b1628"></strong>.<br>Tap it to sign in — no password needed.</div>
+      <button class="auth-submit" onclick="authBackToMain()" style="background:#f1f4f9;color:#0b1628">Back</button>
     </div>
   </div>
 </div>
@@ -1845,85 +1858,66 @@ function showRacingHome(){
 }
 
 // ── AUTH ────────────────────────────────────────────────────────────────
-var _authMode='login';
-
-function authShowOverlay(){
+function openAuthModal(){
   var o=document.getElementById('auth-overlay');
-  if(o) o.style.display='flex';
+  if(o){ o.style.display='flex'; document.body.style.overflow='hidden'; }
+  authBackToMain();
 }
-function authHideOverlay(){
+function closeAuthModal(){
   var o=document.getElementById('auth-overlay');
   if(o) o.style.display='none';
+  document.body.style.overflow='';
 }
+function authOverlayClick(e){
+  if(e.target===document.getElementById('auth-overlay')) closeAuthModal();
+}
+function authShowOverlay(){ openAuthModal(); }
+function authHideOverlay(){ closeAuthModal(); }
 function authSetError(msg){
   var el=document.getElementById('auth-error');
   if(!el) return;
   el.textContent=msg; el.style.display=msg?'block':'none';
 }
-function authSetSuccess(msg){
-  var el=document.getElementById('auth-success');
-  if(!el) return;
-  el.textContent=msg; el.style.display=msg?'block':'none';
-}
-function authToggleMode(){
-  _authMode=_authMode==='login'?'signup':'login';
-  var isSignup=_authMode==='signup';
-  document.getElementById('auth-title').textContent=isSignup?'Create account':'Welcome back';
-  document.getElementById('auth-sub').textContent=isSignup?'Start getting AI racing picks':'Sign in to access your picks';
-  document.getElementById('auth-submit-btn').textContent=isSignup?'Sign Up':'Sign In';
-  document.getElementById('auth-name-wrap').style.display=isSignup?'block':'none';
-  document.getElementById('auth-forgot-wrap').style.display=isSignup?'none':'block';
-  document.getElementById('auth-toggle-text').innerHTML=isSignup
-    ?'Already have an account? <a onclick="authToggleMode()">Sign In</a>'
-    :'Don\'t have an account? <a onclick="authToggleMode()">Sign Up</a>';
-  authSetError(''); authSetSuccess('');
-}
-function authSocial(provider){
+function authBackToMain(){
+  document.getElementById('auth-main-view').style.display='block';
+  document.getElementById('auth-check-email-view').style.display='none';
   authSetError('');
-  netlifyIdentity.open(provider);
+  var inp=document.getElementById('auth-email');
+  if(inp) inp.value='';
 }
-function authSubmit(){
+function authGoogle(){
+  window.location.href='/.netlify/identity/authorize?provider=google';
+}
+function authApple(){
+  authSetError('Apple Sign In coming soon.');
+}
+function authEmailSubmit(){
   var email=(document.getElementById('auth-email').value||'').trim();
-  var password=document.getElementById('auth-password').value||'';
-  var name=(document.getElementById('auth-name').value||'').trim();
-  authSetError(''); authSetSuccess('');
-  if(!email||!password){authSetError('Please enter your email and password.');return;}
+  if(!email||email.indexOf('@')<0){ authSetError('Please enter a valid email address.'); return; }
   var btn=document.getElementById('auth-submit-btn');
-  btn.textContent='Please wait…'; btn.disabled=true;
-  if(_authMode==='login'){
-    netlifyIdentity.login({email:email,password:password}).catch(function(e){
-      authSetError(e.message||'Login failed. Check your email and password.');
-      btn.textContent='Sign In'; btn.disabled=false;
-    });
-  } else {
-    netlifyIdentity.signup({email:email,password:password,data:{full_name:name}}).then(function(){
-      authSetSuccess('Check your email to confirm your account.');
-      btn.textContent='Sign Up'; btn.disabled=false;
-    }).catch(function(e){
-      authSetError(e.message||'Sign up failed. Please try again.');
-      btn.textContent='Sign Up'; btn.disabled=false;
-    });
-  }
-}
-function authForgotPassword(){
-  var email=(document.getElementById('auth-email').value||'').trim();
-  authSetError(''); authSetSuccess('');
-  if(!email){authSetError('Enter your email address above first.');return;}
-  netlifyIdentity.requestPasswordRecovery(email).then(function(){
-    authSetSuccess('Password reset email sent — check your inbox.');
-  }).catch(function(e){
-    authSetError(e.message||'Could not send reset email.');
+  btn.textContent='Sending…'; btn.disabled=true;
+  authSetError('');
+  fetch('/.netlify/identity/signup',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email,password:Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)})
+  }).then(function(r){
+    btn.textContent='Continue with email'; btn.disabled=false;
+    document.getElementById('auth-sent-email').textContent=email;
+    document.getElementById('auth-main-view').style.display='none';
+    document.getElementById('auth-check-email-view').style.display='block';
+  }).catch(function(){
+    btn.textContent='Continue with email'; btn.disabled=false;
+    document.getElementById('auth-sent-email').textContent=email;
+    document.getElementById('auth-main-view').style.display='none';
+    document.getElementById('auth-check-email-view').style.display='block';
   });
 }
 function authLogout(){
   netlifyIdentity.logout();
 }
 function authUpdateUserUI(user){
-  var btn=document.getElementById('auth-user-btn');
-  if(btn){
-    btn.textContent=user?(user.email||'Account'):'Sign In';
-    btn.onclick=user?authLogout:authShowOverlay;
-  }
+  updateAuthState(user);
 }
 
 // Init Netlify Identity
@@ -1942,7 +1936,7 @@ window.addEventListener('load',function(){
     }
   });
   netlifyIdentity.on('login',function(user){
-    authHideOverlay();
+    closeAuthModal();
     authUpdateUserUI(user);
     netlifyIdentity.close();
   });
@@ -1952,7 +1946,7 @@ window.addEventListener('load',function(){
   netlifyIdentity.on('error',function(e){
     authSetError(e.message||'An error occurred.');
     var btn=document.getElementById('auth-submit-btn');
-    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
+    if(btn){btn.disabled=false;btn.textContent='Continue with email';}
   });
   netlifyIdentity.init();
 });
@@ -2336,14 +2330,14 @@ window.addEventListener('load',function(){
           <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:5px">One tap and you're in</div>
           <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:20px">Free account · Notified at 8am · Daily picks</div>
 
-          <button onclick="netlifyIdentity.open('signup')" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:10px;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">
+          <button onclick="openAuthModal()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:10px;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">
             <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Continue with Google
           </button>
 
           <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6">
             Already have an account?
-            <span onclick="/* wire to auth sign in when ready */" style="color:#c9a84c;font-weight:600;cursor:pointer">Sign in →</span>
+            <span onclick="openAuthModal()" style="color:#c9a84c;font-weight:600;cursor:pointer">Sign in →</span>
           </div>
         </div>
 
@@ -9392,8 +9386,8 @@ function toggleRacingMenu(){
   </div>
   <div id="drawer-auth-section" style="flex:1;padding:16px;display:flex;flex-direction:column;gap:10px">
     <div id="drawer-logged-out" style="display:flex;flex-direction:column;gap:10px">
-      <button onclick="netlifyIdentity.open('signup');closeRacingMenu();" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">Sign Up Free →</button>
-      <button onclick="netlifyIdentity.open('login');closeRacingMenu();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
+      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">Sign Up Free →</button>
+      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
     </div>
     <div id="drawer-logged-in" style="display:none;flex-direction:column;gap:10px">
       <div id="drawer-user-email" style="font-size:13px;color:rgba(255,255,255,0.5);padding:4px 0"></div>
