@@ -2116,7 +2116,7 @@ window.addEventListener('load',function(){
         </div>
 
         <!-- SLOT COUNTER -->
-        <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:flex-start;padding:50px 20px 130px">
+        <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:flex-start;padding:70px 20px 110px">
           <div style="display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:1px">
               <div style="width:68px;height:68px;overflow:hidden;position:relative;flex-shrink:0">
@@ -7165,7 +7165,7 @@ function buildWinnersSlot(){
   digits.push(target);
   digits.forEach(function(d){
     var div=document.createElement('div');
-    div.style.cssText='height:68px;display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;color:#1e9e6b;letter-spacing:-2px;line-height:1;width:100%;font-family:inherit;';
+    div.style.cssText='height:68px;display:flex;align-items:center;justify-content:flex-start;font-size:46px;font-weight:900;color:#1e9e6b;letter-spacing:-2px;line-height:1;width:100%;font-family:inherit;';
     div.textContent=d;
     inner.appendChild(div);
   });
