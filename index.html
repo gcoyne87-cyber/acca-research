@@ -5,7 +5,19 @@
 
 <head>
 
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<!-- Firebase Auth -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyBtkzCm1fI3bbLfjsC1x4p6cZVfZtkEjoo",
+    authDomain: "racingedge-fd3d7.firebaseapp.com",
+    projectId: "racingedge-fd3d7",
+    storageBucket: "racingedge-fd3d7.firebasestorage.app",
+    messagingSenderId: "473716285588",
+    appId: "1:473716285588:web:7f89f8473ea165727b9481"
+  });
+</script>
 <meta charset="UTF-8">
 
 <meta name="mobile-web-app-capable" content="yes">
@@ -1886,7 +1898,8 @@ function authBackToMain(){
   if(inp) inp.value='';
 }
 function authGoogle(){
-  window.location.href='/.netlify/identity/authorize?provider=google';
+  var provider=new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithRedirect(provider);
 }
 function authApple(){
   authSetError('Apple Sign In coming soon.');
@@ -1897,58 +1910,43 @@ function authEmailSubmit(){
   var btn=document.getElementById('auth-submit-btn');
   btn.textContent='Sending…'; btn.disabled=true;
   authSetError('');
-  fetch('/.netlify/identity/signup',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({email:email,password:Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)})
-  }).then(function(r){
+  var actionSettings={url:window.location.href,handleCodeInApp:true};
+  firebase.auth().sendSignInLinkToEmail(email,actionSettings).then(function(){
+    window.localStorage.setItem('reEmailForSignIn',email);
     btn.textContent='Continue with email'; btn.disabled=false;
     document.getElementById('auth-sent-email').textContent=email;
     document.getElementById('auth-main-view').style.display='none';
     document.getElementById('auth-check-email-view').style.display='block';
-  }).catch(function(){
+  }).catch(function(e){
     btn.textContent='Continue with email'; btn.disabled=false;
-    document.getElementById('auth-sent-email').textContent=email;
-    document.getElementById('auth-main-view').style.display='none';
-    document.getElementById('auth-check-email-view').style.display='block';
+    authSetError(e.message||'Could not send sign-in link.');
   });
 }
 function authLogout(){
-  netlifyIdentity.logout();
+  firebase.auth().signOut();
 }
 function authUpdateUserUI(user){
   updateAuthState(user);
 }
 
-// Init Netlify Identity
+// Firebase Auth listeners
+firebase.auth().onAuthStateChanged(function(user){
+  updateAuthState(user);
+  if(user) closeAuthModal();
+});
+
+// Handle email sign-in link on page load
 window.addEventListener('load',function(){
-  if(typeof netlifyIdentity==='undefined') return;
-  netlifyIdentity.on('init',function(user){
-    if(user){
-      authHideOverlay();
-      authUpdateUserUI(user);
-    } else {
-      // Check for invite/recovery token in URL — open widget for those flows only
-      var hash=window.location.hash;
-      if(hash&&(hash.indexOf('invite_token')>=0||hash.indexOf('recovery_token')>=0||hash.indexOf('confirmation_token')>=0)){
-        netlifyIdentity.open();
-      }
-    }
-  });
-  netlifyIdentity.on('login',function(user){
-    closeAuthModal();
-    authUpdateUserUI(user);
-    netlifyIdentity.close();
-  });
-  netlifyIdentity.on('logout',function(){
-    authUpdateUserUI(null);
-  });
-  netlifyIdentity.on('error',function(e){
-    authSetError(e.message||'An error occurred.');
-    var btn=document.getElementById('auth-submit-btn');
-    if(btn){btn.disabled=false;btn.textContent='Continue with email';}
-  });
-  netlifyIdentity.init();
+  if(firebase.auth().isSignInWithEmailLink(window.location.href)){
+    var email=window.localStorage.getItem('reEmailForSignIn');
+    if(!email) email=window.prompt('Please confirm your email address');
+    firebase.auth().signInWithEmailLink(email, window.location.href).then(function(){
+      window.localStorage.removeItem('reEmailForSignIn');
+      window.history.replaceState({},'',window.location.pathname);
+    }).catch(function(e){
+      authSetError('Sign-in link error: '+e.message);
+    });
+  }
 });
 
 </script>
@@ -9275,11 +9273,6 @@ function updateAuthState(user){
   }
 }
 
-if(typeof netlifyIdentity!=='undefined'){
-  netlifyIdentity.on('init',function(user){ updateAuthState(user); });
-  netlifyIdentity.on('login',function(user){ updateAuthState(user); netlifyIdentity.close(); });
-  netlifyIdentity.on('logout',function(){ updateAuthState(null); });
-}
 
 function toggleRacingMenu(){
   var dr=document.getElementById('racing-menu-drawer');
@@ -9391,7 +9384,7 @@ function toggleRacingMenu(){
     </div>
     <div id="drawer-logged-in" style="display:none;flex-direction:column;gap:10px">
       <div id="drawer-user-email" style="font-size:13px;color:rgba(255,255,255,0.5);padding:4px 0"></div>
-      <button onclick="netlifyIdentity.logout();closeRacingMenu();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log Out</button>
+      <button onclick="authLogout();closeRacingMenu();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log Out</button>
     </div>
   </div>
   <div style="padding:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:10px;color:rgba(255,255,255,0.25);text-align:center">18+ · Gamble Responsibly</div>
