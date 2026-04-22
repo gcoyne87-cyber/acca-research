@@ -1580,9 +1580,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0}
 .auth-divider-line{flex:1;height:1px;background:#e2e8f0}
 .auth-divider-text{font-size:12px;color:#b0b8c8;font-weight:500}
-.auth-input{width:100%;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:13px 14px;font-size:14px;color:#0b1628;font-family:inherit;box-sizing:border-box;margin-bottom:10px;outline:none;transition:border-color .18s}
+.auth-email-wrap{position:relative;margin-bottom:10px}
+.auth-input{width:100%;background:#f8fafc;border:1.5px solid #dde1ea;border-radius:10px;padding:13px 48px 13px 14px;font-size:14px;color:#0b1628;font-family:inherit;box-sizing:border-box;outline:none;transition:border-color .2s}
 .auth-input::placeholder{color:#b0b8c8}
-.auth-input:focus{border-color:#0b1628;background:#fff}
+.auth-input.has-value{border-color:#1e9e6b;background:#fff}
+.auth-arrow-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%) scale(0);width:34px;height:34px;border-radius:8px;background:#1e9e6b;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity .2s;opacity:0}
+.auth-arrow-btn.visible{transform:translateY(-50%) scale(1);opacity:1}
+.auth-arrow-btn:active{transform:translateY(-50%) scale(0.92)}
 .auth-submit{width:100%;background:#0b1628;color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s}
 .auth-submit:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(11,22,40,0.3)}
 .auth-submit:active{transform:translateY(1px);box-shadow:none}
@@ -1612,17 +1616,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   <div class="auth-card" style="position:relative">
     <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
 
-    <div class="auth-logo">
-      <div class="auth-logo-text"><span class="re-w">Racing</span><span class="re-g">Edge</span></div>
-    </div>
-
-    <!-- Default view: sign in/up options -->
+    <!-- Default view -->
     <div id="auth-main-view">
       <div id="auth-error" class="auth-error"></div>
-      <div id="auth-success" class="auth-success"></div>
 
-      <div class="auth-title">Welcome to RacingEdge</div>
-      <div class="auth-sub">Sign in or create a free account</div>
+      <!-- Logo -->
+      <div style="text-align:center;margin-bottom:6px">
+        <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px"><span style="color:#0b1628">Racing</span><span style="color:#c9a84c">Edge</span></div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:#b0b8c8;margin-bottom:22px">Sign in or create an account</div>
 
       <!-- Google -->
       <button class="auth-google-btn" onclick="authGoogle()">
@@ -1632,7 +1634,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <!-- Apple -->
       <button class="auth-apple-btn" onclick="authApple()">
-        <svg width="16" height="18" viewBox="0 0 814 1000" fill="#fff"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 376.7 0 249.9 0 130.3c0-107.2 65.4-163.9 128.5-163.9 66.9 0 113.4 44.4 166.5 44.4 50.4 0 105-47.2 171.7-47.2zm-474.6-68.6c1.9-69.3 53.2-135.3 120.5-150.6 7.7-1.6 15.5-2.6 23.2-2.6 5.8 0 11.6.6 17.3 1.9-1.3 75.3-53.9 142.9-121.8 160.7-6.4 1.6-13.5 2.6-20.5 2.6-6.1 0-12.2-.7-18.7-1.9z"/></svg>
+        <svg width="15" height="18" viewBox="0 0 814 1000" fill="#fff"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 376.7 0 249.9 0 130.3c0-107.2 65.4-163.9 128.5-163.9 66.9 0 113.4 44.4 166.5 44.4 50.4 0 105-47.2 171.7-47.2zm-474.6-68.6c1.9-69.3 53.2-135.3 120.5-150.6 7.7-1.6 15.5-2.6 23.2-2.6 5.8 0 11.6.6 17.3 1.9-1.3 75.3-53.9 142.9-121.8 160.7-6.4 1.6-13.5 2.6-20.5 2.6-6.1 0-12.2-.7-18.7-1.9z"/></svg>
         Continue with Apple
       </button>
 
@@ -1642,9 +1644,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
         <div class="auth-divider-line"></div>
       </div>
 
-      <!-- Email magic link -->
-      <input id="auth-email" class="auth-input" type="email" placeholder="Your email address" autocomplete="email"/>
-      <button class="auth-submit" id="auth-submit-btn" onclick="authEmailSubmit()">Continue with email</button>
+      <!-- Email with inline arrow -->
+      <div class="auth-email-wrap">
+        <input id="auth-email" class="auth-input" type="email" placeholder="Enter your email" autocomplete="email" oninput="authEmailInput(this)"/>
+        <button class="auth-arrow-btn" id="auth-arrow-btn" onclick="authEmailSubmit()" tabindex="-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
 
       <div class="auth-terms">By continuing you agree to our Terms of Service and Privacy Policy.</div>
     </div>
@@ -1917,7 +1923,16 @@ function authBackToMain(){
   document.getElementById('auth-check-email-view').style.display='none';
   authSetError('');
   var inp=document.getElementById('auth-email');
-  if(inp) inp.value='';
+  if(inp){ inp.value=''; inp.classList.remove('has-value'); }
+  var btn=document.getElementById('auth-arrow-btn');
+  if(btn) btn.classList.remove('visible');
+}
+function authEmailInput(inp){
+  var btn=document.getElementById('auth-arrow-btn');
+  if(!btn) return;
+  var hasVal=inp.value.trim().length>0;
+  inp.classList.toggle('has-value',hasVal);
+  btn.classList.toggle('visible',hasVal);
 }
 function authGoogle(){
   var provider=new firebase.auth.GoogleAuthProvider();
