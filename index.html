@@ -7745,6 +7745,14 @@ function renderRacingMeetings(){
 
 }
 
+function _inHScroll(target,root){
+  var t=target;
+  while(t&&t!==root){
+    if(t.style&&(t.style.overflowX==='auto'||t.style.overflowX==='scroll')) return true;
+    t=t.parentElement;
+  }
+  return false;
+}
 function rcAttachSwipe(mid){
   var el=document.getElementById('rc-detail-'+mid);
   if(!el) return;
@@ -7752,9 +7760,10 @@ function rcAttachSwipe(mid){
   if(!m) return;
   var fresh=el.cloneNode(true);
   el.parentNode.replaceChild(fresh,el);
-  var sx=0,sy=0;
-  fresh.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  var sx=0,sy=0,skip=false;
+  fresh.addEventListener('touchstart',function(e){skip=_inHScroll(e.target,fresh);sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
   fresh.addEventListener('touchend',function(e){
+    if(skip) return;
     var dx=e.changedTouches[0].clientX-sx;
     var dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)) return;
@@ -7770,9 +7779,10 @@ function tmAttachSwipe(mid){
   if(!m) return;
   var fresh=el.cloneNode(true);
   el.parentNode.replaceChild(fresh,el);
-  var sx=0,sy=0;
-  fresh.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  var sx=0,sy=0,skip=false;
+  fresh.addEventListener('touchstart',function(e){skip=_inHScroll(e.target,fresh);sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
   fresh.addEventListener('touchend',function(e){
+    if(skip) return;
     var dx=e.changedTouches[0].clientX-sx;
     var dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)) return;
@@ -8322,9 +8332,10 @@ function nrAttachSwipe(){
     // Clone to wipe accumulated listeners
     var fresh=el.cloneNode(true);
     el.parentNode.replaceChild(fresh,el);
-    var sx=0,sy=0;
-    fresh.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+    var sx=0,sy=0,skip=false;
+    fresh.addEventListener('touchstart',function(e){skip=_inHScroll(e.target,fresh);sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
     fresh.addEventListener('touchend',function(e){
+      if(skip) return;
       var dx=e.changedTouches[0].clientX-sx;
       var dy=e.changedTouches[0].clientY-sy;
       if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)) return;
