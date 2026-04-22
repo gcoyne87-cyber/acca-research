@@ -1899,7 +1899,14 @@ function authBackToMain(){
 }
 function authGoogle(){
   var provider=new firebase.auth.GoogleAuthProvider();
-  firebase.auth().signInWithRedirect(provider);
+  firebase.auth().signInWithPopup(provider).then(function(result){
+    closeAuthModal();
+    updateAuthState(result.user);
+  }).catch(function(e){
+    if(e.code!=='auth/popup-closed-by-user'){
+      authSetError(e.message||'Google sign-in failed.');
+    }
+  });
 }
 function authApple(){
   authSetError('Apple Sign In coming soon.');
