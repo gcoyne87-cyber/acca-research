@@ -1591,6 +1591,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .auth-error{background:#fff0f0;border:1px solid #fcc;border-radius:8px;padding:10px 12px;font-size:12px;color:#c0392b;margin-bottom:12px;display:none}
 .auth-success{background:#f0fff8;border:1px solid #a8e6cf;border-radius:8px;padding:10px 12px;font-size:12px;color:#0b6e4f;margin-bottom:12px;display:none}
 .auth-terms{font-size:11px;color:#b0b8c8;text-align:center;margin-top:16px;line-height:1.5}
+
+/* ── NOTIFY PROMPT ── */
+#notify-prompt{position:fixed;inset:0;background:rgba(11,22,40,0.65);z-index:99990;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.notify-card{width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;padding:32px 24px 44px;text-align:center;box-shadow:0 -4px 40px rgba(0,0,0,0.15)}
+.notify-bell{font-size:44px;margin-bottom:16px;display:block}
+.notify-title{font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-0.4px;margin-bottom:8px}
+.notify-sub{font-size:14px;color:#8a94a6;line-height:1.55;margin-bottom:24px}
+.notify-cta{width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s;margin-bottom:12px}
+.notify-cta:active{transform:translateY(1px);box-shadow:none}
+.notify-skip{font-size:13px;color:#b0b8c8;cursor:pointer;background:none;border:none;font-family:inherit;padding:4px}
 </style>
 
 </head>
@@ -1646,6 +1656,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
       <div style="font-size:14px;color:#8a94a6;line-height:1.6;margin-bottom:24px">We sent a magic link to <strong id="auth-sent-email" style="color:#0b1628"></strong>.<br>Tap it to sign in — no password needed.</div>
       <button class="auth-submit" onclick="authBackToMain()" style="background:#f1f4f9;color:#0b1628">Back</button>
     </div>
+  </div>
+</div>
+
+<!-- NOTIFY PROMPT -->
+<div id="notify-prompt" style="display:none">
+  <div class="notify-card">
+    <span class="notify-bell">🔔</span>
+    <div class="notify-title">Never miss a Pick of the Day</div>
+    <div class="notify-sub">Sign up free and get notified the moment our NAP and NB are live. Free, no spam, cancel anytime.</div>
+    <button class="notify-cta" onclick="notifyCtaClick()">Get Notified — It's Free</button><br>
+    <button class="notify-skip" onclick="dismissNotifyPrompt()">Maybe later</button>
   </div>
 </div>
 
@@ -1935,6 +1956,29 @@ function authLogout(){
 function authUpdateUserUI(user){
   updateAuthState(user);
 }
+
+// ── NOTIFY PROMPT ────────────────────────────────────────────────────────
+function showNotifyPrompt(){
+  if(sessionStorage.getItem('notifyPromptSeen')) return;
+  document.getElementById('notify-prompt').style.display='flex';
+}
+function dismissNotifyPrompt(){
+  sessionStorage.setItem('notifyPromptSeen','1');
+  document.getElementById('notify-prompt').style.display='none';
+}
+function notifyCtaClick(){
+  dismissNotifyPrompt();
+  var user=firebase.auth().currentUser;
+  if(!user){
+    openAuthModal();
+  } else {
+    localStorage.setItem('notifOptIn','1');
+    // TODO: save to Firebase user profile when backend is ready
+  }
+}
+setTimeout(function(){
+  showNotifyPrompt();
+},15000);
 
 // Firebase Auth listeners
 firebase.auth().onAuthStateChanged(function(user){
