@@ -1595,9 +1595,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 /* ── NOTIFY PROMPT ── */
 #notify-prompt{position:fixed;inset:0;background:rgba(11,22,40,0.65);z-index:99990;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .notify-card{width:100%;max-width:380px;background:#fff;border-radius:20px;padding:32px 24px 36px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
-.notify-bell{font-size:44px;margin-bottom:16px;display:block}
-.notify-title{font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-0.4px;margin-bottom:8px}
-.notify-sub{font-size:14px;color:#8a94a6;line-height:1.55;margin-bottom:24px}
+.notify-bell{font-size:44px;margin-bottom:12px;display:block}
+.notify-title{font-size:28px;font-weight:900;color:#0b1628;letter-spacing:-0.5px;line-height:1.1;margin-bottom:10px}
+.notify-sub{font-size:14px;color:#8a94a6;line-height:1.6;margin-bottom:24px}
 .notify-cta{width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s;margin-bottom:12px}
 .notify-cta:active{transform:translateY(1px);box-shadow:none}
 .notify-skip{font-size:13px;color:#b0b8c8;cursor:pointer;background:none;border:none;font-family:inherit;padding:4px}
@@ -1663,10 +1663,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 <div id="notify-prompt" style="display:none">
   <div class="notify-card">
     <span class="notify-bell">🔔</span>
-    <div class="notify-title"><span style="color:#1e9e6b">Picks of the Day</span></div>
-    <div style="font-size:13px;font-weight:700;color:#c9a84c;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:10px">Get Notified</div>
-    <div class="notify-sub">Join 2,000+ RacingEdge users and get notified as soon as our Picks of the Day are available.</div>
-    <button class="notify-cta" onclick="notifyCtaClick()">Get Notified — It's Free</button><br>
+    <div style="font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Get Notified</div>
+    <div class="notify-title">Picks of the Day</div>
+    <div class="notify-sub">Join <strong style="color:#0b1628;font-weight:800">2,000+ RacingEdge users</strong> and get notified the moment our Picks of the Day are live.</div>
+    <button class="notify-cta" onclick="notifyCtaClick()">Get Notified</button><br>
     <button class="notify-skip" onclick="dismissNotifyPrompt()">Maybe later</button>
   </div>
 </div>
