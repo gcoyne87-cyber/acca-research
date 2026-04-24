@@ -7532,10 +7532,10 @@ function renderTodayMeetingsList(){
     // Collapsed row — venue name only
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Full Card AI Analysis</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Go &mdash; Full AI Analysis</button>';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
@@ -9048,10 +9048,10 @@ function renderTomorrowMeetingsList(){
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Full Card AI Analysis</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Go &mdash; Full AI Analysis</button>';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
