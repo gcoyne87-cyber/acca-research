@@ -7323,7 +7323,7 @@ function renderWinners(){
 
 var RC_MEETINGS=[
 
-  {id:'cork',flag:'IE',name:'Cork',going:'Good to Yielding',feature:true,nextMins:22,
+  {id:'cork',flag:'IE',name:'Wolverhampton',going:'Standard',feature:true,nextMins:22,
 
    insights:[
      'Elliott has quietly booked Blackmore for just one ride — race 5',
@@ -7533,9 +7533,9 @@ function renderTodayMeetingsList(){
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races</div>';
+    out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Full Card Analysis &rarr;</button>';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
@@ -9049,9 +9049,9 @@ function renderTomorrowMeetingsList(){
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races</div>';
+    out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Full Card Analysis &rarr;</button>';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
