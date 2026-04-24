@@ -7535,7 +7535,7 @@ function renderTodayMeetingsList(){
     out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-dark" style="flex-shrink:0;width:auto;border:1.5px solid #c9a84c;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Analyse All <span style="color:#c9a84c">'+m.races.length+' Races</span> &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-dark" style="flex-shrink:0;width:auto;border:1.5px solid #c9a84c;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Analyse All <span style="color:#1e9e6b">'+m.races.length+' Races</span> &rarr;</button>';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
@@ -9051,7 +9051,7 @@ function renderTomorrowMeetingsList(){
     out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;font-weight:600;color:#1e9e6b;margin-top:2px">'+m.races.length+' Races</div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-dark" style="flex-shrink:0;width:auto;border:1.5px solid #c9a84c;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Analyse All <span style="color:#c9a84c">'+m.races.length+' Races</span> &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-dark" style="flex-shrink:0;width:auto;border:1.5px solid #c9a84c;padding:7px 14px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> Analyse All <span style="color:#1e9e6b">'+m.races.length+' Races</span> &rarr;</button>';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
