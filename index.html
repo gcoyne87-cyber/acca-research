@@ -7530,20 +7530,20 @@ function renderTodayMeetingsList(){
     // Full-width banner card
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
     // Collapsed row — venue name only
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;cursor:pointer;background:#fff">';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px 14px;cursor:pointer;background:#fff">';
     out+='<div style="min-width:0;flex:1">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:3px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;margin-top:1px">'+m.races.length+' Races</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b">'+m.races.length+' Races</div>';
     out+='</div>';
     out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:10px">';
     out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     out+='</div>';
+    out+='<div style="padding:6px 14px 10px">';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b;margin-left:3px">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
+    out+='</div>';
     // Expanded white panel below banner
     if(isOpen){
-      out+='<div style="background:#fff">';
-      out+='<div style="padding:0 14px 12px">';
-      out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
-      out+='</div>';
+      out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
       out+='<div style="position:sticky;top:56px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tdpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
@@ -8847,9 +8847,9 @@ function selectRacingSection(s){
     if(nextRaceTitle) nextRaceTitle.style.display="none";
     selectRacingDate("today");
     if(picksC){picksC.style.display="";}
+    selectPicksDate("today");
     var ppb=document.getElementById("picks-datepills-bar");
     if(ppb) ppb.style.display="none";
-    renderRacingPicks();
     if(nrPanel) nrPanel.style.display="";
     renderNextRaceSection();
   } else if(s==="nextrace"){
@@ -9046,20 +9046,20 @@ function renderTomorrowMeetingsList(){
     var hasRace=tmOpenRace[m.id]!=null;
     var selRace=tmOpenRace[m.id];
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;cursor:pointer;background:#fff">';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px 14px;cursor:pointer;background:#fff">';
     out+='<div style="min-width:0;flex:1">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:3px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;margin-top:1px">'+m.races.length+' Races</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b">'+m.races.length+' Races</div>';
     out+='</div>';
     out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:10px">';
     out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
     out+='</div>';
+    out+='<div style="padding:6px 14px 10px">';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b;margin-left:3px">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
+    out+='</div>';
     // Expanded white panel
     if(isOpen){
-      out+='<div style="background:#fff">';
-      out+='<div style="padding:0 14px 12px">';
-      out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
-      out+='</div>';
+      out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
       out+='<div style="position:sticky;top:56px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tmpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
