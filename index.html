@@ -7533,7 +7533,7 @@ function renderTodayMeetingsList(){
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races · '+escHtml(m.going)+'</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races'</div>';
     out+='</div>';
     out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
@@ -9049,7 +9049,7 @@ function renderTomorrowMeetingsList(){
     out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
     out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races · '+escHtml(m.going)+'</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races'</div>';
     out+='</div>';
     out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
