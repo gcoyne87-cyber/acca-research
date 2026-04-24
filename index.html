@@ -7530,14 +7530,17 @@ function renderTodayMeetingsList(){
     // Full-width banner card
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
     // Collapsed row — venue name only
-    out+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;background:#fff">';
-    out+='<div onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="min-width:0;flex:1;cursor:pointer">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:4px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;display:inline-flex;align-items:center;gap:3px">'+m.races.length+' Races <span style="font-size:14px;opacity:0.7">›</span></div>';
+    out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races · '+escHtml(m.going)+'</div>';
     out+='</div>';
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:12px;cursor:pointer">';
-    out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
+    out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
+    out+='</div>';
+    out+='<div style="height:8px"></div>';
     // Expanded white panel below banner
     if(isOpen){
       out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
@@ -9043,14 +9046,17 @@ function renderTomorrowMeetingsList(){
     var hasRace=tmOpenRace[m.id]!=null;
     var selRace=tmOpenRace[m.id];
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
-    out+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;background:#fff">';
-    out+='<div onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="min-width:0;flex:1;cursor:pointer">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:4px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;display:inline-flex;align-items:center;gap:3px">'+m.races.length+' Races <span style="font-size:14px;opacity:0.7">›</span></div>';
+    out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+m.races.length+' races · '+escHtml(m.going)+'</div>';
     out+='</div>';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:12px;cursor:pointer">';
-    out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px"><span>&#x2756;</span> Analyse &rarr;</button>';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">';
+    out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"4px":"-2px")+'"></div>';
     out+='</div>';
+    out+='</div>';
+    out+='<div style="height:8px"></div>';
     // Expanded white panel
     if(isOpen){
       out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
