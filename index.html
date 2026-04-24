@@ -7530,16 +7530,13 @@ function renderTodayMeetingsList(){
     // Full-width banner card
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
     // Collapsed row — venue name only
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px 14px;cursor:pointer;background:#fff">';
-    out+='<div style="min-width:0;flex:1">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:3px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b">'+m.races.length+' Races</div>';
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;background:#fff">';
+    out+='<div onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="min-width:0;flex:1;cursor:pointer">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:4px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;display:inline-flex;align-items:center;gap:3px">'+m.races.length+' Races <span style="font-size:14px;opacity:0.7">›</span></div>';
     out+='</div>';
-    out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:10px">';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:12px;cursor:pointer">';
     out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
-    out+='</div>';
-    out+='<div style="padding:6px 14px 10px">';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b;margin-left:3px">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
     out+='</div>';
     // Expanded white panel below banner
     if(isOpen){
@@ -9046,16 +9043,13 @@ function renderTomorrowMeetingsList(){
     var hasRace=tmOpenRace[m.id]!=null;
     var selRace=tmOpenRace[m.id];
     out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px 14px;cursor:pointer;background:#fff">';
-    out+='<div style="min-width:0;flex:1">';
-    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:3px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b">'+m.races.length+' Races</div>';
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px 14px 14px;background:#fff">';
+    out+='<div onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="min-width:0;flex:1;cursor:pointer">';
+    out+='<div style="font-size:17px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;margin-bottom:4px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:700;color:#1e9e6b;display:inline-flex;align-items:center;gap:3px">'+m.races.length+' Races <span style="font-size:14px;opacity:0.7">›</span></div>';
     out+='</div>';
-    out+='<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:10px">';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:'+(isOpen?"#0b1628":"rgba(11,22,40,0.06)")+';border:1.5px solid '+(isOpen?"#0b1628":"rgba(11,22,40,0.12)")+';display:flex;align-items:center;justify-content:center;margin-left:12px;cursor:pointer">';
     out+='<span style="font-size:16px;line-height:1;color:'+(isOpen?"#fff":"#0b1628")+';font-weight:300">'+(isOpen?"&minus;":"+")+'</span></div>';
-    out+='</div>';
-    out+='<div style="padding:6px 14px 10px">';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px"><span>&#x2756;</span> Get AI Analysis for <span style="color:#1e9e6b;margin-left:3px">All '+m.races.length+' '+escHtml(m.name)+' Races</span> &rarr;</button>';
     out+='</div>';
     // Expanded white panel
     if(isOpen){
