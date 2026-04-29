@@ -9764,6 +9764,113 @@ function toggleRacingMenu(){
   </div>
   <div style="padding:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:10px;color:rgba(255,255,255,0.25);text-align:center">18+ · Gamble Responsibly</div>
 </div>
+
+<script>
+(function(){
+  var IS_DESKTOP = window.innerWidth >= 769;
+
+  // ── 1. Show topnav links on desktop ──
+  function applyDesktopNav(){
+    var links = document.querySelector('.topnav-links');
+    if(links && window.innerWidth >= 769) links.style.display = 'flex';
+  }
+  // Run on load and on resize
+  window.addEventListener('load', applyDesktopNav);
+  window.addEventListener('resize', applyDesktopNav);
+  // Also hook into showPage to reapply after any tab switches
+  var _origShowPage = window.showPage;
+  window.showPage = function(){
+    var r = _origShowPage && _origShowPage.apply(this, arguments);
+    setTimeout(applyDesktopNav, 50);
+    return r;
+  };
+
+  // ── 2. Slider arrow buttons — create in JS, append to wrapper ──
+  function setupArrows(){
+    var wrap = document.getElementById('nr-home-wrap');
+    if(!wrap || document.getElementById('nr-arr-l-js')) return; // already done
+
+    // Remove old arrows if any (from previous CSS-only attempt)
+    var oldL = document.getElementById('nr-arr-l');
+    var oldR = document.getElementById('nr-arr-r');
+    if(oldL) oldL.remove();
+    if(oldR) oldR.remove();
+
+    var btnStyle = 'display:flex;position:absolute;top:50%;transform:translateY(-50%);'
+      + 'width:36px;height:36px;border-radius:50%;background:#fff;border:1.5px solid #e4e8f0;'
+      + 'box-shadow:0 2px 10px rgba(0,0,0,0.14);cursor:pointer;align-items:center;'
+      + 'justify-content:center;color:#0b1628;font-size:24px;z-index:20;padding:0;'
+      + 'line-height:1;font-family:sans-serif;transition:box-shadow .15s,opacity .15s;outline:none';
+
+    var lBtn = document.createElement('button');
+    lBtn.id = 'nr-arr-l-js';
+    lBtn.setAttribute('aria-label','Previous race');
+    lBtn.innerHTML = '&#8249;';
+    lBtn.style.cssText = btnStyle + ';left:6px';
+    lBtn.onclick = function(){ nrArrow(-1); nrUpdateArrows(); };
+
+    var rBtn = document.createElement('button');
+    rBtn.id = 'nr-arr-r-js';
+    rBtn.setAttribute('aria-label','Next race');
+    rBtn.innerHTML = '&#8250;';
+    rBtn.style.cssText = btnStyle + ';right:6px';
+    rBtn.onclick = function(){ nrArrow(1); nrUpdateArrows(); };
+
+    wrap.appendChild(lBtn);
+    wrap.appendChild(rBtn);
+    nrUpdateArrowsJS();
+  }
+
+  function nrUpdateArrowsJS(){
+    var l = document.getElementById('nr-arr-l-js');
+    var r = document.getElementById('nr-arr-r-js');
+    var total = (window.NR_RACES && window.NR_RACES.length) || 0;
+    var sel = window.nrSelected || 0;
+    if(l){ l.style.opacity = sel===0 ? '0.2' : '1'; l.style.cursor = sel===0 ? 'default' : 'pointer'; }
+    if(r){ r.style.opacity = sel>=total-1 ? '0.2' : '1'; r.style.cursor = sel>=total-1 ? 'default' : 'pointer'; }
+  }
+
+  // Hook into nrSelect to update arrow states
+  var _origNrSelect = window.nrSelect;
+  window.nrSelect = function(i){
+    var r = _origNrSelect && _origNrSelect.apply(this, arguments);
+    nrUpdateArrowsJS();
+    return r;
+  };
+
+  // Keyboard arrows — desktop only
+  document.addEventListener('keydown', function(e){
+    if(window.innerWidth < 769) return;
+    if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')) return;
+    if(e.key==='ArrowLeft'){ if(typeof nrArrow==='function') nrArrow(-1); nrUpdateArrowsJS(); }
+    if(e.key==='ArrowRight'){ if(typeof nrArrow==='function') nrArrow(1); nrUpdateArrowsJS(); }
+  });
+
+  // Set up arrows once DOM and race data are ready
+  function trySetup(){
+    if(window.NR_RACES && document.getElementById('nr-home-wrap')){
+      setupArrows();
+      applyDesktopNav();
+    } else {
+      setTimeout(trySetup, 200);
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', trySetup);
+  } else {
+    trySetup();
+  }
+
+  // Also run after any render calls
+  var _origRender = window.renderNextRaceSection;
+  window.renderNextRaceSection = function(){
+    var r = _origRender && _origRender.apply(this, arguments);
+    setTimeout(function(){ setupArrows(); nrUpdateArrowsJS(); applyDesktopNav(); }, 50);
+    return r;
+  };
+
+})();
+</script>
 </body>
 
 </html>
