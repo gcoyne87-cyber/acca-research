@@ -843,6 +843,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── RACING MODE TOP BAR ── */
 .topnav.racing-mode{background:#fff;border-bottom-color:rgba(0,0,0,0.08)}
+@media(min-width:769px){.topnav-links{display:flex}}
 
 @media(max-width:600px){
 
@@ -1611,6 +1612,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .notify-cta{width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:12px;padding:16px;font-size:17px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s;margin-bottom:12px}
 .notify-cta:active{transform:translateY(1px);box-shadow:none}
 .notify-skip{font-size:13px;color:#b0b8c8;cursor:pointer;background:none;border:none;font-family:inherit;padding:4px}
+
+/* ── DESKTOP SLIDER ARROWS ── */
+#nr-arr-l,#nr-arr-r{display:none;position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid #e4e8f0;box-shadow:0 1px 8px rgba(0,0,0,0.12);cursor:pointer;align-items:center;justify-content:center;color:#0b1628;font-size:22px;z-index:10;padding:0;line-height:1;font-family:sans-serif;transition:box-shadow .15s,opacity .15s}
+#nr-arr-l:hover,#nr-arr-r:hover{box-shadow:0 2px 14px rgba(0,0,0,0.18)}
+#nr-arr-l:disabled,#nr-arr-r:disabled{opacity:0.2;cursor:default;box-shadow:none}
+#nr-arr-l{left:6px}
+#nr-arr-r{right:6px}
+@media(min-width:769px){#nr-arr-l,#nr-arr-r{display:flex}}
 </style>
 
 </head>
@@ -2265,9 +2274,13 @@ window.addEventListener('load',function(){
     </div>
 
     <!-- HOMEPAGE NEXT RACE -->
-    <div id="nr-home-section" style="padding:0;margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
-      <div id="nr-strip-home" style="display:flex;overflow-x:auto;padding:0 4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7"></div>
-      <div id="nr-card-home" style="margin:0"></div>
+    <div id="nr-home-wrap" style="position:relative;margin:0 0 5px">
+      <button id="nr-arr-l" onclick="nrArrow(-1)" disabled aria-label="Previous race">&#8249;</button>
+      <div id="nr-home-section" style="padding:0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
+        <div id="nr-strip-home" style="display:flex;overflow-x:auto;padding:0 4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7"></div>
+        <div id="nr-card-home" style="margin:0"></div>
+      </div>
+      <button id="nr-arr-r" onclick="nrArrow(1)" aria-label="Next race">&#8250;</button>
     </div>
 
   </div>
@@ -7797,7 +7810,7 @@ function renderTodayMeetingsList(){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
-        if(m.races.length>1) out+='<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">swipe for next race ›</div>';
+        if(m.races.length>1) out+='<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>';
         out+='</div>';
       }
       out+=rcRaceDetailHtml(m);
@@ -8543,7 +8556,7 @@ function nrRenderCard(){
         +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(r.dist) +'</div>'
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(r.going||'') +' · '+ r.runners +' runners</div>'
         +'<button onclick="nrAnalyse()" class="ai-cta-dark" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+ escHtml(r.t) +' with AI &rarr;</button>'
-        +(NR_RACES.length>1?'<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">swipe for next race ›</div>':'')
+        +(NR_RACES.length>1?'<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>':'')
       +'</div>'
       +runners
     +'</div>';
@@ -8576,6 +8589,26 @@ function nrAttachSwipe(){
 }
 
 function nrSelect(i){nrHorseInsights={};nrSelected=i;nrMoreOpen=false;nrRenderStrip();nrRenderCard();}
+function nrArrow(dir){
+  var next=nrSelected+dir;
+  if(next<0||next>=NR_RACES.length) return;
+  nrSelect(next);
+  nrUpdateArrows();
+}
+function nrUpdateArrows(){
+  var l=document.getElementById('nr-arr-l');
+  var r=document.getElementById('nr-arr-r');
+  if(l) l.disabled=(nrSelected===0);
+  if(r) r.disabled=(nrSelected>=NR_RACES.length-1);
+}
+(function(){
+  document.addEventListener('keydown',function(e){
+    if(window.innerWidth<769) return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+    if(e.key==='ArrowLeft') nrArrow(-1);
+    if(e.key==='ArrowRight') nrArrow(1);
+  });
+})();
 
 function nrToggleMore(){
   nrMoreOpen=!nrMoreOpen;
@@ -9318,7 +9351,7 @@ function renderTomorrowMeetingsList(){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
-        if(m.races.length>1) out+='<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">swipe for next race ›</div>';
+        if(m.races.length>1) out+='<div style="font-size:11px;color:#1e9e6b;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>';
         out+='</div>';
       }
       if(hasRace) out+=tmRaceDetailHtml(m);
