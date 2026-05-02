@@ -2667,7 +2667,7 @@ function unlockCorkAnalysis(){
 <div class="mr-bdy" id="mrb2" style="display:none">
 
 <!-- LOCKED STATE -->
-<div id="cork-analysis-locked" style="background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px">
+<div id="cork-analysis-locked" style="display:none;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px">
 
   <!-- SECTION 1: TOP BAR -->
   <div style="padding:10px 14px 8px;display:flex;align-items:center;gap:6px">
@@ -2675,51 +2675,25 @@ function unlockCorkAnalysis(){
     <span style="font-size:10px;font-weight:700;color:#1e9e6b;letter-spacing:.1em;text-transform:uppercase">Analysis Ready</span>
   </div>
 
-  <!-- SECTION 2: BLURRED STRONGEST SELECTION -->
-  <div style="position:relative;overflow:hidden;max-height:60px">
-    <div style="filter:blur(5px);opacity:0.4;pointer-events:none;user-select:none;padding:0 14px 14px">
-      <div style="background:#fff;border:2.5px solid #1e9e6b;border-radius:16px;overflow:hidden">
-        <div style="background:linear-gradient(135deg,#b8e8d4 0%,#d4f3e8 40%,#e8f9f2 100%);padding:10px 16px;border-bottom:1px solid rgba(30,158,107,0.15)">
-          <span style="font-size:11px;font-weight:700;color:#0d6644;letter-spacing:.14em;text-transform:uppercase">&#9733; Strongest Selection</span>
-        </div>
-        <div style="padding:18px 16px 0">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <svg viewBox="0 0 26 32" width="36" height="36" style="display:block;flex-shrink:0">
-              <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#ffffff"/>
-              <polygon points="3,9 23,9 13,18" fill="#0b1628"/>
-              <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#0b1628"/>
-              <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#0b1628"/>
-              <ellipse cx="13" cy="5" rx="8" ry="5" fill="#DC2626"/>
-              <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
-            </svg>
-            <span style="font-size:26px;font-weight:900;color:#0b1628;letter-spacing:-.5px;flex:1;min-width:0;line-height:1.15">Northern Star</span>
-            <span style="background:#1e9e6b;color:#fff;border-radius:10px;padding:6px 13px;font-size:14px;font-weight:800;flex-shrink:0">3/1</span>
-          </div>
-          <div style="font-size:11px;color:#9aa3b5;margin-bottom:14px">J. J. Doyle &nbsp;&middot;&nbsp; T: C. Hills &nbsp;&middot;&nbsp; F: <span style="letter-spacing:.2em">1 1 2 1 1</span></div>
-          <p style="font-size:13px;font-weight:700;color:#0b1628;line-height:1.6;margin:0 0 14px">Northern Star is the standout horse in this field. Three wins from five at Wolverhampton tell the story &mdash; this horse simply loves the track. Drawn perfectly in stall 3, with the pace to suit, this is the strongest case we&rsquo;ve had all week.</p>
-          <div style="height:1px;background:#f0f2f7;margin-bottom:14px"></div>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-            <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.55">4 wins from 5 &mdash; last two both at Wolverhampton, hasn&rsquo;t missed the frame.</span></div>
-            <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">COURSE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Best course record in field. Unbeaten at Class 5 here.</span></div>
-            <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">DRAW</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Stall 3 &mdash; the standout draw over 7f at this track.</span></div>
-            <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">PACE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Three front-runners ensure genuine pace &mdash; sets up perfectly.</span></div>
-            <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">VALUE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">AI prices 2/1. Current 3/1 is the widest overlay on today&rsquo;s card.</span></div>
-          </div>
-          <div style="height:1px;background:#f0f2f7;margin-bottom:14px"></div>
-          <button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;margin-bottom:20px">+ Add to My Slip</button>
-        </div>
+  <!-- SECTION 2: BLURRED PREVIEW -->
+  <div style="position:relative;overflow:hidden;height:53px">
+    <div style="filter:blur(5px);opacity:0.4;pointer-events:none;user-select:none;padding:10px 14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:4px;background:#DC2626;flex-shrink:0"></div>
+        <span style="font-size:20px;font-weight:900;color:#fff;flex:1">Northern Star</span>
+        <span style="background:#1e9e6b;color:#fff;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:800">3/1</span>
       </div>
     </div>
-    <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.1) 0%,rgba(11,22,40,0.6) 50%,rgba(11,22,40,0.95) 100%)"></div>
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:rgba(11,22,40,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:99px;padding:8px 16px;display:flex;align-items:center;gap:7px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.55)">Details Locked</span>
+    <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.2),rgba(11,22,40,0.92))"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:7px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5)">Details Locked</span>
     </div>
   </div>
 
-  <!-- CTA: UNCHANGED -->
-  <div style="padding:10px 14px 12px;border-top:1px solid rgba(255,255,255,0.07)">
-    <button onclick="unlockCorkAnalysis()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
+  <!-- CTA -->
+  <div style="padding:8px 14px 8px;border-top:1px solid rgba(255,255,255,0.07)">
+    <button onclick="unlockCorkAnalysis()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
   </div>
 
 </div>
@@ -2956,9 +2930,9 @@ function unlockCorkAnalysis(){
     <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">J.P. Townend &nbsp;&middot;&nbsp; T: W.P. Mullins &nbsp;&middot;&nbsp; F: 1 2 1 1 1</div>
     <div style="height:1px;background:#f0f2f7;margin-bottom:10px"></div>
     <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">JOCKEY</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Townend retained &mdash; the market leader is here on merit, not by rotation.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">GOING</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Won on Heavy twice before &mdash; conditions play to strengths.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Four wins from last five, finishing second only at Cheltenham Grade 1 level.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">JOCKEY</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Townend retained &mdash; the market leader is here on merit, not by rotation.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">GOING</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Won on Heavy twice before &mdash; conditions play to strengths.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Four wins from last five, finishing second only at Cheltenham Grade 1 level.</span></div>
     </div>
     <div style="height:1px;background:#f0f2f7;margin-bottom:12px"></div>
     <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">+ Add to My Slip</button>
@@ -10325,47 +10299,15 @@ function _aiCompleteToMyResearch(){
       if(header) header.style.display='none';
       if(inner){inner.style.background='#0b1628';inner.style.boxShadow='0 -8px 40px rgba(245,197,66,0.25),0 -4px 28px rgba(0,0,0,0.35)';}
       if(prog){
-        prog.style.padding='0';
-        prog.innerHTML=''
-          +'<div style="border-bottom:1px solid rgba(255,255,255,0.07);padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between">'
-            +'<div style="display:inline-flex;align-items:center;gap:7px;background:rgba(30,158,107,0.15);border:1px solid rgba(30,158,107,0.4);border-radius:99px;padding:4px 10px">'
-              +'<div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;animation:liveDotPulse 1.5s ease-in-out infinite;flex-shrink:0"></div>'
-              +'<span style="font-size:9px;font-weight:700;color:#1e9e6b;letter-spacing:.1em;text-transform:uppercase">Analysis Ready</span>'
-            +'</div>'
-            +'<span style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:500">Cork &middot; 13:15</span>'
-          +'</div>'
-          +'<div style="position:relative;overflow:hidden;min-height:220px">'
-            +'<div style="position:absolute;inset:0;z-index:1;filter:blur(4px);opacity:0.4;padding:12px;pointer-events:none">'
-              +'<div style="background:#fff;border:2.5px solid #1e9e6b;border-radius:14px;overflow:hidden">'
-                +'<div style="background:linear-gradient(135deg,#e8f5ef,#f4fbf8);padding:7px 14px;border-bottom:1px solid rgba(30,158,107,0.15)">'
-                  +'<span style="font-size:10px;font-weight:700;color:#1e9e6b;letter-spacing:.12em;text-transform:uppercase">&#9733; Strongest Selection</span>'
-                +'</div>'
-                +'<div style="padding:14px">'
-                  +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
-                    +'<div style="width:36px;height:36px;border-radius:4px;background:#c0392b;flex-shrink:0"></div>'
-                    +'<span style="font-size:20px;font-weight:900;color:#0b1628;flex:1">Majolique</span>'
-                    +'<span style="background:#1e9e6b;color:#fff;border-radius:10px;padding:5px 12px;font-size:13px;font-weight:800">2/1</span>'
-                  +'</div>'
-                  +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">J.P. Townend &middot; T: W.P. Mullins</div>'
-                  +'<div style="height:1px;background:#f0f2f7;margin-bottom:10px"></div>'
-                  +'<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">'
-                    +'<div style="display:flex;gap:8px"><span style="font-size:9px;font-weight:700;color:#5a6478;min-width:50px">JOCKEY</span><span style="font-size:11px;color:#3a4259">Retained — clear yard signal.</span></div>'
-                    +'<div style="display:flex;gap:8px"><span style="font-size:9px;font-weight:700;color:#5a6478;min-width:50px">GOING</span><span style="font-size:11px;color:#3a4259">Won on Heavy twice before.</span></div>'
-                    +'<div style="display:flex;gap:8px"><span style="font-size:9px;font-weight:700;color:#5a6478;min-width:50px">FORM</span><span style="font-size:11px;color:#3a4259">Four wins from last five.</span></div>'
-                  +'</div>'
-                  +'<div style="height:36px;background:#1e9e6b;border-radius:99px"></div>'
-                +'</div>'
-              +'</div>'
-            +'</div>'
-            +'<div style="position:absolute;inset:0;z-index:2;background:linear-gradient(to bottom,rgba(11,22,40,0.3) 0%,rgba(11,22,40,0.7) 50%,rgba(11,22,40,0.95) 100%)"></div>'
-            +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px">'
-              +'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>'
-              +'<span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5)">Details Locked</span>'
-            +'</div>'
-          +'</div>'
-          +'<div style="padding:14px 16px 16px;border-top:1px solid rgba(255,255,255,0.07)">'
-            +'<button onclick="goToMyResearch()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>'
-          +'</div>';
+        var lockedSrc=document.getElementById('cork-analysis-locked');
+        if(lockedSrc){
+          prog.style.padding='0';
+          prog.style.height='192px';
+          prog.style.overflow='hidden';
+          prog.innerHTML=lockedSrc.innerHTML;
+          var ctaBtn=prog.querySelector('button');
+          if(ctaBtn) ctaBtn.setAttribute('onclick','goToMyResearch()');
+        }
         prog.style.transition='opacity .5s';
         prog.style.opacity='1';
       }
@@ -10375,6 +10317,8 @@ function _aiCompleteToMyResearch(){
 function goToMyResearch(){
   aiPanelClose();
   selectRacingSection('myresearch');
+  var locked=document.getElementById('cork-analysis-locked');
+  if(locked) locked.style.display='block';
   mrT('2');
   setTimeout(function(){
     var el=document.getElementById('mrh2');
