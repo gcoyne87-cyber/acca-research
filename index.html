@@ -2305,8 +2305,8 @@ function unlockCorkAnalysis(){
 
 <div style="padding-top:10px">
 
-<!-- ===== WOLVERHAMPTON 13:15 ===== -->
-<div class="mr-wrap">
+<!-- ===== WOLVERHAMPTON 13:15 (hidden) ===== -->
+<div class="mr-wrap" style="display:none">
 <div class="mr-hdr top" id="mrh1" onclick="mrT('1')">
   <span class="mr-tb">13:15</span>
   <div style="flex:1;min-width:0">
@@ -2656,15 +2656,7 @@ function unlockCorkAnalysis(){
 
 <!-- ===== CORK 13:15 ===== -->
 <div class="mr-wrap">
-<div class="mr-hdr rnd" id="mrh2" onclick="mrT('2')">
-  <span class="mr-tb">13:15</span>
-  <div style="flex:1;min-width:0">
-    <div style="font-size:15px;font-weight:700;color:#0b1628;letter-spacing:-.2px">Cork</div>
-    <div style="font-size:11px;color:#9aa3b5;font-weight:500;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; 8 runners</div>
-  </div>
-  <svg id="mrc2" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-</div>
-<div class="mr-bdy" id="mrb2" style="display:none">
+<div class="mr-bdy" id="mrb2" style="display:block">
 
 <!-- LOCKED STATE -->
 <div id="cork-analysis-locked" style="display:none;flex-direction:column;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px">
@@ -2907,7 +2899,7 @@ function unlockCorkAnalysis(){
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
     <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
   </div>
-  <p style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.65;margin:0">Three of the eight carry Mullins silks &mdash; this is effectively his race to lose. Townend on Majolique is the clearest signal from the yard. Heavy going will separate the field quickly; anything without a proven stamina profile on this ground can be set aside.</p>
+  <p style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.65;margin:0">Three of the eight carry Mullins silks &mdash; this is effectively his race to lose. Townend on Majolique is the clearest signal from the yard. Heavy going will separate the field quickly; anything without a proven stamina profile on this ground can be set aside.</p>
 </div>
 
 <!-- BLOCK 4: STRONGEST SELECTION -->
@@ -2915,8 +2907,8 @@ function unlockCorkAnalysis(){
   <div style="background:linear-gradient(135deg,#e8f5ef 0%,#f4fbf8 100%);padding:7px 14px;border-bottom:1px solid rgba(30,158,107,0.15)">
     <span style="font-size:10px;font-weight:700;color:#1e9e6b;letter-spacing:.12em;text-transform:uppercase">&#9733; Strongest Selection</span>
   </div>
-  <div style="padding:18px 14px 0">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+  <div style="padding:10px 12px 0">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:3px">
       <svg viewBox="0 0 26 32" width="36" height="36" style="display:block;flex-shrink:0">
         <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#c0392b"/>
         <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
@@ -2928,14 +2920,14 @@ function unlockCorkAnalysis(){
       <span style="background:#1e9e6b;color:#fff;border-radius:10px;padding:5px 13px;font-size:14px;font-weight:800;flex-shrink:0">2/1</span>
     </div>
     <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">J.P. Townend &nbsp;&middot;&nbsp; T: W.P. Mullins &nbsp;&middot;&nbsp; F: 1 2 1 1 1</div>
-    <div style="height:1px;background:#f0f2f7;margin-bottom:10px"></div>
-    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px">
       <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">JOCKEY</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Townend retained &mdash; the market leader is here on merit, not by rotation.</span></div>
       <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">GOING</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Won on Heavy twice before &mdash; conditions play to strengths.</span></div>
       <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:3px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Four wins from last five, finishing second only at Cheltenham Grade 1 level.</span></div>
     </div>
-    <div style="height:1px;background:#f0f2f7;margin-bottom:12px"></div>
-    <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">+ Add to My Slip</button>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Add to My Slip</button>
   </div>
 </div>
 
@@ -3008,7 +3000,7 @@ function unlockCorkAnalysis(){
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
     <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
   </div>
-  <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.7;margin:0">This is a Mullins benefit and the question is simply which one he&rsquo;s most serious about. Townend on Majolique answers that. The champion jockey doesn&rsquo;t take second strings in maiden hurdles at Cork in Heavy ground &mdash; he rides what he thinks will win. Proactif and Macho Man are live each-way options if the market leader is beaten, but the form figures, the booking, and the going all point the same way. Fade the Elliott runner Doctor Elvis on this ground and set aside anything without Heavy form. This race has one winner.</p>
+  <p style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.7;margin:0">This is a Mullins benefit and the question is simply which one he&rsquo;s most serious about. Townend on Majolique answers that. The champion jockey doesn&rsquo;t take second strings in maiden hurdles at Cork in Heavy ground &mdash; he rides what he thinks will win. Proactif and Macho Man are live each-way options if the market leader is beaten, but the form figures, the booking, and the going all point the same way. Fade the Elliott runner Doctor Elvis on this ground and set aside anything without Heavy form. This race has one winner.</p>
 </div>
 
 </div>
@@ -10320,9 +10312,8 @@ function goToMyResearch(){
   aiPanelClose();
   selectRacingSection('myresearch');
   unlockCorkAnalysis();
-  mrT('2');
   setTimeout(function(){
-    var el=document.getElementById('mrh2');
+    var el=document.getElementById('cork-analysis-full');
     if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
   },400);
 }
