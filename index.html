@@ -2275,6 +2275,15 @@ function raT(){
   ch.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
   sub.style.display=open?'none':'block';
 }
+function raCorkT(){
+  var c=document.getElementById('ra-cork-content');
+  var ch=document.getElementById('ra-cork-chev');
+  var sub=document.getElementById('ra-cork-sub');
+  var open=c.style.display!=='none';
+  c.style.display=open?'none':'flex';
+  ch.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
+  sub.style.display=open?'none':'block';
+}
 </script>
 
 <div style="padding-top:10px">
@@ -2628,6 +2637,336 @@ function raT(){
 </div>
 </div>
 
+<!-- ===== CORK 13:15 ===== -->
+<div class="mr-wrap">
+<div class="mr-hdr rnd" id="mrh2" onclick="mrT('2')">
+  <span class="mr-tb">13:15</span>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:15px;font-weight:700;color:#0b1628;letter-spacing:-.2px">Cork</div>
+    <div style="font-size:11px;color:#9aa3b5;font-weight:500;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; 8 runners</div>
+  </div>
+  <svg id="mrc2" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+<div class="mr-bdy" id="mrb2">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+
+<!-- BLOCK 1: RACE HEADER -->
+<div onclick="raCorkT()" style="background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 1px 6px rgba(11,22,40,0.05);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <div>
+    <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
+    <div id="ra-cork-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 runners</div>
+  </div>
+  <svg id="ra-cork-chev" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+
+<div id="ra-cork-content" style="display:flex;flex-direction:column;gap:12px">
+
+<!-- BLOCK 2: FULL RACE CARD -->
+<div style="background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(11,22,40,0.06);overflow:hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 9px;border-bottom:1px solid #f0f2f7">
+    <span style="font-size:12px;font-weight:800;color:#0b1628">Full Race Card</span>
+    <span style="font-size:10px;color:#9aa3b5">8 Runners</span>
+  </div>
+
+  <!-- Majolique 2/1 FAV — stall 9 — PICK -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #1e9e6b;background:rgba(30,158,107,0.05);border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#1e9e6b;line-height:1">9</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#c0392b"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#ffffff"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#c0392b"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Majolique</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">1 2 1 1 1</span></div>
+      <div style="font-size:11px;color:#5a6478">J.P. Townend</div>
+      <div style="font-size:11px;color:#9aa3b5">W.P. Mullins</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#1e9e6b;color:#fff;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">2/1 FAV</span>
+      <span style="background:rgba(30,158,107,0.12);color:#1e9e6b;border:1px solid rgba(30,158,107,0.4);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9733; Pick</span>
+    </div>
+  </div>
+
+  <!-- Proactif 5/2 — stall 7 — WATCH -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">7</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#1a3a8f"/>
+        <rect x="2" y="14" width="22" height="5" fill="#f0c040"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#f0c040"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#f0c040"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#1a3a8f"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Proactif</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">2 1 1 2 2</span></div>
+      <div style="font-size:11px;color:#5a6478">M.P. Walsh</div>
+      <div style="font-size:11px;color:#9aa3b5">W.P. Mullins</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">5/2</span>
+      <span style="background:rgba(201,168,76,0.12);color:#a07010;border:1px solid rgba(201,168,76,0.5);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Watch</span>
+    </div>
+  </div>
+
+  <!-- Macho Man 4/1 — stall 3 — WATCH -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">3</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#1e6b3a"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#ffffff"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#1e6b3a"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Macho Man</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">3 2 1 1 3</span></div>
+      <div style="font-size:11px;color:#5a6478">D.E. Mullins</div>
+      <div style="font-size:11px;color:#9aa3b5">W.P. Mullins</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">4/1</span>
+      <span style="background:rgba(201,168,76,0.12);color:#a07010;border:1px solid rgba(201,168,76,0.5);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Watch</span>
+    </div>
+  </div>
+
+  <!-- North Shore 8/1 — stall 6 -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid transparent;border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">6</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#1a1a1a"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#e07020"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#e07020"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#1a1a1a"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">North Shore</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">1 3 2 1 4</span></div>
+      <div style="font-size:11px;color:#5a6478">K. Donoghue</div>
+      <div style="font-size:11px;color:#9aa3b5">G. Cromwell</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">8/1</span>
+    </div>
+  </div>
+
+  <!-- Doctor Elvis 10/1 — stall 4 -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid transparent;border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">4</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#e8c020"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#1a1a1a"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#1a1a1a"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#e8c020"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Doctor Elvis</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">2 1 4 2 0</span></div>
+      <div style="font-size:11px;color:#5a6478">J.W. Kennedy</div>
+      <div style="font-size:11px;color:#9aa3b5">G. Elliott</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">10/1</span>
+    </div>
+  </div>
+
+  <!-- Sky And Sand 12/1 — stall 1 -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid transparent;border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">1</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#f0f0f0"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#0b1628"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#0b1628"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#0b1628"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Sky And Sand</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">4 3 2 2 1</span></div>
+      <div style="font-size:11px;color:#5a6478">D. Gilligan</div>
+      <div style="font-size:11px;color:#9aa3b5">R. O'Sullivan</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">12/1</span>
+    </div>
+  </div>
+
+  <!-- Umpires Call 16/1 — stall 5 -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid transparent;border-bottom:1px solid #f0f2f7">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">5</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#7a1a2e"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#f5c542"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#f5c542"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#7a1a2e"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Umpires Call</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">0 0 3 4 1</span></div>
+      <div style="font-size:11px;color:#5a6478">K. Donoghue</div>
+      <div style="font-size:11px;color:#9aa3b5">J.P. Dempsey</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">16/1</span>
+    </div>
+  </div>
+
+  <!-- Kai Lung 20/1 — stall 2 -->
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid transparent">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
+      <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">2</span>
+      <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#6a2fa0"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#ffffff"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#6a2fa0"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:2px"><span style="font-size:13px;font-weight:700;color:#0b1628">Kai Lung</span><span style="font-size:11px;color:#9aa3b5;margin-left:5px">0 4 0 3 2</span></div>
+      <div style="font-size:11px;color:#5a6478">S. O'Keeffe</div>
+      <div style="font-size:11px;color:#9aa3b5">W.P. Mullins</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">20/1</span>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCK 3: RACE INTELLIGENCE -->
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
+  </div>
+  <p style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.65;margin:0">Three of the eight carry Mullins silks &mdash; this is effectively his race to lose. Townend on Majolique is the clearest signal from the yard. Heavy going will separate the field quickly; anything without a proven stamina profile on this ground can be set aside.</p>
+</div>
+
+<!-- BLOCK 4: STRONGEST SELECTION -->
+<div style="background:#fff;border:2.5px solid #1e9e6b;border-radius:14px;box-shadow:0 4px 20px rgba(30,158,107,0.12);overflow:hidden">
+  <div style="background:linear-gradient(135deg,#e8f5ef 0%,#f4fbf8 100%);padding:7px 14px;border-bottom:1px solid rgba(30,158,107,0.15)">
+    <span style="font-size:10px;font-weight:700;color:#1e9e6b;letter-spacing:.12em;text-transform:uppercase">&#9733; Strongest Selection</span>
+  </div>
+  <div style="padding:18px 14px 0">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+      <svg viewBox="0 0 26 32" width="36" height="36" style="display:block;flex-shrink:0">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#c0392b"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#ffffff"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#c0392b"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+      <span style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;flex:1;min-width:0;line-height:1.15;overflow-wrap:break-word">Majolique</span>
+      <span style="background:#1e9e6b;color:#fff;border-radius:10px;padding:5px 13px;font-size:14px;font-weight:800;flex-shrink:0">2/1</span>
+    </div>
+    <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">J.P. Townend &nbsp;&middot;&nbsp; T: W.P. Mullins &nbsp;&middot;&nbsp; F: 1 2 1 1 1</div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:10px"></div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">JOCKEY</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Townend retained &mdash; the market leader is here on merit, not by rotation.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">GOING</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Won on Heavy twice before &mdash; conditions play to strengths.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:52px;padding-top:1px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.45">Four wins from last five, finishing second only at Cheltenham Grade 1 level.</span></div>
+    </div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:12px"></div>
+    <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">+ Add to My Slip</button>
+  </div>
+</div>
+
+<!-- BLOCK 5: HORSES TO WATCH — Proactif -->
+<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+  <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
+    <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
+  </div>
+  <div style="padding:10px 12px 0">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+      <svg viewBox="0 0 26 32" width="26" height="26" style="display:block;flex-shrink:0">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#1a3a8f"/>
+        <rect x="2" y="14" width="22" height="5" fill="#f0c040"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#f0c040"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#f0c040"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#1a3a8f"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+      <span style="font-size:16px;font-weight:900;color:#0b1628;letter-spacing:-.3px;flex:1;min-width:0;line-height:1.2;overflow-wrap:break-word">Proactif</span>
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;flex-shrink:0">5/2</span>
+    </div>
+    <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">M.P. Walsh &nbsp;&middot;&nbsp; T: W.P. Mullins &nbsp;&middot;&nbsp; F: 2 1 1 2 2</div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <p style="font-size:12px;font-weight:600;color:#0b1628;line-height:1.45;margin:0 0 6px">Mullins&rsquo;s second string on paper but Walsh doesn&rsquo;t ride losers &mdash; if Majolique is beaten, this is the likeliest winner.</p>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px">
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">YARD</span><span style="font-size:11px;color:#3a4259;line-height:1.35">Same trainer as the pick &mdash; Mullins has two live chances here.</span></div>
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">FORM</span><span style="font-size:11px;color:#3a4259;line-height:1.35">Two wins from five hurdle starts. Consistent without being flashy.</span></div>
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">VALUE</span><span style="font-size:11px;color:#3a4259;line-height:1.35">5/2 each-way represents fair value as the yard alternative.</span></div>
+    </div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <button onclick="nrAddToSlip('Proactif','5/2')" style="width:100%;background:#f5f7fb;color:#5a6478;border:1.5px solid #e4e8f0;border-radius:99px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Add to My Slip</button>
+  </div>
+</div>
+
+<!-- BLOCK 5: HORSES TO WATCH — Macho Man -->
+<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+  <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
+    <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
+  </div>
+  <div style="padding:10px 12px 0">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+      <svg viewBox="0 0 26 32" width="26" height="26" style="display:block;flex-shrink:0">
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#1e6b3a"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#ffffff"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#ffffff"/>
+        <ellipse cx="13" cy="5" rx="8" ry="5" fill="#1e6b3a"/>
+        <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+      </svg>
+      <span style="font-size:16px;font-weight:900;color:#0b1628;letter-spacing:-.3px;flex:1;min-width:0;line-height:1.2;overflow-wrap:break-word">Macho Man</span>
+      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;flex-shrink:0">4/1</span>
+    </div>
+    <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">D.E. Mullins &nbsp;&middot;&nbsp; T: W.P. Mullins &nbsp;&middot;&nbsp; F: 3 2 1 1 3</div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <p style="font-size:12px;font-weight:600;color:#0b1628;line-height:1.45;margin:0 0 6px">A family booking with Willie and Donnacha &mdash; can&rsquo;t be ignored. Won twice already this season and open to further improvement.</p>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px">
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">FORM</span><span style="font-size:11px;color:#3a4259;line-height:1.35">Two wins from five this term. Third at Gowran suggests he handles testing ground.</span></div>
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">JOCKEY</span><span style="font-size:11px;color:#3a4259;line-height:1.35">Donnacha Mullins &mdash; family booking always worth noting in the Mullins yard.</span></div>
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:9px;font-weight:700;color:#5a6478;letter-spacing:.07em;flex-shrink:0;min-width:44px;padding-top:1px">PRICE</span><span style="font-size:11px;color:#3a4259;line-height:1.35">4/1 is workable each-way with Majolique likely to shorten further.</span></div>
+    </div>
+    <div style="height:1px;background:#f0f2f7;margin-bottom:6px"></div>
+    <button onclick="nrAddToSlip('Macho Man','4/1')" style="width:100%;background:#f5f7fb;color:#5a6478;border:1.5px solid #e4e8f0;border-radius:99px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Add to My Slip</button>
+  </div>
+</div>
+
+<!-- BLOCK 6: AI RACE VERDICT -->
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
+    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
+  </div>
+  <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.7;margin:0">This is a Mullins benefit and the question is simply which one he&rsquo;s most serious about. Townend on Majolique answers that. The champion jockey doesn&rsquo;t take second strings in maiden hurdles at Cork in Heavy ground &mdash; he rides what he thinks will win. Proactif and Macho Man are live each-way options if the market leader is beaten, but the form figures, the booking, and the going all point the same way. Fade the Elliott runner Doctor Elvis on this ground and set aside anything without Heavy form. This race has one winner.</p>
+</div>
+
+</div>
+</div>
+<!-- END CORK RACE ANALYSIS -->
+
+</div>
+</div>
+<!-- END CORK WRAP -->
 
 </div>
 </div>
@@ -9051,7 +9390,7 @@ function nrAnalyse(){
   steps.forEach(function(step,si){
     (function(d,s,i){ _aiT(function(){ _aiSetStep(s); _aiLightSeg(i); },d); })(si*perStep,step,si);
   });
-  _aiT(function(){ _aiComplete(r.venue+' · '+r.t); },TOTAL);
+  _aiT(function(){ _aiCompleteToMyResearch(); },TOTAL);
 }var aiFeedTmrwIdx=0;
 
 function renderNextRaceSection(){
@@ -9892,8 +10231,20 @@ function rcAnalyse(mid,type){
         _aiT(function(){ _aiSetStep(s); _aiLightSeg(i); },delay);
       })(si*perStep2,step,si);
     });
-    _aiT(function(){ _aiComplete(m.name+' · '+type); },TOTAL);
+    _aiT(function(){ _aiCompleteToMyResearch(); },TOTAL);
   }
+}
+function _aiCompleteToMyResearch(){
+  for(var i=0;i<7;i++){(function(idx){setTimeout(function(){var s=document.getElementById('ai-seg-'+idx);if(s)s.style.background='#10b981';},idx*60);})(i);}
+  setTimeout(function(){
+    aiPanelClose();
+    selectRacingSection('myresearch');
+    mrT('2');
+    setTimeout(function(){
+      var el=document.getElementById('mrh2');
+      if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+    },400);
+  },700);
 }
 function aiPanelExpand(){
   _aiPanelExpanded=true;
