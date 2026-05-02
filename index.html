@@ -9045,7 +9045,7 @@ function nrAnalyse(){
   panel.style.pointerEvents='all';
   panel.style.transform='translateY(0)';
   _aiSetCount(r.t+' — '+r.venue,r.type+' · '+r.dist,(r.going?r.going+' · ':'')+r.runners+' runners');
-  var steps=['Scanning race intelligence database…','Cross-referencing historical race patterns…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…','Your edge report is almost ready…'];
+  var steps=['Scanning race intelligence database…','Analysing the runners…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…'];
   var TOTAL=90000;
   var perStep=TOTAL/steps.length;
   steps.forEach(function(step,si){
@@ -9895,7 +9895,7 @@ function rcAnalyse(mid,type){
   } else {
     var ri=m.races.findIndex(function(r){return r.t===type;});
     var race=ri>=0?m.races[ri]:{t:type,name:type,dist:'',r:'?'};
-    var singleSteps=['Scanning race intelligence database…','Cross-referencing historical race patterns…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…','Your edge report is almost ready…'];
+    var singleSteps=['Scanning race intelligence database…','Analysing the runners…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…'];
     var perStep2=TOTAL/singleSteps.length;
     var raceLabel=race.name.replace(new RegExp('^'+m.name+'\\s*','i'),'').trim();
     _aiSetCount(type+' — '+m.name,raceLabel+(race.dist?' · '+race.dist:''),(m.going?m.going+' · ':'')+race.r+' runners');
