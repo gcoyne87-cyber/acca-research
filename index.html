@@ -9866,25 +9866,13 @@ function rcAnalyse(mid,type){
   var TOTAL=90000;
 
   if(isFull){
-    var races=m.races;
-    var perRace=TOTAL/races.length;
-    var perStep=perRace/_aiSubSteps.length;
-    races.forEach(function(race,ri){
-      _aiSubSteps.forEach(function(step,si){
-        var t=ri*perRace+si*perStep;
-        var pct=Math.round(((ri*perRace+si*perStep+perStep)/TOTAL)*100);
-        (function(delay,r,rIdx,tot,s,p,isFirstStep){
-          _aiT(function(){
-            if(isFirstStep) _aiSetCount('Race '+(rIdx+1)+' of '+tot,r.t+' · '+r.name+' · '+r.dist);
-            _aiSetStep(s);
-            _aiSetBar(Math.min(p,99),perStep/1000);
-          },delay);
-        })(t,race,ri,races.length,step,pct,si===0);
-      });
+    var fullSteps=['Scanning race intelligence database…','Analysing all runners across the full card…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race card intelligence report…'];
+    var perStep=TOTAL/fullSteps.length;
+    fullSteps.forEach(function(step,si){
+      (function(delay,s,i){ _aiT(function(){ _aiSetStep(s); _aiLightSeg(i); },delay); })(si*perStep,step,si);
     });
     _aiT(function(){
-      _aiSetCount('Complete ✓','All '+races.length+' races analysed');
-      _aiSetStep('Building your AI edge report…');
+      _aiSetCount('Complete ✓','Full card analysed');
       _aiSetBar(100,1.5);
       _aiT(function(){
         var r=document.getElementById('ai-panel-ready');
