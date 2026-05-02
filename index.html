@@ -9117,6 +9117,7 @@ var NR_RUNNERS=[
 var nrSelected=0;
 var nrMoreOpen=false;
 var nrHorseInsights={};
+var nrOpenHistory={};
 var nrStartTime=Date.now();
 var NR_API_KEY="";
 
@@ -9301,7 +9302,7 @@ function runnerRow(ru,ctx){
         +'</div>'
       +'</div>';
     }).join('');
-    histCarousel='<div id="nrh-'+pfx+'" style="display:none;padding:8px 14px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">'
+    histCarousel='<div id="nrh-'+pfx+'" style="display:'+(nrOpenHistory[pfx]?'block':'none')+';padding:8px 14px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
         +'<div style="font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em">RECENT FORM</div>'
         +'<button onclick="nrToggleHistory(\''+pfx+'\')" style="background:none;border:none;padding:0;cursor:pointer;font-size:16px;color:#9aa3b5;line-height:1;font-family:inherit">&times;</button>'
@@ -9324,7 +9325,7 @@ function runnerRow(ru,ctx){
           +(form?'<div style="display:flex;align-items:center;gap:1px;flex-shrink:0">'+form+'</div>':'')
         +'</div>'
         +metaLine
-        +(ru.history&&ru.history.length?'<button id="nrh-btn-'+pfx+'" onclick="nrToggleHistory(\''+pfx+'\')" style="margin-top:1px;background:none;border:none;padding:0;font-size:9.5px;font-weight:600;color:#10b981;cursor:pointer;font-family:inherit;letter-spacing:.01em;display:block">More info ›</button>':'')
+        +(ru.history&&ru.history.length?'<button id="nrh-btn-'+pfx+'" onclick="nrToggleHistory(\''+pfx+'\')" style="margin-top:1px;background:none;border:none;padding:0;font-size:9.5px;font-weight:600;color:#10b981;cursor:pointer;font-family:inherit;letter-spacing:.01em;display:block">'+(nrOpenHistory[pfx]?'Less info ‹':'More info ›')+'</button>':'')
       +'</div>'
       +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
         +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(ru.price)+'</div>'
@@ -9340,6 +9341,7 @@ function nrToggleHistory(pfx){
   if(!el) return;
   var opening=el.style.display==='none'||el.style.display==='';
   el.style.display=opening?'block':'none';
+  nrOpenHistory[pfx]=opening;
   if(btn) btn.textContent=opening?'Less info ‹':'More info ›';
 }
 function nrRenderCard(){
