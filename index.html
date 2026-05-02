@@ -2667,7 +2667,7 @@ function unlockCorkAnalysis(){
 <div class="mr-bdy" id="mrb2" style="display:none">
 
 <!-- LOCKED STATE -->
-<div id="cork-analysis-locked" style="display:none;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px;display:flex;flex-direction:column">
+<div id="cork-analysis-locked" style="display:none;flex-direction:column;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px">
 
   <!-- SECTION 1: TOP BAR -->
   <div style="padding:10px 14px 8px;display:flex;align-items:center;gap:6px">
@@ -10304,6 +10304,8 @@ function _aiCompleteToMyResearch(){
           prog.style.padding='0';
           prog.style.height='192px';
           prog.style.overflow='hidden';
+          prog.style.display='flex';
+          prog.style.flexDirection='column';
           prog.innerHTML=lockedSrc.innerHTML;
           var ctaBtn=prog.querySelector('button');
           if(ctaBtn) ctaBtn.setAttribute('onclick','goToMyResearch()');
