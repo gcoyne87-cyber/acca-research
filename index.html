@@ -2710,11 +2710,7 @@ function unlockCorkAnalysis(){
 
   <!-- BLOCK 3: UNLOCK CTA -->
   <div style="padding:14px 16px 16px;border-top:1px solid rgba(255,255,255,0.07)">
-    <button onclick="unlockCorkAnalysis()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 22px rgba(201,168,76,0.55)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(201,168,76,0.35)'" style="width:100%;background:linear-gradient(135deg,#c9a84c 0%,#e0bc5a 100%);color:#0b1628;border:none;border-radius:99px;padding:13px 16px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(201,168,76,0.35);animation:ctaPulse 1.8s ease-in-out infinite;transition:transform .15s,box-shadow .15s">
-      <span style="font-size:14px">&#x2756;</span>
-      Unlock Full Analysis
-      <span style="font-size:14px">&#8250;</span>
-    </button>
+    <button onclick="unlockCorkAnalysis()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
   </div>
 
 </div>
@@ -10309,14 +10305,40 @@ function rcAnalyse(mid,type){
 function _aiCompleteToMyResearch(){
   for(var i=0;i<7;i++){(function(idx){setTimeout(function(){var s=document.getElementById('ai-seg-'+idx);if(s)s.style.background='#10b981';},idx*60);})(i);}
   setTimeout(function(){
-    aiPanelClose();
-    selectRacingSection('myresearch');
-    mrT('2');
+    var inner=document.getElementById('ai-panel-inner');
+    if(inner){inner.style.animation='panelBounce .7s ease-out';setTimeout(function(){inner.style.animation='';},750);}
+    var prog=document.getElementById('ai-panel-progress');
+    if(prog){prog.style.transition='opacity .4s';prog.style.opacity='0';}
     setTimeout(function(){
-      var el=document.getElementById('mrh2');
-      if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
-    },400);
-  },700);
+      var header=document.querySelector('#ai-panel-inner > div:first-child');
+      if(header) header.style.display='none';
+      if(inner){inner.style.background='#0b1628';inner.style.boxShadow='0 -8px 40px rgba(245,197,66,0.25),0 -4px 28px rgba(0,0,0,0.35)';}
+      if(prog){
+        prog.style.padding='0';
+        prog.innerHTML=''
+          +'<div style="text-align:center;padding:22px 16px 20px">'
+            +'<div style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(30,158,107,0.15);border:1px solid rgba(30,158,107,0.4);border-radius:99px;padding:6px 14px;display:inline-flex;margin-bottom:14px">'
+              +'<div style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;animation:liveDotPulse 1.5s ease-in-out infinite;flex-shrink:0"></div>'
+              +'<span style="font-size:10px;font-weight:700;color:#1e9e6b;letter-spacing:.1em;text-transform:uppercase">Analysis Ready</span>'
+            +'</div>'
+            +'<div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:16px">Your race intelligence report is ready</div>'
+            +'<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,197,66,0.5),transparent);margin-bottom:16px"></div>'
+            +'<button onclick="goToMyResearch()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> View My Research &rarr;</button>'
+          +'</div>';
+        prog.style.transition='opacity .5s';
+        prog.style.opacity='1';
+      }
+    },500);
+  },450);
+}
+function goToMyResearch(){
+  aiPanelClose();
+  selectRacingSection('myresearch');
+  mrT('2');
+  setTimeout(function(){
+    var el=document.getElementById('mrh2');
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  },400);
 }
 function aiPanelExpand(){
   _aiPanelExpanded=true;
