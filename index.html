@@ -2667,7 +2667,7 @@ function unlockCorkAnalysis(){
 <div class="mr-bdy" id="mrb2" style="display:none">
 
 <!-- LOCKED STATE -->
-<div id="cork-analysis-locked" style="display:none;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px">
+<div id="cork-analysis-locked" style="display:none;background:#0b1628;border:1px solid rgba(201,168,76,0.25);border-radius:14px;box-shadow:0 2px 20px rgba(0,0,0,0.18);overflow:hidden;margin-top:10px;height:192px;display:flex;flex-direction:column">
 
   <!-- SECTION 1: TOP BAR -->
   <div style="padding:10px 14px 8px;display:flex;align-items:center;gap:6px">
@@ -2676,7 +2676,7 @@ function unlockCorkAnalysis(){
   </div>
 
   <!-- SECTION 2: BLURRED PREVIEW -->
-  <div style="position:relative;overflow:hidden;height:53px">
+  <div style="position:relative;overflow:hidden;flex:1">
     <div style="filter:blur(5px);opacity:0.4;pointer-events:none;user-select:none;padding:10px 14px">
       <div style="display:flex;align-items:center;gap:8px">
         <div style="width:28px;height:28px;border-radius:4px;background:#DC2626;flex-shrink:0"></div>
@@ -10317,8 +10317,7 @@ function _aiCompleteToMyResearch(){
 function goToMyResearch(){
   aiPanelClose();
   selectRacingSection('myresearch');
-  var locked=document.getElementById('cork-analysis-locked');
-  if(locked) locked.style.display='block';
+  unlockCorkAnalysis();
   mrT('2');
   setTimeout(function(){
     var el=document.getElementById('mrh2');
