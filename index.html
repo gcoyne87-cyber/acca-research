@@ -2298,8 +2298,19 @@ function raCorkT(){
   sub.style.display=open?'none':'block';
 }
 function unlockCorkAnalysis(){
-  document.getElementById('cork-analysis-locked').style.display='none';
-  document.getElementById('cork-analysis-full').style.display='flex';
+  var locked=document.getElementById('cork-analysis-locked');
+  var full=document.getElementById('cork-analysis-full');
+  locked.style.transition='opacity .2s ease';
+  locked.style.opacity='0';
+  setTimeout(function(){
+    locked.style.display='none';
+    full.style.opacity='0';
+    full.style.display='flex';
+    requestAnimationFrame(function(){
+      full.style.transition='opacity .35s ease';
+      full.style.opacity='1';
+    });
+  },200);
 }
 </script>
 
@@ -10332,7 +10343,6 @@ function _aiCompleteToMyResearch(){
         var lockedSrc=document.getElementById('cork-analysis-locked');
         if(lockedSrc){
           prog.style.padding='0';
-          prog.style.height='192px';
           prog.style.overflow='hidden';
           prog.style.display='flex';
           prog.style.flexDirection='column';
@@ -10340,7 +10350,8 @@ function _aiCompleteToMyResearch(){
           var ctaBtn=prog.querySelector('button');
           if(ctaBtn) ctaBtn.setAttribute('onclick','goToMyResearch()');
         }
-        prog.style.transition='opacity .5s';
+        prog.style.transition='height .3s ease, opacity .5s ease';
+        prog.style.height='192px';
         prog.style.opacity='1';
       }
     },500);
