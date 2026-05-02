@@ -10318,8 +10318,11 @@ function goToMyResearch(){
   unlockCorkAnalysis();
   setTimeout(function(){
     var el=document.getElementById('cork-analysis-full');
-    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
-  },400);
+    if(!el) return;
+    var stickyOffset=110; // topnav ~56px + section nav ~47px + buffer
+    var top=el.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
+    window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+  },500);
 }
 function aiPanelExpand(){
   _aiPanelExpanded=true;
