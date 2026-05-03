@@ -10396,6 +10396,8 @@ function aiPanelClose(){
   _aiTimers.forEach(clearTimeout); _aiTimers=[];
   var panel=document.getElementById('ai-panel');
   panel.style.transform='translateY(100%)';
+  var inner=document.getElementById('ai-panel-inner');
+  if(inner) inner.style.boxShadow='0 -4px 28px rgba(0,0,0,0.35)';
   setTimeout(function(){panel.style.pointerEvents='none';},380);
   _aiPanelExpanded=false;
 }
