@@ -2200,6 +2200,7 @@ window.addEventListener('load',function(){
 
     <!-- SECTION NAV -->
     <div style="position:sticky;top:56px;z-index:100;background:#fff;border-bottom:1px solid #e4e8f0">
+      <button id="secnav-arrow-l" onclick="document.getElementById('racing-section-nav').scrollBy({left:-160,behavior:'smooth'})" style="position:absolute;left:0;top:0;bottom:0;background:linear-gradient(to left,transparent,#fff 40%);border:none;padding:0 24px 0 10px;cursor:pointer;display:none;align-items:center;font-size:20px;color:#5a6478;z-index:2;pointer-events:auto">&#8249;</button>
       <div id="racing-section-nav" onscroll="secNavScroll()" style="background:#fff;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch">
         <button id="secnav-racecards" onclick="selectRacingSection('racecards')" style="background:none;border:none;border-bottom:2px solid #10b981;color:#0b1628;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s">Racecards</button>
         <button id="secnav-nextrace" onclick="selectRacingSection('nextrace')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s">Next Race</button>
@@ -2207,16 +2208,20 @@ window.addEventListener('load',function(){
         <button id="secnav-winners" onclick="selectRacingSection('winners')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s">Winners</button>
         <button id="secnav-myresearch" onclick="selectRacingSection('myresearch')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:13px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s">My Research</button>
       </div>
-      <button id="secnav-arrow-r" onclick="document.getElementById('racing-section-nav').scrollBy({left:160,behavior:'smooth'})" style="position:absolute;right:0;top:0;bottom:0;background:linear-gradient(to right,transparent,#fff 35%);border:none;padding:0 10px 0 24px;cursor:pointer;display:flex;align-items:center;font-size:18px;color:#9aa3b5;pointer-events:auto">&#8250;</button>
+      <button id="secnav-arrow-r" onclick="document.getElementById('racing-section-nav').scrollBy({left:160,behavior:'smooth'})" style="position:absolute;right:0;top:0;bottom:0;background:linear-gradient(to right,transparent,#fff 40%);border:none;padding:0 10px 0 24px;cursor:pointer;display:none;align-items:center;font-size:20px;color:#5a6478;z-index:2;pointer-events:auto">&#8250;</button>
     </div>
     <script>
     function secNavScroll(){
       var nav=document.getElementById('racing-section-nav');
-      var arr=document.getElementById('secnav-arrow-r');
-      if(!nav||!arr) return;
+      var arrL=document.getElementById('secnav-arrow-l');
+      var arrR=document.getElementById('secnav-arrow-r');
+      if(!nav) return;
+      var atStart=nav.scrollLeft<=4;
       var atEnd=nav.scrollLeft+nav.clientWidth>=nav.scrollWidth-4;
-      arr.style.display=atEnd?'none':'flex';
+      if(arrL) arrL.style.display=atStart?'none':'flex';
+      if(arrR) arrR.style.display=atEnd?'none':'flex';
     }
+    setTimeout(secNavScroll,100);
     </script>
 
 <div id="racing-winners-content" style="display:none;padding:0;background:#f5f7fb;min-height:300px">
@@ -2256,6 +2261,9 @@ window.addEventListener('load',function(){
 .mr-dew{font-size:10px;font-weight:600;color:#9aa3b5;margin-left:2px}
 .mr-dreason{font-size:11px;font-weight:400;color:#5a6478;line-height:1.5}
 @keyframes dotPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.cta-unlock-btn{transition:transform .15s ease,box-shadow .15s ease}
+.cta-unlock-btn:hover{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(245,197,66,0.3),0 6px 20px rgba(0,0,0,0.18)}
+.cta-unlock-btn:active{transform:scale(0.98)}
 </style>
 
 <script>
@@ -2730,7 +2738,7 @@ function unlockCorkAnalysis(){
 
   <!-- SECTION 3: CTA -->
   <div style="padding:10px 14px 14px">
-    <button onclick="unlockCorkAnalysis()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
+    <button onclick="unlockCorkAnalysis()" class="cta-unlock-btn" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
   </div>
 
 </div>
@@ -9956,6 +9964,14 @@ function selectRacingSection(s){
     selectPicksDate("today");
   } else if(s==="myresearch"){
     if(myResearchC) myResearchC.style.display="";
+    var tn=document.getElementById('main-topnav');
+    if(tn){tn.style.display='';tn.classList.add('racing-mode');}
+    setTimeout(function(){
+      var btn=document.getElementById('secnav-myresearch');
+      var nav=document.getElementById('racing-section-nav');
+      if(btn&&nav) nav.scrollTo({left:nav.scrollWidth,behavior:'smooth'});
+      secNavScroll();
+    },50);
   }
 }
 
