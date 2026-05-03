@@ -6,3 +6,13 @@
 
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = "index.html"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

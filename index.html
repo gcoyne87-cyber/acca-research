@@ -10319,6 +10319,7 @@ function rcAnalyse(mid,type){
   var TOTAL=90000;
 
   if(isFull){
+    _aiSetCount(m.name+' — Full Card',m.races.length+' races',(m.going||'')+(m.going&&m.flag?' · ':'')+m.flag);
     var fullSteps=['Scanning race intelligence database…','Analysing all runners across the full card…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race card intelligence report…'];
     var perStep=TOTAL/fullSteps.length;
     fullSteps.forEach(function(step,si){
