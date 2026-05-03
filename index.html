@@ -8639,7 +8639,6 @@ function renderTodayMeetingsList(){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
-        if(m.races.length>1) out+='<div style="font-size:11px;color:#10b981;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>';
         out+='</div>';
       }
       out+=rcRaceDetailHtml(m);
@@ -9387,8 +9386,7 @@ function nrRenderCard(){
         +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(r.dist) +'</div>'
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(r.going||'') +' · '+ r.runners +' runners</div>'
         +'<button onclick="nrAnalyse()" class="ai-cta-dark" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+ escHtml(r.t) +' with AI &rarr;</button>'
-        +(NR_RACES.length>1?'<div style="font-size:11px;color:#10b981;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>':'')
-      +'</div>'
+              +'</div>'
       +runners
     +'</div>';
   }
@@ -10190,7 +10188,6 @@ function renderTomorrowMeetingsList(){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
-        if(m.races.length>1) out+='<div style="font-size:11px;color:#10b981;font-weight:600;letter-spacing:.02em;text-align:right;margin-top:5px">use ‹ › or click a time above to switch race</div>';
         out+='</div>';
       }
       if(hasRace) out+=tmRaceDetailHtml(m);
