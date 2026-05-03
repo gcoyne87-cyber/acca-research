@@ -10325,14 +10325,7 @@ function rcAnalyse(mid,type){
     fullSteps.forEach(function(step,si){
       (function(delay,s,i){ _aiT(function(){ _aiSetStep(s); _aiLightSeg(i); },delay); })(si*perStep,step,si);
     });
-    _aiT(function(){
-      _aiSetCount('Complete ✓','Full card analysed');
-      _aiSetBar(100,1.5);
-      _aiT(function(){
-        var r=document.getElementById('ai-panel-ready');
-        if(r) r.style.display='block';
-      },1800);
-    },TOTAL);
+    _aiT(function(){ _aiCompleteToMyResearch(); },TOTAL);
 
   } else {
     var ri=m.races.findIndex(function(r){return r.t===type;});
