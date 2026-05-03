@@ -1613,13 +1613,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .notify-cta:active{transform:translateY(1px);box-shadow:none}
 .notify-skip{font-size:13px;color:#b0b8c8;cursor:pointer;background:none;border:none;font-family:inherit;padding:4px}
 
-/* ── DESKTOP SLIDER ARROWS ── */
-#nr-arr-l,#nr-arr-r{display:none;position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid #e4e8f0;box-shadow:0 1px 8px rgba(0,0,0,0.12);cursor:pointer;align-items:center;justify-content:center;color:#0b1628;font-size:22px;z-index:10;padding:0;line-height:1;font-family:sans-serif;transition:box-shadow .15s,opacity .15s}
-#nr-arr-l:hover,#nr-arr-r:hover{box-shadow:0 2px 14px rgba(0,0,0,0.18)}
-#nr-arr-l:disabled,#nr-arr-r:disabled{opacity:0.2;cursor:default;box-shadow:none}
-#nr-arr-l{left:6px}
-#nr-arr-r{right:6px}
-@media(min-width:769px){#nr-arr-l,#nr-arr-r{display:flex}}
 </style>
 
 </head>
@@ -3086,12 +3079,10 @@ function unlockCorkAnalysis(){
 
     <!-- HOMEPAGE NEXT RACE -->
     <div id="nr-home-wrap" style="position:relative;margin:0 0 5px">
-      <button id="nr-arr-l" onclick="nrArrow(-1)" disabled aria-label="Previous race">&#8249;</button>
       <div id="nr-home-section" style="padding:0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
         <div id="nr-strip-home" style="display:flex;overflow-x:auto;padding:0 4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7"></div>
         <div id="nr-card-home" style="margin:0"></div>
       </div>
-      <button id="nr-arr-r" onclick="nrArrow(1)" aria-label="Next race">&#8250;</button>
     </div>
 
   </div>
@@ -10635,16 +10626,9 @@ function toggleRacingMenu(){
     return r;
   };
 
-  // ── 2. Slider arrow buttons — create in JS, append to wrapper ──
+  // ── 2. Slider arrow buttons — disabled ──
   function setupArrows(){
-    var wrap = document.getElementById('nr-home-wrap');
-    if(!wrap || document.getElementById('nr-arr-l-js')) return; // already done
-
-    // Remove old arrows if any (from previous CSS-only attempt)
-    var oldL = document.getElementById('nr-arr-l');
-    var oldR = document.getElementById('nr-arr-r');
-    if(oldL) oldL.remove();
-    if(oldR) oldR.remove();
+    return;
 
     var btnStyle = 'display:flex;position:absolute;top:50%;transform:translateY(-50%);'
       + 'width:36px;height:36px;border-radius:50%;background:#fff;border:1.5px solid #e4e8f0;'
