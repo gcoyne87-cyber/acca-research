@@ -2222,6 +2222,9 @@ window.addEventListener('load',function(){
       if(arrR) arrR.style.display=atEnd?'none':'flex';
     }
     setTimeout(secNavScroll,100);
+    setTimeout(secNavScroll,500);
+    window.addEventListener('resize',secNavScroll);
+    window.addEventListener('load',secNavScroll);
     </script>
 
 <div id="racing-winners-content" style="display:none;padding:0;background:#f5f7fb;min-height:300px">
@@ -2378,7 +2381,8 @@ function unlockCorkAnalysis(){
       <div style="font-size:11px;color:#9aa3b5">C. Appleby</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-      <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;white-space:nowrap">2/1 FAV</span>
+      <span style="background:#f0f2f7;color:#5a6478;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800;white-space:nowrap">2/1</span>
+      <span style="background:#f0f2f7;color:#5a6478;border:1px solid #e4e8f0;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer">Remove Fav</span>
     </div>
   </div>
 
@@ -10376,14 +10380,21 @@ function _aiCompleteToMyResearch(){
 function goToMyResearch(){
   aiPanelClose();
   selectRacingSection('myresearch');
-  unlockCorkAnalysis();
   setTimeout(function(){
-    var el=document.getElementById('cork-analysis-full');
-    if(!el) return;
-    var stickyOffset=110; // topnav ~56px + section nav ~47px + buffer
-    var top=el.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
-    window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
-  },500);
+    var locked=document.getElementById('cork-analysis-locked');
+    var stickyOffset=110;
+    if(locked){
+      var top=locked.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
+      window.scrollTo({top:Math.max(0,top)});
+    }
+    unlockCorkAnalysis();
+    setTimeout(function(){
+      var el=document.getElementById('cork-analysis-full');
+      if(!el) return;
+      var top2=el.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
+      window.scrollTo({top:Math.max(0,top2),behavior:'smooth'});
+    },450);
+  },80);
 }
 function aiPanelExpand(){
   _aiPanelExpanded=true;
