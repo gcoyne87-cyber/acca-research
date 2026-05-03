@@ -10316,7 +10316,7 @@ function rcAnalyse(mid,type){
   panel.style.pointerEvents='all';
   panel.style.transform='translateY(0)';
 
-  var TOTAL=90000;
+  var TOTAL=isFull?120000:90000;
 
   if(isFull){
     _aiSetCount(m.name+' — Full Card',m.races.length+' races',(m.going||'')+(m.going&&m.flag?' · ':'')+m.flag);
