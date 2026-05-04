@@ -8644,7 +8644,7 @@ function renderTodayMeetingsList(){
     // Expanded white panel below banner
     if(isOpen){
       out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
-      out+='<div style="position:sticky;top:134px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+      out+='<div style="position:sticky;top:92px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tdpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
@@ -9772,7 +9772,7 @@ function renderRacingPicks(){
           +'<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.3">'+escHtml(p.detail)+'</div>'
         +'</div>'
         +'<div style="text-align:right;flex-shrink:0">'
-          +'<div style="font-size:17px;font-weight:700;color:#10b981;line-height:1">'+escHtml(p.odds)+'</div>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="background:transparent;border:1.5px solid #10b981;color:#10b981;border-radius:8px;padding:7px 14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;letter-spacing:.01em">'+escHtml(p.odds)+'</button>'
         +'</div>'
       +'</div>'
 
@@ -10306,7 +10306,7 @@ function renderTomorrowMeetingsList(){
     // Expanded white panel
     if(isOpen){
       out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
-      out+='<div style="position:sticky;top:134px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+      out+='<div style="position:sticky;top:92px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tmpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
