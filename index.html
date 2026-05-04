@@ -9590,6 +9590,7 @@ var RACING_PICKS=[
 
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
    confidence:88,odds:"2/1",border:"#10b981",
+   summary:"Highest-rated horse on today's entire card — and Mullins is sending Townend, his number one, to ride.",
    signals:[
      {tag:"FORM",    text:"Top AI rating across form, going and trainer stats — highest score on today’s card"},
      {tag:"GOING",   text:"Won 3 of last 5 on Good to Yielding ground — conditions ideal today at Cork"},
@@ -9600,6 +9601,7 @@ var RACING_PICKS=[
 
   {type:"NB · Next Best",icon:"★",horse:"Proactif",detail:"13:50 Cork · 2m4f Handicap Chase",
    confidence:74,odds:"5/2",border:"#0b1628",
+   summary:"Twice a winner over course and distance, dropping in class after a Leopardstown near-miss — and the market hasn't drifted all week.",
    signals:[
      {tag:"FORM",    text:"Second highest AI rating on today’s card — strong profile across three key metrics"},
      {tag:"CLASS",   text:"Course and distance winner — won here twice last season, track suits his jumping style"},
@@ -9609,6 +9611,8 @@ var RACING_PICKS=[
    ]},
 
 ];
+
+var _picksMode='full';
 
 var TM_PICKS=[
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Galopin Des Champs",detail:"13:15 Cheltenham · 3m Grade 1 Chase",
@@ -9724,6 +9728,8 @@ function renderRacingPicks(){
 
   if(!el) return;
 
+  var compact=_picksMode==='home';
+
   el.innerHTML=RACING_PICKS.map(function(p,i){
 
     var detailFirst=(p.detail.split(' · ')[0]||p.detail).trim();
@@ -9735,9 +9741,27 @@ function renderRacingPicks(){
     var tagBorder=isNap?'1px solid #f5c542':'1px solid #10b981';
     var tagColor=isNap?'#f5c542':'#10b981';
 
-    var researchHtml=p.signals.map(function(s){
-      return '<strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
-    }).join('<span style="color:rgba(245,197,66,0.5)"> &middot; </span>');
+    var bodyHtml;
+    if(compact){
+      bodyHtml='<div style="padding:4px 14px 12px">'
+        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
+          +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
+          +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
+        +'</div>'
+        +'<div style="font-size:13.5px;line-height:1.5;color:rgba(255,255,255,0.94);font-weight:500;border-left:2px solid #f5c542;padding-left:11px">'+escHtml(p.summary||'')+'</div>'
+      +'</div>';
+    } else {
+      var researchHtml=p.signals.map(function(s){
+        return '<strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
+      }).join('<span style="color:rgba(245,197,66,0.5)"> &middot; </span>');
+      bodyHtml='<div style="padding:4px 14px 10px">'
+        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
+          +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
+          +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
+        +'</div>'
+        +'<div style="font-size:11px;color:rgba(255,255,255,0.72);line-height:1.45;font-weight:450">'+researchHtml+'</div>'
+      +'</div>';
+    }
 
     return '<div style="background:#0b1628;border-radius:12px;border:1px solid rgba(245,197,66,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
 
@@ -9753,13 +9777,7 @@ function renderRacingPicks(){
       +'</div>'
 
       +'<div style="height:1px;background:rgba(255,255,255,0.07);margin:0 14px"></div>'
-      +'<div style="padding:4px 14px 10px">'
-        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
-          +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
-          +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
-        +'</div>'
-        +'<div style="font-size:11px;color:rgba(255,255,255,0.72);line-height:1.45;font-weight:450">'+researchHtml+'</div>'
-      +'</div>'
+      +bodyHtml
 
       +'<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:8px">'
         +'<button class="slip-btn" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to My Slip</button>'
@@ -10058,6 +10076,7 @@ function selectRacingSection(s){
     if(nrHomeWrap) nrHomeWrap.style.display="none";
     selectRacingDate("today");
     if(picksC){picksC.style.display="";}
+    _picksMode='home';
     selectPicksDate("today");
     var ppb=document.getElementById("picks-datepills-bar");
     if(ppb) ppb.style.display="none";
@@ -10079,6 +10098,7 @@ function selectRacingSection(s){
     if(picksC) picksC.style.display="";
     var ppb=document.getElementById("picks-datepills-bar");
     if(ppb) ppb.style.display="";
+    _picksMode='full';
     selectPicksDate("today");
   } else if(s==="myresearch"){
     if(myResearchC) myResearchC.style.display="";
