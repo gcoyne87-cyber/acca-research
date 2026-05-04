@@ -818,7 +818,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);border-bottom:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
 
 .topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:50px}
-.topnav-tabs{display:flex;background:#fff;border-top:1px solid #e4e8f0;overflow-x:hidden}
+.topnav-tabs{display:flex;background:#fff;overflow-x:hidden}
 .maintab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:0 6px;height:42px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s;min-width:0;text-align:center;letter-spacing:0}
 .maintab.act{color:#0b1628;font-weight:700;border-bottom-color:#10b981}
 .topnav-subbar{display:none;background:#f5f7fb;border-top:1px solid #e4e8f0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -2064,7 +2064,6 @@ window.addEventListener('load',function(){
 
   <!-- MAIN TABS -->
   <div class="topnav-tabs" id="topnav-tabs">
-    <button class="maintab act" id="maintab-home" onclick="selectMainTab('home')">Home</button>
     <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')">Cards</button>
     <button class="maintab" id="maintab-results" onclick="selectMainTab('results')">Results</button>
     <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')">Picks</button>
