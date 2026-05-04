@@ -2065,6 +2065,7 @@ window.addEventListener('load',function(){
   <!-- MAIN TABS -->
   <div class="topnav-tabs" id="topnav-tabs">
     <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')">Cards</button>
+    <button class="maintab" id="maintab-nextrace" onclick="selectMainTab('nextrace')">Next Race</button>
     <button class="maintab" id="maintab-results" onclick="selectMainTab('results')">Results</button>
     <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')">Picks</button>
     <button class="maintab maintab-dsk" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
@@ -9936,7 +9937,7 @@ var tmActiveVenue='cheltenham';
 var tmOpenRace={};
 
 function selectMainTab(tab){
-  ['home','cards','results','picks','myresearch'].forEach(function(t){
+  ['home','cards','nextrace','results','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
     if(b) b.className='maintab'+(t==='myresearch'?' maintab-dsk':'')+(t===tab?' act':'');
   });
@@ -9953,6 +9954,9 @@ function selectMainTab(tab){
     var sc=document.getElementById('subbar-cards');
     if(sc) sc.style.display='flex';
     selectCardsSubTab('today');
+  } else if(tab==='nextrace'){
+    if(sb) sb.style.display='none';
+    selectRacingSection('nextrace');
   } else if(tab==='results'){
     if(sb) sb.style.display='block';
     var sr=document.getElementById('subbar-results');
@@ -9971,9 +9975,9 @@ function selectMainTab(tab){
 }
 
 function _syncMainTab(s){
-  var map={racecards:'cards',nextrace:'cards',winners:'results',pickofday:'picks',myresearch:'myresearch'};
+  var map={racecards:'cards',nextrace:'nextrace',winners:'results',pickofday:'picks',myresearch:'myresearch'};
   var mt=map[s]||'home';
-  ['home','cards','results','picks','myresearch'].forEach(function(t){
+  ['home','cards','nextrace','results','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
     if(b) b.className='maintab'+(t==='myresearch'?' maintab-dsk':'')+(t===mt?' act':'');
   });
