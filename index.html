@@ -2098,7 +2098,7 @@ window.addEventListener('load',function(){
     <div id="racing-home-content" style="display:block;padding:0">
   <!-- AI ANALYSIS SLIDER -->
   <!-- CAROUSEL -->
-  <div style="background:#f5f7fb;padding:0;overflow:hidden">
+  <div id="home-carousel-section" style="background:#f5f7fb;padding:0;overflow:hidden">
     <div id="carousel-track" style="display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;padding-right:0">
 
       <!-- SLIDE 1: TODAY'S NAP -->
@@ -3306,9 +3306,6 @@ function unlockCorkAnalysis(){
 
     <!-- NEXT RACE PANEL (section tab) -->
     <div id="section-nextrace-panel" style="display:none;padding:0 0 16px">
-    <div style="padding:10px 6px 4px">
-      <div class="sec-title">Next Race</div>
-    </div>
 
     <div id="next-race-section" style="padding:0;margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
 
@@ -10049,6 +10046,8 @@ function selectRacingSection(s){
   if(picksC) picksC.style.display="none";
   if(nrPanel) nrPanel.style.display="none";
   if(myResearchC) myResearchC.style.display="none";
+  var carouselSec=document.getElementById("home-carousel-section");
+  if(carouselSec) carouselSec.style.display=s==="nextrace"?"none":"";
   var dpb=document.getElementById("racing-datepills-bar");
   if(dpb) dpb.style.display=s==="racecards"?"":"none";
   if(s==="racecards"){
