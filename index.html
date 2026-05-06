@@ -8538,16 +8538,17 @@ function renderTodayMeetingsList(){
   if(!el) return;
   var cnt=document.getElementById('today-meetings-count');
   if(cnt) cnt.textContent=RC_MEETINGS.length+' meeting'+(RC_MEETINGS.length===1?'':'s');
-  var out="";
-  RC_MEETINGS.forEach(function(m){
+  var out='<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(11,22,40,0.07);overflow:hidden">';
+  RC_MEETINGS.forEach(function(m,idx){
     var isOpen=todayOpenMeeting===m.id;
     var hasRace=rcOpenRace[m.id]!=null;
     var selRace=rcOpenRace[m.id];
     var firstTime=m.races.length?m.races[0].t:'';
     var chevronTransform=isOpen?'rotate(-135deg)':'rotate(45deg)';
     var chevronMargin=isOpen?'margin-top:3px':'margin-top:-2px';
-    // Card wrapper
-    out+='<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(11,22,40,0.07);margin-bottom:8px;overflow:hidden">';
+    var isLast=idx===RC_MEETINGS.length-1;
+    // Row (connected, divider between)
+    out+='<div style="background:'+(isOpen?'#fafbfc':'#fff')+';'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     // Card header row
     out+='<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:11px 12px 0">';
     out+='<div style="flex:1;min-width:0">';
@@ -8589,6 +8590,7 @@ function renderTodayMeetingsList(){
     }
     out+='</div>';
   });
+  out+='</div>';
   el.innerHTML=out;
 }
 function rcPillsHtml(m){
