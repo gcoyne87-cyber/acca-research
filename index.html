@@ -50,7 +50,7 @@
 
   --navy:#0b1628;
 
-  --gold:#f5c542;
+  --gold:#d4af37;
 
   --gold2:#f8df7a;
 
@@ -92,10 +92,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   }
   .slip-bubble{right:calc(50% - 220px + 22px) !important}
   .slip-panel{right:calc(50% - 220px + 22px) !important}
-  #racing-menu-overlay,#racing-menu-drawer{
-    left:auto !important;
-    right:calc(50% - 220px) !important;
-  }
+  #racing-menu-overlay{left:calc(50% - 220px) !important;right:auto !important;width:440px !important}
+  #racing-menu-drawer{left:calc(50% - 220px) !important;}
 }
 
 .main{max-width:900px;margin:0 auto;padding:24px 0 80px}
@@ -130,7 +128,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .hbs-green{background:#10b981;color:#fff}
 
-.hbs-gold{background:#fff;color:#0b1628;border:2.5px solid #f5c542}
+.hbs-gold{background:#fff;color:#0b1628;border:2.5px solid #d4af37}
 
 .hbs-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.75)}
 
@@ -394,7 +392,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .sec-emoji{font-size:24px;line-height:1;display:block;margin-bottom:6px}
 
-.sec-title{display:inline-block;font-size:13px;font-weight:700;color:#7a5800;line-height:1;background:#fef9e7;border:1px solid #f5c542;border-radius:6px;padding:4px 12px;letter-spacing:.01em}
+.sec-title{display:inline-block;font-size:13px;font-weight:700;color:#7a5800;line-height:1;background:#fef9e7;border:1px solid #d4af37;border-radius:6px;padding:4px 12px;letter-spacing:.01em}
 
 .sec-sub{font-size:13px;color:var(--muted);margin-top:4px}
 
@@ -729,6 +727,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .analysing-block .spinner{width:32px;height:32px;border:2.5px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
 
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.85)}}
+#ai-intelligence-list::-webkit-scrollbar{display:none}
 
 .analysing-block p{font-size:13px;color:var(--navy);font-weight:500}
 
@@ -815,14 +815,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── TOP NAV ── */
 
-.topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);border-bottom:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
+.topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
 
-.topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:50px}
-.topnav-tabs{display:flex;background:#fff;overflow-x:hidden}
-.maintab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:0 6px;height:42px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s;min-width:0;text-align:center;letter-spacing:0}
+.topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:50px;border-bottom:1px solid var(--border)}
+.topnav-tabs{display:flex;background:#fff;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;box-shadow:inset 0 -1px 0 var(--border)}
+.maintab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:0 6px;height:42px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;min-width:0;text-align:center;letter-spacing:0}
 .maintab.act{color:#0b1628;font-weight:700;border-bottom-color:#10b981}
-.topnav-subbar{display:none;background:#f5f7fb;border-top:1px solid #e4e8f0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.subbtn{background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s}
+.topnav-subbar{display:none;background:#f5f7fb;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.subbtn{background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s}
 .subbtn.act{color:#0b1628;font-weight:700;border-bottom-color:#10b981}
 @media(max-width:500px){.maintab-dsk{display:none}}
 
@@ -1146,7 +1146,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .wop-card{background:var(--white);border-radius:16px;overflow:hidden;flex-shrink:0;scroll-snap-align:start;width:calc(100vw - 52px);max-width:340px;display:flex;flex-direction:column;border:1.5px solid var(--border)}
 
-.wop-card.gold{border-left:4px solid #f5c542}
+.wop-card.gold{border-left:4px solid #d4af37}
 
 .wop-card.silver{border-left:4px solid #8a98b0}
 
@@ -1378,7 +1378,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .rg-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:5px 12px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
 
-.rg-badge-warn{background:rgba(245,197,66,.12);border-color:rgba(245,197,66,.3);color:#f5c542}
+.rg-badge-warn{background:rgba(245,197,66,.12);border-color:rgba(245,197,66,.3);color:#d4af37}
 
 .rg-links{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
 
@@ -1485,7 +1485,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .ai-cta-green span{color:#10b981}
 .ai-cta-green:hover{box-shadow:0 0 0 3px rgba(16,185,129,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
 .ai-cta-dark{display:block;width:100%;background:#0b1628;color:#fff;border:1.5px solid #0b1628;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
-.ai-cta-dark span{color:#f5c542}
+.ai-cta-dark span{color:#d4af37}
 .ai-cta-dark:hover{box-shadow:0 0 0 3px rgba(245,197,66,0.22),0 2px 12px rgba(11,22,40,0.25);transform:translateY(-1px)}
 .ai-cta-dark:active{transform:translateY(1px);box-shadow:none}
 .price-btn{background:#f0f2f7;border:1px solid #e4e8f0;border-radius:7px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:center;flex-shrink:0;transition:box-shadow .18s,transform .18s}
@@ -1598,7 +1598,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .auth-logo{text-align:center;margin-bottom:20px}
 .auth-logo-text{font-size:22px;font-weight:900;letter-spacing:-.5px}
 .auth-logo-text .re-w{color:#0b1628}
-.auth-logo-text .re-g{color:#f5c542}
+.auth-logo-text .re-g{color:#d4af37}
 .auth-title{font-size:20px;font-weight:800;color:#0b1628;text-align:center;margin-bottom:4px}
 .auth-sub{font-size:13px;color:#8a94a6;text-align:center;margin-bottom:22px}
 .auth-google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#0b1628;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px;transition:background .18s,transform .18s,box-shadow .18s;box-shadow:0 1px 3px rgba(0,0,0,0.07)}
@@ -1653,7 +1653,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <!-- Logo -->
       <div style="text-align:center;margin-bottom:6px">
-        <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px"><span style="color:#0b1628">Racing</span><span style="color:#f5c542">Edge</span></div>
+        <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
       </div>
       <div style="text-align:center;font-size:13px;color:#b0b8c8;margin-bottom:22px">Sign in or create an account</div>
 
@@ -1695,7 +1695,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
   <div class="notify-card">
     <span class="notify-bell">🔔</span>
     <div class="notify-title">Picks of the Day</div>
-    <div style="font-size:13px;font-weight:700;color:#f5c542;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px">Get Notified</div>
+    <div style="font-size:13px;font-weight:700;color:#d4af37;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px">Get Notified</div>
     <div class="notify-sub">Join over <strong style="color:#0b1628;font-weight:800">2,000 RacingEdge users</strong> and get notified the moment our Picks of the Day are live.</div>
     <button class="notify-cta" onclick="notifyCtaClick()">Get Notified</button><br>
     <button class="notify-skip" onclick="dismissNotifyPrompt()">Maybe later</button>
@@ -1706,7 +1706,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 <div id="splash-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0b1628;z-index:9999;overflow:hidden;transition:opacity 0.5s ease">
 
-  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#10b981,#f5c542,#10b981,transparent);background-size:200%;animation:splashBar 2.5s linear infinite"></div>
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#10b981,#d4af37,#10b981,transparent);background-size:200%;animation:splashBar 2.5s linear infinite"></div>
 
   <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;padding:0 32px">
 
@@ -1720,7 +1720,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
       <div style="position:relative;z-index:2">
 
-        <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Racing</span><span style="color:#f5c542">Edge</span></div>
+        <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Racing</span><span style="color:#d4af37">Edge</span></div>
 
         <div style="font-family:Outfit,sans-serif;font-size:16px;color:#10b981;font-weight:500;margin-top:14px;letter-spacing:0.01em">AI-powered horse racing analysis.</div>
 
@@ -1916,6 +1916,7 @@ function showRacingHome(){
   var tn=document.getElementById('main-topnav');
   if(tn){tn.style.display='';tn.classList.add('racing-mode');}
   renderTodayMeetingsList();
+  renderAIIntelligence();
   _wcStart();
   _hwStart();
   selectMainTab('home');
@@ -2049,16 +2050,17 @@ window.addEventListener('load',function(){
 <div class="topnav" id="main-topnav" style="display:none">
 
   <div class="topnav-inner">
-    <div class="topnav-logo" onclick="selectMainTab('home')" style="cursor:pointer">
-      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#0b1628">Racing</span><span style="color:#f5c542">Edge</span></div>
+    <div onclick="toggleRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:28px;height:28px;flex-shrink:0">
+      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
+      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
+      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
+    </div>
+    <div class="topnav-logo" onclick="selectMainTab('home')" style="cursor:pointer;flex:1;text-align:center">
+      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
     </div>
     <div class="topnav-links" style="display:none"></div>
-    <div class="topnav-auth" style="display:flex;align-items:center;margin-left:auto">
-      <div onclick="toggleRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:28px;height:28px">
-        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
-        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
-        <div style="width:18px;height:2px;background:#0b1628;border-radius:2px;display:block"></div>
-      </div>
+    <div style="flex-shrink:0">
+      <button onclick="openAuthModal()" style="background:#0b1628;color:#fff;border:none;border-radius:99px;padding:6px 13px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:0.02em">Sign In</button>
     </div>
   </div>
 
@@ -2067,7 +2069,7 @@ window.addEventListener('load',function(){
     <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')">Cards</button>
     <button class="maintab" id="maintab-nextrace" onclick="selectMainTab('nextrace')">Next Race</button>
     <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')">Picks</button>
-    <button class="maintab maintab-dsk" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
+    <button class="maintab" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
   </div>
 
   <!-- SUB-BAR -->
@@ -2095,127 +2097,23 @@ window.addEventListener('load',function(){
 
 
     <div id="racing-home-content" style="display:block;padding:0">
-  <!-- AI ANALYSIS SLIDER -->
-  <!-- CAROUSEL -->
-  <div id="home-carousel-section" style="background:#f5f7fb;padding:0;overflow:hidden">
-    <div id="carousel-track" style="display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;padding-right:0">
-
-      <!-- SLIDE 1: TODAY'S NAP -->
-      <div class="carousel-card" id="carousel-card-0" data-idx="0" style="scroll-snap-align:start;scroll-snap-stop:always;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;position:relative">
-        <div id="carousel-bg-0" style="position:absolute;inset:0;background-size:cover;background-position:center 30%"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
-        <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
-          <!-- TITLE -->
-          <div style="flex-shrink:0">
-            <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Today's</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Pick of the Day</div>
-              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#f5c542;border-radius:4px;padding:2px 7px;letter-spacing:0.06em;flex-shrink:0">NAP</div>
-            </div>
-          </div>
-          <div style="flex:0 0 20px"></div>
-          <!-- HORSE / JOCKEY BLOCK -->
-          <div style="flex-shrink:0">
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:15 · Cork · Grade 1</div>
-            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
-              <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Majolique</div>
-              <div style="font-size:13px;font-weight:600;color:#f5c542;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">2/1</div>
-            </div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend &nbsp;·&nbsp; W Mullins</div>
-          </div>
-          <div style="flex:0 0 16px"></div>
-          <!-- 3 KEY FACTS -->
-          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:3px">
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JP Townend booked — Mullins doesn't put his number one up without reason</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Top AI rating across form, going and trainer stats — highest score on today's card</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mullins yard running at 52% strike rate — 5 winners in last 7 days</span></div>
-          </div>
-        </div>
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
-          <button class="ai-cta-light" style="width:100%;padding:10px 10px;font-size:14px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:15')">✦ Go to 13:15 Cork →</button>
-          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px 10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Majolique','2/1')">+ Add to Slip</button>
-        </div>
+  <!-- AI DAILY INTELLIGENCE -->
+  <div id="home-carousel-section" style="background:#f5f7fb;padding:10px 0 4px">
+    <!-- Section header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+        <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Daily Intelligence</div>
       </div>
-
-      <!-- SLIDE 2: WINNERS -->
-      <div class="carousel-card" id="carousel-card-1" data-idx="1" style="scroll-snap-align:start;scroll-snap-stop:always;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;position:relative;display:flex;flex-direction:column">
-        <div id="carousel-bg-1" style="display:none"></div>
-        <img src="/winner.png" class="winner-img" style="position:absolute;bottom:0;height:75%;width:auto;z-index:1;pointer-events:none">
-
-        <!-- TITLE TOP LEFT -->
-        <div class="card-inner" style="position:absolute;top:0;left:0;right:0;z-index:2;padding:18px 20px 0">
-          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">This Month's</div>
-          <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Picks That Won</div>
-        </div>
-
-        <!-- SLOT COUNTER -->
-        <div class="card-inner" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:flex-start;padding:70px 20px 110px">
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:center;gap:1px">
-              <div style="width:68px;height:68px;overflow:hidden;position:relative;flex-shrink:0">
-                <div id="winners-slot-inner" style="position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:flex-start"></div>
-              </div>
-              <div style="font-size:26px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.5px;margin-left:-18px">Winners</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:3px">
-              <div style="display:flex;gap:7px;align-items:center"><span style="color:#10b981;font-size:11px;flex-shrink:0">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88)">Avg Price <span style="color:#f5c542;font-weight:700">5/2</span></span></div>
-              <div style="display:flex;gap:7px;align-items:center"><span style="color:#10b981;font-size:11px;flex-shrink:0">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88)">Best Price <span style="color:#f5c542;font-weight:700">8/1</span></span></div>
-              <div style="display:flex;gap:7px;align-items:center"><span style="color:#10b981;font-size:11px;flex-shrink:0">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88)">Top Course: Kempton</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CTA BOTTOM -->
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 16px 16px">
-          <button style="width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:14px 10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="selectRacingSection('winners')">See All Recent Winners →</button>
-        </div>
-
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="width:5px;height:5px;border-radius:50%;background:#ef4444;display:inline-block;animation:livepulse 1.5s ease-in-out infinite;flex-shrink:0"></span>
+        <span style="font-size:10px;font-weight:700;color:#ef4444;letter-spacing:0.06em;animation:livepulse 1.5s ease-in-out infinite">LIVE</span>
       </div>
-
-            <!-- SLIDE 3: TODAY'S NB -->
-      <div class="carousel-card" id="carousel-card-2" data-idx="2" style="scroll-snap-align:start;scroll-snap-stop:always;flex-shrink:0;width:100%;height:340px;background:#0b1628;border-radius:0;overflow:hidden;position:relative">
-        <div id="carousel-bg-2" style="position:absolute;inset:0;background-size:cover;background-position:center 30%"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>
-        <div class="card-inner" style="position:relative;z-index:2;padding:18px 20px 0;padding-bottom:110px;display:flex;flex-direction:column;height:100%">
-          <!-- TITLE -->
-          <div style="flex-shrink:0">
-            <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.45);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Today's</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-size:25px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1">Pick of the Day</div>
-              <div style="font-size:11px;font-weight:900;color:#0b1628;background:#f5c542;border-radius:4px;padding:2px 7px;letter-spacing:0.06em;flex-shrink:0">NB</div>
-            </div>
-          </div>
-          <div style="flex:0 0 20px"></div>
-          <!-- HORSE / JOCKEY BLOCK -->
-          <div style="flex-shrink:0">
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">13:50 · Cork · Grade 2</div>
-            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
-              <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">Proactif</div>
-              <div style="font-size:13px;font-weight:600;color:#f5c542;letter-spacing:0;line-height:1;flex-shrink:0;margin-left:8px">5/2</div>
-            </div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">R Walsh &nbsp;·&nbsp; W Mullins</div>
-          </div>
-          <div style="flex:0 0 16px"></div>
-          <!-- 3 KEY FACTS -->
-          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:3px">
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course and distance winner — won here twice last season</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Market held firm all week — no drift, confidence behind this</span></div>
-            <div style="display:flex;gap:7px;align-items:flex-start"><span style="color:#10b981;font-size:11px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:11px;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Drops in class after near miss at Leopardstown — easier opportunity today</span></div>
-          </div>
-        </div>
-        <div class="card-inner" style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px">
-          <button class="ai-cta-light" style="width:100%;padding:10px 10px;font-size:14px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard('cork','Cork','13:50')">✦ Go to 13:50 Cork →</button>
-          <button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px 10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.18s" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform=''" onclick="nrAddToSlip('Proactif','5/2')">+ Add to Slip</button>
-        </div>
-      </div>
-
     </div>
-    <!-- DOT INDICATORS -->
-    <div style="display:flex;justify-content:center;align-items:center;gap:6px;padding:10px 0 4px;background:#f5f7fb">
-      <div id="dot-0" style="width:14px;height:5px;border-radius:99px;background:#f5c542;transition:width 0.2s ease"></div>
-      <div id="dot-1" style="width:5px;height:5px;border-radius:50%;background:rgba(11,22,40,0.15)"></div>
-      <div id="dot-2" style="width:5px;height:5px;border-radius:50%;background:rgba(11,22,40,0.15)"></div>
-    </div>
+    <!-- Intelligence carousel -->
+    <div id="ai-intelligence-list" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:12px;padding:0 12px 4px"></div>
+    <!-- Dot indicators -->
+    <div id="ai-dots" style="display:flex;justify-content:center;gap:6px;padding:6px 0 0"></div>
   </div>
 
     <!-- SECTION NAV — replaced by topnav tabs -->
@@ -2269,8 +2167,8 @@ window.addEventListener('load',function(){
 .mr-card{background:#0b1628;border:1px solid rgba(245,197,66,.18);border-radius:14px;padding:18px 14px 16px;margin-bottom:10px;box-shadow:0 2px 20px rgba(0,0,0,.2)}
 .mr-card:last-child{margin-bottom:0}
 .mr-tb{background:#0b1628;color:#fff;font-size:12px;font-weight:700;padding:4px 9px;border-radius:6px;flex-shrink:0;letter-spacing:.03em}
-.mr-pb{background:#f5c542;color:#0b1628;border-radius:10px;padding:6px 11px;font-weight:800;flex-shrink:0;cursor:pointer;transition:transform .1s;line-height:1.1;text-align:center}
-.mr-aie{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid #f5c542;border-radius:4px;padding:3px 8px;margin-bottom:14px}
+.mr-pb{background:#d4af37;color:#0b1628;border-radius:10px;padding:6px 11px;font-weight:800;flex-shrink:0;cursor:pointer;transition:transform .1s;line-height:1.1;text-align:center}
+.mr-aie{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid #d4af37;border-radius:4px;padding:3px 8px;margin-bottom:14px}
 .mr-dot{width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0}
 .mr-dcard{background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.04)}
 .mr-dcard-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px 7px;border-bottom:1px solid #f0f2f7}
@@ -2431,7 +2329,7 @@ function unlockCorkAnalysis(){
   </div>
 
   <!-- Coastal Bay 4/1 — stall 3 — WATCH -->
-  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #d4af37;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
       <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">3</span>
       <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
@@ -2502,7 +2400,7 @@ function unlockCorkAnalysis(){
   </div>
 
   <!-- Last Salvo 9/1 — stall 8 — WATCH -->
-  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #d4af37;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
       <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">8</span>
       <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
@@ -2574,12 +2472,12 @@ function unlockCorkAnalysis(){
 <!-- END BLOCK 2 -->
 
 <!-- BLOCK 3: RACE INTELLIGENCE -->
-<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:12px;border-top:3px solid #c9a84c;padding:14px 16px">
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:12px;border-top:3px solid #d4af37;padding:14px 16px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
+    <span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
   </div>
-  <p style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.65;margin:0">The favourite Blue Knight carries <strong style="color:#c9a84c;font-weight:700">no AW form</strong> and is coming off a bad run &mdash; short at 2/1. Draw bias strongly favours low stalls over 7f here, and a genuine pace sets this up for a hold-up horse. The market is wrong on this race.</p>
+  <p style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.65;margin:0">The favourite Blue Knight carries <strong style="color:#d4af37;font-weight:700">no AW form</strong> and is coming off a bad run &mdash; short at 2/1. Draw bias strongly favours low stalls over 7f here, and a genuine pace sets this up for a hold-up horse. The market is wrong on this race.</p>
 </div>
 
 <!-- BLOCK 4: STRONGEST SELECTION -->
@@ -2604,11 +2502,11 @@ function unlockCorkAnalysis(){
     <p style="font-size:13px;font-weight:700;color:#0b1628;line-height:1.6;margin:0 0 14px">Northern Star is the standout horse in this field. Three wins from five at Wolverhampton tell the story &mdash; this horse simply loves the track. Drawn perfectly in stall 3, with the pace to suit, this is the strongest case we&rsquo;ve had all week.</p>
     <div style="height:1px;background:#f0f2f7;margin-bottom:14px"></div>
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.55">4 wins from 5 &mdash; last two both at Wolverhampton, hasn&rsquo;t missed the frame.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">COURSE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Best course record in field. Unbeaten at Class 5 here.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">DRAW</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Stall 3 &mdash; the standout draw over 7f at this track.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">PACE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Three front-runners ensure genuine pace &mdash; sets up perfectly.</span></div>
-      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#c9a84c;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">VALUE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">AI prices 2/1. Current 3/1 is the widest overlay on today&rsquo;s card.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">FORM</span><span style="font-size:12px;color:#3a4259;line-height:1.55">4 wins from 5 &mdash; last two both at Wolverhampton, hasn&rsquo;t missed the frame.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">COURSE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Best course record in field. Unbeaten at Class 5 here.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">DRAW</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Stall 3 &mdash; the standout draw over 7f at this track.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">PACE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">Three front-runners ensure genuine pace &mdash; sets up perfectly.</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:48px;padding-top:2px">VALUE</span><span style="font-size:12px;color:#3a4259;line-height:1.55">AI prices 2/1. Current 3/1 is the widest overlay on today&rsquo;s card.</span></div>
     </div>
     <div style="height:1px;background:#f0f2f7;margin-bottom:14px"></div>
     <button onclick="nrAddToSlip('Northern Star','3/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px">+ Add to My Slip</button>
@@ -2616,7 +2514,7 @@ function unlockCorkAnalysis(){
 </div>
 
 <!-- BLOCK 5: HORSES TO WATCH — Coastal Bay -->
-<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+<div style="background:#fff;border:1.5px solid #d4af37;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
   <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
     <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
   </div>
@@ -2648,7 +2546,7 @@ function unlockCorkAnalysis(){
 </div>
 
 <!-- BLOCK 5: HORSES TO WATCH — Last Salvo -->
-<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+<div style="background:#fff;border:1.5px solid #d4af37;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
   <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
     <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
   </div>
@@ -2680,10 +2578,10 @@ function unlockCorkAnalysis(){
 </div>
 
 <!-- BLOCK 6: AI RACE VERDICT -->
-<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #d4af37;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
+    <span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
   </div>
   <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.7;margin:0">This is not a wide-open race &mdash; it just looks like one on paper. Strip out Blue Knight, who has no business being favourite on this surface, and you have a field of six with genuine claims. Three of those can be discounted immediately: Wild Blaze is making his AW debut, Silver Ink hasn&rsquo;t won in twelve starts, and Storm Tracker is dropping sharply in class for the first time suggesting connections aren&rsquo;t confident. What&rsquo;s left is a race with a clear pace scenario, a standout draw, and a horse who&rsquo;s done it all before here.</p>
 </div>
@@ -2737,15 +2635,15 @@ function unlockCorkAnalysis(){
 
       <div style="padding:0 14px;display:flex;flex-direction:column;gap:5px">
         <div style="display:flex;gap:8px">
-          <span style="font-size:10px;font-weight:700;color:#c9a84c;min-width:44px;flex-shrink:0">FORM</span>
+          <span style="font-size:10px;font-weight:700;color:#d4af37;min-width:44px;flex-shrink:0">FORM</span>
           <span style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.4">4 wins from 5 &mdash; last two both at Wolverhampton.</span>
         </div>
         <div style="display:flex;gap:8px">
-          <span style="font-size:10px;font-weight:700;color:#c9a84c;min-width:44px;flex-shrink:0">COURSE</span>
+          <span style="font-size:10px;font-weight:700;color:#d4af37;min-width:44px;flex-shrink:0">COURSE</span>
           <span style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.4">Best course record in field. Unbeaten at Class 5.</span>
         </div>
         <div style="display:flex;gap:8px">
-          <span style="font-size:10px;font-weight:700;color:#c9a84c;min-width:44px;flex-shrink:0">VALUE</span>
+          <span style="font-size:10px;font-weight:700;color:#d4af37;min-width:44px;flex-shrink:0">VALUE</span>
           <span style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.4">AI prices 2/1. Current 3/1 is the widest overlay.</span>
         </div>
       </div>
@@ -2762,7 +2660,7 @@ function unlockCorkAnalysis(){
 
   <!-- SECTION 3: CTA -->
   <div style="padding:10px 14px 14px">
-    <button onclick="unlockCorkAnalysis()" class="cta-unlock-btn" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> Unlock Full Analysis &rarr;</button>
+    <button onclick="unlockCorkAnalysis()" class="cta-unlock-btn" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#d4af37">&#x2756;</span> Unlock Full Analysis &rarr;</button>
   </div>
 
 </div>
@@ -2813,7 +2711,7 @@ function unlockCorkAnalysis(){
   </div>
 
   <!-- Proactif 5/2 — stall 7 — WATCH -->
-  <div data-horse="Proactif" style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+  <div data-horse="Proactif" style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #d4af37;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
       <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">7</span>
       <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
@@ -2837,7 +2735,7 @@ function unlockCorkAnalysis(){
   </div>
 
   <!-- Macho Man 4/1 — stall 3 — WATCH -->
-  <div data-horse="Macho Man" style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #c9a84c;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
+  <div data-horse="Macho Man" style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px 8px 11px;border-left:3px solid #d4af37;background:rgba(201,168,76,0.05);border-bottom:1px solid #f0f2f7">
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:28px">
       <span style="font-size:9px;font-weight:700;color:#a07010;line-height:1">3</span>
       <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
@@ -2934,8 +2832,8 @@ function unlockCorkAnalysis(){
       <span style="font-size:9px;font-weight:700;color:#9aa3b5;line-height:1">5</span>
       <svg viewBox="0 0 26 32" width="28" height="28" style="display:block">
         <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="#7a1a2e"/>
-        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#f5c542"/>
-        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#f5c542"/>
+        <path d="M0,9 L7,5 L7,16 L0,20 Z" fill="#d4af37"/>
+        <path d="M26,9 L19,5 L19,16 L26,20 Z" fill="#d4af37"/>
         <ellipse cx="13" cy="5" rx="8" ry="5" fill="#7a1a2e"/>
         <path d="M3,9 L23,9 L24,30 L2,30 Z" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
       </svg>
@@ -2976,10 +2874,10 @@ function unlockCorkAnalysis(){
 </div>
 
 <!-- BLOCK 3: RACE INTELLIGENCE -->
-<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #d4af37;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
+    <span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.12em;text-transform:uppercase">Race Intelligence</span>
   </div>
   <p id="ra-intelligence-text" style="font-size:11px;color:rgba(255,255,255,0.8);line-height:1.6;margin:0">Three of the eight carry Mullins silks &mdash; this is effectively his race to lose. Townend on Majolique is the clearest signal from the yard. Heavy going will separate the field quickly; anything without a proven stamina profile on this ground can be set aside.</p>
 </div>
@@ -3019,7 +2917,7 @@ function unlockCorkAnalysis(){
 
 <div id="ra-watch-section">
 <!-- BLOCK 5: HORSES TO WATCH — Proactif -->
-<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+<div style="background:#fff;border:1.5px solid #d4af37;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
   <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
     <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
   </div>
@@ -3051,7 +2949,7 @@ function unlockCorkAnalysis(){
 </div>
 
 <!-- BLOCK 5: HORSES TO WATCH — Macho Man -->
-<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
+<div style="background:#fff;border:1.5px solid #d4af37;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">
   <div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">
     <span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span>
   </div>
@@ -3084,10 +2982,10 @@ function unlockCorkAnalysis(){
 </div><!-- END ra-watch-section -->
 
 <!-- BLOCK 6: AI RACE VERDICT -->
-<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #c9a84c;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
+<div style="background:linear-gradient(135deg,#0f1e38 0%,#0b1628 100%);border-radius:14px;border-top:3px solid #d4af37;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:16px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <div style="width:6px;height:6px;border-radius:50%;background:#1e9e6b;flex-shrink:0"></div>
-    <span style="font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
+    <span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.12em;text-transform:uppercase">AI Race Verdict</span>
   </div>
   <p id="ra-verdict-text" style="font-size:11px;color:rgba(255,255,255,0.85);line-height:1.6;margin:0">This is a Mullins benefit and the question is simply which one he&rsquo;s most serious about. Townend on Majolique answers that. The champion jockey doesn&rsquo;t take second strings in maiden hurdles at Cork in Heavy ground &mdash; he rides what he thinks will win. Proactif and Macho Man are live each-way options if the market leader is beaten, but the form figures, the booking, and the going all point the same way. Fade the Elliott runner Doctor Elvis on this ground and set aside anything without Heavy form. This race has one winner.</p>
 </div>
@@ -3105,11 +3003,7 @@ function unlockCorkAnalysis(){
 
 
   <!-- DATE PILLS (always visible) -->
-  <div id="racing-datepills-bar" style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
-    <button id="pill-today" onclick="selectRacingDate('today')" style="background:#0b1628;color:#fff;border:1px solid #0b1628;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Today</button>
-    <button id="pill-tomorrow" onclick="selectRacingDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
-    <button id="pill-upcoming" onclick="selectRacingDate('upcoming')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Upcoming</button>
-  </div>
+  <div id="racing-datepills-bar" style="display:none"></div>
 
   <div id="racing-today-content">
 
@@ -3125,7 +3019,16 @@ function unlockCorkAnalysis(){
       <img id="img-winners" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/4QCLRXhpZgAASUkqAAgAAAAEAA4BAgAqAAAAPgAAAJiCAgALAAAAaAAAABoBBQABAAAAcwAAABsBBQABAAAAewAAAAAAAABBIG1hbiBjZWxlYnJhdGVzIGEgd2luIGF0IHRoZSBob3JzZSByYWNlcy5NaWtlIERhYmVsbCwBAAABAAAALAEAAAEAAAD/4QWyaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLwA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIj4KCTxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CgkJPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczpJcHRjNHhtcENvcmU9Imh0dHA6Ly9pcHRjLm9yZy9zdGQvSXB0YzR4bXBDb3JlLzEuMC94bWxucy8iICAgeG1sbnM6R2V0dHlJbWFnZXNHSUZUPSJodHRwOi8veG1wLmdldHR5aW1hZ2VzLmNvbS9naWZ0LzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGx1cz0iaHR0cDovL25zLnVzZXBsdXMub3JnL2xkZi94bXAvMS4wLyIgIHhtbG5zOmlwdGNFeHQ9Imh0dHA6Ly9pcHRjLm9yZy9zdGQvSXB0YzR4bXBFeHQvMjAwOC0wMi0yOS8iIHhtbG5zOnhtcFJpZ2h0cz0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3JpZ2h0cy8iIGRjOlJpZ2h0cz0iTWlrZSBEYWJlbGwiIHBob3Rvc2hvcDpDcmVkaXQ9IkdldHR5IEltYWdlcyIgR2V0dHlJbWFnZXNHSUZUOkFzc2V0SUQ9IjE1NzE5ODY3MiIgeG1wUmlnaHRzOldlYlN0YXRlbWVudD0iaHR0cHM6Ly93d3cuaXN0b2NrcGhvdG8uY29tL2xlZ2FsL2xpY2Vuc2UtYWdyZWVtZW50P3V0bV9tZWRpdW09b3JnYW5pYyZhbXA7dXRtX3NvdXJjZT1nb29nbGUmYW1wO3V0bV9jYW1wYWlnbj1pcHRjdXJsIiBwbHVzOkRhdGFNaW5pbmc9Imh0dHA6Ly9ucy51c2VwbHVzLm9yZy9sZGYvdm9jYWIvRE1JLVBST0hJQklURUQtRVhDRVBUU0VBUkNIRU5HSU5FSU5ERVhJTkciID4KPGRjOmNyZWF0b3I+PHJkZjpTZXE+PHJkZjpsaT5taWtlZGFiZWxsPC9yZGY6bGk+PC9yZGY6U2VxPjwvZGM6Y3JlYXRvcj48ZGM6ZGVzY3JpcHRpb24+PHJkZjpBbHQ+PHJkZjpsaSB4bWw6bGFuZz0ieC1kZWZhdWx0Ij5BIG1hbiBjZWxlYnJhdGVzIGEgd2luIGF0IHRoZSBob3JzZSByYWNlcy48L3JkZjpsaT48L3JkZjpBbHQ+PC9kYzpkZXNjcmlwdGlvbj4KPHBsdXM6TGljZW5zb3I+PHJkZjpTZXE+PHJkZjpsaSByZGY6cGFyc2VUeXBlPSdSZXNvdXJjZSc+PHBsdXM6TGljZW5zb3JVUkw+aHR0cHM6Ly93d3cuaXN0b2NrcGhvdG8uY29tL3Bob3RvL2xpY2Vuc2UtZ20xNTcxOTg2NzItP3V0bV9tZWRpdW09b3JnYW5pYyZhbXA7dXRtX3NvdXJjZT1nb29nbGUmYW1wO3V0bV9jYW1wYWlnbj1pcHRjdXJsPC9wbHVzOkxpY2Vuc29yVVJMPjwvcmRmOmxpPjwvcmRmOlNlcT48L3BsdXM6TGljZW5zb3I+CgkJPC9yZGY6RGVzY3JpcHRpb24+Cgk8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJ3Ij8+Cv/tAIRQaG90b3Nob3AgMy4wADhCSU0EBAAAAAAAZxwBWgADGyVHHAJQAAptaWtlZGFiZWxsHAJ4ACpBIG1hbiBjZWxlYnJhdGVzIGEgd2luIGF0IHRoZSBob3JzZSByYWNlcy4cAnQAC01pa2UgRGFiZWxsHAJuAAxHZXR0eSBJbWFnZXMA/9sAQwAKBwcIBwYKCAgICwoKCw4YEA4NDQ4dFRYRGCMfJSQiHyIhJis3LyYp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">
     </div>
 
-    <div id="today-meetings-list" style="padding:0 0 4px;margin:0 6px"></div>
+    <div id="today-racecards-title" style="background:#f0f2f7;padding:8px 14px 8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
+        </div>
+        <div id="today-meetings-count" style="background:#e8eaf0;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
+      </div>
+    </div>
+    <div id="today-meetings-list" style="background:#f0f2f7;padding:6px 12px 10px"></div>
 
     </div>
     </div>
@@ -3168,7 +3071,7 @@ function unlockCorkAnalysis(){
       <div style="background:#0b1628;border-radius:12px;border:1px solid rgba(245,197,66,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">
         <div style="padding:12px 14px 5px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
           <div style="flex:1;min-width:0">
-            <div style="display:inline-flex;align-items:center;margin-bottom:5px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:rgba(245,197,66,0.15);border:1px solid #f5c542;color:#f5c542">NAP · Pick of the Day</div>
+            <div style="display:inline-flex;align-items:center;margin-bottom:5px;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.05em;background:rgba(245,197,66,0.15);border:1px solid #d4af37;color:#d4af37">NAP · Pick of the Day</div>
             <div style="font-size:17px;font-weight:700;color:#fff;line-height:1.1;margin-bottom:4px">Galopin Des Champs</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.3">14:00 Cheltenham · 3m Gold Cup Chase</div>
           </div>
@@ -3176,8 +3079,8 @@ function unlockCorkAnalysis(){
         </div>
         <div style="height:1px;background:rgba(255,255,255,0.07);margin:0 14px"></div>
         <div style="padding:4px 14px 10px">
-          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div>
+          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">FORM</strong> AI top-rated across form, going and trainer stats — highest score on tomorrow’s card<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">GOING</strong> Won the Gold Cup last season — conditions suit again on forecast Good to Soft<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">TRAINER</strong> De Bromhead yard in top form with 6 winners this week — 52% strike rate<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Settles beautifully from the front — favourite profile strongly confirmed<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">MARKET</strong> Market has held firm all week — weight ideal for this trip</div>
         </div>
         <div style="padding:0 14px 13px;display:flex;flex-direction:column;gap:8px">
           <button class="slip-btn">+ Add to My Slip</button>
@@ -3195,8 +3098,8 @@ function unlockCorkAnalysis(){
         </div>
         <div style="height:1px;background:rgba(255,255,255,0.07);margin:0 14px"></div>
         <div style="padding:4px 14px 10px">
-          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div>
+          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div><span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span></div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.72);line-height:1.55;font-weight:450"><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">FORM</strong> Second highest AI rating on tomorrow’s card — strong profile across key metrics<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Course and distance winner — two from two here, track suits his jumping style<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">JOCKEY</strong> Nicky Henderson booking top jockey — strong stable signal, retained rider up<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">CLASS</strong> Steps up after impressive Sandown win last month — on a career-best trajectory<span style="color:rgba(245,197,66,0.5)"> &middot; </span><strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">GOING</strong> Handles soft ground well — conditions ideal for his ground-covering stride</div>
         </div>
         <div style="padding:0 14px 13px;display:flex;flex-direction:column;gap:8px">
           <button class="slip-btn">+ Add to My Slip</button>
@@ -3211,13 +3114,18 @@ function unlockCorkAnalysis(){
 
   <!-- PICKS OF THE DAY SECTION -->
   <div id="racing-picks-content" style="display:none;padding:0">
-    <div id="picks-datepills-bar" style="background:#f5f7fb;padding:10px 12px;display:flex;gap:6px;align-items:center">
+    <div id="picks-datepills-bar" style="display:none">
       <button id="picks-pill-today" onclick="selectPicksDate('today')" style="background:#0b1628;color:#fff;border:1px solid #0b1628;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Today</button>
       <button id="picks-pill-tomorrow" onclick="selectPicksDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
     </div>
-    <div id="picks-today-content">
-      <div style="padding:10px 6px 4px"><div class="sec-title">Picks of the Day</div></div>
-      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:10px;padding:0 6px 8px"></div>
+    <div id="picks-today-content" style="padding:4px 12px 4px">
+      <div style="margin-bottom:10px;padding:0 2px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Picks of the Day</div>
+        </div>
+      </div>
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
     </div>
     <div id="picks-tomorrow-content" style="display:none;padding:0 6px 8px">
 
@@ -3227,13 +3135,13 @@ function unlockCorkAnalysis(){
         <!-- Header -->
         <div style="padding:12px 14px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
           <div>
-            <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:6px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">
+            <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:6px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px">
               <div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>
               <span style="font-size:8px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>
             </div>
             <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Pick of the Day</div>
             <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:3px">Tomorrow's Pick of the Day</div>
-            <div id="countdown-date" style="font-size:12px;font-weight:700;color:#f5c542"></div>
+            <div id="countdown-date" style="font-size:12px;font-weight:700;color:#d4af37"></div>
           </div>
         </div>
 
@@ -3246,12 +3154,12 @@ function unlockCorkAnalysis(){
             <div id="countdown-hrs" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
             <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Hours</div>
           </div>
-          <div style="font-size:18px;font-weight:900;color:#f5c542;padding:0 6px;margin-bottom:10px">:</div>
+          <div style="font-size:18px;font-weight:900;color:#d4af37;padding:0 6px;margin-bottom:10px">:</div>
           <div style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 4px">
             <div id="countdown-mins" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
             <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Mins</div>
           </div>
-          <div style="font-size:18px;font-weight:900;color:#f5c542;padding:0 6px;margin-bottom:10px">:</div>
+          <div style="font-size:18px;font-weight:900;color:#d4af37;padding:0 6px;margin-bottom:10px">:</div>
           <div style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 4px">
             <div id="countdown-secs" style="font-size:22px;font-weight:900;color:#fff;line-height:1">00</div>
             <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px">Secs</div>
@@ -3260,7 +3168,7 @@ function unlockCorkAnalysis(){
 
         <!-- CTAs -->
         <div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:8px">
-          <button onclick="openAuthModal()" class="cta-gold" style="width:100%;background:#f5c542;color:#0b1628;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🔔 Notify Me at 8am</button>
+          <button onclick="openAuthModal()" class="cta-gold" style="width:100%;background:#d4af37;color:#0b1628;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🔔 Notify Me at 8am</button>
           <button onclick="openAuthModal()" class="cta-outline-white" style="width:100%;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Sign Up →</button>
         </div>
 
@@ -3280,7 +3188,7 @@ function unlockCorkAnalysis(){
 
         <!-- Centre block -->
         <div style="text-align:center;padding:4px 14px 16px">
-          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:12px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">
+          <div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:12px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px">
             <div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>
             <span style="font-size:8px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>
           </div>
@@ -3294,7 +3202,7 @@ function unlockCorkAnalysis(){
 
           <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6">
             Already have an account?
-            <span onclick="openAuthModal()" style="color:#f5c542;font-weight:600;cursor:pointer">Sign in →</span>
+            <span onclick="openAuthModal()" style="color:#d4af37;font-weight:600;cursor:pointer">Sign in →</span>
           </div>
         </div>
 
@@ -3304,7 +3212,13 @@ function unlockCorkAnalysis(){
   </div>
 
     <!-- NEXT RACE PANEL (section tab) -->
-    <div id="section-nextrace-panel" style="display:none;padding:0 0 16px">
+    <div id="home-nextrace-label" style="display:none;padding:8px 14px 6px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+        <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Next Race</div>
+      </div>
+    </div>
+    <div id="section-nextrace-panel" style="display:none;padding:0 0 10px">
 
     <div id="next-race-section" style="padding:0;margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">
 
@@ -3351,9 +3265,9 @@ function unlockCorkAnalysis(){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.3px">13:15</div>
-            <div style="font-size:18px;font-weight:800;color:#f5c542;letter-spacing:-0.3px">Wolverhampton</div>
+            <div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-0.3px">Wolverhampton</div>
           </div>
-          <div style="font-size:10px;font-weight:600;color:#0b1628;background:#f5c542;border-radius:4px;padding:2px 8px;letter-spacing:0.06em">10 RUNNERS</div>
+          <div style="font-size:10px;font-weight:600;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 8px;letter-spacing:0.06em">10 RUNNERS</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <span style="font-size:11px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.08);border-radius:5px;padding:2px 8px">Class 5</span>
@@ -3374,19 +3288,19 @@ function unlockCorkAnalysis(){
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);margin-bottom:8px">Key Factors</div>
         <div style="display:flex;flex-direction:column;gap:6px">
           <div style="display:flex;gap:8px;align-items:flex-start">
-            <div style="width:6px;height:6px;border-radius:50%;background:#f5c542;flex-shrink:0;margin-top:5px"></div>
+            <div style="width:6px;height:6px;border-radius:50%;background:#d4af37;flex-shrink:0;margin-top:5px"></div>
             <div style="font-size:13px;color:#3a4259;line-height:1.4">Course form is the standout angle — Wolverhampton AW has specific handling requirements that separate regulars from tourists</div>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-start">
-            <div style="width:6px;height:6px;border-radius:50%;background:#f5c542;flex-shrink:0;margin-top:5px"></div>
+            <div style="width:6px;height:6px;border-radius:50%;background:#d4af37;flex-shrink:0;margin-top:5px"></div>
             <div style="font-size:13px;color:#3a4259;line-height:1.4">Trainer stats over last 14 days are the sharpest differentiator in this class — yard in-form horses carry significant edge</div>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-start">
-            <div style="width:6px;height:6px;border-radius:50%;background:#f5c542;flex-shrink:0;margin-top:5px"></div>
+            <div style="width:6px;height:6px;border-radius:50%;background:#d4af37;flex-shrink:0;margin-top:5px"></div>
             <div style="font-size:13px;color:#3a4259;line-height:1.4">Draw: stalls 5-9 have a strong record over this trip — horses drawn 1-2 face an uphill task without cover</div>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-start">
-            <div style="width:6px;height:6px;border-radius:50%;background:#f5c542;flex-shrink:0;margin-top:5px"></div>
+            <div style="width:6px;height:6px;border-radius:50%;background:#d4af37;flex-shrink:0;margin-top:5px"></div>
             <div style="font-size:13px;color:#3a4259;line-height:1.4">Class drops: two runners are down from Class 4 — both have something to prove on the all-weather surface</div>
           </div>
         </div>
@@ -3422,7 +3336,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Bold Approach</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 5 · M Johnston · 5-1</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
           <div style="display:flex;align-items:center;padding:9px 12px;gap:10px;border-bottom:1px solid #eef0f5">
@@ -3431,7 +3345,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Flash Point</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 7 · C Cox · 7-2</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
           <div style="display:flex;align-items:center;padding:9px 12px;gap:10px;border-bottom:1px solid #eef0f5">
@@ -3440,7 +3354,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Red Mirage</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 3 · A Balding · 6-1</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
           <div style="display:flex;align-items:center;padding:9px 12px;gap:10px;border-bottom:1px solid #eef0f5">
@@ -3449,7 +3363,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sovereign Way</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 9 · W Haggas · 8-1</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
           <div style="display:flex;align-items:center;padding:9px 12px;gap:10px;border-bottom:1px solid #eef0f5">
@@ -3476,7 +3390,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Desert Wind</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 4 · R Fahey · 14-1</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
           <div style="display:flex;align-items:center;padding:9px 12px;gap:10px">
@@ -3485,7 +3399,7 @@ function unlockCorkAnalysis(){
               <div style="font-size:13px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pacific Storm</div>
               <div style="font-size:11px;color:#9aa3b5;margin-top:1px">Stall 10 · H Palmer · 16-1</div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:#f5c542;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
+            <div style="font-size:11px;font-weight:600;color:#d4af37;background:#fdf8ec;border-radius:5px;padding:2px 8px;flex-shrink:0">Neutral</div>
           </div>
 
         </div>
@@ -4200,7 +4114,7 @@ function renderDailyPicks(){
 
   if(!el) return;
 
-  var borderCols=['#10b981','#f5c542','#e07b2a'];
+  var borderCols=['#10b981','#d4af37','#e07b2a'];
 
   el.innerHTML=DAILY_PICKS.map(function(p,i){
 
@@ -5893,7 +5807,7 @@ function renderTrendingAccas(){
 
   if(!el) return;
 
-  var riskBorder={low:'#10b981',mid:'#f5c542',high:'#e53935'};
+  var riskBorder={low:'#10b981',mid:'#d4af37',high:'#e53935'};
 
   var riskLabels={low:'Safe Acca',mid:'Value Acca',high:'High Risk'};
 
@@ -7093,7 +7007,7 @@ function renderPopularPicks(){
 
   if(!el) return;
 
-  var borders=['#f5c542','#9aa3b5','#b87c4a'];
+  var borders=['#d4af37','#9aa3b5','#b87c4a'];
 
   var badges=[
 
@@ -8191,8 +8105,8 @@ function renderWinnersCards(){
     }
     var isNap=w.type==='NAP';
     var tagBg=isNap?'rgba(245,197,66,0.15)':'rgba(16,185,129,0.15)';
-    var tagBorder=isNap?'1px solid #f5c542':'1px solid #10b981';
-    var tagColor=isNap?'#f5c542':'#10b981';
+    var tagBorder=isNap?'1px solid #d4af37':'1px solid #10b981';
+    var tagColor=isNap?'#d4af37':'#10b981';
     var tagLabel=isNap?'NAP · Pick of the Day':'NB · Next Best';
     var isEW=w.result==='E/W';
     var researchHtml=(w.signals||[]).map(function(s){
@@ -8207,12 +8121,12 @@ function renderWinnersCards(){
         +'</div>'
         +'<div style="text-align:right;flex-shrink:0">'
           +'<div style="font-size:17px;font-weight:700;color:#10b981;line-height:1;margin-bottom:5px">'+escHtml(w.price)+'</div>'
-          +'<div style="background:'+(isEW?'rgba(245,197,66,0.15)':'#10b981')+';color:'+(isEW?'#f5c542':'#fff')+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.04em;border:'+(isEW?'1px solid #f5c542':'none')+'">'+(isEW?'E/W':'WON')+'</div>'
+          +'<div style="background:'+(isEW?'rgba(245,197,66,0.15)':'#10b981')+';color:'+(isEW?'#d4af37':'#fff')+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.04em;border:'+(isEW?'1px solid #d4af37':'none')+'">'+(isEW?'E/W':'WON')+'</div>'
         +'</div>'
       +'</div>'
       +'<div style="height:1px;background:rgba(16,185,129,0.18);margin:0 14px"></div>'
       +'<div style="padding:4px 14px 12px">'
-        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:#0b1628;border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
+        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:#0b1628;border:1px solid #d4af37;border-radius:4px;padding:2px 6px">'
           +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
           +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
         +'</div>'
@@ -8298,7 +8212,7 @@ function _carouselUpdateDots(idx){
     var dot=document.getElementById('dot-'+i);
     if(!dot) continue;
     if(i===idx){
-      dot.style.cssText='width:14px;height:5px;border-radius:99px;background:#f5c542;transition:width 0.2s ease';
+      dot.style.cssText='width:14px;height:5px;border-radius:99px;background:#d4af37;transition:width 0.2s ease';
     } else {
       dot.style.cssText='width:5px;height:5px;border-radius:50%;background:rgba(11,22,40,0.15);transition:width 0.2s ease';
     }
@@ -8622,29 +8536,36 @@ function todaySelectRace(mid,ri){
 function renderTodayMeetingsList(){
   var el=document.getElementById("today-meetings-list");
   if(!el) return;
+  var cnt=document.getElementById('today-meetings-count');
+  if(cnt) cnt.textContent=RC_MEETINGS.length+' meeting'+(RC_MEETINGS.length===1?'':'s');
   var out="";
   RC_MEETINGS.forEach(function(m){
     var isOpen=todayOpenMeeting===m.id;
-    var imgSrc=getMeetingImg(m.id);
     var hasRace=rcOpenRace[m.id]!=null;
     var selRace=rcOpenRace[m.id];
-    // Full-width banner card
-    out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
-    // Collapsed row — venue name only
-    out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:20px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="width:8px;height:8px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"3px":"-1px")+'"></div>';
+    var firstTime=m.races.length?m.races[0].t:'';
+    var chevronTransform=isOpen?'rotate(-135deg)':'rotate(45deg)';
+    var chevronMargin=isOpen?'margin-top:3px':'margin-top:-2px';
+    // Card wrapper
+    out+='<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(11,22,40,0.07);margin-bottom:8px;overflow:hidden">';
+    // Card header row
+    out+='<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:11px 12px 0">';
+    out+='<div style="flex:1;min-width:0">';
+    out+='<div style="font-size:16px;font-weight:800;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:3px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:12px;color:#9aa3b5;font-weight:500">'+escHtml(m.going)+' &middot; '+m.races.length+' races &middot; First '+escHtml(firstTime)+'</div>';
     out+='</div>';
-    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#f0f2f7;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:12px;user-select:none;-webkit-tap-highlight-color:transparent">';
+    out+='<div style="width:7px;height:7px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+chevronTransform+';'+chevronMargin+'"></div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:10px 14px;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> AI Analyse <span style="color:#10b981">'+m.races.length+' Races</span> &rarr;</button>';
     out+='</div>';
-    out+='<div style="height:8px"></div>';
-    // Expanded white panel below banner
+    // CTA button
+    out+='<div style="padding:9px 12px 11px">';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:11px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:99px"><span>&#x2756;</span> Analyse '+m.races.length+' Races with AI &rarr;</button>';
+    out+='</div>';
+    // Expanded detail panel
     if(isOpen){
-      out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
-      out+='<div style="position:sticky;top:92px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+      out+='<div style="border-top:1px solid #f0f2f7">';
+      out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tdpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
@@ -8656,11 +8577,10 @@ function renderTodayMeetingsList(){
       out+='</div>';
       if(hasRace){
         var sr=m.races[selRace];
-        var raceName=sr.name.indexOf(m.name+' ')===0?sr.name.slice(m.name.length+1):sr.name;
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
-        out+='<div style="font-size:16px;font-weight:700;color:#0b1628;margin-bottom:1px">'+escHtml(m.name)+' · '+escHtml(sr.t)+'</div>';
-        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
-        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
+        out+='<div style="font-size:16px;font-weight:700;color:#0b1628;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
+        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
         out+='</div>';
       }
@@ -8687,9 +8607,9 @@ function rcInsightsHtml(m,small){
 
   var fs=small?'12px':'13px';
 
-  var out='<div style="display:inline-flex;align-items:center;gap:5px;background:#0b1628;border:1.5px solid #f5c542;border-radius:5px;padding:3px 8px;margin-bottom:10px">'
+  var out='<div style="display:inline-flex;align-items:center;gap:5px;background:#0b1628;border:1.5px solid #d4af37;border-radius:5px;padding:3px 8px;margin-bottom:10px">'
 
-    +'<span style="font-size:9px;font-weight:700;color:#f5c542;letter-spacing:.08em">&#x2756; AI EDGE</span></div>';
+    +'<span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.08em">&#x2756; AI EDGE</span></div>';
 
   m.insights.forEach(function(txt){
 
@@ -9034,9 +8954,9 @@ function _old_unused_renderRacingMeetings(){
 
       +(m.edge?'<div style="padding:8px 14px;border-top:1px solid #c8ead9;background:#f0faf6;display:flex;align-items:flex-start;gap:8px">'
 
-        +'<div style="flex-shrink:0;background:#0b1628;border:1.5px solid #f5c542;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;margin-top:1px">'
+        +'<div style="flex-shrink:0;background:#0b1628;border:1.5px solid #d4af37;border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;margin-top:1px">'
 
-          +'<span style="font-size:9px;color:#f5c542">&#x2756;</span>'
+          +'<span style="font-size:9px;color:#d4af37">&#x2756;</span>'
 
           +'<span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;letter-spacing:.04em">AI EDGE</span>'
 
@@ -9153,7 +9073,7 @@ var NR_RUNNERS=[
     {year:'2024',date:'27 Oct',course:'Galway',hand:'RH',dist:'2m',going:'Gd/Yielding',pos:1,ran:10,wt:'9-11',or:109},
   ]},
 
-  {n:5,name:'Umpires Call',jockey:'K. Donoghue',trainer:'J.P. Dempsey',price:'16/1',pick:false,form:'0-0341',wt:'10-8',or:114,silk:{body:'#7a1a2e',sleeve:'#f5c542',cap:'#7a1a2e'},history:[
+  {n:5,name:'Umpires Call',jockey:'K. Donoghue',trainer:'J.P. Dempsey',price:'16/1',pick:false,form:'0-0341',wt:'10-8',or:114,silk:{body:'#7a1a2e',sleeve:'#d4af37',cap:'#7a1a2e'},history:[
     {year:'2025',date:'15 Mar',course:'Thurles',hand:'RH',dist:'2m4f',going:'Heavy',pos:0,ran:11,wt:'10-6',or:112},
     {year:'2025',date:'12 Jan',course:'Naas',hand:'LH',dist:'2m',going:'Heavy',pos:0,ran:9,wt:'10-3',or:111},
     {year:'2024',date:'29 Dec',course:'Leopardstown',hand:'LH',dist:'2m4f',going:'Soft',pos:3,ran:14,wt:'10-0',or:109},
@@ -9219,7 +9139,7 @@ function nrRenderStrip(){
 }
 
 function nrAiTag(){
-  return '<div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #f5c542;border-radius:5px;padding:3px 8px">'
+  return '<div style="display:inline-flex;align-items:center;gap:4px;background:#0b1628;border:1.5px solid #d4af37;border-radius:5px;padding:3px 8px">'
     +'<div style="width:5px;height:5px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
     +'<span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#fff">AI EDGE</span>'
   +'</div>';
@@ -9586,9 +9506,57 @@ function renderAiEdgeCarousel(){
   }).join('');
 }
 
+var AI_INTELLIGENCE=[
+  {signalType:'Trainer Watch',sigColor:'#d4af37',horseName:'Willie Mullins',price:null,meta:'3 Runners Today · Cheltenham',intelligenceText:"9 winners from 24 runners in the last 10 days. When the yard runs this hot he doesn't waste it. Three runners today — one is significantly underpriced.",ctaLabel:'Analyse Cheltenham Races',ctaDestination:'racecards',imgId:'img-cheltenham'},
+  {signalType:'Form Watch',sigColor:'#d4af37',horseName:'Harbour Light',price:'4/1',meta:'6:45 Wolverhampton · Handicap Chase',intelligenceText:"3 wins from 4 at this exact course and distance. Only horse in field with previous experience here. The formbook buries this — you have to go looking.",ctaLabel:'Analyse Wolverhampton 6:45',ctaDestination:'racecards',imgId:'img-cork'},
+  {signalType:'Trainer Signal',sigColor:'#1e9e6b',horseName:'Majolique',price:'2/1',meta:'13:15 Cork · 2m7f Maiden Hurdle',intelligenceText:"Skelton told Racing Post: 'We've been very patient, waiting for the right race.' Trainers don't say that publicly unless the horse is spot on.",ctaLabel:'Analyse Cork 13:15',ctaDestination:'racecards',imgId:'img-cork'},
+  {signalType:'AI Edge',sigColor:'#1e9e6b',horseName:'Dark Reckoning',price:'9/2',meta:'2:05 Aintree · 1m Novice Stakes',intelligenceText:"Drifted 5/2 → 4/1 overnight despite strong gallops. Stable money absent. Either connections are managing expectations or something changed at home.",ctaLabel:'Analyse Aintree 2:05',ctaDestination:'racecards',imgId:'img-cheltenham'}
+];
+
+function renderAIIntelligence(){
+  var el=document.getElementById('ai-intelligence-list');
+  if(!el) return;
+
+  el.innerHTML=AI_INTELLIGENCE.map(function(item){
+    var imgEl=document.getElementById(item.imgId);
+    var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
+    return '<div style="flex-shrink:0;width:80vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;background:#08101c;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
+      +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
+      +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(6,12,22,0.97) 0%,rgba(6,12,22,0.88) 45%,rgba(6,12,22,0.45) 70%,rgba(6,12,22,0.1) 100%)"></div>'
+      +'<div style="position:relative;z-index:2;padding:16px 14px 14px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:8px">'
+          +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+          +(item.price?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0b1628;flex-shrink:0">'+item.price+'</div>':'')
+        +'</div>'
+        +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
+        +'<div style="font-size:11px;color:#fff;margin-bottom:12px">'+item.meta+'</div>'
+        +'<div style="height:1px;background:rgba(255,255,255,0.1);margin-bottom:12px"></div>'
+        +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px">'+item.intelligenceText+'</div>'
+        +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  var dotsEl=document.getElementById('ai-dots');
+  if(dotsEl){
+    dotsEl.innerHTML=AI_INTELLIGENCE.map(function(item,i){
+      return '<div class="ai-dot" style="height:4px;border-radius:99px;transition:width .2s,background .2s;width:'+(i===0?'20px':'6px')+';background:'+(i===0?'#0b1628':'#d0d5e0')+'"></div>';
+    }).join('');
+    el.addEventListener('scroll',function(){
+      var cardW=el.querySelector('div')?el.querySelector('div').offsetWidth+12:el.offsetWidth*0.8+12;
+      var idx=Math.min(Math.round(el.scrollLeft/cardW),AI_INTELLIGENCE.length-1);
+      document.querySelectorAll('.ai-dot').forEach(function(d,i){
+        d.style.width=i===idx?'20px':'6px';
+        d.style.background=i===idx?'#0b1628':'#d0d5e0';
+      });
+    });
+  }
+}
+
 var RACING_PICKS=[
 
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
+   jockey:"JP Townend",trainer:"W Mullins",
    confidence:88,odds:"2/1",border:"#10b981",
    summary:"Highest-rated horse on today's entire card — and Mullins is sending Townend, his number one, to ride.",
    signals:[
@@ -9600,6 +9568,7 @@ var RACING_PICKS=[
    ]},
 
   {type:"NB · Next Best",icon:"★",horse:"Proactif",detail:"13:50 Cork · 2m4f Handicap Chase",
+   jockey:"R Walsh",trainer:"W Mullins",
    confidence:74,odds:"5/2",border:"#0b1628",
    summary:"Twice a winner over course and distance, dropping in class after a Leopardstown near-miss — and the market hasn't drifted all week.",
    signals:[
@@ -9644,10 +9613,10 @@ function renderTomorrowPicks(){
     var courseId=courseName.toLowerCase();
     var isNap=p.type.indexOf('NAP')>=0;
     var tagBg=isNap?'rgba(245,197,66,0.15)':'rgba(16,185,129,0.15)';
-    var tagBorder=isNap?'1px solid #f5c542':'1px solid #10b981';
-    var tagColor=isNap?'#f5c542':'#10b981';
+    var tagBorder=isNap?'1px solid #d4af37':'1px solid #10b981';
+    var tagColor=isNap?'#d4af37':'#10b981';
     var researchHtml=p.signals.map(function(s){
-      return '<strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
+      return '<strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
     }).join('<span style="color:rgba(245,197,66,0.5)"> &middot; </span>');
     return '<div style="background:#0b1628;border-radius:12px;border:1px solid rgba(245,197,66,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
       +'<div style="padding:12px 14px 5px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
@@ -9662,7 +9631,7 @@ function renderTomorrowPicks(){
       +'</div>'
       +'<div style="height:1px;background:rgba(255,255,255,0.07);margin:0 14px"></div>'
       +'<div style="padding:4px 14px 10px">'
-        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
+        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px">'
           +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
           +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
         +'</div>'
@@ -9738,30 +9707,45 @@ function renderRacingPicks(){
 
     var isNap=p.type.indexOf('NAP')>=0;
     var tagBg=isNap?'rgba(245,197,66,0.15)':'rgba(16,185,129,0.15)';
-    var tagBorder=isNap?'1px solid #f5c542':'1px solid #10b981';
-    var tagColor=isNap?'#f5c542':'#10b981';
+    var tagBorder=isNap?'1px solid #d4af37':'1px solid #10b981';
+    var tagColor=isNap?'#d4af37':'#10b981';
 
-    var bodyHtml;
     if(compact){
-      bodyHtml='<div style="padding:4px 14px 12px">'
-        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
-          +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
-          +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
+      var imgIds=['img-cork','img-cheltenham'];
+      var imgEl=document.getElementById(imgIds[i]||imgIds[0]);
+      var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
+      return '<div style="background:#0b1628;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
+        +'<div style="position:absolute;inset:0;'+(imgSrc?'background-image:url('+imgSrc+');background-size:cover;background-position:center 30%':'')+'"></div>'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:14px 16px 16px">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+            +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 7px;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
+            +'<span style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.detail)+'</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">'
+            +'<span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">'+escHtml(p.horse)+'</span>'
+            +'<span style="font-size:13px;font-weight:600;color:#d4af37;margin-left:8px">'+escHtml(p.odds)+'</span>'
+          +'</div>'
+          +(p.jockey?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:10px">'+escHtml(p.jockey)+' &nbsp;·&nbsp; '+escHtml(p.trainer||'')+'</div>':'<div style="margin-bottom:10px"></div>')
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.82);line-height:1.45;margin-bottom:14px">'+escHtml(p.summary||'')+'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:6px">'
+            +(courseName?'<button class="ai-cta-light" style="width:100%;padding:10px;font-size:13px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')">&#x2756; Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+'</button>':'')
+            +'<button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to Slip</button>'
+          +'</div>'
         +'</div>'
-        +'<div style="font-size:11px;line-height:1.45;color:rgba(255,255,255,0.72);font-weight:450">'+escHtml(p.summary||'')+'</div>'
-      +'</div>';
-    } else {
-      var researchHtml=p.signals.map(function(s){
-        return '<strong style="font-weight:700;color:#f5c542;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
-      }).join('<span style="color:rgba(245,197,66,0.5)"> &middot; </span>');
-      bodyHtml='<div style="padding:4px 14px 10px">'
-        +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #f5c542;border-radius:4px;padding:2px 6px">'
-          +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
-          +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
-        +'</div>'
-        +'<div style="font-size:11px;color:rgba(255,255,255,0.72);line-height:1.45;font-weight:450">'+researchHtml+'</div>'
       +'</div>';
     }
+    var bodyHtml;
+    var researchHtml=p.signals.map(function(s){
+      return '<strong style="font-weight:700;color:#d4af37;font-size:10.5px;letter-spacing:.05em">'+escHtml(s.tag)+'</strong> '+escHtml(s.text);
+    }).join('<span style="color:rgba(245,197,66,0.5)"> &middot; </span>');
+    bodyHtml='<div style="padding:4px 14px 10px">'
+      +'<div style="display:inline-flex;align-items:center;gap:3px;margin-bottom:5px;background:rgba(255,255,255,0.06);border:1px solid #d4af37;border-radius:4px;padding:2px 6px">'
+        +'<div style="width:4px;height:4px;border-radius:50%;background:#10b981;flex-shrink:0"></div>'
+        +'<span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>'
+      +'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.72);line-height:1.45;font-weight:450">'+researchHtml+'</div>'
+    +'</div>';
 
     return '<div style="background:#0b1628;border-radius:12px;border:1px solid rgba(245,197,66,0.25);overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
 
@@ -9910,7 +9894,7 @@ var TM_MEETINGS=[
 ];
 
 var TM_RUNNERS=[
-  {n:3,name:'Constitution Hill',jockey:'N. de Boinville',trainer:'N. Henderson',price:'5/4',pick:true,form:'1-1111',wt:'11-10',or:175,silk:{body:'#1a3a8f',sleeve:'#ffffff',cap:'#f5c542'},history:[
+  {n:3,name:'Constitution Hill',jockey:'N. de Boinville',trainer:'N. Henderson',price:'5/4',pick:true,form:'1-1111',wt:'11-10',or:175,silk:{body:'#1a3a8f',sleeve:'#ffffff',cap:'#d4af37'},history:[
     {year:'2025',date:'12 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:1,ran:8,wt:'11-10',or:173},
     {year:'2025',date:'25 Jan',course:'Kempton',hand:'RH',dist:'2m',going:'Good',pos:1,ran:6,wt:'11-7',or:172},
     {year:'2024',date:'14 Dec',course:'Sandown',hand:'RH',dist:'1m7f',going:'Soft',pos:1,ran:7,wt:'11-4',or:170},
@@ -9931,7 +9915,7 @@ var TM_RUNNERS=[
     {year:'2024',date:'10 Nov',course:'Wincanton',hand:'RH',dist:'2m',going:'Soft',pos:3,ran:9,wt:'10-12',or:151},
     {year:'2024',date:'09 Mar',course:'Cheltenham',hand:'LH',dist:'2m',going:'Soft',pos:2,ran:14,wt:'10-10',or:149},
   ]},
-  {n:7,name:'Chacun Pour Soi',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'8/1',pick:false,form:'3-2213',wt:'11-3',or:155,silk:{body:'#0b1628',sleeve:'#f5c542',cap:'#0b1628'},history:[
+  {n:7,name:'Chacun Pour Soi',jockey:'M.P. Walsh',trainer:'W.P. Mullins',price:'8/1',pick:false,form:'3-2213',wt:'11-3',or:155,silk:{body:'#0b1628',sleeve:'#d4af37',cap:'#0b1628'},history:[
     {year:'2025',date:'02 Feb',course:'Leopardstown',hand:'LH',dist:'2m',going:'Soft',pos:3,ran:8,wt:'11-3',or:153},
     {year:'2024',date:'26 Dec',course:'Leopardstown',hand:'LH',dist:'2m',going:'Heavy',pos:2,ran:9,wt:'11-0',or:152},
     {year:'2024',date:'10 Nov',course:'Down Royal',hand:'RH',dist:'2m',going:'Good',pos:2,ran:7,wt:'10-12',or:150},
@@ -9953,7 +9937,7 @@ var tmOpenRace={};
 function selectMainTab(tab){
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t==='myresearch'?' maintab-dsk':'')+(t===tab?' act':'');
+    if(b) b.className='maintab'+(t===tab?' act':'');
   });
   var sb=document.getElementById('topnav-subbar');
   ['cards','results','picks'].forEach(function(s){
@@ -9994,7 +9978,7 @@ function _syncMainTab(s){
   var mt=map[s]||'home';
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t==='myresearch'?' maintab-dsk':'')+(t===mt?' act':'');
+    if(b) b.className='maintab'+(t===mt?' act':'');
   });
 }
 
@@ -10064,6 +10048,8 @@ function selectRacingSection(s){
   if(picksC) picksC.style.display="none";
   if(nrPanel) nrPanel.style.display="none";
   if(myResearchC) myResearchC.style.display="none";
+  var homeNRL=document.getElementById('home-nextrace-label');
+  if(homeNRL) homeNRL.style.display='none';
   var carouselSec=document.getElementById("home-carousel-section");
   if(carouselSec) carouselSec.style.display=s==="home"?"":"none";
   var dpb=document.getElementById("racing-datepills-bar");
@@ -10081,6 +10067,7 @@ function selectRacingSection(s){
     var ppb=document.getElementById("picks-datepills-bar");
     if(ppb) ppb.style.display="none";
     if(nrPanel) nrPanel.style.display="";
+    if(homeNRL) homeNRL.style.display="";
     renderNextRaceSection();
   } else if(s==="racecards"){
     if(todayC) todayC.style.display="";
@@ -10096,8 +10083,6 @@ function selectRacingSection(s){
     renderWinnersCards();
   } else if(s==="pickofday"){
     if(picksC) picksC.style.display="";
-    var ppb=document.getElementById("picks-datepills-bar");
-    if(ppb) ppb.style.display="";
     _picksMode='full';
     selectPicksDate("today");
   } else if(s==="myresearch"){
@@ -10306,7 +10291,7 @@ function renderTomorrowMeetingsList(){
     // Expanded white panel
     if(isOpen){
       out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
-      out+='<div style="position:sticky;top:92px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+      out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tmpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
         var isSel=selRace===ri;
@@ -10318,10 +10303,9 @@ function renderTomorrowMeetingsList(){
       out+='</div>';
       if(hasRace){
         var sr=m.races[selRace];
-        var raceName=sr.name.indexOf(m.name+' ')===0?sr.name.slice(m.name.length+1):sr.name;
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0b1628;margin-bottom:1px">'+escHtml(m.name)+' · '+escHtml(sr.t)+'</div>';
-        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(raceName)+' · '+escHtml(sr.dist)+'</div>';
+        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' · '+escHtml(sr.dist)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' · '+sr.r+' runners</div>';
         out+='<button class="ai-cta-dark" onclick="rcAnalyse(\''+m.id+'\',\''+sr.t+'\')" style="width:100%;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:14px"><span>&#x2756;</span> Analyse '+escHtml(sr.t)+' with AI &rarr;</button>';
         out+='</div>';
@@ -10411,7 +10395,7 @@ function _aiComplete(label){
             +'</div>'
             +'<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:20px;letter-spacing:.01em">Analysis Complete</div>'
             +'<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,197,66,0.5),transparent);margin-bottom:20px"></div>'
-            +'<button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:18px 16px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#f5c542">&#x2756;</span> View '+(label||'Edge')+' Analysis &rarr;</button>'
+            +'<button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:none;border-radius:12px;padding:18px 16px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.01em;animation:ctaPulse 1.8s ease-in-out infinite"><span style="color:#d4af37">&#x2756;</span> View '+(label||'Edge')+' Analysis &rarr;</button>'
           +'</div>';
         prog.style.transition='opacity .5s';
         prog.style.opacity='1';
@@ -10632,7 +10616,7 @@ function _renderWatchSection(horses) {
     var trainer = _safeHtml(h.trainer || '');
     var form = _safeHtml(h.formFigures || '');
     var excerpt = _safeHtml(h.excerpt || '');
-    return '<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">'
+    return '<div style="background:#fff;border:1.5px solid #d4af37;border-radius:14px;box-shadow:0 3px 14px rgba(201,168,76,0.10);overflow:hidden">'
       +'<div style="background:linear-gradient(135deg,#f5e6b8 0%,#faf0d4 40%,#fefbf0 100%);padding:6px 12px;border-bottom:1px solid rgba(201,168,76,0.18)">'
       +'<span style="font-size:10px;font-weight:700;color:#a07010;letter-spacing:.12em;text-transform:uppercase">&#9670; Horse to Watch</span></div>'
       +'<div style="padding:10px 12px 0">'
@@ -10664,7 +10648,7 @@ function _updateRunnerLabels(r) {
       row.style.background = 'rgba(30,158,107,0.05)';
       badge.innerHTML = '<span style="background:rgba(30,158,107,0.12);color:#1e9e6b;border:1px solid rgba(30,158,107,0.4);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9733; Pick</span>';
     } else if (watchNames.indexOf(horse) !== -1) {
-      row.style.borderLeftColor = '#c9a84c';
+      row.style.borderLeftColor = '#d4af37';
       row.style.background = 'rgba(201,168,76,0.05)';
       badge.innerHTML = '<span style="background:rgba(201,168,76,0.12);color:#a07010;border:1px solid rgba(201,168,76,0.5);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Watch</span>';
     } else {
@@ -10741,7 +10725,7 @@ function _aiRow(txt){
 }
 function _aiPick(time,horse,price,badge){
   var isNap=badge==='NAP';
-  var bc=isNap?'#f5c542':'#10b981';
+  var bc=isNap?'#d4af37':'#10b981';
   var bg=isNap?'rgba(245,197,66,0.15)':'rgba(16,185,129,0.15)';
   return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">'
     +'<div style="flex:1;min-width:0">'
@@ -10764,7 +10748,7 @@ function closeRacingMenu(){
   var ov=document.getElementById('racing-menu-overlay');
   var dr=document.getElementById('racing-menu-drawer');
   if(ov) ov.style.display='none';
-  if(dr) dr.style.transform='translateX(100%)';
+  if(dr) dr.style.transform='translateX(-100%)';
   document.body.style.overflow='';
 }
 // ── NETLIFY IDENTITY ────────────────────────────────────────────────────────
@@ -10803,7 +10787,7 @@ function toggleRacingMenu(){
         <div id="ai-live-dot" style="width:6px;height:6px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>
         <span id="ai-live-text" style="font-size:10px;font-weight:600;letter-spacing:.1em;color:#ff6b6b">LIVE</span>
       </div>
-      <div id="ai-edge-badge" style="display:inline-flex;align-items:center;gap:6px;background:#0b1628;border:1.5px solid #f5c542;border-radius:6px;padding:5px 11px;animation:aiEdgePulse 1.6s ease-in-out infinite">
+      <div id="ai-edge-badge" style="display:inline-flex;align-items:center;gap:6px;background:#0b1628;border:1.5px solid #d4af37;border-radius:6px;padding:5px 11px;animation:aiEdgePulse 1.6s ease-in-out infinite">
         <div style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0;animation:liveDotPulse 1.6s ease-in-out infinite"></div>
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#fff">AI EDGE</span>
       </div>
@@ -10825,7 +10809,7 @@ function toggleRacingMenu(){
         <div id="ai-seg-6" style="flex:1;height:2px;border-radius:99px;background:rgba(255,255,255,0.1);transition:background .4s ease"></div>
       </div>
       <div id="ai-panel-ready" style="display:none;margin-top:16px">
-        <button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #f5c542;border-radius:99px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px"><span style="color:#f5c542">&#x2756;</span> View AI Edge Report &rarr;</button>
+        <button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #d4af37;border-radius:99px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px"><span style="color:#d4af37">&#x2756;</span> View AI Edge Report &rarr;</button>
       </div>
     </div>
     <div id="ai-panel-results" style="display:none;max-height:65vh;overflow-y:auto;padding:0 16px 40px;background:#0b1628"></div>
@@ -10890,26 +10874,42 @@ function toggleRacingMenu(){
 
 
 <!-- RACING MENU DRAWER -->
-<div id="racing-menu-overlay" onclick="closeRacingMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:600"></div>
-<div id="racing-menu-drawer" style="position:fixed;top:0;right:0;bottom:0;width:260px;background:#0b1628;z-index:601;transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column">
-  <div style="padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08)">
-    <div style="font-family:Outfit,sans-serif;font-size:20px;font-weight:700"><span style="color:#fff">Racing</span><span style="color:#f5c542">Edge</span></div>
-    <button onclick="closeRacingMenu()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:18px;cursor:pointer;padding:4px 10px;line-height:1;border-radius:6px">&times;</button>
+<div id="racing-menu-overlay" onclick="closeRacingMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1000"></div>
+<div id="racing-menu-drawer" style="position:fixed;top:0;left:0;bottom:0;width:300px;background:#fff;z-index:1001;transform:translateX(-100%);transition:transform 0.3s ease;display:flex;flex-direction:column;overflow-y:auto">
+  <!-- Close button top right -->
+  <div style="display:flex;justify-content:flex-end;padding:16px 16px 8px">
+    <button onclick="closeRacingMenu()" style="width:36px;height:36px;border-radius:50%;background:#f0f2f7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b1628;line-height:1;font-family:inherit">&times;</button>
   </div>
-  <div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:2px">
-    <button onclick="selectMainTab('myresearch');closeRacingMenu();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">My Research</button>
+  <!-- Main nav rows -->
+  <div style="border-top:1px solid #e8eaf0">
+    <button onclick="selectMainTab('cards');closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:none;border-bottom:1px solid #e8eaf0;padding:18px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between">Racecards <span style="color:#d4af37;font-size:20px;line-height:1">›</span></button>
+    <button onclick="selectMainTab('nextrace');closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:none;border-bottom:1px solid #e8eaf0;padding:18px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between">Next Race <span style="color:#d4af37;font-size:20px;line-height:1">›</span></button>
+    <button onclick="selectMainTab('picks');closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:none;border-bottom:1px solid #e8eaf0;padding:18px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between">Picks of the Day <span style="color:#d4af37;font-size:20px;line-height:1">›</span></button>
+    <button onclick="selectRacingSection('winners');closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:none;border-bottom:1px solid #e8eaf0;padding:18px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between">Winners <span style="color:#d4af37;font-size:20px;line-height:1">›</span></button>
   </div>
-  <div id="drawer-auth-section" style="flex:1;padding:16px;display:flex;flex-direction:column;gap:10px">
+  <!-- My Account section -->
+  <div style="padding:18px 20px 6px">
+    <div style="font-size:10px;font-weight:700;color:#9aa3b5;letter-spacing:0.12em;text-transform:uppercase">My Account</div>
+  </div>
+  <div style="border-top:1px solid #e8eaf0">
+    <button onclick="selectMainTab('myresearch');closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:none;border-bottom:1px solid #e8eaf0;padding:18px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between">My Research <span style="color:#d4af37;font-size:20px;line-height:1">›</span></button>
+  </div>
+  <!-- Auth buttons -->
+  <div id="drawer-auth-section" style="padding:20px 20px 0">
     <div id="drawer-logged-out" style="display:flex;flex-direction:column;gap:10px">
-      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">Sign Up</button>
-      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log In</button>
+      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:#0b1628;color:#d4af37;border:none;border-radius:99px;padding:15px 20px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center">Sign Up Free →</button>
+      <button onclick="closeRacingMenu();openAuthModal();" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #d4af37;border-radius:99px;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">Log In</button>
     </div>
     <div id="drawer-logged-in" style="display:none;flex-direction:column;gap:10px">
-      <div id="drawer-user-email" style="font-size:13px;color:rgba(255,255,255,0.5);padding:4px 0"></div>
-      <button onclick="authLogout();closeRacingMenu();" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Log Out</button>
+      <div id="drawer-user-email" style="font-size:13px;color:#9aa3b5;padding:4px 0;text-align:center"></div>
+      <button onclick="authLogout();closeRacingMenu();" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #e8eaf0;border-radius:99px;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">Log Out</button>
     </div>
   </div>
-  <div style="padding:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:10px;color:rgba(255,255,255,0.25);text-align:center">18+ · Gamble Responsibly</div>
+  <!-- Footer -->
+  <div style="margin-top:auto;padding:28px 20px 24px;text-align:center">
+    <button onclick="closeRacingMenu();" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:#9aa3b5;margin-bottom:8px;display:block;width:100%">How it works →</button>
+    <div style="font-size:11px;color:#b0b8c9">18+ · Gamble Responsibly</div>
+  </div>
 </div>
 
 <script>
