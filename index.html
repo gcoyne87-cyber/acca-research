@@ -8548,7 +8548,7 @@ function renderTodayMeetingsList(){
     var chevronMargin=isOpen?'margin-top:3px':'margin-top:-2px';
     var isLast=idx===RC_MEETINGS.length-1;
     // Row (connected, divider between)
-    out+='<div style="background:'+(isOpen?'#fafbfc':'#fff')+';'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+    out+='<div id="rc-meeting-'+m.id+'" style="background:'+(isOpen?'#fafbfc':'#fff')+';'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     // Card header row
     out+='<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:11px 12px 0">';
     out+='<div style="flex:1;min-width:0">';
@@ -9669,8 +9669,7 @@ function tmViewMeetingCard(courseId,raceTime){
 }
 
 function nrViewMeetingCard(courseId,courseName,raceTime){
-  selectRacingSection('racecards');
-  selectRacingDate('today');
+  selectMainTab('cards');
   // Find race index first
   var meeting=RC_MEETINGS.filter(function(m){return m.id===courseId;})[0];
   var ri=0;
@@ -9684,9 +9683,9 @@ function nrViewMeetingCard(courseId,courseName,raceTime){
   renderTodayMeetingsList();
   setTimeout(function(){
     rcAttachSwipe(courseId);
-    var el=document.getElementById('today-meetings-list');
+    var el=document.getElementById('rc-meeting-'+courseId);
     if(el){
-      var top=el.getBoundingClientRect().top+window.pageYOffset-56;
+      var top=el.getBoundingClientRect().top+window.pageYOffset-130;
       window.scrollTo({top:top,behavior:'smooth'});
     }
   },80);
