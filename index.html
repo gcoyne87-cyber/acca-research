@@ -3059,7 +3059,7 @@ function unlockCorkAnalysis(){
 
 
 
-    <div id="tomorrow-meetings-list" style="padding:0 0 4px;margin:0 6px"></div>
+    <div id="tomorrow-meetings-list" style="background:#f0f2f7;padding:6px 0 10px"></div>
 
   </div>
   </div>
@@ -10055,6 +10055,8 @@ function selectRacingSection(s){
   if(carouselSec) carouselSec.style.display=s==="home"?"":"none";
   var dpb=document.getElementById("racing-datepills-bar");
   if(dpb) dpb.style.display=s==="home"?"":"none";
+  var tdRcTitle=document.getElementById("today-racecards-title");
+  if(tdRcTitle) tdRcTitle.style.display=s==="racecards"?"none":"";
   var nrHomeWrap=document.getElementById("nr-home-wrap");
   if(s==="home"){
     if(todayC) todayC.style.display="";
@@ -10273,25 +10275,34 @@ function tomorrowSelectRace(mid,ri){
 function renderTomorrowMeetingsList(){
   var el=document.getElementById("tomorrow-meetings-list");
   if(!el) return;
-  var out="";
-  TM_MEETINGS.forEach(function(m){
+  var out='<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(11,22,40,0.07);overflow:hidden">';
+  TM_MEETINGS.forEach(function(m,idx){
     var isOpen=tmOpenMeeting===m.id;
     var hasRace=tmOpenRace[m.id]!=null;
     var selRace=tmOpenRace[m.id];
-    out+='<div style="margin:0 0 5px;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(11,22,40,0.08);background:#fff">';
-    out+='<div style="display:flex;align-items:center;padding:12px 14px 4px 14px;gap:8px;background:#fff">';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:20px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="width:8px;height:8px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?"rotate(-135deg)":"rotate(45deg)")+';margin-top:'+(isOpen?"3px":"-1px")+'"></div>';
+    var firstTime=m.races.length?m.races[0].t:'';
+    var chevronTransform=isOpen?'rotate(-135deg)':'rotate(45deg)';
+    var chevronMargin=isOpen?'margin-top:3px':'margin-top:-2px';
+    var isLast=idx===TM_MEETINGS.length-1;
+    // Row (connected, divider between)
+    out+='<div style="background:'+(isOpen?'#fafbfc':'#fff')+';'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+    // Card header row
+    out+='<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:11px 12px 0">';
+    out+='<div style="flex:1;min-width:0">';
+    out+='<div style="font-size:16px;font-weight:800;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:3px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:12px;color:#9aa3b5;font-weight:500">'+escHtml(m.going)+' &middot; '+m.races.length+' races &middot; First '+escHtml(firstTime)+'</div>';
     out+='</div>';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="min-width:0;flex:1;cursor:pointer;outline:none;user-select:none;-webkit-tap-highlight-color:transparent">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;line-height:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(m.name)+'</div>';
+    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#f0f2f7;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:12px;user-select:none;-webkit-tap-highlight-color:transparent">';
+    out+='<div style="width:7px;height:7px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+chevronTransform+';'+chevronMargin+'"></div>';
     out+='</div>';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="flex-shrink:0;width:auto;padding:10px 14px;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px"><span>&#x2756;</span> AI Analyse <span style="color:#10b981">'+m.races.length+' Races</span> &rarr;</button>';
     out+='</div>';
-    out+='<div style="height:8px"></div>';
-    // Expanded white panel
+    // CTA button
+    out+='<div style="padding:9px 12px 11px">';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" class="ai-cta-light" style="width:100%;padding:11px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:99px"><span>&#x2756;</span> Analyse '+m.races.length+' Races with AI &rarr;</button>';
+    out+='</div>';
+    // Expanded detail panel
     if(isOpen){
-      out+='<div style="background:#fff;border-top:1px solid #e4e8f0">';
+      out+='<div style="border-top:1px solid #f0f2f7">';
       out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out+='<div id="tmpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       m.races.forEach(function(race,ri){
@@ -10316,6 +10327,7 @@ function renderTomorrowMeetingsList(){
     }
     out+='</div>';
   });
+  out+='</div>';
   el.innerHTML=out;
   TM_MEETINGS.forEach(function(m){ if(tmOpenRace[m.id]!=null) tmAttachSwipe(m.id); });
 }
