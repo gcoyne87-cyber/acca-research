@@ -3119,7 +3119,7 @@ function unlockCorkAnalysis(){
       <button id="picks-pill-tomorrow" onclick="selectPicksDate('tomorrow')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Tomorrow</button>
     </div>
     <div id="picks-today-content" style="padding:4px 12px 4px">
-      <div style="margin-bottom:10px;padding:0 2px">
+      <div id="picks-section-title" style="margin-bottom:10px;padding:0 2px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
           <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Picks of the Day</div>
@@ -10056,6 +10056,8 @@ function selectRacingSection(s){
   if(dpb) dpb.style.display=s==="home"?"":"none";
   var tdRcTitle=document.getElementById("today-racecards-title");
   if(tdRcTitle) tdRcTitle.style.display=s==="racecards"?"none":"";
+  var picksSecTitle=document.getElementById("picks-section-title");
+  if(picksSecTitle) picksSecTitle.style.display=s==="pickofday"?"none":"";
   var nrHomeWrap=document.getElementById("nr-home-wrap");
   if(s==="home"){
     if(todayC) todayC.style.display="";
