@@ -10083,6 +10083,8 @@ function selectRacingSection(s){
     if(nrPanel) nrPanel.style.display="";
     renderNextRaceSection();
   } else if(s==="winners"){
+    var sb=document.getElementById('topnav-subbar');
+    if(sb) sb.style.display='none';
     if(winnersC) winnersC.style.display="";
     renderWinnersCards();
   } else if(s==="pickofday"){
