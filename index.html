@@ -2069,7 +2069,8 @@ window.addEventListener('load',function(){
     <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')">Cards</button>
     <button class="maintab" id="maintab-nextrace" onclick="selectMainTab('nextrace')">Next Race</button>
     <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')">Picks</button>
-    <button class="maintab" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
+    <button class="maintab maintab-dsk" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
+    <button class="maintab maintab-dsk" id="maintab-winners" onclick="selectMainTab('winners')">Winners</button>
   </div>
 
   <!-- SUB-BAR -->
@@ -9937,7 +9938,7 @@ var tmOpenRace={};
 function selectMainTab(tab){
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t===tab?' act':'');
+    if(b) b.className='maintab'+(t==='myresearch'||t==='winners'?' maintab-dsk':'')+(t===tab?' act':'');
   });
   var sb=document.getElementById('topnav-subbar');
   ['cards','results','picks'].forEach(function(s){
@@ -9978,7 +9979,7 @@ function _syncMainTab(s){
   var mt=map[s]||'home';
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t===mt?' act':'');
+    if(b) b.className='maintab'+(t==='myresearch'||t==='winners'?' maintab-dsk':'')+(t===mt?' act':'');
   });
 }
 
