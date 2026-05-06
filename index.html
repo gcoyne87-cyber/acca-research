@@ -2111,7 +2111,7 @@ window.addEventListener('load',function(){
       </div>
     </div>
     <!-- Intelligence carousel -->
-    <div id="ai-intelligence-list" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:12px;padding:0 12px 4px"></div>
+    <div id="ai-intelligence-list" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px"></div>
     <!-- Dot indicators -->
     <div id="ai-dots" style="display:flex;justify-content:center;gap:6px;padding:6px 0 0"></div>
   </div>
@@ -9520,7 +9520,7 @@ function renderAIIntelligence(){
   el.innerHTML=AI_INTELLIGENCE.map(function(item){
     var imgEl=document.getElementById(item.imgId);
     var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
-    return '<div style="flex-shrink:0;width:80vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;background:#08101c;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
+    return '<div style="flex-shrink:0;width:84vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;background:#08101c;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
       +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(6,12,22,0.97) 0%,rgba(6,12,22,0.88) 45%,rgba(6,12,22,0.45) 70%,rgba(6,12,22,0.1) 100%)"></div>'
       +'<div style="position:relative;z-index:2;padding:16px 14px 14px">'
@@ -9543,7 +9543,7 @@ function renderAIIntelligence(){
       return '<div class="ai-dot" style="height:4px;border-radius:99px;transition:width .2s,background .2s;width:'+(i===0?'20px':'6px')+';background:'+(i===0?'#0b1628':'#d0d5e0')+'"></div>';
     }).join('');
     el.addEventListener('scroll',function(){
-      var cardW=el.querySelector('div')?el.querySelector('div').offsetWidth+12:el.offsetWidth*0.8+12;
+      var cardW=el.querySelector('div')?el.querySelector('div').offsetWidth+8:el.offsetWidth*0.84+8;
       var idx=Math.min(Math.round(el.scrollLeft/cardW),AI_INTELLIGENCE.length-1);
       document.querySelectorAll('.ai-dot').forEach(function(d,i){
         d.style.width=i===idx?'20px':'6px';
