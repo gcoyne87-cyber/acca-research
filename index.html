@@ -9773,8 +9773,8 @@ function renderRacingPicks(){
       var raceType=(p.detail.split(' · ')[1]||'').toUpperCase();
       var courseTimeLabel=escHtml(courseName)+' '+escHtml(pickTime);
       return '<div style="background:#0b1628;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)">'
-        +(imgSrc?'<div style="position:absolute;inset:0;background-image:url('+imgSrc+');background-size:cover;background-position:center 35%;opacity:0.22"></div>':'')
-        +'<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(11,22,40,0.94) 0%,rgba(11,22,40,0.82) 50%,rgba(11,22,40,0.96) 100%)"></div>'
+        +(imgSrc?'<div style="position:absolute;inset:0;background-image:url('+imgSrc+');background-size:cover;background-position:center 35%"></div>':'')
+        +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,40,0.55) 0%,rgba(11,22,40,0.78) 30%,rgba(11,22,40,0.94) 65%,#0b1628 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:18px 20px 18px">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
             +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
