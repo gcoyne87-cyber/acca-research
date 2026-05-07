@@ -9765,32 +9765,41 @@ function renderRacingPicks(){
     var tagColor=isNap?'#d4af37':'#10b981';
 
     if(compact){
-      var imgIds=['img-cork','img-cheltenham'];
-      var imgEl=document.getElementById(imgIds[i]||imgIds[0]);
+      var imgEl=document.getElementById('img-'+courseId);
+      if(!imgEl||!imgEl.src) imgEl=document.getElementById('img-cork');
       var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
       var pickTime=p.detail.split(' ')[0]||'';
       var countdownText=_pickCountdown(pickTime);
-      return '<div style="background:#0b1628;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
-        +'<div style="position:absolute;inset:0;'+(imgSrc?'background-image:url('+imgSrc+');background-size:cover;background-position:center 30%':'')+'"></div>'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>'
-        +'<div style="position:relative;z-index:2;padding:14px 16px 16px">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'
-            +'<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">'
-              +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 7px;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
-              +'<span style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.detail)+'</span>'
+      var raceType=(p.detail.split(' · ')[1]||'').toUpperCase();
+      var courseTimeLabel=escHtml(courseName)+' '+escHtml(pickTime);
+      return '<div style="background:#0b1628;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)">'
+        +(imgSrc?'<div style="position:absolute;inset:0;background-image:url('+imgSrc+');background-size:cover;background-position:center 35%;opacity:0.22"></div>':'')
+        +'<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(11,22,40,0.94) 0%,rgba(11,22,40,0.82) 50%,rgba(11,22,40,0.96) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:18px 20px 18px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
+            +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+              +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:6px;padding:4px 10px;letter-spacing:.05em;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
+              +'<span style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+courseTimeLabel+'</span>'
             +'</div>'
-            +'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>'
+            +(countdownText?'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>':'')
           +'</div>'
-          +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">'
-            +'<span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">'+escHtml(p.horse)+'</span>'
-            +'<span style="font-size:13px;font-weight:600;color:#d4af37;margin-left:8px">'+escHtml(p.odds)+'</span>'
-          +'</div>'
-          +(p.jockey?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:10px">'+escHtml(p.jockey)+' &nbsp;·&nbsp; '+escHtml(p.trainer||'')+'</div>':'<div style="margin-bottom:10px"></div>')
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.82);line-height:1.45;margin-bottom:14px">'+escHtml(p.summary||'')+'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:6px">'
-            +(courseName?'<button class="ai-cta-light" style="width:100%;padding:10px;font-size:13px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')">&#x2756; Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+'</button>':'')
-            +'<button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to Slip</button>'
-          +'</div>'
+          +'<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:14px"></div>'
+          +(raceType?'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.42);letter-spacing:0.16em;margin-bottom:6px">'+escHtml(raceType)+'</div>':'')
+          +'<div style="font-size:34px;font-weight:900;color:#fff;letter-spacing:-1.1px;line-height:1;margin-bottom:6px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:22px;font-weight:800;color:#d4af37;letter-spacing:-.4px;line-height:1;margin-bottom:14px">'+escHtml(p.odds)+'</div>'
+          +(p.jockey||p.trainer?'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
+            +(p.jockey?'<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:5px 11px 5px 5px;font-size:11px;color:rgba(255,255,255,0.85);display:inline-flex;align-items:center;gap:7px">'
+              +'<span style="width:18px;height:18px;border-radius:50%;background:rgba(212,175,55,0.18);color:#d4af37;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0">J</span>'
+              +escHtml(p.jockey)
+            +'</span>':'')
+            +(p.trainer?'<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:5px 11px 5px 5px;font-size:11px;color:rgba(255,255,255,0.85);display:inline-flex;align-items:center;gap:7px">'
+              +'<span style="width:18px;height:18px;border-radius:50%;background:rgba(212,175,55,0.18);color:#d4af37;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0">T</span>'
+              +escHtml(p.trainer)
+            +'</span>':'')
+          +'</div>':'')
+          +'<div style="font-size:13px;color:rgba(255,255,255,0.72);line-height:1.5;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:.01em">+ Add to Slip</button>'
+          +(courseName?'<div onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" style="text-align:center;font-size:12px;color:rgba(255,255,255,0.55);cursor:pointer;padding:6px;font-weight:500">Go to '+courseTimeLabel+' &rarr;</div>':'')
         +'</div>'
       +'</div>';
     }
