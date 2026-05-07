@@ -3129,7 +3129,8 @@ function unlockCorkAnalysis(){
           <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Picks of the Day</div>
         </div>
       </div>
-      <div id="picks-tracker-strip" style="background:#fff;border-radius:12px;padding:10px 4px;margin-bottom:8px;border:1px solid #e4e8f0">
+      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="picks-tracker-strip" style="background:#fff;border-radius:12px;padding:10px 4px;margin-top:12px;border:1px solid #e4e8f0">
         <div style="display:flex;align-items:center">
           <div style="flex:1;text-align:center;border-right:1px solid #e4e8f0">
             <div style="font-size:9px;font-weight:700;color:#8fbda3;letter-spacing:0.08em;line-height:1.2">LAST</div>
@@ -3150,7 +3151,6 @@ function unlockCorkAnalysis(){
           </div>
         </div>
       </div>
-      <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
     <div id="picks-tomorrow-content" style="display:none;padding:0 6px 8px">
 
@@ -9799,7 +9799,7 @@ function renderRacingPicks(){
           +'</div>':'')
           +'<div style="font-size:12.5px;color:#fff;line-height:1.6;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
           +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:.01em">+ Add to Slip</button>'
-          +(courseName?'<div onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" style="text-align:center;font-size:12px;color:rgba(255,255,255,0.55);cursor:pointer;padding:6px;font-weight:500">Go to '+courseTimeLabel+' &rarr;</div>':'')
+          +(courseName?'<div onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" style="text-align:center;font-size:13px;color:#fff;cursor:pointer;padding:8px;font-weight:600">Go to '+courseTimeLabel+' &rarr;</div>':'')
         +'</div>'
       +'</div>';
     }
