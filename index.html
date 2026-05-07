@@ -9584,7 +9584,6 @@ var RACING_PICKS=[
 
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
    jockey:"JP Townend",trainer:"W Mullins",
-   silk:{body:"#c0392b",sleeve:"#ffffff",cap:"#c0392b"},
    confidence:88,odds:"2/1",border:"#10b981",
    summary:"Highest-rated horse on today's entire card — and Mullins is sending Townend, his number one, to ride.",
    signals:[
@@ -9597,7 +9596,6 @@ var RACING_PICKS=[
 
   {type:"NB · Next Best",icon:"★",horse:"Proactif",detail:"13:50 Cork · 2m4f Handicap Chase",
    jockey:"R Walsh",trainer:"W Mullins",
-   silk:{body:"#1a3a8f",sleeve:"#f0c040",cap:"#1a3a8f"},
    confidence:74,odds:"5/2",border:"#0b1628",
    summary:"Twice a winner over course and distance, dropping in class after a Leopardstown near-miss — and the market hasn't drifted all week.",
    signals:[
@@ -9767,47 +9765,31 @@ function renderRacingPicks(){
     var tagColor=isNap?'#d4af37':'#10b981';
 
     if(compact){
+      var imgIds=['img-cork','img-cheltenham'];
+      var imgEl=document.getElementById(imgIds[i]||imgIds[0]);
+      var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
       var pickTime=p.detail.split(' ')[0]||'';
       var countdownText=_pickCountdown(pickTime);
-      var s=p.silk||{body:'#0b1628',sleeve:'#d4af37',cap:'#0b1628'};
-      var silkSvg='<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 26 32" style="display:block">'
-        +'<path d="M3 9L23 9L24 30L2 30Z" fill="'+s.body+'"/>'
-        +'<path d="M0 9L7 5L7 16L0 20Z" fill="'+s.sleeve+'"/>'
-        +'<path d="M26 9L19 5L19 16L26 20Z" fill="'+s.sleeve+'"/>'
-        +'<ellipse cx="13" cy="5" rx="8" ry="5" fill="'+s.cap+'"/>'
-        +'<path d="M3 9L23 9L24 30L2 30Z" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="0.5"/>'
-      +'</svg>';
-      var sigRows=(p.signals||[]).slice(0,5).map(function(sig){
-        return '<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
-          +'<span style="flex-shrink:0;width:60px;color:#d4af37;font-weight:700;letter-spacing:.06em;font-size:9.5px;padding-top:1px">'+escHtml(sig.tag)+'</span>'
-          +'<span style="flex:1;color:rgba(255,255,255,0.78);font-size:11px;line-height:1.45">'+escHtml(sig.text)+'</span>'
-        +'</div>';
-      }).join('');
-      return '<div style="background:#0b1628;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.22);position:relative">'
-        +'<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#d4af37"></div>'
-        +'<div style="padding:14px 16px 14px 18px">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-            +'<span style="font-size:10px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:3px 9px;letter-spacing:.06em">'+escHtml(p.type.split(' ·')[0])+'</span>'
-            +(countdownText?'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;white-space:nowrap">'+countdownText+'</span>':'')
-          +'</div>'
-          +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'
-            +'<div style="flex-shrink:0">'+silkSvg+'</div>'
-            +'<div style="flex:1;min-width:0">'
-              +'<div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.1;margin-bottom:3px">'+escHtml(p.horse)+'</div>'
-              +'<div style="font-size:10.5px;color:rgba(255,255,255,0.5);line-height:1.3">'+escHtml(p.detail)+'</div>'
-              +(p.jockey?'<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">'+escHtml(p.jockey)+' · '+escHtml(p.trainer||'')+'</div>':'')
+      return '<div style="background:#0b1628;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
+        +'<div style="position:absolute;inset:0;'+(imgSrc?'background-image:url('+imgSrc+');background-size:cover;background-position:center 30%':'')+'"></div>'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:14px 16px 16px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">'
+              +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 7px;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
+              +'<span style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.detail)+'</span>'
             +'</div>'
-            +'<div style="flex-shrink:0;font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px">'+escHtml(p.odds)+'</div>'
+            +'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>'
           +'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;margin-top:4px">'
-            +'<div style="height:1px;flex:1;background:rgba(212,175,55,0.25)"></div>'
-            +'<span style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:0.12em">AI EDGE</span>'
-            +'<div style="height:1px;flex:1;background:rgba(212,175,55,0.25)"></div>'
+          +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">'
+            +'<span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">'+escHtml(p.horse)+'</span>'
+            +'<span style="font-size:13px;font-weight:600;color:#d4af37;margin-left:8px">'+escHtml(p.odds)+'</span>'
           +'</div>'
-          +'<div style="margin-bottom:14px">'+sigRows+'</div>'
-          +'<div style="display:flex;gap:8px">'
-            +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="flex:1;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.25);border-radius:99px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add to Slip</button>'
-            +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')" style="flex:1;background:#d4af37;color:#0b1628;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+' &rarr;</button>':'')
+          +(p.jockey?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:10px">'+escHtml(p.jockey)+' &nbsp;·&nbsp; '+escHtml(p.trainer||'')+'</div>':'<div style="margin-bottom:10px"></div>')
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.82);line-height:1.45;margin-bottom:14px">'+escHtml(p.summary||'')+'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:6px">'
+            +(courseName?'<button class="ai-cta-light" style="width:100%;padding:10px;font-size:13px;font-weight:700;border-radius:99px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')">&#x2756; Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+'</button>':'')
+            +'<button style="width:100%;background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.2);border-radius:99px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to Slip</button>'
           +'</div>'
         +'</div>'
       +'</div>';
