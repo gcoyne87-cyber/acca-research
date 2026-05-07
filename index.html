@@ -9808,10 +9808,11 @@ function renderRacingPicks(){
       +(fullImgSrc?'<div style="position:absolute;inset:0;background-image:url('+fullImgSrc+');background-size:cover;background-position:center 35%"></div>':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(11,22,40,0.97) 0%,rgba(11,22,40,0.9) 45%,rgba(11,22,40,0.62) 70%,rgba(11,22,40,0.32) 100%)"></div>'
       +'<div style="position:relative;z-index:2;padding:18px 20px 18px">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px">'
           +'<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.16em">'+fullCourseTimeLabel.toUpperCase()+'</span>'
           +(fullCountdownText?'<span class="pick-countdown" data-time="'+escHtml(fullPickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+fullCountdownText+'</span>':'')
         +'</div>'
+        +(p.detail.split(' · ')[1]?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px">'+escHtml(p.detail.split(' · ')[1])+'</div>':'<div style="margin-bottom:6px"></div>')
         +'<div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
         +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
         +(p.jockey||p.trainer?'<div style="font-size:10.5px;color:rgba(255,255,255,0.45);margin-bottom:14px">'
