@@ -3126,6 +3126,20 @@ function unlockCorkAnalysis(){
           <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Picks of the Day</div>
         </div>
       </div>
+      <div id="picks-tracker-strip" style="background:#0b1628;border-radius:12px;display:flex;padding:13px 4px;margin-bottom:12px;box-shadow:0 1px 4px rgba(11,22,40,0.12)">
+        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:20px;font-weight:900;color:#d4af37;line-height:1;margin-bottom:4px">12</div>
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.08em;text-transform:uppercase">Winners 30d</div>
+        </div>
+        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:20px;font-weight:900;color:#d4af37;line-height:1;margin-bottom:4px">5/2</div>
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.08em;text-transform:uppercase">Avg Price</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:20px;font-weight:900;color:#d4af37;line-height:1;margin-bottom:4px">8/1</div>
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.08em;text-transform:uppercase">Biggest</div>
+        </div>
+      </div>
       <div id="racing-picks-container" style="display:flex;flex-direction:column;gap:12px"></div>
     </div>
     <div id="picks-tomorrow-content" style="display:none;padding:0 6px 8px">
@@ -9692,6 +9706,32 @@ function nrViewMeetingCard(courseId,courseName,raceTime){
   },80);
 }
 
+function _pickCountdown(timeStr){
+  if(!timeStr) return '';
+  var parts=timeStr.split(':');
+  if(parts.length<2) return '';
+  var h=parseInt(parts[0],10),mi=parseInt(parts[1],10);
+  if(isNaN(h)||isNaN(mi)) return '';
+  var now=new Date();
+  var raceTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,mi,0,0);
+  var diffMin=Math.round((raceTime-now)/60000);
+  if(diffMin<-2) return '';
+  if(diffMin<=0) return 'LIVE';
+  if(diffMin<60) return 'in '+diffMin+'m';
+  var hours=Math.floor(diffMin/60);
+  var mins=diffMin%60;
+  return mins>0?'in '+hours+'h '+mins+'m':'in '+hours+'h';
+}
+
+setInterval(function(){
+  var els=document.querySelectorAll('.pick-countdown[data-time]');
+  els.forEach(function(el){
+    var txt=_pickCountdown(el.getAttribute('data-time'));
+    el.textContent=txt;
+    if(txt==='LIVE'){el.style.color='#ef4444';}
+  });
+},30000);
+
 function renderRacingPicks(){
 
   var el=document.getElementById('racing-picks-container');
@@ -9715,13 +9755,18 @@ function renderRacingPicks(){
       var imgIds=['img-cork','img-cheltenham'];
       var imgEl=document.getElementById(imgIds[i]||imgIds[0]);
       var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
+      var pickTime=p.detail.split(' ')[0]||'';
+      var countdownText=_pickCountdown(pickTime);
       return '<div style="background:#0b1628;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 2px 20px rgba(0,0,0,0.18)">'
         +'<div style="position:absolute;inset:0;'+(imgSrc?'background-image:url('+imgSrc+');background-size:cover;background-position:center 30%':'')+'"></div>'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,22,40,0.65) 0%,rgba(11,22,40,0.88) 35%,rgba(11,22,40,0.98) 60%,#0b1628 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:14px 16px 16px">'
-          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-            +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 7px;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
-            +'<span style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.detail)+'</span>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">'
+              +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:4px;padding:2px 7px;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
+              +'<span style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.detail)+'</span>'
+            +'</div>'
+            +'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>'
           +'</div>'
           +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">'
             +'<span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1">'+escHtml(p.horse)+'</span>'
