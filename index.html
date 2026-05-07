@@ -9780,14 +9780,14 @@ function renderRacingPicks(){
             +'<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.16em">'+courseTimeLabel.toUpperCase()+'</span>'
             +(countdownText?'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>':'')
           +'</div>'
-          +'<div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
-          +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
-          +(p.jockey||p.trainer?'<div style="font-size:10.5px;color:rgba(255,255,255,0.45);margin-bottom:14px">'
+          +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:16px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
+          +(p.jockey||p.trainer?'<div style="font-size:10.5px;color:rgba(255,255,255,0.45);margin-bottom:12px">'
             +(p.jockey?escHtml(p.jockey):'')
             +(p.jockey&&p.trainer?' · ':'')
             +(p.trainer?escHtml(p.trainer):'')
-          +'</div>':'<div style="margin-bottom:14px"></div>')
-          +'<div style="font-size:13px;color:#fff;line-height:1.55;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
+          +'</div>':'<div style="margin-bottom:12px"></div>')
+          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
           +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
           +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>':'')
         +'</div>'
@@ -9814,8 +9814,8 @@ function renderRacingPicks(){
         +'</div>'
         +(p.detail.split(' · ')[1]?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:'+(p.runners?'2px':'8px')+'">'+escHtml(p.detail.split(' · ')[1])+'</div>':'<div style="margin-bottom:6px"></div>')
         +(p.runners?'<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px">'+p.runners+' runners</div>':'')
-        +'<div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
-        +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
+        +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
+        +'<div style="font-size:16px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
         +(p.jockey||p.trainer?'<div style="font-size:10.5px;color:rgba(255,255,255,0.45);margin-bottom:14px">'
           +(p.jockey?escHtml(p.jockey):'')
           +(p.jockey&&p.trainer?' · ':'')
