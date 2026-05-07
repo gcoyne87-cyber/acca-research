@@ -819,7 +819,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:50px;border-bottom:1px solid var(--border)}
 .topnav-tabs{display:flex;background:#fff;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;box-shadow:inset 0 -1px 0 var(--border)}
-.maintab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:0 6px;height:42px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;min-width:0;text-align:center;letter-spacing:0}
+.maintab{flex:0 0 auto;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:0 14px;height:42px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;text-align:center;letter-spacing:0}
+.topnav-tabs::-webkit-scrollbar{display:none}
 .maintab.act{color:#0b1628;font-weight:700;border-bottom-color:#10b981}
 .topnav-subbar{display:none;background:#f5f7fb;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .subbtn{background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s}
@@ -2069,8 +2070,8 @@ window.addEventListener('load',function(){
     <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')">Cards</button>
     <button class="maintab" id="maintab-nextrace" onclick="selectMainTab('nextrace')">Next Race</button>
     <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')">Picks</button>
-    <button class="maintab maintab-dsk" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
-    <button class="maintab maintab-dsk" id="maintab-winners" onclick="selectMainTab('winners')">Winners</button>
+    <button class="maintab" id="maintab-myresearch" onclick="selectMainTab('myresearch')">My Research</button>
+    <button class="maintab" id="maintab-winners" onclick="selectMainTab('winners')">Winners</button>
   </div>
 
   <!-- SUB-BAR -->
@@ -9991,7 +9992,7 @@ var tmOpenRace={};
 function selectMainTab(tab){
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t==='myresearch'||t==='winners'?' maintab-dsk':'')+(t===tab?' act':'');
+    if(b) b.className='maintab'+(t===tab?' act':'');
   });
   var sb=document.getElementById('topnav-subbar');
   ['cards','results','picks'].forEach(function(s){
@@ -10032,7 +10033,7 @@ function _syncMainTab(s){
   var mt=map[s]||'home';
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
-    if(b) b.className='maintab'+(t==='myresearch'||t==='winners'?' maintab-dsk':'')+(t===mt?' act':'');
+    if(b) b.className='maintab'+(t===mt?' act':'');
   });
 }
 
