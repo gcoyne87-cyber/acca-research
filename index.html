@@ -817,7 +817,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 .topnav{position:sticky;top:0;left:0;right:0;z-index:999;background:var(--white);box-shadow:0 2px 8px rgba(0,0,0,0.06);width:100%}
 
-.topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:50px;border-bottom:1px solid var(--border)}
+.topnav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:20px;height:60px}
 .topnav-tabs{display:flex;background:#fff;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;box-shadow:inset 0 -1px 0 var(--border)}
 .maintab{flex:1 1 0;background:none;border:none;border-bottom:2px solid transparent;color:#9aa3b5;padding:8px 6px 6px;min-height:58px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;text-align:center;letter-spacing:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px}
 .maintab svg{width:18px;height:18px;flex-shrink:0;stroke-width:1.8}
@@ -2054,17 +2054,17 @@ window.addEventListener('load',function(){
 <div class="topnav" id="main-topnav" style="display:none">
 
   <div class="topnav-inner">
-    <div onclick="toggleRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:28px;height:28px;flex-shrink:0">
-      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
-      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
-      <div style="width:18px;height:2px;background:#0b1628;border-radius:2px"></div>
+    <div onclick="toggleRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:34px;height:34px;flex-shrink:0">
+      <div style="width:22px;height:2.5px;background:#0b1628;border-radius:2px"></div>
+      <div style="width:22px;height:2.5px;background:#0b1628;border-radius:2px"></div>
+      <div style="width:22px;height:2.5px;background:#0b1628;border-radius:2px"></div>
     </div>
     <div class="topnav-logo" onclick="selectMainTab('home')" style="cursor:pointer;flex:1;text-align:center">
-      <div style="font-size:17px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
+      <div style="font-size:21px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
     </div>
     <div class="topnav-links" style="display:none"></div>
     <div style="flex-shrink:0">
-      <button onclick="openAuthModal()" style="background:#0b1628;color:#fff;border:none;border-radius:99px;padding:6px 13px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:0.02em">Sign In</button>
+      <button onclick="openAuthModal()" style="background:#0b1628;color:#fff;border:none;border-radius:99px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:0.02em">Sign In</button>
     </div>
   </div>
 
