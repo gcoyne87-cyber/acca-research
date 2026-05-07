@@ -3126,7 +3126,7 @@ function unlockCorkAnalysis(){
           <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Picks of the Day</div>
         </div>
       </div>
-      <div id="picks-tracker-strip" style="background:#fff;border-radius:12px;padding:10px 4px;margin-bottom:12px;border:1px solid #e4e8f0">
+      <div id="picks-tracker-strip" style="background:#fff;border-radius:12px;padding:10px 4px;margin-bottom:8px;border:1px solid #e4e8f0">
         <div style="display:flex;align-items:center">
           <div style="flex:1;text-align:center;border-right:1px solid #e4e8f0">
             <div style="font-size:9px;font-weight:700;color:#8fbda3;letter-spacing:0.08em;line-height:1.2">LAST</div>
@@ -9149,11 +9149,12 @@ function nrTick(){
 }
 
 function nrRenderStrip(){
-  var html=NR_RACES.map(function(r,i){
+  var visible=NR_RACES.slice(0,5);
+  var html=visible.map(function(r,i){
     var a=i===nrSelected;
-    return '<div onclick="nrSelect('+i+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
-      +'<div style="font-size:15px;font-weight:'+(a?"700":"500")+';color:'+(a?"#10b981":"#9aa3b5")+';white-space:nowrap">'+ escHtml(r.t) +'</div>'
-      +'<div style="font-size:11px;color:'+(a?"#10b981":"#b0b8c8")+';margin-top:1px;white-space:nowrap">'+escHtml(r.venue)+'</div>'
+    return '<div onclick="nrSelect('+i+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
+      +'<div style="font-size:16px;font-weight:'+(a?"700":"500")+';color:'+(a?"#10b981":"#9aa3b5")+';white-space:nowrap">'+ escHtml(r.t) +'</div>'
+      +'<div style="font-size:11px;color:'+(a?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(r.venue)+'</div>'
     +'</div>';
   }).join("");
   var strip=document.getElementById("nr-strip");
