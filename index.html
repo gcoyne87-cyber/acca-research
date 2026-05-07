@@ -9777,26 +9777,18 @@ function renderRacingPicks(){
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(11,22,40,0.97) 0%,rgba(11,22,40,0.9) 45%,rgba(11,22,40,0.62) 70%,rgba(11,22,40,0.32) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:18px 20px 18px">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
-            +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
-              +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:6px;padding:4px 10px;letter-spacing:.05em;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
-              +'<span style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pick of the Day</span>'
-            +'</div>'
+            +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:6px;padding:4px 10px;letter-spacing:.05em;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
             +(countdownText?'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>':'')
           +'</div>'
           +'<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:14px"></div>'
           +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.42);letter-spacing:0.16em;margin-bottom:6px">'+courseTimeLabel.toUpperCase()+'</div>'
-          +'<div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:5px">'+escHtml(p.horse)+'</div>'
-          +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:14px">'+escHtml(p.odds)+'</div>'
-          +(p.jockey||p.trainer?'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
-            +(p.jockey?'<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:5px 11px 5px 5px;font-size:11px;color:rgba(255,255,255,0.85);display:inline-flex;align-items:center;gap:7px">'
-              +'<span style="width:18px;height:18px;border-radius:50%;background:rgba(212,175,55,0.18);color:#d4af37;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0">J</span>'
-              +escHtml(p.jockey)
-            +'</span>':'')
-            +(p.trainer?'<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:5px 11px 5px 5px;font-size:11px;color:rgba(255,255,255,0.85);display:inline-flex;align-items:center;gap:7px">'
-              +'<span style="width:18px;height:18px;border-radius:50%;background:rgba(212,175,55,0.18);color:#d4af37;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0">T</span>'
-              +escHtml(p.trainer)
-            +'</span>':'')
-          +'</div>':'')
+          +'<div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:4px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:3px">'+escHtml(p.odds)+'</div>'
+          +(p.jockey||p.trainer?'<div style="font-size:10.5px;color:rgba(255,255,255,0.45);margin-bottom:14px">'
+            +(p.jockey?escHtml(p.jockey):'')
+            +(p.jockey&&p.trainer?' · ':'')
+            +(p.trainer?escHtml(p.trainer):'')
+          +'</div>':'<div style="margin-bottom:14px"></div>')
           +'<div style="font-size:12.5px;color:#fff;line-height:1.6;margin-bottom:14px">'+escHtml(p.summary||'')+'</div>'
           +(p.signals&&p.signals.length?'<div style="margin-bottom:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)">'
             +p.signals.slice(0,3).map(function(sig){
