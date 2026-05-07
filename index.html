@@ -9798,14 +9798,8 @@ function renderRacingPicks(){
             +'</span>':'')
           +'</div>':'')
           +'<div style="font-size:12.5px;color:#fff;line-height:1.6;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
-          +(i===0
-            ?'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:.01em">+ Add to Slip</button>'
-            :'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Add to Slip</button>'
-          )
-          +(courseName?(i===0
-            ?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #d4af37;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px"><span style="color:#d4af37">&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>'
-            :'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>'
-          ):'')
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
+          +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>':'')
         +'</div>'
       +'</div>';
     }
