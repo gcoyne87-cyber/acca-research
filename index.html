@@ -9779,12 +9779,12 @@ function renderRacingPicks(){
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
             +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
               +'<span style="font-size:11px;font-weight:900;color:#0b1628;background:#d4af37;border-radius:6px;padding:4px 10px;letter-spacing:.05em;flex-shrink:0">'+escHtml(p.type.split(' ·')[0])+'</span>'
-              +'<span style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+courseTimeLabel+'</span>'
+              +'<span style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pick of the Day</span>'
             +'</div>'
             +(countdownText?'<span class="pick-countdown" data-time="'+escHtml(pickTime)+'" style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:.04em;flex-shrink:0;white-space:nowrap">'+countdownText+'</span>':'')
           +'</div>'
           +'<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:14px"></div>'
-          +(raceType?'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.42);letter-spacing:0.16em;margin-bottom:6px">'+escHtml(raceType)+'</div>':'')
+          +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.42);letter-spacing:0.16em;margin-bottom:6px">'+courseTimeLabel.toUpperCase()+'</div>'
           +'<div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.05;margin-bottom:5px">'+escHtml(p.horse)+'</div>'
           +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;margin-bottom:14px">'+escHtml(p.odds)+'</div>'
           +(p.jockey||p.trainer?'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
