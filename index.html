@@ -9711,7 +9711,9 @@ function nrViewMeetingCard(courseId,courseName,raceTime){
     rcAttachSwipe(courseId);
     var el=document.getElementById('rc-meeting-'+courseId);
     if(el){
-      var top=el.getBoundingClientRect().top+window.pageYOffset-130;
+      var topnav=document.getElementById('main-topnav');
+      var navH=topnav?topnav.offsetHeight:108;
+      var top=el.getBoundingClientRect().top+window.pageYOffset-navH-8;
       window.scrollTo({top:top,behavior:'smooth'});
     }
   },80);
