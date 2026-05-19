@@ -2386,18 +2386,18 @@ function _mrBuildSelCard(sel,uid){
     var sp=f.indexOf(' ');
     var lbl=sp>0?f.substring(0,sp).toUpperCase().replace(/[^A-Z]/g,'').substring(0,7):'NOTE';
     var txt=sp>0?f.substring(sp+1):f;
-    return'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:7px"><span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.06em;flex-shrink:0;min-width:48px">'+lbl+'</span><span style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.45">'+_safeHtml(txt)+'</span></div>';
+    return'<div style="display:flex;align-items:baseline;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06)"><span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:46px">'+lbl+'</span><span style="font-size:11px;color:rgba(255,255,255,0.82);line-height:1.4">'+_safeHtml(txt)+'</span></div>';
   }).join('');
   var shn=_safeHtml(sel.horseName||''),so=_safeHtml(sel.odds||''),sj=_safeHtml(sel.jockey||''),st=_safeHtml(sel.trainer||''),sf=_safeHtml(sel.formFigures||''),spq=_safeHtml(sel.pullQuote||'');
   return'<div style="background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)">'
     +'<div class="ma-sel-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>'
-    +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(11,22,40,0.99) 0%,rgba(11,22,40,0.96) 50%,rgba(11,22,40,0.88) 75%,rgba(11,22,40,0.72) 100%)"></div>'
+    +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
     +'<div style="position:relative;z-index:2;padding:0 16px 20px">'
     +'<div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px"><div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div><span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">STRONGEST SELECTION</span><div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div></div>'
     +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px"><div style="font-size:21px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">'+shn+'</div><div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+so+'</div></div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px">'+sj+' &middot; '+st+' &middot; F:'+sf+'</div>'
+    +'<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px">'+sj+' &middot; '+st+' &middot; '+sf+'</div>'
     +'<p style="font-size:12px;color:rgba(255,255,255,0.9);line-height:1.6;margin:0 0 12px">'+spq+'</p>'
-    +'<div style="margin-bottom:14px"><button onclick="var d=document.getElementById(\''+fId+'\');var c=document.getElementById(\''+cId+'\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'block\';c.style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\';" style="background:none;border:none;padding:0;display:flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;color:rgba(212,175,55,0.8);font-size:11px;font-weight:700;letter-spacing:.06em">VIEW ANALYSIS<svg id="'+cId+'" style="width:12px;height:12px;stroke:rgba(212,175,55,0.8);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
+    +'<div style="margin-bottom:14px"><button onclick="var d=document.getElementById(\''+fId+'\');var c=document.getElementById(\''+cId+'\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'block\';c.style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\';" style="background:#1e9e6b;border:none;border-radius:99px;padding:8px 18px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em">More<svg id="'+cId+'" style="width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
     +'<div id="'+fId+'" style="display:none;margin-top:10px">'+facRows+_selHistCarousel(sel.horseName||'')+'</div></div>'
     +'<button onclick="nrAddToSlip(\''+shn.replace(/'/g,"\\'")+'\',' +'\''+so.replace(/'/g,"\\'")+'\''+')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>'
     +'</div></div>';
@@ -12444,15 +12444,15 @@ function _renderSelectionCard(sel) {
     var sp = f.indexOf(' ');
     var label = sp > 0 ? f.substring(0,sp).toUpperCase().replace(/[^A-Z]/g,'').substring(0,7) : 'NOTE';
     var text = sp > 0 ? f.substring(sp+1) : f;
-    return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:7px">'
-      +'<span style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.06em;flex-shrink:0;min-width:48px">'+label+'</span>'
-      +'<span style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.45">'+_safeHtml(text)+'</span>'
+    return '<div style="display:flex;align-items:baseline;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'
+      +'<span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em;flex-shrink:0;min-width:46px">'+label+'</span>'
+      +'<span style="font-size:11px;color:rgba(255,255,255,0.82);line-height:1.4">'+_safeHtml(text)+'</span>'
       +'</div>';
   }).join('');
   card.style.cssText = 'background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)';
   card.innerHTML =
     '<div class="ma-sel-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>'
-    +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(11,22,40,0.99) 0%,rgba(11,22,40,0.96) 50%,rgba(11,22,40,0.88) 75%,rgba(11,22,40,0.72) 100%)"></div>'
+    +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
     +'<div style="position:relative;z-index:2;padding:0 16px 20px">'
     +'<div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px">'
     +'<div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>'
@@ -12463,12 +12463,12 @@ function _renderSelectionCard(sel) {
     +'<div style="font-size:21px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">'+horseName+'</div>'
     +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+odds+'</div>'
     +'</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px">'+jockey+' &middot; '+trainer+' &middot; F:'+form+'</div>'
+    +'<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px">'+jockey+' &middot; '+trainer+' &middot; '+form+'</div>'
     +'<p style="font-size:12px;color:rgba(255,255,255,0.9);line-height:1.6;margin:0 0 12px">'+pullQuote+'</p>'
     +'<div style="margin-bottom:14px">'
-    +'<button onclick="var d=document.getElementById(\'ra-fac-det\');var c=document.getElementById(\'ra-fac-chev\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'block\';c.style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\';" style="background:none;border:none;padding:0;display:flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;color:rgba(212,175,55,0.8);font-size:11px;font-weight:700;letter-spacing:.06em">'
-    +'VIEW ANALYSIS'
-    +'<svg id="ra-fac-chev" style="width:12px;height:12px;stroke:rgba(212,175,55,0.8);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+    +'<button onclick="var d=document.getElementById(\'ra-fac-det\');var c=document.getElementById(\'ra-fac-chev\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'block\';c.style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\';" style="background:#1e9e6b;border:none;border-radius:99px;padding:8px 18px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em">'
+    +'More'
+    +'<svg id="ra-fac-chev" style="width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>'
     +'</button>'
     +'<div id="ra-fac-det" style="display:none;margin-top:10px">'+facRows+_selHistCarousel(sel.horseName || '')+'</div>'
     +'</div>'
