@@ -12343,11 +12343,16 @@ function goToMyResearch(){
       }
       unlockCorkAnalysis();
       setTimeout(function(){
-        var el=document.getElementById('cork-analysis-full');
-        if(!el) return;
-        var top2=el.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
-        window.scrollTo({top:Math.max(0,top2),behavior:'smooth'});
+        var container=document.getElementById('cork-analysis-full');
+        var panel=document.getElementById('ra-analysis-panel');
+        if(container&&panel&&container.firstChild!==panel) container.insertBefore(panel,container.firstChild);
         _populateRaceAnalysis();
+        setTimeout(function(){
+          var sel=document.getElementById('ra-selection-card');
+          if(!sel) return;
+          var top2=sel.getBoundingClientRect().top+window.pageYOffset-stickyOffset;
+          window.scrollTo({top:Math.max(0,top2),behavior:'smooth'});
+        },80);
       },450);
     },80);
   }
