@@ -96,7 +96,7 @@ Return this exact JSON structure:
     "trainer": "string",
     "formFigures": "string e.g. 1-2111",
     "confidenceLevel": "High | Medium | Low | Pass",
-    "pullQuote": "string — 2-3 sentences on why this horse",
+    "pullQuote": "string — 3-4 sentences covering the key reasons in flowing prose: jockey booking, going, form, trainer angle — tell the full story here so the user understands the pick without needing to expand anything",
     "factors": ["JOCKEY category label then explanation", "GOING category label then explanation", "FORM category label then explanation"]
   },
   "horsesToWatch": [
