@@ -3686,6 +3686,31 @@ function unlockCorkAnalysis(){
 <!-- ============================================================ -->
 <div id="meeting-analysis-view" style="display:none;padding:0 0 24px">
 
+  <!-- FULL CARD HEADER — collapse bar -->
+  <div id="ma-full-hdr" onclick="maTglFullCard()" style="background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 1px 6px rgba(11,22,40,0.05);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; Full Card</div>
+      <div id="ma-full-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Today &middot; Heavy &middot; 8 races</div>
+    </div>
+    <svg id="ma-full-chev" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  </div>
+
+  <!-- COLLAPSIBLE CONTENT -->
+  <div id="ma-full-content" style="display:flex;flex-direction:column;gap:12px">
+
+  <!-- FULL CARD OVERVIEW summary -->
+  <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
+    <div style="padding:11px 16px 14px">
+      <p style="font-size:12px;color:rgba(0,0,0,0.65);line-height:1.65;margin:0 0 12px">Mullins dominates across five of the eight races. Heavy ground all day &mdash; anything without proven soft or heavy form can be dismissed early. Two races identified as genuine betting opportunities with clear pace scenarios.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#0a1632;background:rgba(10,22,50,0.07);border-radius:99px;padding:5px 10px;letter-spacing:.02em">8 Races Analysed</span>
+        <span style="font-size:10px;font-weight:700;color:#1e9e6b;background:rgba(30,158,107,0.1);border-radius:99px;padding:5px 10px;letter-spacing:.02em">2 Top Picks</span>
+        <span style="font-size:10px;font-weight:700;color:#dd7926;background:rgba(221,121,38,0.1);border-radius:99px;padding:5px 10px;letter-spacing:.02em">3 One to Note</span>
+        <span style="font-size:10px;font-weight:700;color:rgba(0,0,0,0.4);background:rgba(0,0,0,0.06);border-radius:99px;padding:5px 10px;letter-spacing:.02em">3 Pass</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Selection card 1: Majolique 13:15 -->
   <div style="background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28);margin:0 0 8px 0">
     <div class="ma-sel-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>
@@ -4730,6 +4755,8 @@ function unlockCorkAnalysis(){
     </div>
   </div><!-- end all races -->
 
+  </div><!-- end ma-full-content -->
+
 </div><!-- end meeting-analysis-view -->
 
 <script>
@@ -4752,6 +4779,13 @@ function unlockCorkAnalysis(){
     var open=detail.style.display!=='none';
     detail.style.display=open?'none':'block';
     if(chev) chev.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+  };
+  window.maTglFullCard=function(){
+    var content=document.getElementById('ma-full-content');
+    var chev=document.getElementById('ma-full-chev');
+    var open=content&&content.style.display!=='none';
+    if(content) content.style.display=open?'none':'flex';
+    if(chev) chev.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
   };
 
 })();
@@ -10432,7 +10466,7 @@ function renderTodayMeetingsList(){
     out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     out+='<div style="display:flex;align-items:center;padding:11px 14px">';
     out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:500;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+m.races.length+' races</div>';
     out+='</div>';
     out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
@@ -11639,24 +11673,21 @@ function renderRacingPicks(){
       if(p.jockey) metaParts.push(escHtml(p.jockey));
       if(p.trainer) metaParts.push(escHtml(p.trainer));
       if(p.form) metaParts.push(escHtml(p.form));
-      return '<div style="background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)">'
-        +(imgSrc?'<div style="position:absolute;inset:0;background-image:url('+imgSrc+');background-size:cover;background-position:center 35%"></div>':'')
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
-        +'<div style="position:relative;z-index:2">'
-          +'<div style="padding:11px 16px 9px;border-bottom:1px solid rgba(255,255,255,0.08)">'
-            +'<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:-.1px;line-height:1;margin-bottom:3px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
-            +'<div style="font-size:11px;color:rgba(255,255,255,0.42);font-weight:500">'+escHtml(raceType.charAt(0)+raceType.slice(1).toLowerCase())+(p.runners?' &middot; '+p.runners+' runners':'')+'</div>'
+      return '<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07)">'
+        +'<div style="padding:11px 16px 9px;border-bottom:1px solid rgba(0,0,0,0.06)">'
+          +'<div style="font-size:13px;font-weight:700;color:#0b1628;letter-spacing:-.1px;line-height:1;margin-bottom:3px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
+          +'<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+escHtml(raceType.charAt(0)+raceType.slice(1).toLowerCase())+(p.runners?' &middot; '+p.runners+' runners':'')+'</div>'
+        +'</div>'
+        +'<div style="padding:10px 16px 16px">'
+          +'<div style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Picks of the Day &#9733;</div>'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+            +'<div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-0.4px;line-height:1.1;flex:1">'+escHtml(p.horse)+'</div>'
+            +'<div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+escHtml(p.odds)+'</div>'
           +'</div>'
-          +'<div style="padding:10px 16px 16px">'
-          +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">'
-            +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1">'+escHtml(p.horse)+'</div>'
-            +'<div style="font-size:16px;font-weight:800;color:#d4af37;letter-spacing:-.3px;line-height:1;flex-shrink:0">'+escHtml(p.odds)+'</div>'
-          +'</div>'
-          +(metaParts.length?'<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+metaParts.join(' &middot; ')+'</div>':'<div style="margin-bottom:12px"></div>')
-          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
-          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
+          +(metaParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-bottom:12px">'+metaParts.join(' &middot; ')+'</div>':'<div style="margin-bottom:12px"></div>')
+          +'<div style="font-size:12px;color:#5a6478;line-height:1.65;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
           +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>':'')
-          +'</div>'
         +'</div>'
       +'</div>';
     }
@@ -12220,7 +12251,7 @@ function renderTomorrowMeetingsList(){
     out+='<div id="tm-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     out+='<div style="display:flex;align-items:center;padding:11px 14px">';
     out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:15px;font-weight:500;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+m.races.length+' races</div>';
     out+='</div>';
     out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
