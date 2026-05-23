@@ -50,7 +50,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800;900&family=Barlow+Semi+Condensed:wght@500;600;700;800;900&display=block" rel="stylesheet">
 
 <style>
 
@@ -84,7 +84,7 @@
 
 html{background:#e9edf2}
 
-body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:0;margin:0;font-size:16px}
+body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);padding:0;margin:0;font-size:16px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
 @media(max-width:600px){
 
@@ -1463,7 +1463,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 #trending-section .home-section-head-a{margin-bottom:0!important}
 
-.rg-footer{background:#0b1628;color:rgba(255,255,255,.55);padding:24px 20px 32px;font-family:'Outfit',sans-serif;font-size:11px;line-height:1.6;text-align:center}
+.rg-footer{background:#0b1628;color:rgba(255,255,255,.55);padding:24px 20px 32px;font-family:'Barlow',sans-serif;font-size:11px;line-height:1.6;text-align:center}
 
 .rg-footer-top{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 
@@ -1564,9 +1564,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 .slot-counter-wrap{display:flex;align-items:center;gap:4px;margin-bottom:4px}
 .slot-col{width:24px;height:34px;overflow:hidden;border-radius:4px;background:#0b1628;position:relative;flex-shrink:0}
 .slot-col-inner{display:flex;flex-direction:column;align-items:center;position:absolute;top:0;left:0;right:0}
-.slot-digit{height:34px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#10b981;letter-spacing:-1px;line-height:1;width:100%;font-family:'Outfit',sans-serif}
+.slot-digit{height:34px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#10b981;letter-spacing:-1px;line-height:1;width:100%;font-family:'Barlow Semi Condensed',sans-serif}
 .slot-label-block{margin-left:6px}
-.slot-label-text{font-size:13px;font-weight:900;color:#0b1628;letter-spacing:-0.5px;line-height:1;font-family:'Outfit',sans-serif}
+.slot-label-text{font-size:13px;font-weight:900;color:#0b1628;letter-spacing:-0.5px;line-height:1;font-family:'Barlow Semi Condensed',sans-serif}
 .ai-cta-light span{color:var(--gold)}
 .ai-cta-light:hover{box-shadow:0 0 0 3px rgba(245,197,66,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
 .ai-cta-light:active{transform:translateY(1px);box-shadow:none}
@@ -1735,32 +1735,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 
 <!-- SPLASH SCREENS -->
 
-<div id="splash-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a1632;z-index:9999;overflow:hidden;transition:opacity 0.5s ease">
+<div id="splash-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#050d1a;z-index:9999;overflow:hidden;transition:opacity 0.5s ease">
 
-  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#10b981,#d4af37,#10b981,transparent);background-size:200%;animation:splashBar 2.5s linear infinite"></div>
+  <!-- Shimmer top bar -->
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#d4af37,#10b981,#d4af37,transparent);background-size:200%;animation:splashBar 3s linear infinite"></div>
 
-  <div id="sp1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;padding:0 32px">
+  <!-- Breathing centre glow -->
+  <div style="position:absolute;top:50%;left:50%;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,#0e2040 0%,#091628 45%,transparent 70%);transform:translate(-50%,-54%);animation:splashGlow 2.8s ease-in-out infinite alternate;pointer-events:none"></div>
 
-    <div style="position:relative;text-align:center;margin-bottom:20px;padding:60px 0">
+  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
 
-      <div style="position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(16,185,129,.14);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out infinite;pointer-events:none"></div>
-
-      <div style="position:absolute;width:330px;height:330px;border-radius:50%;border:1px solid rgba(16,185,129,.06);top:50%;left:50%;transform:translate(-50%,-50%);animation:splashRing 3.5s ease-out 1s infinite;pointer-events:none"></div>
-
-      <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(16,185,129,0.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none"></div>
-
-      <div style="position:relative;z-index:2">
-
-        <div style="font-family:Outfit,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1"><span style="color:#fff">Racing</span><span style="color:#d4af37">Edge</span></div>
-
-        <div style="font-family:Outfit,sans-serif;font-size:16px;color:#10b981;font-weight:500;margin-top:14px;letter-spacing:0.01em">AI-powered horse racing analysis.</div>
-
-      </div>
-
+    <div style="text-align:center">
+      <div style="font-family:'Barlow Semi Condensed',sans-serif;font-size:32px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#fff">Racing</span><span class="splash-edge">Edge</span></div>
     </div>
 
-    <div style="height:22px;position:relative;width:100%;text-align:center;overflow:hidden">
-      <span id="splash-phrase" style="font-size:13px;font-weight:600;color:#e2e8f0;position:absolute;left:0;right:0;opacity:0;transform:translateY(20px)">Analyse single races</span>
+    <div id="splash-text-wrap" style="margin-top:28px;transition:margin-top 0.5s cubic-bezier(0.4,0,0.2,1);text-align:center;width:100%;padding:0 32px;box-sizing:border-box">
+      <span id="splash-phrase" style="font-family:'Barlow Semi Condensed',sans-serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:0.01em;display:inline-block;clip-path:inset(0 50% 0 50%);will-change:clip-path"></span>
     </div>
 
   </div>
@@ -1770,29 +1760,53 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 <script>
 (function(){
   var phrases=['Analyse single races','Analyse full racecards','Daily picks & market intelligence'];
+  var tagline='AI-powered horse racing analysis.';
   var idx=0;
-  function go(){
-    var el=document.getElementById('splash-phrase');
-    if(!el)return;
-    el.textContent=phrases[idx];
+  var el,wrap;
+
+  function reveal(dur,cb){
     el.style.transition='none';
-    el.style.opacity='0';
-    el.style.transform='translateY(20px)';
+    el.style.clipPath='inset(0 50% 0 50%)';
     el.offsetHeight;
-    el.style.transition='opacity 0.5s ease-out,transform 0.5s ease-out';
-    el.style.opacity='1';
-    el.style.transform='translateY(0)';
-    setTimeout(function(){
-      el.style.transition='opacity 0.5s ease-out,transform 0.5s ease-out';
-      el.style.opacity='0';
-      el.style.transform='translateY(-16px)';
-      setTimeout(function(){
-        idx++;
-        if(idx<phrases.length){ go(); } else { selectSport('racing'); }
-      },500);
-    },2500);
+    el.style.transition='clip-path '+dur+'s cubic-bezier(0.16,1,0.3,1)';
+    el.style.clipPath='inset(0 0% 0 0%)';
+    if(cb) setTimeout(cb,dur*1000);
   }
-  setTimeout(go,300);
+
+  function conceal(cb){
+    el.style.transition='clip-path 0.5s cubic-bezier(0.4,0,1,1)';
+    el.style.clipPath='inset(0 50% 0 50%)';
+    if(cb) setTimeout(cb,500);
+  }
+
+  function go(){
+    el=document.getElementById('splash-phrase');
+    wrap=document.getElementById('splash-text-wrap');
+    if(!el||!wrap) return;
+
+    if(idx<phrases.length){
+      el.textContent=phrases[idx];
+      el.style.color='#fff';
+      el.style.fontSize='18px';
+      el.style.textShadow='none';
+      reveal(0.7);
+      var isLast=(idx===phrases.length-1);
+      setTimeout(function(){
+        if(isLast) wrap.style.marginTop='10px';
+        conceal(function(){ idx++; go(); });
+      },2700);
+    } else {
+      el.textContent=tagline;
+      el.style.color='#10b981';
+      el.style.fontSize='15px';
+      el.style.textShadow='none';
+      reveal(1.4,function(){
+        setTimeout(function(){ selectSport('racing'); },2500);
+      });
+    }
+  }
+
+  setTimeout(go,400);
 })();
 </script>
 
@@ -1861,6 +1875,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);min-height:100vh;color
 @keyframes splashBar{0%{background-position:0%}100%{background-position:200%}}
 
 @keyframes splashRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+
+@keyframes splashGlow{0%{opacity:.5;transform:translate(-50%,-54%) scale(.95)}100%{opacity:1;transform:translate(-50%,-54%) scale(1.08)}}
+
+@keyframes splashSheen{0%{background-position:150% center}100%{background-position:-50% center}}
+
+.splash-edge{background:linear-gradient(90deg,#b8860b 0%,#d4af37 28%,#fff4a3 46%,#ffe878 50%,#fff4a3 54%,#d4af37 72%,#b8860b 100%);background-size:250% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:splashSheen 2.8s ease-in-out infinite;display:inline-block;padding-bottom:0.15em;margin-bottom:-0.15em}
 
 to{opacity:1;transform:translateY(0)}}
 to{opacity:0;transform:translateY(-5px)}}
@@ -11054,7 +11074,7 @@ function renderAIIntelligence(){
           +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
           +(item.price?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0b1628;flex-shrink:0">'+item.price+'</div>':'')
         +'</div>'
-        +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
+        +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
         +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+item.meta+'</div>'
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px">'+item.intelligenceText+'</div>'
         +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
@@ -11278,7 +11298,7 @@ function renderRacingPicks(){
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px">'
           +'<div style="font-size:12px;font-weight:700;color:'+typeColor+';margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
-          +'<div style="position:relative;font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:800;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
+          +'<div style="position:relative;font-size:23px;font-weight:600;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:700;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(jockeyTrainer.length?jockeyTrainer.join(' &middot; '):'')+(p.form?(jockeyTrainer.length?' &middot; ':'')+escHtml(p.form):'')+'</div>'
           +(p.summary?'<div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.65;margin-bottom:14px">'+escHtml(p.summary)+'</div>':'<div style="margin-bottom:14px"></div>')
           +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
@@ -11307,7 +11327,7 @@ function renderRacingPicks(){
       +'<div style="position:relative;z-index:2">'
         +'<div style="padding:16px 14px 14px">'
           +'<div style="font-size:12px;font-weight:700;color:#d4af37;margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(fullPickTime)+'</div>'
-          +'<div style="position:relative;font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:800;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
+          +'<div style="position:relative;font-size:23px;font-weight:600;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:700;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:10px">'+(fullMetaParts.length?fullMetaParts.join(' &middot; '):'')+'</div>'
           +(inlinePara?'<p style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.6;margin:0 0 8px">'+inlinePara+'</p>':'')
           +'<div style="margin-bottom:10px">'
@@ -11916,7 +11936,7 @@ function _resetAIPanel(){
       +'<div id="ai-live-dot" style="width:7px;height:7px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>'
       +'<span id="ai-live-text" style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#ff6b6b">LIVE</span>'
       +'</div>'
-      +'<div id="ai-panel-race-title" style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>'
+      +'<div id="ai-panel-race-title" style="font-size:20px;font-weight:600;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>'
       +'<div id="ai-panel-race-name" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:2px"></div>'
       +'<div id="ai-panel-race-sub" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:12px"></div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
@@ -12119,7 +12139,7 @@ function _aiCompleteToMyResearch(){
         prog.innerHTML=
           '<div style="padding:14px 14px 14px;background:#0b1628">'
             +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-              +'<span style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.2px">Research Complete</span>'
+              +'<span style="font-size:17px;font-weight:600;color:#fff;letter-spacing:-.2px">Research Complete</span>'
               +'<div style="width:32px;height:32px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:diamondPop .5s cubic-bezier(.34,1.56,.64,1) forwards">'
                 +'<span style="font-size:15px;color:#fff;font-weight:700;line-height:1">&#10003;</span>'
               +'</div>'
@@ -12536,7 +12556,7 @@ function toggleRacingMenu(){
         <div id="ai-live-dot" style="width:7px;height:7px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>
         <span id="ai-live-text" style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#ff6b6b">LIVE</span>
       </div>
-      <div id="ai-panel-race-title" style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>
+      <div id="ai-panel-race-title" style="font-size:20px;font-weight:600;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>
       <div id="ai-panel-race-name" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:2px"></div>
       <div id="ai-panel-race-sub" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:12px"></div>
       <div style="display:flex;align-items:center;gap:8px">
