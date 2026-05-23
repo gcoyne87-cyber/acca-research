@@ -2046,427 +2046,7 @@ function showRacingHome(){
   selectMainTab('home');
   selectPicksDate('today');
   renderNextRaceSection();
-  (function(){var bg=document.getElementById("ra-verdict-bg");var img=document.getElementById("img-cork");if(bg&&img&&img.getAttribute("src"))bg.style.backgroundImage="url("+img.getAttribute("src")+")";})();
-}
-
-// ── AUTH ────────────────────────────────────────────────────────────────
-function openAuthModal(){
-  var o=document.getElementById('auth-overlay');
-  if(o){ o.style.display='flex'; document.body.style.overflow='hidden'; }
-  authBackToMain();
-}
-function closeAuthModal(){
-  var o=document.getElementById('auth-overlay');
-  if(o) o.style.display='none';
-  document.body.style.overflow='';
-}
-function authOverlayClick(e){
-  if(e.target===document.getElementById('auth-overlay')) closeAuthModal();
-}
-function authShowOverlay(){ openAuthModal(); }
-function authHideOverlay(){ closeAuthModal(); }
-function authSetError(msg){
-  var el=document.getElementById('auth-error');
-  if(!el) return;
-  el.textContent=msg; el.style.display=msg?'block':'none';
-}
-function authBackToMain(){
-  document.getElementById('auth-main-view').style.display='block';
-  document.getElementById('auth-check-email-view').style.display='none';
-  authSetError('');
-  var inp=document.getElementById('auth-email');
-  if(inp){ inp.value=''; inp.classList.remove('has-value'); }
-  var btn=document.getElementById('auth-arrow-btn');
-  if(btn) btn.classList.remove('visible');
-}
-function authEmailInput(inp){
-  var btn=document.getElementById('auth-arrow-btn');
-  if(!btn) return;
-  var hasVal=inp.value.trim().length>0;
-  inp.classList.toggle('has-value',hasVal);
-  btn.classList.toggle('visible',hasVal);
-}
-function authGoogle(){
-  var provider=new firebase.auth.GoogleAuthProvider();
-  firebase.auth().signInWithPopup(provider).then(function(result){
-    closeAuthModal();
-    updateAuthState(result.user);
-  }).catch(function(e){
-    if(e.code!=='auth/popup-closed-by-user'){
-      authSetError(e.message||'Google sign-in failed.');
-    }
-  });
-}
-function authApple(){
-  authSetError('Apple Sign In coming soon.');
-}
-function authEmailSubmit(){
-  var email=(document.getElementById('auth-email').value||'').trim();
-  if(!email||email.indexOf('@')<0){ authSetError('Please enter a valid email address.'); return; }
-  var btn=document.getElementById('auth-submit-btn');
-  btn.textContent='Sending…'; btn.disabled=true;
-  authSetError('');
-  var actionSettings={url:window.location.href,handleCodeInApp:true};
-  firebase.auth().sendSignInLinkToEmail(email,actionSettings).then(function(){
-    window.localStorage.setItem('reEmailForSignIn',email);
-    btn.textContent='Continue with email'; btn.disabled=false;
-    document.getElementById('auth-sent-email').textContent=email;
-    document.getElementById('auth-main-view').style.display='none';
-    document.getElementById('auth-check-email-view').style.display='block';
-  }).catch(function(e){
-    btn.textContent='Continue with email'; btn.disabled=false;
-    authSetError(e.message||'Could not send sign-in link.');
-  });
-}
-function authLogout(){
-  firebase.auth().signOut();
-}
-function authUpdateUserUI(user){
-  updateAuthState(user);
-}
-
-// ── NOTIFY PROMPT ────────────────────────────────────────────────────────
-function showNotifyPrompt(){
-  if(sessionStorage.getItem('notifyPromptSeen')) return;
-  document.getElementById('notify-prompt').style.display='flex';
-}
-function dismissNotifyPrompt(){
-  sessionStorage.setItem('notifyPromptSeen','1');
-  document.getElementById('notify-prompt').style.display='none';
-}
-function notifyCtaClick(){
-  dismissNotifyPrompt();
-  var user=firebase.auth().currentUser;
-  if(!user){
-    openAuthModal();
-  } else {
-    localStorage.setItem('notifOptIn','1');
-    // TODO: save to Firebase user profile when backend is ready
-  }
-}
-setTimeout(function(){
-  showNotifyPrompt();
-},45000);
-
-// Firebase Auth listeners
-firebase.auth().onAuthStateChanged(function(user){
-  updateAuthState(user);
-  if(user) closeAuthModal();
-});
-
-// Handle email sign-in link on page load
-window.addEventListener('load',function(){
-  if(firebase.auth().isSignInWithEmailLink(window.location.href)){
-    var email=window.localStorage.getItem('reEmailForSignIn');
-    if(!email) email=window.prompt('Please confirm your email address');
-    firebase.auth().signInWithEmailLink(email, window.location.href).then(function(){
-      window.localStorage.removeItem('reEmailForSignIn');
-      window.history.replaceState({},'',window.location.pathname);
-    }).catch(function(e){
-      authSetError('Sign-in link error: '+e.message);
-    });
-  }
-});
-
-</script>
-
-<!-- Top nav bar -->
-
-<div class="topnav" id="main-topnav" style="display:none">
-
-  <div class="topnav-inner">
-    <div onclick="toggleRacingMenu()" style="display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:4px;width:34px;height:34px;flex-shrink:0">
-      <div style="width:22px;height:2px;background:#9aa3b5;border-radius:2px"></div>
-      <div style="width:22px;height:2px;background:#9aa3b5;border-radius:2px"></div>
-      <div style="width:22px;height:2px;background:#9aa3b5;border-radius:2px"></div>
-    </div>
-    <div class="topnav-logo" onclick="selectMainTab('home')" style="cursor:pointer;flex:1;text-align:center">
-      <div style="font-size:21px;font-weight:700;letter-spacing:-0.5px;line-height:1"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
-    </div>
-    <div class="topnav-links" style="display:none"></div>
-    <div style="flex-shrink:0">
-      <button onclick="openAuthModal()" style="background:#fff;color:#10b981;border:1px solid #10b981;border-radius:99px;padding:8px 12px 5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:0.02em;line-height:1;display:inline-flex;align-items:center;justify-content:center">Sign In</button>
-    </div>
-  </div>
-
-  <!-- MAIN TABS -->
-  <div class="topnav-tabs" id="topnav-tabs">
-    <button class="maintab" id="maintab-cards" onclick="selectMainTab('cards')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Racecards</span></button>
-    <button class="maintab" id="maintab-nextrace" onclick="selectMainTab('nextrace')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Next Race</span></button>
-    <button class="maintab" id="maintab-picks" onclick="selectMainTab('picks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Today's Tips</span></button>
-    <button class="maintab" id="maintab-myresearch" onclick="selectMainTab('myresearch')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>My Research</span></button>
-  </div>
-
-  <!-- SUB-BAR -->
-  <div class="topnav-subbar" id="topnav-subbar">
-    <div id="subbar-cards" style="display:none;align-items:center">
-      <button class="subbtn act" id="subbtn-ct" onclick="selectCardsSubTab('today')">Today</button>
-      <button class="subbtn" id="subbtn-ctmr" onclick="selectCardsSubTab('tomorrow')">Tomorrow</button>
-      <button class="subbtn" id="subbtn-cup" onclick="selectCardsSubTab('upcoming')">Upcoming</button>
-    </div>
-    <div id="subbar-results" style="display:none;align-items:center">
-      <button class="subbtn act" id="subbtn-rt" onclick="selectResultsSubTab('today')">Today</button>
-      <button class="subbtn" id="subbtn-ry" onclick="selectResultsSubTab('yesterday')">Yesterday</button>
-    </div>
-    <div id="subbar-picks" style="display:none;align-items:center">
-      <button class="subbtn act" id="subbtn-pt" onclick="selectPicksSubTab('today')">Today</button>
-      <button class="subbtn" id="subbtn-ptmr" onclick="selectPicksSubTab('tomorrow')">Tomorrow</button>
-    </div>
-  </div>
-
-</div>
-
-
-<!-- AUTH OVERLAY -->
-<div id="auth-overlay" style="display:none" onclick="authOverlayClick(event)">
-  <div class="auth-card" style="position:relative">
-    <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
-
-    <!-- Default view -->
-    <div id="auth-main-view">
-      <div id="auth-error" class="auth-error"></div>
-
-      <!-- Logo -->
-      <div style="text-align:center;margin-bottom:6px">
-        <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px"><span style="color:#0b1628">Racing</span><span style="color:#d4af37">Edge</span></div>
-      </div>
-      <div style="text-align:center;font-size:13px;color:#b0b8c8;margin-bottom:22px">Sign in or create an account</div>
-
-      <!-- Google -->
-      <button class="auth-google-btn" onclick="authGoogle()">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-        Continue with Google
-      </button>
-
-      <div class="auth-divider">
-        <div class="auth-divider-line"></div>
-        <div class="auth-divider-text">or</div>
-        <div class="auth-divider-line"></div>
-      </div>
-
-      <!-- Email with inline arrow -->
-      <div class="auth-email-wrap">
-        <input id="auth-email" class="auth-input" type="email" placeholder="Enter your email" autocomplete="email" oninput="authEmailInput(this)"/>
-        <button class="auth-arrow-btn" id="auth-arrow-btn" onclick="authEmailSubmit()" tabindex="-1">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-      </div>
-
-      <div class="auth-terms">By continuing you agree to our Terms of Service and Privacy Policy.</div>
-    </div>
-
-    <!-- Check email view -->
-    <div id="auth-check-email-view" style="display:none;text-align:center;padding:16px 0">
-      <div style="font-size:40px;margin-bottom:16px">&#x2709;&#xFE0F;</div>
-      <div style="font-size:18px;font-weight:800;color:#0b1628;margin-bottom:8px">Check your email</div>
-      <div style="font-size:14px;color:#8a94a6;line-height:1.6;margin-bottom:24px">We sent a magic link to <strong id="auth-sent-email" style="color:#0b1628"></strong>.<br>Tap it to sign in — no password needed.</div>
-      <button class="auth-submit" onclick="authBackToMain()" style="background:#f1f4f9;color:#0b1628">Back</button>
-    </div>
-  </div>
-</div>
-
-<!-- NOTIFY PROMPT -->
-<div id="notify-prompt" style="display:none">
-  <div class="notify-card">
-    <span class="notify-bell">🔔</span>
-    <div class="notify-title">Picks of the Day</div>
-    <div style="font-size:13px;font-weight:700;color:#d4af37;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px">Get Notified</div>
-    <div class="notify-sub">Join over <strong style="color:#0b1628;font-weight:800">2,000 RacingEdge users</strong> and get notified the moment our Picks of the Day are live.</div>
-    <button class="notify-cta" onclick="notifyCtaClick()">Get Notified</button><br>
-    <button class="notify-skip" onclick="dismissNotifyPrompt()">Maybe later</button>
-  </div>
-</div>
-
-<style>
-
-@keyframes splashBar{0%{background-position:0%}100%{background-position:200%}}
-
-@keyframes splashRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
-
-to{opacity:1;transform:translateY(0)}}
-to{opacity:0;transform:translateY(-5px)}}
-@keyframes winnersTicker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes aiFeedProgressFill{from{width:0%}to{width:100%}}
-@keyframes aiFeedSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(-100%);opacity:0}}
-@keyframes aiFeedSlideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes aiFeedPulse{0%,100%{opacity:1}50%{opacity:0.3}}
-
-
-@keyframes aiFeedDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:0.6}}
-100%{transform:scale(2.4);opacity:0}}
-50%{opacity:0.4}}
-.ai-feed-dot{animation:aiFeedDotPulse 1.5s ease-in-out infinite !important}
-
-
-</style>
-
-<script>
-
-var _currentSport='racing';
-
-function selectSport(sport){
-
-  _currentSport=sport;
-
-  var o=document.getElementById('splash-overlay');
-
-  o.style.transition='opacity 0.4s ease';
-
-  o.style.opacity='0';
-
-  setTimeout(function(){
-
-    o.style.display='none';
-
-    var t=document.getElementById('main-topnav');
-
-    var m=document.getElementById('main-content');
-
-    var b=document.getElementById('main-bottom-nav');
-
-    if(t)t.style.display='';
-
-    if(m)m.style.display='';
-
-    if(b)b.style.display='';
-
-    var f=document.getElementById('main-rg-footer');if(f)f.style.display='';
-
-    updateSportStrip(sport);
-
-    if(sport==='racing'){
-
-      showRacingHome();
-
-    }else{
-
-      showPage('home');
-
-      showFootballHome();
-
-    }
-
-    setTimeout(function(){if(typeof infRender==='function'){buildTopTabBar();buildTopLeagueStrip();infRender();renderTopFixtureCarousel();}},100);
-
-  },420);
-
-}
-
-function updateSportStrip(sport){
-  var icon=document.getElementById('nav-sport-icon');
-  var label=document.getElementById('nav-sport-label');
-  if(icon) icon.textContent=sport==='racing'?'⚽':'🐎';
-  if(label) label.textContent=sport==='racing'?'Football':'Racing';
-}
-
-function switchRacingTab(tab,el){
-
-  document.querySelectorAll('#racing-section-tabs .fstab').forEach(function(b){b.classList.remove('active');});
-
-  el.classList.add('active');
-
-  var cards=document.getElementById('racing-meetings-list');
-
-  var next=document.getElementById('next-race-content');
-
-  var dayLbl=cards?cards.previousElementSibling:null;
-
-  if(tab==='cards'){
-
-    if(cards) cards.style.display='';
-
-    if(next) next.style.display='none';
-
-    if(dayLbl) dayLbl.style.display='';
-
-  } else {
-
-    if(cards) cards.style.display='none';
-
-    if(next) next.style.display='';
-
-    if(dayLbl) dayLbl.style.display='none';
-
-    renderNextRaceStrip();
-
-  }
-
-}
-
-function switchSport(sport){
-
-  _currentSport=sport;
-
-  updateSportStrip(sport);
-
-  if(sport==='racing'){
-
-    showPage('home');
-
-    showRacingSplash();
-
-  }else{
-
-    showPage('home');
-
-    showFootballHome();
-
-  }
-
-}
-
-function goRacingHome(){
-  showRacingHome();
-  selectMainTab('home');
-}
-
-function showFootballHome(){
-
-  var fh=document.getElementById('football-home-content');
-
-  var rh=document.getElementById('racing-home-content');
-
-  var ph=document.getElementById('page-home');
-
-  if(ph) ph.style.display='';
-
-  if(fh) fh.style.display='';
-
-  if(rh) rh.style.display='none';
-
-}
-
-
-function showRacingSplash(){
-  var sp=document.getElementById('racing-splash');
-  if(sp){sp.style.display='flex';}
-}
-
-function hideSplashShowRacing(){
-  var sp=document.getElementById('racing-splash');
-  if(sp){sp.style.display='none';}
-  showRacingHome();
-}
-
-function showRacingHome(){
-  var fh=document.getElementById('football-home-content');
-  var rh=document.getElementById('racing-home-content');
-  var rd=document.getElementById('racing-meeting-detail');
-  var ph=document.getElementById('page-home');
-  if(ph) ph.style.display='none';
-  if(fh) fh.style.display='none';
-  if(rd) rd.style.display='none';
-  if(rh) rh.style.display='';
-  var tn=document.getElementById('main-topnav');
-  if(tn){tn.style.display='';tn.classList.add('racing-mode');}
-  renderTodayMeetingsList();
-  renderAIIntelligence();
-  _wcStart();
-  buildWinnersTicker();
-  _hwStart();
-  selectMainTab('home');
-  selectPicksDate('today');
-  renderNextRaceSection();
+  (function(){var bg=document.getElementById("ra-verdict-bg");var img=document.getElementById("img-cork");if(bg&&img&&img.getAttribute("src"))bg.src=img.getAttribute("src");})();
 }
 
 // ── AUTH ────────────────────────────────────────────────────────────────
@@ -2914,8 +2494,8 @@ function unlockCorkAnalysis(){
   var full=document.getElementById('cork-analysis-full');
   locked.style.transition='opacity .2s ease';
   locked.style.opacity='0';
-  var verdictBg=document.querySelector('#ra-verdict-block .ma-sel-bg');
-  if(verdictBg){var cImg=document.getElementById('img-cork');if(cImg&&cImg.src) verdictBg.style.backgroundImage='url('+cImg.src+')';}
+  var verdictBg=document.getElementById('ra-verdict-bg');
+  if(verdictBg){var cImg=document.getElementById('img-cork');if(cImg&&cImg.src) verdictBg.src=cImg.src;}
   setTimeout(function(){
     locked.style.display='none';
     _raExpand();
@@ -3357,8 +2937,20 @@ function unlockCorkAnalysis(){
 <!-- FULL ANALYSIS (hidden until unlocked) -->
 <div id="cork-analysis-full" style="display:none;flex-direction:column;gap:12px">
 
+<!-- RACE INTELLIGENCE -->
+<div id="ra-intelligence-card" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
+  <div style="padding:0 16px 16px">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">
+      <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>
+      <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">RACE INTELLIGENCE</span>
+      <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>
+    </div>
+    <p id="ra-intelligence-text" style="font-size:12px;color:#0b1628;line-height:1.7;margin:0">Effectively a three-horse race. Only two of the thirteen runners have won over this trip, and four are making their hurdles debut with no jump form to assess &mdash; the majority of this field is here to learn. Mullins has targeted this specific race in three of the last four seasons and won it twice, both times with a horse that had placed at a higher level on its previous start. The market has been reliable here &mdash; a horse that drifts in the hour before the off has not won this race in five years.</p>
+  </div>
+</div>
+
 <!-- BLOCK 1: RACE HEADER -->
-<div id="ra-cork-hdr" onclick="raCorkT()" style="order:1;background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 1px 6px rgba(11,22,40,0.05);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div id="ra-cork-hdr" onclick="raCorkT()" style="order:1;position:sticky;top:110px;z-index:100;background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(11,22,40,0.12);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
   <div>
     <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
     <div id="ra-cork-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 runners</div>
@@ -3579,55 +3171,53 @@ function unlockCorkAnalysis(){
 <div id="ra-analysis-panel" style="order:2;display:flex;flex-direction:column;gap:0">
 
   <!-- STRONGEST SELECTION CARD -->
-  <div id="ra-selection-card" style="background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)">
-    <div class="ma-sel-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>
-    <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>
-    <div style="position:relative;z-index:2;padding:0 16px 20px">
-      <div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px">
+  <div id="ra-selection-card" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
+    <div style="padding:0 16px 16px">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">
         <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>
         <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">STRONGEST SELECTION</span>
         <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
-        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">Majolique</div>
-        <div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.2px;line-height:1;flex-shrink:0">2/1</div>
+        <div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">Majolique</div>
+        <div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;flex-shrink:0;line-height:1.4">2/1</div>
       </div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px">J.P. Townend &middot; W.P. Mullins &middot; 12111</div>
-      <p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 12px"><span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">JOCKEY</span> Townend retained &mdash; Mullins doesn&rsquo;t put his number one up without reason. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">GOING</span> Two wins on Heavy this season, conditions couldn&rsquo;t suit better. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">FORM</span> Four from five over hurdles, sole defeat a Grade 1 close second. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">TRAINER</span> Mullins running at 52% strike rate this season &mdash; five winners in the last seven days.</p>
-      <div style="margin-bottom:14px">
-        <button onclick="var d=document.getElementById('ra-fac-det');var open=d.style.display!=='none';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel('Majolique');d.dataset.loaded='1';}d.style.display=open?'none':'block';" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:rgba(255,255,255,0.45);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">J.P. Townend &middot; W.P. Mullins &middot; 12111</div>
+      <p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 8px"><span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">JOCKEY</span> Townend retained &mdash; Mullins doesn&rsquo;t put his number one up without reason. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">GOING</span> Two wins on Heavy this season, conditions couldn&rsquo;t suit better. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">FORM</span> Four from five over hurdles, sole defeat a Grade 1 close second. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">TRAINER</span> Mullins running at 52% strike rate this season &mdash; five winners in the last seven days.</p>
+      <div style="margin-bottom:10px">
+        <button onclick="var d=document.getElementById('ra-fac-det');var open=d.style.display!=='none';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel('Majolique');d.dataset.loaded='1';}d.style.display=open?'none':'block';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
         <div id="ra-fac-det" style="display:none;margin-top:8px">
-          <div style="padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
-            <div style="font-size:9px;font-weight:700;color:rgba(212,175,55,0.8);letter-spacing:.08em;margin-bottom:7px">RECENT FORM</div>
+          <div style="padding-top:10px;border-top:1px solid #f0f2f7">
+            <div style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.08em;margin-bottom:7px">RECENT FORM</div>
             <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
               <div style="display:flex;gap:6px;padding-bottom:3px;min-width:max-content">
-                <div style="flex-shrink:0;width:110px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:600;margin-bottom:3px">06 Apr 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:2px">Punchestown</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:1px">LH &middot; 2m4f</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:5px">Yielding</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:rgba(255,255,255,0.35)">/8</span></span><div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,0.4)">Wt 11-10</div><div style="font-size:9px;color:rgba(255,255,255,0.4)">OR 143</div></div></div>
+                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">06 Apr 2025</div>
+                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Punchestown</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Yielding</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/8</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-10</div><div style="font-size:9px;color:#9aa3b5">OR 143</div></div></div>
                 </div>
-                <div style="flex-shrink:0;width:110px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:600;margin-bottom:3px">15 Mar 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:2px">Cheltenham</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:1px">LH &middot; 2m5f</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:5px">Soft</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:rgba(255,255,255,0.35)">/14</span></span><div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,0.4)">Wt 11-12</div><div style="font-size:9px;color:rgba(255,255,255,0.4)">OR 141</div></div></div>
+                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">15 Mar 2025</div>
+                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Cheltenham</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m5f</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Soft</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/14</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 141</div></div></div>
                 </div>
-                <div style="flex-shrink:0;width:110px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:600;margin-bottom:3px">18 Jan 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:2px">Leopardstown</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:1px">LH &middot; 2m4f</div>
-                  <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:5px">Heavy</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:rgba(255,255,255,0.75)">2<span style="font-size:9px;font-weight:500;color:rgba(255,255,255,0.35)">/10</span></span><div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,0.4)">Wt 11-12</div><div style="font-size:9px;color:rgba(255,255,255,0.4)">OR 138</div></div></div>
+                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">18 Jan 2025</div>
+                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Leopardstown</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
+                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Heavy</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#5a6478">2<span style="font-size:9px;font-weight:500;color:#c0c6d4">/10</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 138</div></div></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>
+      <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>
     </div>
   </div>
 
@@ -3641,32 +3231,32 @@ function unlockCorkAnalysis(){
     <div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">
         <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:14px;font-weight:800;color:#0b1628">Proactif</span>
-          <span style="font-size:10px;color:#c0c6d4">21122</span>
+          <span style="font-size:13px;font-weight:700;color:#0b1628">Proactif</span>
+          <span style="font-size:9px;color:#c0c6d4">21122</span>
         </div>
-        <span style="font-size:15px;font-weight:800;color:#0b1628">5/2</span>
+        <span style="font-size:13px;font-weight:700;color:#0b1628">5/2</span>
       </div>
-      <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">M.P. Walsh &middot; W.P. Mullins</div>
-      <p style="font-size:12px;color:#3a4259;line-height:1.55;margin:0">Walsh doesn&rsquo;t take rides he can&rsquo;t win. Same yard, same ground &mdash; the clear each-way route if the favourite slips up.</p>
+      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">M.P. Walsh &middot; W.P. Mullins</div>
+      <p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">Walsh doesn&rsquo;t take rides he can&rsquo;t win. Same yard, same ground &mdash; the clear each-way route if the favourite slips up.</p>
     </div>
     <div style="height:1px;background:#f0f2f7;margin:12px 0"></div>
     <div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">
         <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:14px;font-weight:800;color:#0b1628">Macho Man</span>
-          <span style="font-size:10px;color:#c0c6d4">32113</span>
+          <span style="font-size:13px;font-weight:700;color:#0b1628">Macho Man</span>
+          <span style="font-size:9px;color:#c0c6d4">32113</span>
         </div>
-        <span style="font-size:15px;font-weight:800;color:#0b1628">4/1</span>
+        <span style="font-size:13px;font-weight:700;color:#0b1628">4/1</span>
       </div>
-      <div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">D.E. Mullins &middot; W.P. Mullins</div>
-      <p style="font-size:12px;color:#3a4259;line-height:1.55;margin:0">Family booking from the champion yard &mdash; never an accident. Two wins this season, still capable of more.</p>
+      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">D.E. Mullins &middot; W.P. Mullins</div>
+      <p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">Family booking from the champion yard &mdash; never an accident. Two wins this season, still capable of more.</p>
     </div>
   </div>
 
   <!-- RACE VERDICT CARD -->
   <div id="ra-verdict-block" style="position:relative;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.28);margin-top:12px">
-    <div id="ra-verdict-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>
-    <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(8,14,38,0.92) 0%,rgba(8,14,38,0.97) 100%)"></div>
+    <img id="ra-verdict-bg" src="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 35%" alt="">
+    <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>
     <div style="position:relative;z-index:2;padding:16px 16px 20px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>
@@ -3705,10 +3295,15 @@ function unlockCorkAnalysis(){
   <!-- COLLAPSIBLE CONTENT -->
   <div id="ma-full-content" style="display:flex;flex-direction:column;gap:12px">
 
-  <!-- FULL CARD OVERVIEW summary -->
-  <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
-    <div style="padding:11px 16px 14px">
-      <p style="font-size:12px;color:rgba(0,0,0,0.65);line-height:1.65;margin:0 0 12px">Mullins dominates across five of the eight races. Heavy ground all day &mdash; anything without proven soft or heavy form can be dismissed early. Two races identified as genuine betting opportunities with clear pace scenarios.</p>
+  <!-- CARD INTELLIGENCE -->
+  <div id="ma-card-intelligence" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
+    <div style="padding:0 16px 16px">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">CARD INTELLIGENCE</span>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>
+      </div>
+      <p id="ma-card-intel-text" style="font-size:12px;color:#0b1628;line-height:1.7;margin:0 0 12px">Mullins saddles runners in five of the eight races today &mdash; this card is effectively his to control. The standout betting opportunities are the 13:15 and 15:10 where field quality is weak and the form book narrows the field significantly. The 14:35 handicap chase and the 17:30 seller are worth skipping &mdash; both have multiple runners with credible claims and the market will be inefficient. The hidden race today is the 16:55 where a lightly-raced chaser drops in grade for the first time and the market has not fully priced that in yet.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <span style="font-size:10px;font-weight:700;color:#0a1632;background:rgba(10,22,50,0.07);border-radius:99px;padding:5px 10px;letter-spacing:.02em">8 Races Analysed</span>
         <span style="font-size:10px;font-weight:700;color:#1e9e6b;background:rgba(30,158,107,0.1);border-radius:99px;padding:5px 10px;letter-spacing:.02em">2 Top Picks</span>
@@ -11673,28 +11268,22 @@ function renderRacingPicks(){
       if(!imgEl||!imgEl.src) imgEl=document.getElementById('img-cork');
       var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
       var pickTime=p.detail.split(' ')[0]||'';
-      var countdownText=_pickCountdown(pickTime);
-      var raceType=(p.detail.split(' · ')[1]||'').toUpperCase();
-      var courseTimeLabel=escHtml(courseName)+' '+escHtml(pickTime);
-      var metaParts=[];
-      if(p.jockey) metaParts.push(escHtml(p.jockey));
-      if(p.trainer) metaParts.push(escHtml(p.trainer));
-      if(p.form) metaParts.push(escHtml(p.form));
-      return '<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07)">'
-        +'<div style="padding:11px 16px 9px;border-bottom:1px solid rgba(0,0,0,0.06)">'
-          +'<div style="font-size:13px;font-weight:700;color:#0b1628;letter-spacing:-.1px;line-height:1;margin-bottom:3px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
-          +'<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+escHtml(raceType.charAt(0)+raceType.slice(1).toLowerCase())+(p.runners?' &middot; '+p.runners+' runners':'')+'</div>'
-        +'</div>'
-        +'<div style="padding:10px 16px 16px">'
-          +'<div style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Picks of the Day &#9733;</div>'
-          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
-            +'<div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-0.4px;line-height:1.1;flex:1">'+escHtml(p.horse)+'</div>'
-            +'<div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+escHtml(p.odds)+'</div>'
-          +'</div>'
-          +(metaParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-bottom:12px">'+metaParts.join(' &middot; ')+'</div>':'<div style="margin-bottom:12px"></div>')
-          +'<div style="font-size:12px;color:#5a6478;line-height:1.65;margin-bottom:18px">'+escHtml(p.summary||'')+'</div>'
-          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
-          +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+courseTimeLabel+' &rarr;</button>':'')
+      var raceDetail=(p.detail.split(' · ')[1]||'');
+      var jockeyTrainer=[];
+      if(p.jockey) jockeyTrainer.push(escHtml(p.jockey));
+      if(p.trainer) jockeyTrainer.push(escHtml(p.trainer));
+      var raceInfoLine=escHtml(courseName)+' &middot; '+escHtml(pickTime)+(raceDetail?' &middot; '+escHtml(raceDetail):'')+(p.runners?' &middot; '+p.runners+' runners':'');
+      var typeColor='#d4af37';
+      return '<div style="border-radius:16px;overflow:hidden;position:relative;background:#08101c;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
+        +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:16px 14px 14px">'
+          +'<div style="font-size:12px;font-weight:700;color:'+typeColor+';margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
+          +'<div style="font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(jockeyTrainer.length?jockeyTrainer.join(' &middot; '):'')+(p.form?(jockeyTrainer.length?' &middot; ':'')+escHtml(p.form):'')+'</div>'
+          +(p.summary?'<div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.65;margin-bottom:14px">'+escHtml(p.summary)+'</div>':'<div style="margin-bottom:14px"></div>')
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
+          +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+escHtml(courseName)+' '+escHtml(pickTime)+' &rarr;</button>':'')
         +'</div>'
       +'</div>';
     }
@@ -11713,25 +11302,21 @@ function renderRacingPicks(){
     if(p.jockey) fullMetaParts.push(escHtml(p.jockey));
     if(p.trainer) fullMetaParts.push(escHtml(p.trainer));
     if(p.form) fullMetaParts.push(escHtml(p.form));
-    return '<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07)">'
-      +'<div style="padding:11px 16px 9px;border-bottom:1px solid #f0f2f7">'
-        +'<div style="font-size:13px;font-weight:700;color:#0b1628;letter-spacing:-.1px;line-height:1;margin-bottom:3px">'+escHtml(courseName)+' '+escHtml(fullPickTime)+'</div>'
-        +'<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+escHtml((p.detail.split(' · ')[1]||''))+(p.runners?' &middot; '+p.runners+' runners':'')+'</div>'
-      +'</div>'
-      +'<div style="padding:10px 16px 16px">'
-        +'<div style="font-size:10px;font-weight:700;color:#d4af37;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Picks of the Day &#9733;</div>'
-        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
-          +'<div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-0.4px;line-height:1.1;flex:1">'+escHtml(p.horse)+'</div>'
-          +'<div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+escHtml(p.odds)+'</div>'
-        +'</div>'
-        +(fullMetaParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-bottom:12px">'+fullMetaParts.join(' &middot; ')+'</div>':'<div style="margin-bottom:12px"></div>')
-        +(inlinePara?'<p style="font-size:12px;color:#5a6478;line-height:1.75;margin:0 0 12px">'+inlinePara+'</p>':'')
-        +'<div style="margin-bottom:14px">'
-          +'<button onclick="var d=document.getElementById(\'tips-det-'+i+'\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(\''+escHtml(p.horse)+'\');d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
-          +'<div id="tips-det-'+i+'" style="display:none;margin-top:8px"></div>'
-        +'</div>'
-        +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:12px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">+ Add to Slip</button>'
-        +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
+    return '<div style="border-radius:16px;overflow:hidden;position:relative;background:#08101c;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
+      +(fullImgSrc?'<img src="'+fullImgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
+      +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
+      +'<div style="position:relative;z-index:2">'
+        +'<div style="padding:16px 14px 14px">'
+          +'<div style="font-size:12px;font-weight:700;color:#d4af37;margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(fullPickTime)+'</div>'
+          +'<div style="font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:10px">'+(fullMetaParts.length?fullMetaParts.join(' &middot; '):'')+'</div>'
+          +(inlinePara?'<p style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.6;margin:0 0 8px">'+inlinePara+'</p>':'')
+          +'<div style="margin-bottom:10px">'
+            +'<button onclick="var d=document.getElementById(\'tips-det-'+i+'\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(\''+escHtml(p.horse)+'\');d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:rgba(255,255,255,0.45);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
+            +'<div id="tips-det-'+i+'" style="display:none;margin-top:8px"></div>'
+          +'</div>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
+          +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
         +'</div>'
       +'</div>'
     +'</div>';
@@ -12327,18 +11912,22 @@ function _resetAIPanel(){
   // Rebuild ai-panel-progress if _aiCompleteToMyResearch() destroyed its children
   var prog=document.getElementById('ai-panel-progress');
   if(prog&&!document.getElementById('ai-panel-ready')){
-    prog.style.cssText='padding:4px 14px 16px';
+    prog.style.cssText='padding:14px 14px 16px';
     prog.innerHTML=
-      '<div id="ai-panel-race-title" style="font-size:12px;font-weight:400;color:#fff;line-height:1.2;margin-bottom:1px;text-align:center"></div>'
-      +'<div id="ai-panel-race-name" style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:400;margin-bottom:0;min-height:13px;text-align:center"></div>'
-      +'<div id="ai-panel-race-sub" style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:400;min-height:13px;text-align:center"></div>'
-      +'<div style="margin-top:12px;display:flex;align-items:center;gap:8px">'
-      +'<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:99px;height:3px;overflow:hidden">'
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">'
+      +'<div id="ai-live-dot" style="width:7px;height:7px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>'
+      +'<span id="ai-live-text" style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#ff6b6b">LIVE</span>'
+      +'</div>'
+      +'<div id="ai-panel-race-title" style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>'
+      +'<div id="ai-panel-race-name" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:2px"></div>'
+      +'<div id="ai-panel-race-sub" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:12px"></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:99px;height:2px;overflow:hidden">'
       +'<div id="ai-progress-bar" style="height:100%;border-radius:99px;background:#10b981;width:0%;transition:width 0.5s ease"></div>'
       +'</div>'
       +'<span id="ai-progress-pct" style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:500;min-width:26px;text-align:right">0%</span>'
       +'</div>'
-      +'<div id="ai-panel-step" style="font-size:10px;color:#fff;font-weight:400;margin-top:5px;min-height:14px;letter-spacing:.02em"></div>'
+      +'<div id="ai-panel-step" style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:400;margin-top:8px;min-height:14px;letter-spacing:.02em"></div>'
       +'<div id="ai-panel-ready" style="display:none;margin-top:16px">'
       +'<button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #d4af37;border-radius:99px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px"><span style="color:#d4af37">&#x2756;</span> View AI Edge Report &rarr;</button>'
       +'</div>';
@@ -12346,8 +11935,6 @@ function _resetAIPanel(){
   // Restore inner panel styles changed by completion handlers
   var inner=document.getElementById('ai-panel-inner');
   if(inner){inner.style.background='#0b1628';inner.style.backdropFilter='';inner.style.webkitBackdropFilter='';inner.style.minHeight='';inner.style.boxShadow='0 -4px 28px rgba(0,0,0,0.35)';inner.style.animation='';}
-  var header=document.querySelector('#ai-panel-inner > div:first-child');
-  if(header) header.style.display='flex';
   // Reset panel results
   var results=document.getElementById('ai-panel-results');
   if(results){results.style.display='none';results.innerHTML='';}
@@ -12385,8 +11972,6 @@ function _aiComplete(label){
     if(prog){prog.style.transition='opacity .4s';prog.style.opacity='0';}
     setTimeout(function(){
       // collapse header entirely — nothing implies analysis still running
-      var header=document.querySelector('#ai-panel-inner > div:first-child');
-      if(header) header.style.display='none';
       if(inner){inner.style.background='#0b1628';inner.style.minHeight=_lockH?_lockH+'px':'';inner.style.boxShadow='0 -4px 28px rgba(0,0,0,0.35)';}
       if(prog){
         var _m=_aiCtx&&_aiCtx.m,_tl='',_sl='';
@@ -12524,8 +12109,6 @@ function _aiCompleteToMyResearch(){
     var prog=document.getElementById('ai-panel-progress');
     if(prog){prog.style.transition='opacity .4s';prog.style.opacity='0';}
     setTimeout(function(){
-      var header=document.querySelector('#ai-panel-inner > div:first-child');
-      if(header) header.style.display='none';
       if(inner){inner.style.background='#0b1628';inner.style.minHeight=_lockH?_lockH+'px':'';inner.style.boxShadow='0 -4px 28px rgba(0,0,0,0.35)';}
       if(prog){
         var _m=_aiCtx&&_aiCtx.m,_tl='',_sl='';
@@ -12665,14 +12248,16 @@ function _populateRaceAnalysis() {
   var r = _aiRaceResult;
   var intel = document.getElementById('ra-intelligence-text');
   if (intel && r.raceIntelligence) intel.textContent = r.raceIntelligence;
+  var intelCard = document.getElementById('ra-intelligence-card');
+  if (intelCard) intelCard.style.display = r.raceIntelligence ? '' : 'none';
   var vb = document.getElementById('ra-verdict-bullets');
   if (vb && r.aiRaceVerdict) {
     vb.textContent = r.aiRaceVerdict;
   }
-  var verdictBg = document.querySelector('#ra-verdict-block .ma-sel-bg');
+  var verdictBg = document.getElementById('ra-verdict-bg');
   if (verdictBg) {
     var imgEl = document.getElementById('img-'+(_aiRaceCourseId||'cork')) || document.getElementById('img-cork');
-    if (imgEl && imgEl.src) verdictBg.style.backgroundImage = 'url('+imgEl.src+')';
+    if (imgEl && imgEl.getAttribute("src")) verdictBg.src = imgEl.getAttribute("src");
   }
   if (r.strongestSelection) _renderSelectionCard(r.strongestSelection);
   if (Array.isArray(r.horsesToWatch)) _renderWatchSection(r.horsesToWatch);
@@ -12695,27 +12280,27 @@ function _renderSelectionCard(sel) {
     var text = sp > 0 ? f.substring(sp+1) : f;
     return '<span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">'+label+'</span> '+_safeHtml(text)+(fi<arr.length-1?'. ':'.');
   }).join('');
-  card.style.cssText = 'background:#0a1632;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,0.28)';
+  card.style.cssText = 'background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)';
+  var hn = sel.horseName || '';
+  var od = sel.odds || '';
   card.innerHTML =
-    '<div class="ma-sel-bg" style="position:absolute;inset:0;background-size:cover;background-position:center 35%"></div>'
-    +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
-    +'<div style="position:relative;z-index:2;padding:0 16px 20px">'
-    +'<div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px">'
+    '<div style="padding:0 16px 16px">'
+    +'<div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">'
     +'<div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>'
     +'<span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">STRONGEST SELECTION</span>'
     +'<div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>'
     +'</div>'
     +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">'
-    +'<div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">'+horseName+'</div>'
-    +'<div style="font-size:18px;font-weight:800;color:#d4af37;letter-spacing:-.2px;line-height:1;flex-shrink:0">'+odds+'</div>'
+    +'<div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">'+horseName+'</div>'
+    +'<div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;flex-shrink:0;line-height:1.4">'+odds+'</div>'
     +'</div>'
-    +'<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px">'+jockey+' &middot; '+trainer+' &middot; '+form+'</div>'
-    +(inlinePara?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 12px">'+inlinePara+'</p>':'')
-    +'<div style="margin-bottom:14px">'
-    +'<button onclick="var d=document.getElementById(\'ra-fac-det\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(\''+_safeHtml(sel.horseName||'')+'\');d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:rgba(255,255,255,0.45);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
+    +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">'+jockey+' &middot; '+trainer+' &middot; '+form+'</div>'
+    +(inlinePara?'<p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 8px">'+inlinePara+'</p>':'')
+    +'<div style="margin-bottom:10px">'
+    +'<button data-hname="'+horseName+'" onclick="var d=document.getElementById(\'ra-fac-det\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(this.dataset.hname);d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
     +'<div id="ra-fac-det" style="display:none;margin-top:8px"></div>'
     +'</div>'
-    +'<button onclick="nrAddToSlip(\''+horseName.replace(/'/g,"\\'")+'\',' +'\''+odds.replace(/'/g,"\\'")+'\''+')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>'
+    +'<button data-hname="'+horseName+'" data-odds="'+odds+'" onclick="nrAddToSlip(this.dataset.hname,this.dataset.odds)" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>'
     +'</div>';
 }
 
@@ -12741,13 +12326,13 @@ function _renderWatchSection(horses) {
       +'<div>'
       +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">'
       +'<div style="display:flex;align-items:baseline;gap:6px">'
-      +'<span style="font-size:14px;font-weight:800;color:#0b1628">'+hn+'</span>'
-      +(form ? '<span style="font-size:10px;color:#c0c6d4">'+form+'</span>' : '')
+      +'<span style="font-size:13px;font-weight:700;color:#0b1628">'+hn+'</span>'
+      +(form ? '<span style="font-size:9px;color:#c0c6d4">'+form+'</span>' : '')
       +'</div>'
-      +'<span style="font-size:15px;font-weight:800;color:#0b1628">'+odds+'</span>'
+      +'<span style="font-size:13px;font-weight:700;color:#0b1628">'+odds+'</span>'
       +'</div>'
-      +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">'+jockey+' &middot; '+trainer+'</div>'
-      +'<p style="font-size:12px;color:#3a4259;line-height:1.55;margin:0">'+excerpt+'</p>'
+      +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">'+jockey+' &middot; '+trainer+'</div>'
+      +'<p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">'+excerpt+'</p>'
       +'</div>';
   }).join('');
   section.innerHTML = divider + items;
@@ -12804,16 +12389,16 @@ function _selHistCarousel(horseName) {
   var cards = runner.history.map(function(h) {
     var posStr = h.pos === 0 ? 'F' : String(h.pos);
     var posCol = h.pos === 1 ? '#1e9e6b' : h.pos === 0 ? '#e74c3c' : 'rgba(255,255,255,0.75)';
-    return '<div style="flex-shrink:0;width:110px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 9px">'
-      +'<div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:600;margin-bottom:3px">'+escHtml(h.date)+' '+escHtml(h.year)+'</div>'
-      +'<div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:2px">'+escHtml(h.course)+'</div>'
-      +'<div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:1px">'+escHtml(h.hand)+' &middot; '+escHtml(h.dist)+'</div>'
-      +'<div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:5px">'+escHtml(h.going)+'</div>'
+    return '<div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">'
+      +'<div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">'+escHtml(h.date)+' '+escHtml(h.year)+'</div>'
+      +'<div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">'+escHtml(h.course)+'</div>'
+      +'<div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">'+escHtml(h.hand)+' &middot; '+escHtml(h.dist)+'</div>'
+      +'<div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">'+escHtml(h.going)+'</div>'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
-        +'<span style="font-size:12px;font-weight:800;color:'+posCol+'">'+posStr+'<span style="font-size:9px;font-weight:500;color:rgba(255,255,255,0.35)">/'+escHtml(String(h.ran))+'</span></span>'
+        +'<span style="font-size:12px;font-weight:800;color:'+posCol+'">'+posStr+'<span style="font-size:9px;font-weight:500;color:#c0c6d4">/'+escHtml(String(h.ran))+'</span></span>'
         +'<div style="text-align:right">'
-          +'<div style="font-size:9px;color:rgba(255,255,255,0.4)">Wt '+escHtml(h.wt)+'</div>'
-          +'<div style="font-size:9px;color:rgba(255,255,255,0.4)">OR '+escHtml(String(h.or))+'</div>'
+          +'<div style="font-size:9px;color:#9aa3b5">Wt '+escHtml(h.wt)+'</div>'
+          +'<div style="font-size:9px;color:#9aa3b5">OR '+escHtml(String(h.or))+'</div>'
         +'</div>'
       +'</div>'
     +'</div>';
@@ -12949,27 +12534,21 @@ function toggleRacingMenu(){
 <!-- AI Research Panel -->
 <div id="ai-panel" style="position:fixed;bottom:0;left:0;right:0;z-index:2000;transform:translateY(100%);transition:transform .35s cubic-bezier(.22,1,.36,1);pointer-events:none">
   <div id="ai-panel-inner" style="background:#0b1628;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 28px rgba(0,0,0,0.35)">
-    <div style="display:flex;align-items:center;padding:8px 14px">
-      <div id="ai-live-indicator" style="flex:1;display:flex;align-items:center;gap:4px">
-        <div id="ai-live-dot" style="width:5px;height:5px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>
-        <span id="ai-live-text" style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#ff6b6b">LIVE</span>
+    <div id="ai-panel-progress" style="padding:14px 14px 16px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+        <div id="ai-live-dot" style="width:7px;height:7px;border-radius:50%;background:#ff3b3b;flex-shrink:0;animation:liveDotPulse 1s ease-in-out infinite"></div>
+        <span id="ai-live-text" style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#ff6b6b">LIVE</span>
       </div>
-      <div id="ai-edge-badge" style="display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid #10b981;border-radius:99px;padding:4px 10px;animation:aiEdgePulse 1.6s ease-in-out infinite">
-        <div style="width:5px;height:5px;border-radius:50%;background:#10b981;flex-shrink:0;animation:liveDotPulse 1.6s ease-in-out infinite"></div>
-        <span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#10b981">AI EDGE</span>
-      </div>
-    </div>
-    <div id="ai-panel-progress" style="padding:4px 14px 16px">
-      <div id="ai-panel-race-title" style="font-size:12px;font-weight:400;color:#fff;line-height:1.2;margin-bottom:1px;text-align:center"></div>
-      <div id="ai-panel-race-name" style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:400;margin-bottom:0;min-height:13px;text-align:center"></div>
-      <div id="ai-panel-race-sub" style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:400;min-height:13px;text-align:center"></div>
-      <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
-        <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:99px;height:3px;overflow:hidden">
+      <div id="ai-panel-race-title" style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1;margin-bottom:5px"></div>
+      <div id="ai-panel-race-name" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:2px"></div>
+      <div id="ai-panel-race-sub" style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:400;min-height:16px;margin-bottom:12px"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:99px;height:2px;overflow:hidden">
           <div id="ai-progress-bar" style="height:100%;border-radius:99px;background:#10b981;width:0%;transition:width 0.5s ease"></div>
         </div>
         <span id="ai-progress-pct" style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:500;min-width:26px;text-align:right">0%</span>
       </div>
-      <div id="ai-panel-step" style="font-size:10px;color:#fff;font-weight:400;margin-top:5px;min-height:14px;letter-spacing:.02em"></div>
+      <div id="ai-panel-step" style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:400;margin-top:8px;min-height:14px;letter-spacing:.02em"></div>
       <div id="ai-panel-ready" style="display:none;margin-top:16px">
         <button onclick="aiPanelExpand()" style="width:100%;background:#fff;color:#0b1628;border:1.5px solid #d4af37;border-radius:99px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px"><span style="color:#d4af37">&#x2756;</span> View AI Edge Report &rarr;</button>
       </div>
