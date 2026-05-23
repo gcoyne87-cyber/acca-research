@@ -10066,13 +10066,12 @@ function renderTodayMeetingsList(){
     var isLast=idx===RC_MEETINGS.length-1;
     // Single row: name+subtitle left | CTA + arrow right
     out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-    out+='<div style="display:flex;align-items:center;padding:11px 14px">';
+    out+='<div style="display:flex;align-items:center;padding:6px 12px">';
     out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:500;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+m.races.length+' races</div>';
+    out+='<div style="font-size:15px;font-weight:800;color:#0b1628;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
     out+='</div>';
     out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0b1628;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> Analyse '+m.races.length+' Races &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0b1628;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> Analyse All '+m.races.length+' Races &rarr;</button>';
     out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
     out+='</div>';
@@ -11279,7 +11278,7 @@ function renderRacingPicks(){
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px">'
           +'<div style="font-size:12px;font-weight:700;color:'+typeColor+';margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(pickTime)+'</div>'
-          +'<div style="font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'</div>'
+          +'<div style="position:relative;font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:800;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(jockeyTrainer.length?jockeyTrainer.join(' &middot; '):'')+(p.form?(jockeyTrainer.length?' &middot; ':'')+escHtml(p.form):'')+'</div>'
           +(p.summary?'<div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.65;margin-bottom:14px">'+escHtml(p.summary)+'</div>':'<div style="margin-bottom:14px"></div>')
           +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
@@ -11308,7 +11307,7 @@ function renderRacingPicks(){
       +'<div style="position:relative;z-index:2">'
         +'<div style="padding:16px 14px 14px">'
           +'<div style="font-size:12px;font-weight:700;color:#d4af37;margin-bottom:1px">'+escHtml(courseName)+' '+escHtml(fullPickTime)+'</div>'
-          +'<div style="font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'</div>'
+          +'<div style="position:relative;font-size:23px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:800;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:10px">'+(fullMetaParts.length?fullMetaParts.join(' &middot; '):'')+'</div>'
           +(inlinePara?'<p style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.6;margin:0 0 8px">'+inlinePara+'</p>':'')
           +'<div style="margin-bottom:10px">'
@@ -11839,13 +11838,12 @@ function renderTomorrowMeetingsList(){
     var selRace=tmOpenRace[m.id];
     var isLast=idx===TM_MEETINGS.length-1;
     out+='<div id="tm-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-    out+='<div style="display:flex;align-items:center;padding:11px 14px">';
+    out+='<div style="display:flex;align-items:center;padding:6px 12px">';
     out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:500;color:#0b1628;letter-spacing:-0.2px;line-height:1.1;margin-bottom:2px">'+escHtml(m.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;font-weight:500">'+m.races.length+' races</div>';
+    out+='<div style="font-size:15px;font-weight:800;color:#0b1628;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
     out+='</div>';
     out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0b1628;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> Analyse '+m.races.length+' Races &rarr;</button>';
+    out+='<button onclick="rcAnalyse(\''+m.id+'\',\'full\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0b1628;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> Analyse All '+m.races.length+' Races &rarr;</button>';
     out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
     out+='</div>';
