@@ -98,8 +98,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
     left:calc(50% - 220px) !important;
     right:calc(50% - 220px) !important;
   }
-  .slip-bubble{right:calc(50% - 220px + 22px) !important}
-  .slip-panel{right:calc(50% - 220px + 22px) !important}
+  .slip-trigger,.slip-sheet,.slip-overlay{left:calc(50% - 220px) !important;right:calc(50% - 220px) !important}
   #racing-menu-overlay{left:calc(50% - 220px) !important;right:auto !important;width:440px !important}
   #racing-menu-drawer{left:calc(50% - 220px) !important;}
 }
@@ -121,8 +120,6 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
   .bottom-nav{display:none !important}
 
   /* Fix overlays — no longer offset for 440px column */
-  .slip-bubble{right:32px !important}
-  .slip-panel{right:32px !important}
   #racing-menu-overlay{left:0 !important;right:0 !important;width:100% !important}
   #racing-menu-drawer{left:0 !important}
 
@@ -821,84 +818,51 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 
 .analysing-block small{font-size:11px;color:var(--muted);display:block;margin-top:5px;font-weight:400}
 
-/* ── SLIP PANEL ── */
+/* ── BETSLIP BOTTOM SHEET ── */
 
-.slip-bubble{position:fixed;bottom:22px;right:22px;z-index:400}
+.slip-trigger{position:fixed;bottom:0;left:0;right:0;z-index:499;background:#0b1628;border-top:1px solid rgba(212,175,55,0.25);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.slip-trigger-left{display:flex;align-items:center;gap:10px}
+.slip-trigger-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.1px}
+.slip-trigger-badge{background:#10b981;color:#fff;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700}
+.slip-trigger-cta{background:#10b981;color:#fff;border:none;border-radius:99px;padding:8px 18px;font-size:12px;font-weight:700;pointer-events:none;font-family:inherit;white-space:nowrap}
+.slip-trigger-odds{font-size:13px;font-weight:700;color:#d4af37;letter-spacing:-.1px}
 
-.slip-toggle{background:var(--navy);color:#fff;border:none;border-radius:50px;padding:11px 18px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:9px;box-shadow:0 4px 20px rgba(11,22,40,0.25);transition:all .2s;white-space:nowrap}
+.slip-overlay{position:fixed;inset:0;background:rgba(5,13,26,0);z-index:500;pointer-events:none;transition:background .3s}
+.slip-overlay.open{background:rgba(5,13,26,0.72);pointer-events:all}
 
-.slip-toggle:hover{background:var(--green)}
+.slip-sheet{position:fixed;bottom:0;left:0;right:0;z-index:501;background:#0b1628;border-radius:20px 20px 0 0;transform:translateY(100%);transition:transform .35s cubic-bezier(0.4,0,0.2,1);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -4px 40px rgba(0,0,0,0.5)}
+.slip-sheet.open{transform:translateY(0)}
+.slip-sheet-handle{width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:99px;margin:12px auto 0;flex-shrink:0}
+.slip-sheet-head{padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+.slip-sheet-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px}
+.slip-sheet-clear{background:none;border:none;color:rgba(255,255,255,0.3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:0;letter-spacing:.01em}
+.slip-sheet-body{overflow-y:auto;flex:1;padding:0 16px}
+.slip-empty-state{text-align:center;padding:36px 0 24px;font-size:13px;color:rgba(255,255,255,0.2);line-height:2;font-weight:400}
+.slip-leg{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+.slip-leg:last-child{border-bottom:none}
+.slip-leg-info{flex:1;min-width:0}
+.slip-leg-horse{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip-leg-meta{font-size:11px;color:rgba(255,255,255,0.32);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip-leg-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.slip-leg-odds{background:#d4af37;color:#0b1628;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:800;white-space:nowrap}
+.slip-leg-remove{background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.35);font-size:15px;line-height:1;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.slip-leg-remove:active{color:#ff6b6b;background:rgba(255,107,107,0.12)}
 
-.slip-badge{background:var(--green);color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.slip-stake-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+.slip-stake-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.1em}
+.slip-stake-ctrl{display:flex;align-items:center;gap:14px}
+.slip-stake-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:20px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.slip-stake-btn:active{background:rgba(255,255,255,0.18)}
+.slip-stake-amt{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.5px;min-width:56px;text-align:center}
 
-.slip-panel{display:none;position:fixed;bottom:70px;right:22px;width:310px;background:var(--navy);border-radius:14px;box-shadow:0 8px 40px rgba(11,22,40,0.35);z-index:400;overflow:hidden}
+.slip-returns{display:grid;grid-template-columns:1fr 1fr 1fr;flex-shrink:0;padding:14px 16px 4px}
+.slip-ret-box{text-align:center;padding:0 4px}
+.slip-ret-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.slip-ret-val{font-size:18px;font-weight:700;color:#fff;letter-spacing:-.4px}
+.slip-ret-box.hi .slip-ret-val{color:#10b981}
 
-.slip-panel.open{display:block}
-
-.slip-panel-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between}
-
-.slip-panel-title{font-size:13px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.08em}
-
-.slip-panel-close{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;line-height:1;padding:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}.slip-panel-close:hover{background:rgba(255,255,255,0.28)}
-
-.slip-body{padding:12px 14px;max-height:420px;overflow-y:auto}
-
-.slip-empty-msg{text-align:center;padding:20px 0;font-size:12px;color:rgba(255,255,255,0.2);line-height:1.8;font-weight:400}
-
-.slip-leg-item{background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:7px;margin-bottom:6px}
-
-.sli-info{flex:1;min-width:0}
-
-.sli-team{font-size:12px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.sli-match{font-size:10px;color:rgba(255,255,255,0.28);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.sli-odds{font-size:13px;font-weight:600;color:rgba(255,255,255,0.45);flex-shrink:0}
-
-.sli-remove{background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;padding:0}
-
-.sli-remove:hover{color:#ff6b6b}
-
-.slip-divider{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:10px 0}
-
-.slip-add-btn{width:100%;background:#f0f2f7;color:#0b1628;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
-@media(hover:hover){.slip-add-btn:hover{background:#0b1628;color:#fff}}
-
-.stake-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-
-.stake-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.35);font-weight:400}
-
-.stake-amt{font-size:26px;font-weight:600;color:#fff;letter-spacing:-1px}
-
-.slider-wrap{position:relative;height:38px;display:flex;align-items:center;margin-bottom:5px;cursor:pointer;user-select:none}
-
-.track-bg{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,0.1);border-radius:99px}
-
-.track-fill{position:absolute;left:0;height:4px;background:var(--green);border-radius:99px}
-
-.ball{position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,0.25)}
-
-.ball:active{cursor:grabbing}
-
-.ball-inner{width:9px;height:9px;border-radius:50%;background:var(--green)}
-
-.ticks{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.18);margin-bottom:12px;font-weight:400}
-
-.returns-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-
-.ret-box{border-radius:9px;padding:10px 11px}
-
-.ret-box.neutral{background:rgba(255,255,255,0.05)}
-
-.ret-box.gold{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25)}
-
-.ret-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,0.28);margin-bottom:5px;font-weight:400}
-
-.ret-box.gold .ret-lbl{color:rgba(16,185,129,0.7)}
-
-.ret-val{font-size:20px;font-weight:600;color:#fff;letter-spacing:-0.5px}
-
-.ret-sub{font-size:9px;color:rgba(255,255,255,0.16);margin-top:2px;font-weight:400}
+.slip-cta-wrap{padding:10px 16px 28px;flex-shrink:0}
+.slip-place-btn{width:100%;background:#10b981;color:#fff;border:none;border-radius:99px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;-webkit-font-smoothing:antialiased;animation:ctaPulse 1.8s ease-in-out infinite}
 
 /* ── TOP NAV ── */
 
@@ -978,12 +942,6 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
   .bottom-nav{display:flex}
 
   .main{padding:12px 0 16px}
-
-  .slip-bubble{bottom:75px;right:12px}
-
-  .slip-toggle{font-size:15px;padding:13px 20px;gap:10px}
-
-  .slip-panel{bottom:135px;right:8px;left:8px;width:auto}
 
   /* TOP NAV */
 
@@ -1750,7 +1708,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
     </div>
 
     <div id="splash-text-wrap" style="margin-top:28px;transition:margin-top 0.5s cubic-bezier(0.4,0,0.2,1);text-align:center;width:100%;padding:0 32px;box-sizing:border-box">
-      <span id="splash-phrase" style="font-family:'Barlow Semi Condensed',sans-serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:0.01em;display:inline-block;clip-path:inset(0 50% 0 50%);will-change:clip-path"></span>
+      <span id="splash-phrase" style="font-family:'Barlow Semi Condensed',sans-serif;font-size:14px;font-weight:600;color:#fff;letter-spacing:0.01em;display:inline-block;clip-path:inset(0 50% 0 50%);will-change:clip-path"></span>
     </div>
 
   </div>
@@ -2489,19 +2447,51 @@ function raT(){
 function raCorkT(){
   var panel=document.getElementById('ra-analysis-panel');
   var runners=document.getElementById('ra-cork-content');
+  var intel=document.getElementById('ra-intelligence-card');
   var ch=document.getElementById('ra-cork-chev');
   var open=panel&&panel.style.display!=='none';
   if(panel) panel.style.display=open?'none':'block';
   if(runners) runners.style.display=open?'none':'flex';
+  if(intel) intel.style.display=open?'none':'block';
   if(ch) ch.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
 }
 function _raExpand(){
   var panel=document.getElementById('ra-analysis-panel');
   var runners=document.getElementById('ra-cork-content');
+  var intel=document.getElementById('ra-intelligence-card');
   var ch=document.getElementById('ra-cork-chev');
   if(panel) panel.style.display='block';
   if(runners) runners.style.display='flex';
+  if(intel) intel.style.display='block';
   if(ch) ch.style.transform='rotate(0deg)';
+}
+function _raToggleSelDetail(){ }
+function _raToggleStrip(btn){
+  var strip=btn.nextElementSibling;
+  if(!strip||!strip.classList.contains('ra-analysis-strip')){
+    var row=btn;
+    while(row&&!row.getAttribute('data-horse')) row=row.parentElement;
+    if(row) strip=row.querySelector('.ra-analysis-strip');
+  }
+  if(!strip) return;
+  var open=strip.style.display!=='none';
+  strip.style.display=open?'none':'block';
+  var txt=btn.querySelector('.ra-strip-txt');
+  if(txt) txt.textContent=open?'View analysis':'Hide analysis';
+  var svg=btn.querySelector('svg');
+  if(svg) svg.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+}
+function _initRunnersCollapsible(){
+  document.querySelectorAll('.ra-analysis-strip').forEach(function(strip){
+    if(strip.dataset.cinit) return;
+    strip.dataset.cinit='1';
+    strip.style.display='none';
+    var btn=document.createElement('button');
+    btn.style.cssText='flex-basis:100%;background:none;border:none;padding:3px 11px 7px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:3px;-webkit-tap-highlight-color:transparent';
+    btn.innerHTML='<span class="ra-strip-txt" style="font-size:10px;font-weight:600;color:#c0c6d4;letter-spacing:.01em">View analysis</span> <svg style="width:9px;height:9px;stroke:#c0c6d4;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    btn.onclick=function(){_raToggleStrip(btn);};
+    strip.parentNode.insertBefore(btn,strip);
+  });
 }
 function _raScrollTo(id){
   var el=document.getElementById(id);
@@ -2521,6 +2511,7 @@ function unlockCorkAnalysis(){
     _raExpand();
     full.style.opacity='0';
     full.style.display='flex';
+    setTimeout(_initRunnersCollapsible,50);
     requestAnimationFrame(function(){
       full.style.transition='opacity .35s ease';
       full.style.opacity='1';
@@ -2636,7 +2627,7 @@ function unlockCorkAnalysis(){
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
       <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">4/1</span>
-      <span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Also Watch</span>
+      <span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Danger</span>
     </div>
   </div>
 
@@ -2707,7 +2698,7 @@ function unlockCorkAnalysis(){
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
       <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">9/1</span>
-      <span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Also Watch</span>
+      <span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Danger</span>
     </div>
   </div>
 
@@ -2957,6 +2948,15 @@ function unlockCorkAnalysis(){
 <!-- FULL ANALYSIS (hidden until unlocked) -->
 <div id="cork-analysis-full" style="display:none;flex-direction:column;gap:12px">
 
+<!-- BLOCK 1: RACE HEADER -->
+<div id="ra-cork-hdr" onclick="raCorkT()" style="background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(11,22,40,0.12);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <div>
+    <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
+    <div id="ra-cork-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 runners</div>
+  </div>
+  <svg id="ra-cork-chev" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</div>
+
 <!-- RACE INTELLIGENCE -->
 <div id="ra-intelligence-card" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
   <div style="padding:0 16px 16px">
@@ -2969,16 +2969,78 @@ function unlockCorkAnalysis(){
   </div>
 </div>
 
-<!-- BLOCK 1: RACE HEADER -->
-<div id="ra-cork-hdr" onclick="raCorkT()" style="order:1;position:sticky;top:110px;z-index:100;background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(11,22,40,0.12);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-  <div>
-    <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
-    <div id="ra-cork-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 runners</div>
-  </div>
-  <svg id="ra-cork-chev" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-</div>
+<!-- ANALYSIS PANEL: selection + dangers + verdict -->
+<div id="ra-analysis-panel" style="display:flex;flex-direction:column;gap:0">
 
-<div id="ra-cork-content" style="order:3;display:flex;flex-direction:column;gap:12px">
+  <!-- STRONGEST SELECTION CARD -->
+  <div id="ra-selection-card" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
+    <div style="padding:0 16px 16px">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">STRONGEST SELECTION</span>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+        <div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">Majolique</div>
+        <div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;flex-shrink:0;line-height:1.4">2/1</div>
+      </div>
+      <div style="font-size:10px;color:#9aa3b5;margin-bottom:8px">J.P. Townend &middot; W.P. Mullins &middot; 12111</div>
+      <p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 12px"><span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">JOCKEY</span> Townend retained &mdash; Mullins doesn&rsquo;t put his number one up without reason. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">GOING</span> Two wins on Heavy this season, conditions couldn&rsquo;t suit better. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">FORM</span> Four from five over hurdles, sole defeat a Grade 1 close second. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">TRAINER</span> Mullins running at 52% strike rate this season &mdash; five winners in the last seven days.</p>
+      <div style="margin-bottom:10px">
+        <button onclick="var d=document.getElementById('ra-fac-det');var open=d.style.display!=='none';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel('Majolique');d.dataset.loaded='1';}d.style.display=open?'none':'block';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+        <div id="ra-fac-det" style="display:none;margin-top:8px">
+        <div style="padding-top:10px;border-top:1px solid #f0f2f7">
+          <div style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.08em;margin-bottom:7px">RECENT FORM</div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
+            <div style="display:flex;gap:6px;padding-bottom:3px;min-width:max-content">
+              <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">06 Apr 2025</div>
+                <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Punchestown</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Yielding</div>
+                <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/8</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-10</div><div style="font-size:9px;color:#9aa3b5">OR 143</div></div></div>
+              </div>
+              <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">15 Mar 2025</div>
+                <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Cheltenham</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m5f</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Soft</div>
+                <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/14</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 141</div></div></div>
+              </div>
+              <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
+                <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">18 Jan 2025</div>
+                <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Leopardstown</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
+                <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Heavy</div>
+                <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#5a6478">2<span style="font-size:9px;font-weight:500;color:#c0c6d4">/10</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 138</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>
+    </div>
+  </div>
+
+  <!-- ALSO WATCH CARD -->
+  <!-- RACE VERDICT CARD -->
+  <div id="ra-verdict-block" style="position:relative;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.28);margin-top:12px">
+    <img id="ra-verdict-bg" src="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 35%" alt="">
+    <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>
+    <div style="position:relative;z-index:2;padding:16px 16px 20px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>
+      <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">RACE VERDICT</span>
+      <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.55))"></div>
+    </div>
+    <p id="ra-verdict-bullets" style="font-size:12px;color:#fff;line-height:1.7;margin:0">We go with Majolique &mdash; the Townend booking is the key signal here and champion jockeys don&rsquo;t take Cork maiden hurdles in Heavy ground for fun. Mullins has won this race twice in four seasons with a similar profile horse and the market hasn&rsquo;t drifted. Proactif has each-way claims and Walsh wouldn&rsquo;t take the ride without thinking he can place, while Macho Man has the form figures to be competitive on this ground. Fade Doctor Elvis entirely.</p>
+  </div>
+  </div>
+
+</div><!-- END ra-analysis-panel -->
+
+<div id="ra-cork-content" style="display:flex;flex-direction:column;gap:12px">
 
 <!-- BLOCK 2: FULL RACE CARD -->
 <div style="background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(11,22,40,0.06);overflow:hidden">
@@ -3036,7 +3098,7 @@ function unlockCorkAnalysis(){
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
       <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">5/2</span>
-      <span class="ra-runner-badge"><span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Also Watch</span></span>
+      <span class="ra-runner-badge"><span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Danger</span></span>
     </div>
 <div class="ra-analysis-strip" style="flex-basis:100%;padding:2px 11px 8px 11px;font-size:11px;line-height:1.4;color:#8a4a10">Mullins’s second string on paper but Walsh doesn’t take rides he can’t win on. If the favourite is beaten this is the likeliest beneficiary — the 5/2 looks workable each-way.</div>
   </div>
@@ -3060,7 +3122,7 @@ function unlockCorkAnalysis(){
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
       <span style="background:#f0f2f7;color:#0b1628;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:800">4/1</span>
-      <span class="ra-runner-badge"><span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Also Watch</span></span>
+      <span class="ra-runner-badge"><span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Danger</span></span>
     </div>
 <div class="ra-analysis-strip" style="flex-basis:100%;padding:2px 11px 8px 11px;font-size:11px;line-height:1.4;color:#8a4a10">A deliberate family booking — Donnacha Mullins on a Willie Mullins runner is never accidental. Two wins already this season and still unexposed at this trip.</div>
   </div>
@@ -3186,108 +3248,6 @@ function unlockCorkAnalysis(){
   </div>
 </div>
 </div><!-- END ra-cork-content -->
-
-<!-- ANALYSIS PANEL: 3 separate cards -->
-<div id="ra-analysis-panel" style="order:2;display:flex;flex-direction:column;gap:0">
-
-  <!-- STRONGEST SELECTION CARD -->
-  <div id="ra-selection-card" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.09)">
-    <div style="padding:0 16px 16px">
-      <div style="display:flex;align-items:center;gap:8px;padding:12px 0 10px">
-        <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.45))"></div>
-        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">STRONGEST SELECTION</span>
-        <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.45))"></div>
-      </div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
-        <div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">Majolique</div>
-        <div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;flex-shrink:0;line-height:1.4">2/1</div>
-      </div>
-      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">J.P. Townend &middot; W.P. Mullins &middot; 12111</div>
-      <p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 8px"><span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">JOCKEY</span> Townend retained &mdash; Mullins doesn&rsquo;t put his number one up without reason. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">GOING</span> Two wins on Heavy this season, conditions couldn&rsquo;t suit better. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">FORM</span> Four from five over hurdles, sole defeat a Grade 1 close second. <span style="font-size:9.5px;font-weight:700;color:#d4af37;letter-spacing:.07em">TRAINER</span> Mullins running at 52% strike rate this season &mdash; five winners in the last seven days.</p>
-      <div style="margin-bottom:10px">
-        <button onclick="var d=document.getElementById('ra-fac-det');var open=d.style.display!=='none';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel('Majolique');d.dataset.loaded='1';}d.style.display=open?'none':'block';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
-        <div id="ra-fac-det" style="display:none;margin-top:8px">
-          <div style="padding-top:10px;border-top:1px solid #f0f2f7">
-            <div style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.08em;margin-bottom:7px">RECENT FORM</div>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
-              <div style="display:flex;gap:6px;padding-bottom:3px;min-width:max-content">
-                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">06 Apr 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Punchestown</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Yielding</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/8</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-10</div><div style="font-size:9px;color:#9aa3b5">OR 143</div></div></div>
-                </div>
-                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">15 Mar 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Cheltenham</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m5f</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Soft</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#1e9e6b">1<span style="font-size:9px;font-weight:500;color:#c0c6d4">/14</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 141</div></div></div>
-                </div>
-                <div style="flex-shrink:0;width:110px;background:#f8f9fb;border:1px solid #e4e8f0;border-radius:8px;padding:8px 9px">
-                  <div style="font-size:9px;color:#9aa3b5;font-weight:600;margin-bottom:3px">18 Jan 2025</div>
-                  <div style="font-size:11px;font-weight:700;color:#0b1628;margin-bottom:2px">Leopardstown</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:1px">LH &middot; 2m4f</div>
-                  <div style="font-size:9px;color:#9aa3b5;margin-bottom:5px">Heavy</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:800;color:#5a6478">2<span style="font-size:9px;font-weight:500;color:#c0c6d4">/10</span></span><div style="text-align:right"><div style="font-size:9px;color:#9aa3b5">Wt 11-12</div><div style="font-size:9px;color:#9aa3b5">OR 138</div></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <button onclick="nrAddToSlip('Majolique','2/1')" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>
-    </div>
-  </div>
-
-  <!-- ALSO WATCH CARD -->
-  <div id="ra-watch-section" style="background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(11,22,40,0.06);padding:0 16px 20px;display:flex;flex-direction:column;margin-top:0">
-    <div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px">
-      <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>
-      <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">ALSO WATCH</span>
-      <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.55))"></div>
-    </div>
-    <div>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:13px;font-weight:700;color:#0b1628">Proactif</span>
-          <span style="font-size:9px;color:#c0c6d4">21122</span>
-        </div>
-        <span style="font-size:13px;font-weight:700;color:#0b1628">5/2</span>
-      </div>
-      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">M.P. Walsh &middot; W.P. Mullins</div>
-      <p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">Walsh doesn&rsquo;t take rides he can&rsquo;t win. Same yard, same ground &mdash; the clear each-way route if the favourite slips up.</p>
-    </div>
-    <div style="height:1px;background:#f0f2f7;margin:12px 0"></div>
-    <div>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:13px;font-weight:700;color:#0b1628">Macho Man</span>
-          <span style="font-size:9px;color:#c0c6d4">32113</span>
-        </div>
-        <span style="font-size:13px;font-weight:700;color:#0b1628">4/1</span>
-      </div>
-      <div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">D.E. Mullins &middot; W.P. Mullins</div>
-      <p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">Family booking from the champion yard &mdash; never an accident. Two wins this season, still capable of more.</p>
-    </div>
-  </div>
-
-  <!-- RACE VERDICT CARD -->
-  <div id="ra-verdict-block" style="position:relative;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.28);margin-top:12px">
-    <img id="ra-verdict-bg" src="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 35%" alt="">
-    <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,14,38,0.98) 0%,rgba(8,14,38,0.95) 45%,rgba(8,14,38,0.82) 70%,rgba(8,14,38,0.65) 100%)"></div>
-    <div style="position:relative;z-index:2;padding:16px 16px 20px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>
-      <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">RACE VERDICT</span>
-      <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.55))"></div>
-    </div>
-    <p id="ra-verdict-bullets" style="font-size:12px;color:#fff;line-height:1.7;margin:0">The Townend booking is the key &mdash; champion jockeys don&rsquo;t take Cork maiden hurdles in Heavy ground for fun. Proactif and Macho Man are genuine each-way options if the favourite underperforms, but they&rsquo;re not beating him. Fade Doctor Elvis entirely &mdash; Elliott&rsquo;s horse has no Heavy form and the booking is weak compared to the Mullins trio.</p>
-  </div>
-  </div>
-
-</div><!-- END ra-analysis-panel -->
 
 </div>
 <!-- END CORK RACE ANALYSIS -->
@@ -4439,9 +4399,15 @@ function unlockCorkAnalysis(){
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
+          <div id="home-rc-day-label" style="font-size:16px;font-weight:700;color:#0b1628;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
         </div>
-        <div id="today-meetings-count" style="background:#e8eaf0;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div style="display:flex;background:#e8eaf0;border-radius:99px;padding:2px;gap:2px">
+            <button id="home-rc-pill-today" onclick="selectHomeRcDay('today')" style="background:#0b1628;color:#fff;border:none;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Today</button>
+            <button id="home-rc-pill-tomorrow" onclick="selectHomeRcDay('tomorrow')" style="background:transparent;color:#5a6478;border:none;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Tomorrow</button>
+          </div>
+          <div id="today-meetings-count" style="background:#e8eaf0;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap"></div>
+        </div>
       </div>
     </div>
     <div id="today-meetings-list" style="background:#fff;padding:0 0 6px"></div>
@@ -5056,78 +5022,45 @@ function unlockCorkAnalysis(){
 
 </div><!-- /main -->
 
-<div class="slip-bubble">
+<!-- Betslip overlay -->
+<div class="slip-overlay" id="slip-overlay" onclick="toggleSlip()"></div>
 
-  <div class="slip-panel" id="slip-panel">
-
-    <div class="slip-panel-head">
-
-      <div class="slip-panel-title">My Selections</div>
-
-      <button class="slip-panel-close" onclick="toggleSlip()">&#215;</button>
-
-    </div>
-
-    <div class="slip-body">
-
-      <div id="slip-legs-container">
-
-        <div class="slip-empty-msg">No selections yet.<br>Analyse &amp; add picks to build your slip.</div>
-
-      </div>
-
-      <hr class="slip-divider">
-
-      <div class="stake-row">
-
-        <span class="stake-lbl">Stake</span>
-
-        <span class="stake-amt" id="stake-display">€10</span>
-
-      </div>
-
-      <div class="slider-wrap" id="slider-wrap">
-
-        <div class="track-bg"></div>
-
-        <div class="track-fill" id="track-fill"></div>
-
-        <div class="ball" id="ball"><div class="ball-inner"></div></div>
-
-      </div>
-
-      <div class="ticks"><span>€5</span><span>€15</span><span>€25</span><span>€35</span><span>€50</span></div>
-
-      <div class="returns-grid">
-
-        <div class="ret-box neutral"><div class="ret-lbl">Combined odds</div><div class="ret-val" id="r-odds">—</div><div class="ret-sub" id="r-dec"></div></div>
-
-        <div class="ret-box neutral"><div class="ret-lbl">Legs</div><div class="ret-val" id="r-legs">0</div></div>
-
-      </div>
-
-      <div class="returns-grid">
-
-        <div class="ret-box gold"><div class="ret-lbl">Return</div><div class="ret-val" id="r-return">—</div></div>
-
-        <div class="ret-box gold"><div class="ret-lbl">Profit</div><div class="ret-val" id="r-profit">—</div></div>
-
-      </div>
-
-      <button onclick="clearSlip()" style="width:100%;margin-top:10px;padding:11px;background:rgba(229,57,53,0.1);color:#e53935;border:1.5px solid rgba(229,57,53,0.3);border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s">&#128465; Clear Slip</button>
-
-    </div>
-
+<!-- Betslip bottom sheet -->
+<div class="slip-sheet" id="slip-panel">
+  <div class="slip-sheet-handle"></div>
+  <div class="slip-sheet-head">
+    <span class="slip-sheet-title" id="slip-sheet-title">My Slip</span>
+    <button class="slip-sheet-clear" onclick="clearSlip()">Clear all</button>
   </div>
+  <div class="slip-sheet-body" id="slip-legs-container">
+    <div class="slip-empty-state">No selections yet.<br>Analyse &amp; add picks to build your slip.</div>
+  </div>
+  <div class="slip-stake-row" id="slip-stake-row" style="display:none">
+    <span class="slip-stake-lbl">Stake</span>
+    <div class="slip-stake-ctrl">
+      <button class="slip-stake-btn" onclick="slipAdjStake(-5)">&#8722;</button>
+      <span class="slip-stake-amt" id="slip-stake-amt">£10</span>
+      <button class="slip-stake-btn" onclick="slipAdjStake(5)">+</button>
+    </div>
+  </div>
+  <div class="slip-returns" id="slip-returns" style="display:none">
+    <div class="slip-ret-box hi"><div class="slip-ret-lbl">Return</div><div class="slip-ret-val" id="sr-return">—</div></div>
+    <div class="slip-ret-box"><div class="slip-ret-lbl">Profit</div><div class="slip-ret-val" id="sr-profit">—</div></div>
+    <div class="slip-ret-box"><div class="slip-ret-lbl">Odds</div><div class="slip-ret-val" id="sr-odds">—</div></div>
+  </div>
+  <div class="slip-cta-wrap" id="slip-cta-wrap" style="display:none">
+    <button class="slip-place-btn">Place Bet &rarr;</button>
+  </div>
+</div>
 
-  <button class="slip-toggle" id="slip-toggle" onclick="toggleSlip()">
-
-    &#128196; Selections
-
-    <span class="slip-badge" id="slip-badge">0</span>
-
-  </button>
-
+<!-- Betslip trigger bar -->
+<div class="slip-trigger" id="slip-trigger" onclick="toggleSlip()" style="display:none">
+  <div class="slip-trigger-left">
+    <span class="slip-trigger-label">My Slip</span>
+    <span class="slip-trigger-badge" id="slip-badge">0</span>
+    <span class="slip-trigger-odds" id="slip-trigger-odds" style="display:none"></span>
+  </div>
+  <button class="slip-trigger-cta">View Slip</button>
 </div>
 
 <script>
@@ -6880,7 +6813,8 @@ function buildCardHTML(c){
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-function toggleSlip(){slipOpen=!slipOpen;document.getElementById('slip-panel').classList.toggle('open',slipOpen);}
+function toggleSlip(){slipOpen=!slipOpen;var s=document.getElementById('slip-panel');var o=document.getElementById('slip-overlay');if(s)s.classList.toggle('open',slipOpen);if(o)o.classList.toggle('open',slipOpen);}
+function slipAdjStake(d){stake=Math.max(5,Math.min(500,stake+d));var el=document.getElementById('slip-stake-amt');if(el)el.textContent='£'+stake;renderSlip();}
 
 function addToSlip(btn){
 
@@ -6959,44 +6893,58 @@ function toDecimal(n,d){return 1+(n/d);}
 function toDisplayOdds(dec){var w=dec-1;if(w<=0)return'0/1';w=Math.round(w*10)/10;return(Number.isInteger(w)?w.toFixed(0):w.toFixed(1))+'/1';}
 
 function renderSlip(){
-
   var n=slipLegs.length;
-
-  document.getElementById('slip-badge').textContent=n;
-
+  var badge=document.getElementById('slip-badge');
+  if(badge) badge.textContent=n;
+  var title=document.getElementById('slip-sheet-title');
+  if(title) title.textContent=n>0?'My Slip · '+n+(n===1?' horse':' horses'):'My Slip';
   var con=document.getElementById('slip-legs-container');
-
+  var stakeRow=document.getElementById('slip-stake-row');
+  var returnsEl=document.getElementById('slip-returns');
+  var ctaWrap=document.getElementById('slip-cta-wrap');
+  var tOdds=document.getElementById('slip-trigger-odds');
+  var trigger=document.getElementById('slip-trigger');
   if(!n){
-
-    con.innerHTML='<div class="slip-empty-msg">No selections yet.<br>Analyse &amp; add picks to build your slip.</div>';
-
-    ['r-odds','r-dec','r-legs','r-return','r-profit'].forEach(function(id){document.getElementById(id).textContent=id==='r-legs'?'0':'—';});
-
+    if(con) con.innerHTML='<div class="slip-empty-state">No selections yet.<br>Analyse &amp; add picks to build your slip.</div>';
+    if(stakeRow) stakeRow.style.display='none';
+    if(returnsEl) returnsEl.style.display='none';
+    if(ctaWrap) ctaWrap.style.display='none';
+    if(tOdds) tOdds.style.display='none';
+    if(trigger) trigger.style.display='none';
     return;
-
   }
-
-  con.innerHTML=slipLegs.map(function(s){
-
-    return '<div class="slip-leg-item"><div class="sli-info"><div class="sli-team">'+s.team+'</div><div class="sli-match">'+s.match+'</div></div><div class="sli-odds">'+s.odds+'</div><button class="sli-remove" onclick="removeFromSlip(\''+s.legId+'\')">&#215;</button></div>';
-
+  if(trigger) trigger.style.display='flex';
+  if(con) con.innerHTML=slipLegs.map(function(s){
+    var meta=[s.venue,s.meta].filter(Boolean).join(' · ');
+    return '<div class="slip-leg">'
+      +'<div class="slip-leg-info">'
+        +'<div class="slip-leg-horse">'+escHtmlS(s.team)+'</div>'
+        +(meta?'<div class="slip-leg-meta">'+escHtmlS(meta)+'</div>':'')
+      +'</div>'
+      +'<div class="slip-leg-right">'
+        +'<span class="slip-leg-odds">'+escHtmlS(s.odds)+'</span>'
+        +'<button class="slip-leg-remove" onclick="removeFromSlip(\''+s.legId+'\')">&#215;</button>'
+      +'</div>'
+    +'</div>';
   }).join('');
-
+  if(stakeRow) stakeRow.style.display='flex';
+  if(returnsEl) returnsEl.style.display='grid';
+  if(ctaWrap) ctaWrap.style.display='block';
   var combined=1;
-
   slipLegs.forEach(function(s){combined*=toDecimal(s.num,s.den);});
-
-  document.getElementById('r-odds').textContent=toDisplayOdds(combined);
-
-  document.getElementById('r-dec').textContent=combined.toFixed(2)+'x decimal';
-
-  document.getElementById('r-legs').textContent=n+(n===1?' leg':' legs');
-
-  document.getElementById('r-return').textContent='€'+(stake*combined).toFixed(2);
-
-  document.getElementById('r-profit').textContent='€'+(stake*combined-stake).toFixed(2);
-
+  var ret=stake*combined,profit=ret-stake;
+  var oddsStr=toDisplayOdds(combined);
+  var rRet=document.getElementById('sr-return');
+  var rPro=document.getElementById('sr-profit');
+  var rOdds=document.getElementById('sr-odds');
+  if(rRet) rRet.textContent='£'+ret.toFixed(2);
+  if(rPro) rPro.textContent='£'+profit.toFixed(2);
+  if(rOdds) rOdds.textContent=oddsStr;
+  var stakeAmt=document.getElementById('slip-stake-amt');
+  if(stakeAmt) stakeAmt.textContent='£'+stake;
+  if(tOdds){tOdds.textContent=oddsStr;tOdds.style.display='inline';}
 }
+function escHtmlS(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function snapToStep(v){return Math.round(v/STEP)*STEP;}
 
@@ -7004,7 +6952,7 @@ function pctFromStake(s){return(s-MIN)/(MAX-MIN);}
 
 function positionBall(pct){
 
-  var wrap=document.getElementById('slider-wrap');
+  var wrap=document.getElementById('slider-wrap');if(!wrap)return;
 
   var px=pct*wrap.offsetWidth;
 
@@ -7028,7 +6976,7 @@ function setStake(s){
 
 function initSlider(){
 
-  var wrap=document.getElementById('slider-wrap');var dragging=false;
+  var wrap=document.getElementById('slider-wrap');if(!wrap)return;var dragging=false;
 
   function raw(e){var rect=wrap.getBoundingClientRect();var cx=e.touches?e.touches[0].clientX:e.clientX;return MIN+Math.min(1,Math.max(0,(cx-rect.left)/rect.width))*(MAX-MIN);}
 
@@ -10072,18 +10020,34 @@ function todaySelectRace(mid,ri){
   },60);
 }
 
+var _homeRcDay='today';
+
+function selectHomeRcDay(d){
+  _homeRcDay=d;
+  var pt=document.getElementById('home-rc-pill-today');
+  var pm=document.getElementById('home-rc-pill-tomorrow');
+  var lbl=document.getElementById('home-rc-day-label');
+  var activeStyle='background:#0b1628;color:#fff;border:none;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s';
+  var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s';
+  if(pt) pt.style.cssText=d==='today'?activeStyle:inactiveStyle;
+  if(pm) pm.style.cssText=d==='tomorrow'?activeStyle:inactiveStyle;
+  if(lbl) lbl.textContent=d==='today'?"Today's Racecards":"Tomorrow's Racecards";
+  renderTodayMeetingsList();
+}
+
 function renderTodayMeetingsList(){
   var el=document.getElementById("today-meetings-list");
   if(!el) return;
+  var meetings=_homeRcDay==='tomorrow'?TM_MEETINGS:RC_MEETINGS;
   var cnt=document.getElementById('today-meetings-count');
-  if(cnt) cnt.textContent=RC_MEETINGS.length+' meeting'+(RC_MEETINGS.length===1?'':'s');
+  if(cnt) cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-  RC_MEETINGS.forEach(function(m,idx){
+  meetings.forEach(function(m,idx){
     var isOpen=todayOpenMeeting===m.id;
     var hasRace=rcOpenRace[m.id]!=null;
     var selRace=rcOpenRace[m.id];
     var firstTime=m.races.length?m.races[0].t:'';
-    var isLast=idx===RC_MEETINGS.length-1;
+    var isLast=idx===meetings.length-1;
     // Single row: name+subtitle left | CTA + arrow right
     out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     out+='<div style="display:flex;align-items:center;padding:6px 12px">';
@@ -10934,7 +10898,7 @@ function nrToggleMore(){
   if(txt) txt.textContent=nrMoreOpen?"Show less":(NR_RUNNERS.length-4)+" more runners";
 }
 
-function nrAddToSlip(name,price){
+function nrAddToSlip(name,price,venue,time){
   try{
     var legId='nr_'+name.replace(/\s+/g,'_');
     var already=slipLegs.some(function(s){return s.legId===legId;});
@@ -10945,10 +10909,8 @@ function nrAddToSlip(name,price){
     }
     var parts=(price||'EVS').split('/');
     var num=parseInt(parts[0])||1,den=parseInt(parts[1])||1;
-    slipLegs.push({legId:legId,team:name,match:'Horse Racing',odds:price||'EVS',num:num,den:den});
+    slipLegs.push({legId:legId,team:name,match:'Horse Racing',venue:venue||'',meta:time||'',odds:price||'EVS',num:num,den:den});
     renderSlip();
-    var tog=document.getElementById('slip-toggle');
-    if(tog) tog.style.display='flex';
     if(!slipOpen) toggleSlip();
   }catch(e){
     var t=document.createElement('div');
@@ -11301,7 +11263,7 @@ function renderRacingPicks(){
           +'<div style="position:relative;font-size:23px;font-weight:600;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:1px">'+escHtml(p.horse)+'<span style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:#10b981;color:#fff;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:700;white-space:nowrap">'+escHtml(p.odds)+'</span></div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(jockeyTrainer.length?jockeyTrainer.join(' &middot; '):'')+(p.form?(jockeyTrainer.length?' &middot; ':'')+escHtml(p.form):'')+'</div>'
           +(p.summary?'<div style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.65;margin-bottom:14px">'+escHtml(p.summary)+'</div>':'<div style="margin-bottom:14px"></div>')
-          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
           +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(pickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+escHtml(courseName)+' '+escHtml(pickTime)+' &rarr;</button>':'')
         +'</div>'
       +'</div>';
@@ -11334,7 +11296,7 @@ function renderRacingPicks(){
             +'<button onclick="var d=document.getElementById(\'tips-det-'+i+'\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(\''+escHtml(p.horse)+'\');d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:rgba(255,255,255,0.45);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
             +'<div id="tips-det-'+i+'" style="display:none;margin-top:8px"></div>'
           +'</div>'
-          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" style="width:100%;background:#0b1628;color:#fff;border:1.5px solid #d4af37;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to Slip</button>'
           +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
         +'</div>'
       +'</div>'
@@ -12277,9 +12239,9 @@ function _populateRaceAnalysis() {
     if (imgEl && imgEl.getAttribute("src")) verdictBg.src = imgEl.getAttribute("src");
   }
   if (r.strongestSelection) _renderSelectionCard(r.strongestSelection);
-  if (Array.isArray(r.horsesToWatch)) _renderWatchSection(r.horsesToWatch);
   _updateRunnerLabels(r);
   if (_aiRacePayload) mrAddSingleRace(_aiRacePayload, r);
+  setTimeout(_initRunnersCollapsible,50);
 }
 
 function _renderSelectionCard(sel) {
@@ -12311,48 +12273,14 @@ function _renderSelectionCard(sel) {
     +'<div style="font-size:22px;font-weight:900;color:#0b1628;letter-spacing:-.4px;line-height:1.1;flex:1;min-width:0">'+horseName+'</div>'
     +'<div style="background:#0b1628;color:#d4af37;border-radius:99px;padding:5px 14px;font-size:15px;font-weight:800;flex-shrink:0;line-height:1.4">'+odds+'</div>'
     +'</div>'
-    +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">'+jockey+' &middot; '+trainer+' &middot; '+form+'</div>'
-    +(inlinePara?'<p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 8px">'+inlinePara+'</p>':'')
-    +'<div style="margin-bottom:10px">'
+    +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:8px">'+jockey+' &middot; '+trainer+' &middot; '+form+'</div>'
+    +(inlinePara?'<p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 12px">'+inlinePara+'</p>':'')
+    +'<div style="margin-bottom:12px">'
     +'<button data-hname="'+horseName+'" onclick="var d=document.getElementById(\'ra-fac-det\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(this.dataset.hname);d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:#9aa3b5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">Recent form <svg style="width:10px;height:10px;stroke:#9aa3b5;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
     +'<div id="ra-fac-det" style="display:none;margin-top:8px"></div>'
     +'</div>'
     +'<button data-hname="'+horseName+'" data-odds="'+odds+'" onclick="nrAddToSlip(this.dataset.hname,this.dataset.odds)" style="width:100%;background:#0b1628;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>'
     +'</div>';
-}
-
-function _renderWatchSection(horses) {
-  var section = document.getElementById('ra-watch-section');
-  if (!section) return;
-  section.style.cssText = 'background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(11,22,40,0.06);padding:0 16px 20px;display:flex;flex-direction:column;margin-top:0';
-  var divider = '<div style="display:flex;align-items:center;gap:8px;padding:16px 0 14px">'
-    +'<div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>'
-    +'<span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">ALSO WATCH</span>'
-    +'<div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.55))"></div>'
-    +'</div>';
-  if (!horses.length) { section.innerHTML = divider; return; }
-  var items = horses.map(function(h, i) {
-    var hn = _safeHtml(h.horseName || '');
-    var odds = _safeHtml(h.odds || '');
-    var jockey = _safeHtml(h.jockey || '');
-    var trainer = _safeHtml(h.trainer || '');
-    var form = _safeHtml(h.formFigures || '');
-    var excerpt = _safeHtml(h.excerpt || '');
-    var sep = i > 0 ? '<div style="height:1px;background:#f0f2f7;margin:14px 0"></div>' : '';
-    return sep
-      +'<div>'
-      +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px">'
-      +'<div style="display:flex;align-items:baseline;gap:6px">'
-      +'<span style="font-size:13px;font-weight:700;color:#0b1628">'+hn+'</span>'
-      +(form ? '<span style="font-size:9px;color:#c0c6d4">'+form+'</span>' : '')
-      +'</div>'
-      +'<span style="font-size:13px;font-weight:700;color:#0b1628">'+odds+'</span>'
-      +'</div>'
-      +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:5px">'+jockey+' &middot; '+trainer+'</div>'
-      +'<p style="font-size:11px;color:#5a6478;line-height:1.55;margin:0">'+excerpt+'</p>'
-      +'</div>';
-  }).join('');
-  section.innerHTML = divider + items;
 }
 
 function _updateRunnerLabels(r) {
@@ -12375,7 +12303,7 @@ function _updateRunnerLabels(r) {
     } else if (watchNames.indexOf(horse) !== -1) {
       row.style.borderLeftColor = 'transparent';
       row.style.background = '';
-      badge.innerHTML = '<span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Also Watch</span>';
+      badge.innerHTML = '<span style="background:rgba(221,121,38,0.12);color:#b85e10;border:1px solid rgba(221,121,38,0.45);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;white-space:nowrap">&#9670; Danger</span>';
       analysisText = analysisMap[horse] || watchMap[horse] || '';
     } else {
       row.style.borderLeftColor = 'transparent';

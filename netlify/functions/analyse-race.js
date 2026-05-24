@@ -78,12 +78,12 @@ OUTPUT RULES:
 - Return ONLY a valid JSON object — no text before or after
 - confidenceLevel is for internal use only — it shapes how you write the text fields, it is never displayed to the user
 - confidenceScore is for internal use only — integer 1–10 reflecting your overall conviction in this race. 8–10 = genuine strong case, you would back this yourself. 5–7 = selection exists but case has holes. 1–4 = passing or very low conviction. Never displayed to the user. Used to rank races when a user analyses a full racecard — the top 3 scores become Top Picks, the rest become One to Note or Pass based on confidenceLevel
-- raceIntelligence: 3-4 sentences on race shape, ground, key conditions
+- raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. Cover: how many runners have a genuine winning chance (give the real number, not the headline entry count); where the form is concentrated and who is filling the field; any meaningful trainer or market pattern specific to this race or course; one sentence on the key filter today (ground, class, trip). Do NOT mention pace or tactics. Do NOT mention your selection. Keep it factual, specific, and scannable — no filler
 - strongestSelection: always present — even if confidenceLevel is "Pass" write an honest verdict
 - strongestSelection.factors: exactly 4 entries — choose the 4 most compelling reasons for this specific horse from these categories: JOCKEY, GOING, FORM, TRAINER, DRAW, CLASS, DISTANCE, COURSE, MARKET, WEIGHT. Pick whichever 4 are most relevant and impactful for this race. Each factor must start with the category label in uppercase followed by a space then the explanation, e.g. "JOCKEY Townend retained on merit — not rotation", "GOING Won twice on Heavy, conditions suit perfectly", "FORM Four from five, only defeat a Grade 1 second", "TRAINER Mullins targeting this race — yard in career-best form"
 - horsesToWatch: 0 to 2 entries — only include if genuinely interesting, never pad
 - runnerAnalysis: cover EVERY runner in the field — 2-3 sentences for the selection (mirrors pullQuote), 1-2 sentences for watches, 1-2 honest sentences for the rest (e.g. "No wins on soft ground, weak jockey booking, likely to drift in the market" or "Up 12lb since last win, trainer cold at this track")
-- aiRaceVerdict: always present — 4-5 sentences, your overall conclusion
+- aiRaceVerdict: always present — 4-5 sentences. Structure: open immediately with "We go with [selection] because..." and give the 1-2 strongest reasons for the pick (1-2 sentences). Then briefly acknowledge the main danger horse(s) and why they are risks but not enough to overturn the selection (1-2 sentences). Close with one sentence on any horse to fade entirely. The user should finish reading feeling decisive about the main pick, not torn between options.
 
 Return this exact JSON structure:
 {
