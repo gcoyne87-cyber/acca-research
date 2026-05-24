@@ -3041,15 +3041,11 @@ function unlockCorkAnalysis(){
 
 <!-- BLOCK 2: FULL RACE CARD -->
 <div style="background:#fff;border:1.5px solid #e4e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(11,22,40,0.06);overflow:hidden">
-  <div style="padding:14px 16px 0">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-      <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(212,175,55,0.55))"></div>
-      <span id="ra-racecard-title" style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#d4af37">CORK &middot; 13:15</span>
-      <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(212,175,55,0.55))"></div>
-    </div>
-    <div style="text-align:center;font-size:10.5px;color:#9aa3b5;margin-bottom:12px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 Runners</div>
+  <div style="padding:12px 14px 10px;border-bottom:1px solid #f0f2f7">
+    <div id="ra-racecard-title" style="font-size:16px;font-weight:700;color:#0b1628;margin-bottom:1px">Cork &middot; 13:15</div>
+    <div id="ra-racecard-sub1" style="font-size:12px;color:#9aa3b5;margin-bottom:1px">Maiden Hurdle &middot; 2m7f</div>
+    <div id="ra-racecard-sub2" style="font-size:11px;color:#9aa3b5">Heavy &middot; 8 runners</div>
   </div>
-  <div style="height:1px;background:#f0f2f7"></div>
 
   <!-- Majolique 2/1 FAV — stall 9 — PICK -->
   <div data-horse="Majolique" style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;padding:8px 14px 0 11px;border-left:3px solid transparent;border-bottom:1px solid #f0f2f7">
@@ -12223,6 +12219,8 @@ function _populateRaceAnalysis() {
   var hdrTitle = document.getElementById('ra-cork-hdr-title');
   var hdrSub = document.getElementById('ra-cork-sub');
   var rcTitle = document.getElementById('ra-racecard-title');
+  var rcSub1 = document.getElementById('ra-racecard-sub1');
+  var rcSub2 = document.getElementById('ra-racecard-sub2');
   if (_aiCtx && _aiCtx.m) {
     var m = _aiCtx.m;
     var raceTime = _aiCtx.type || '';
@@ -12231,12 +12229,16 @@ function _populateRaceAnalysis() {
     var raceLbl = (rc.name||'').replace(new RegExp('^'+(m.name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*','i'),'').trim();
     if (hdrTitle) hdrTitle.textContent = (m.name||'') + ' · ' + raceTime;
     if (hdrSub) hdrSub.textContent = raceLbl + (rc.dist?' · '+rc.dist:'') + (m.going?' · '+m.going:'') + (rc.r?' · '+rc.r+' runners':'');
-    if (rcTitle) rcTitle.textContent = ((m.name||'') + ' · ' + raceTime).toUpperCase();
+    if (rcTitle) rcTitle.textContent = (m.name||'') + ' · ' + raceTime;
+    if (rcSub1) rcSub1.textContent = raceLbl + (rc.dist?' · '+rc.dist:'');
+    if (rcSub2) rcSub2.textContent = (m.going||'') + (rc.r?' · '+rc.r+' runners':'');
   } else if (_aiRacePayload) {
     var p = _aiRacePayload;
     if (hdrTitle) hdrTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
     if (hdrSub) hdrSub.textContent = (p.raceName||'') + (p.going?' · '+p.going:'') + (p.runners?' · '+p.runners.length+' runners':'');
-    if (rcTitle) rcTitle.textContent = ((p.meetingName||'') + ' · ' + (p.time||'')).toUpperCase();
+    if (rcTitle) rcTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
+    if (rcSub1) rcSub1.textContent = (p.raceName||'');
+    if (rcSub2) rcSub2.textContent = (p.going||'') + (p.runners?' · '+p.runners.length+' runners':'');
   }
 
   var intel = document.getElementById('ra-intelligence-text');
