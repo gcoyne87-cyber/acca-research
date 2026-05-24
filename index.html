@@ -2951,7 +2951,7 @@ function unlockCorkAnalysis(){
 <!-- BLOCK 1: RACE HEADER -->
 <div id="ra-cork-hdr" onclick="raCorkT()" style="background:#fff;border:1.5px solid #e4e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(11,22,40,0.12);cursor:pointer;user-select:none;-webkit-user-select:none;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
   <div>
-    <div style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
+    <div id="ra-cork-hdr-title" style="font-size:15px;font-weight:700;color:#0b1628">Cork &middot; 13:15</div>
     <div id="ra-cork-sub" style="font-size:12px;color:#9aa3b5;margin-top:2px">Maiden Hurdle &middot; 2m7f &middot; Heavy &middot; 8 runners</div>
   </div>
   <svg id="ra-cork-chev" style="width:16px;height:16px;stroke:#9aa3b5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transform:rotate(0deg);transition:transform .3s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -12221,6 +12221,27 @@ function _fireRaceAnalysis(m, race) {
 function _populateRaceAnalysis() {
   if (!_aiRaceResult) return;
   var r = _aiRaceResult;
+
+  // Update race header with actual venue/time/details
+  var hdrTitle = document.getElementById('ra-cork-hdr-title');
+  var hdrSub = document.getElementById('ra-cork-sub');
+  var rcTitle = document.getElementById('ra-racecard-title');
+  if (_aiCtx && _aiCtx.m) {
+    var m = _aiCtx.m;
+    var raceTime = _aiCtx.type || '';
+    var ri = m.races ? m.races.findIndex(function(x){return x.t===raceTime;}) : -1;
+    var rc = ri >= 0 ? m.races[ri] : {name:'',dist:'',r:'?'};
+    var raceLbl = (rc.name||'').replace(new RegExp('^'+(m.name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*','i'),'').trim();
+    if (hdrTitle) hdrTitle.textContent = (m.name||'') + ' · ' + raceTime;
+    if (hdrSub) hdrSub.textContent = raceLbl + (rc.dist?' · '+rc.dist:'') + (m.going?' · '+m.going:'') + (rc.r?' · '+rc.r+' runners':'');
+    if (rcTitle) rcTitle.textContent = ((m.name||'') + ' · ' + raceTime).toUpperCase();
+  } else if (_aiRacePayload) {
+    var p = _aiRacePayload;
+    if (hdrTitle) hdrTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
+    if (hdrSub) hdrSub.textContent = (p.raceName||'') + (p.going?' · '+p.going:'') + (p.runners?' · '+p.runners.length+' runners':'');
+    if (rcTitle) rcTitle.textContent = ((p.meetingName||'') + ' · ' + (p.time||'')).toUpperCase();
+  }
+
   var intel = document.getElementById('ra-intelligence-text');
   if (intel && r.raceIntelligence) intel.textContent = r.raceIntelligence;
   var intelCard = document.getElementById('ra-intelligence-card');
