@@ -1,0 +1,1203 @@
+const https = require('https');
+
+module.exports.config = { timeout: 900, schedule: '30 9 * * *' };
+
+const RACING_AUTH = Buffer.from(
+  (process.env.RACING_API_USERNAME || '') + ':' + (process.env.RACING_API_KEY || '')
+).toString('base64');
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+// Sonnet 4.6 pricing (all calls use Sonnet)
+const PRICE_IN          = 3    / 1_000_000;  // $3/M input tokens
+const PRICE_OUT         = 15   / 1_000_000;  // $15/M output tokens
+const PRICE_CACHE_WRITE = 3.75 / 1_000_000;  // $3.75/M cache write tokens
+const PRICE_CACHE_READ  = 0.30 / 1_000_000;  // $0.30/M cache read tokens
+const PRICE_WEB_SEARCH  = 0.10;               // $0.10 per search (actual Anthropic billing)
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function apiGet(hostname, path, extraHeaders) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname, path, method: 'GET',
+      headers: { 'Accept': 'application/json', ...(extraHeaders || {}) }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse: ' + d.slice(0, 100))); } });
+    });
+    req.on('error', reject); req.end();
+  });
+}
+
+function apiPost(hostname, path, headers, body) {
+  const b = JSON.stringify(body);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(b), ...headers }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse')); } });
+    });
+    req.on('error', reject); req.setTimeout(290000); req.write(b); req.end();
+  });
+}
+
+function redisSet(key, value) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
+function redisGet(key) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/get/' + encodeURIComponent(key), method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        try { const r = JSON.parse(d); resolve(r.result ? JSON.parse(r.result) : null); }
+        catch(e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null)); req.end();
+  });
+}
+
+const _horseHistoryCache = new Map();
+
+async function fetchHorseHistory(horse_id) {
+  if (_horseHistoryCache.has(horse_id)) return _horseHistoryCache.get(horse_id);
+  // Check Redis cache — populated by the morning build so re-runs don't need Racing API calls
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const cached = await redisGet('form:history:' + horse_id + ':' + today);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      _horseHistoryCache.set(horse_id, cached);
+      return cached;
+    }
+  } catch(e) {}
+  try {
+    const data = await apiGet('api.theracingapi.com',
+      '/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6',
+      { 'Authorization': 'Basic ' + RACING_AUTH }
+    );
+    const history = (data.results || []).map(race => {
+      const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
+      return {
+        date: race.date || '',
+        course: race.course || '',
+        dist: race.dist || '',
+        going: race.going || '',
+        pos: runner.position || '-',
+        ran: (race.runners || []).length || 0,
+        sp: runner.sp || '',
+        jockey: runner.jockey || ''
+      };
+    });
+    _horseHistoryCache.set(horse_id, history);
+    return history;
+  } catch(e) {
+    return [];
+  }
+}
+
+function isJumps(raceName, raceType) {
+  const s = ((raceName || '') + ' ' + (raceType || '')).toLowerCase();
+  return /hurdle|chase|bumper|steeplechase|national hunt|hrd/.test(s);
+}
+
+function parseJson(text) {
+  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+  if (s === -1 || e <= s) return null;
+  try { return JSON.parse(clean.substring(s, e + 1)); } catch { return null; }
+}
+
+// ── SYSTEM PROMPTS ────────────────────────────────────────────────────────────
+
+const NH_PROMPT = `You are a specialist National Hunt race analyst for RacingEdge. Return ONLY a valid JSON object, no text before or after.
+
+HOW TO USE THIS PROMPT — READ FIRST
+
+The list of angles below is a research guide, not a checklist. Use only the angles that are actually relevant to this specific race. Prioritise depth on what matters over breadth across all categories. If three angles tell the strongest story, lead with those. If data on a point isn't available, skip it. Do not invent or pad. Let the race itself dictate which angles matter most.
+
+If you don't love your strongest selection, say so. If the race is unanalysable, say so. If the best advice is to pass, recommend a pass. Never produce a default-confident pick when the case is fragile.
+
+---
+INTERNAL CALIBRATION — do this first, before writing anything
+
+Privately assess your confidence:
+- High — genuine strong case. The angles converge. You'd back this yourself.
+- Medium — there is a selection but the case has holes.
+- Low — selection by elimination. Conviction is thin. Be honest.
+- Pass — race is genuinely unanalysable or data isn't there.
+
+This is not shown to the user. Let it govern the tone of everything you write.
+
+---
+CRITICAL — HOW TO SCORE CONFIDENCE (confidenceScore: one decimal place, e.g. 6.8, 7.3, 8.1):
+Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race. Nothing to do with the prestige or media coverage of the race.
+
+Score HIGH (7.0–10.0): one horse has a clear provable advantage — superior form, right ground, right trip, right weight, market agrees, money coming.
+Score LOW (3.0–5.0): field is evenly matched, picking by elimination, no genuine standout.
+Score PASS: genuinely unanalysable.
+
+A Grade 1 with 8 evenly-matched top-class horses is LOW — score 3.0–4.0. A Class 5 handicap where one horse is 7lb clear on form and the trainer is targeting it specifically is HIGH — score 8.0+. The prestige of the race does NOT increase your score. Only the gap between your selection and its rivals.
+
+DECIMAL PRECISION IS MANDATORY: Use one decimal place. Do I have 3 strong factors but one concern? Score 6.8, not 7. Do I have form, market, trainer AND jockey all aligned? Score 7.6, not 7. Total standout, no genuine dangers? Score 8.3, not 8. A round number means you did not think hard enough.
+
+DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
+
+---
+WEB SEARCH — run exactly 2 searches:
+1. "Racing Post Timeform At The Races NAP [racecourse] [date]" — tipster consensus for this specific race
+2. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
+
+DO NOT search for: market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. The second search is specifically for horse-level news and health that the racecard cannot provide.
+
+---
+NH-SPECIFIC ANGLES TO LOOK FOR:
+
+FORM & CAMPAIGN:
+1. ★ Proven at today's exact trip — hurdles or fences, this distance specifically
+2. Chase/hurdle switch — first time over fences is a significant unknown; first time back hurdling after chasing
+3. Bounce risk — hard race last time, NH horses fade quickly on short turnarounds
+4. ★ Prep race targeting — last run clearly a lead-in, trainer pointing at this for weeks
+5. Weight drop or claim — carrying significantly less than last time
+
+GOING & GROUND:
+6. ★ Proven going preference — clear pattern of wins on specific ground (soft vs good)
+7. Going change — significant shift from last run, positive or negative
+8. Course configuration — sharp track vs galloping track, does this horse's style suit?
+
+TRAINER & JOCKEY:
+9. ★ Trainer course and festival record — some NH trainers target specific meetings every season
+10. ★ Jockey booking significance — champion or conditional jockey booked, retained or outside engagement?
+11. Jockey claim value — 3lb or 5lb allowance in a competitive handicap is a genuine edge
+12. Conditional/amateur switch — notable step up or step down in jockey quality
+
+WEIGHT & CLASS:
+13. Penalty assessment — recent winner carrying extra, size depends on race type
+14. Handicap mark — is this horse weighted to win? Has the mark dropped since last win?
+15. Class drop — stepping back down after a run at higher level, often a positive sign
+
+PACE & JUMPING:
+16. ★ Pace scenario — front-runners in NH races dictate everything; who goes on?
+17. Jumping ability — known safe jumper vs known sketchy jumper at this trip
+18. ★ Last fence/hurdle tendencies — horses who idle in front are vulnerable; closers who peak late are valuable
+
+NH INTELLIGENCE & EDGE SIGNALS:
+19. ★ Race depth — identify the true number of genuine contenders; flag weak fields explicitly
+20. Festival form — Cheltenham/Aintree/Punchestown form is worth a premium
+21. ★ Seasonal timing — NH horses improve through the season; early season form vs late season peak
+22. Stable in-form signal — yard running hot, multiple winners recently
+23. ★ AGE & HEALTH QUESTIONS — NH horses aged 9+ rarely win at the top level; horses aged 8+ who have had significant health concerns, lengthy absences, or are returning from illness or injury carry serious question marks regardless of their form profile. If your leading selection is 8+ and the second web search surfaces ANY health concern, absence, intensive care, or stable worry — state this explicitly in the analysis, flag it in pullQuote, and reduce confidence accordingly. Do not pick an ageing horse with health questions over a younger, improving rival without explicitly acknowledging the risk to the user.
+
+---
+TIPSTER CONSENSUS — ASSIMILATE, DON'T PARROT:
+You have searched for what Racing Post, Timeform, At The Races and private NH tipsters are saying. Now form YOUR OWN view. If the consensus agrees with your reading of the data, it is corroborating evidence — not the reason for your pick. If the consensus disagrees, say so and explain why your reading differs. Never write "Racing Post backs X" or "Timeform say Y" as if that is the conclusion. The conclusion is always yours, built from the data. Tipster views are one signal among many.
+
+---
+OUTPUT RULES:
+- raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. How many genuine contenders? Where is the form concentrated? Key filter (going, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection.
+- pullQuote: 3-4 sentences in your own voice explaining the case for your selection — jockey, going, form, trainer angle. Tell the full story so the user understands the pick. Do NOT name-drop publications or attribute to other tipsters.
+- factors: exactly 4 entries — the 4 most compelling reasons, each starting with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, WEIGHT, COURSE, MARKET, TRIP — pick whichever 4 are most relevant
+- horsesToWatch: 0–2 entries only, never padded
+- runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
+- aiRaceVerdict: 4-5 sentences. Open with "We go with [selection] because..." — give the 1-2 strongest reasons, acknowledge main danger(s), close with one horse to fade. User should finish feeling decisive.
+
+Return this exact JSON:
+{
+  "raceIntelligence": "string — 3-4 sentences, your own sharp briefing",
+  "confidenceScore": 7.3,
+  "strongestSelection": {
+    "horseName": "string",
+    "odds": "string",
+    "jockey": "string",
+    "trainer": "string",
+    "formFigures": "string",
+    "confidenceLevel": "High | Medium | Low | Pass",
+    "pullQuote": "string — 3-4 sentences in your own voice, the full case for this horse",
+    "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
+  },
+  "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
+  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}],
+  "aiRaceVerdict": "string — 4-5 sentences, open with: We go with [selection] because..."
+}`;
+
+const FLAT_PROMPT = `You are a specialist flat race analyst for RacingEdge. Return ONLY a valid JSON object, no text before or after.
+
+HOW TO USE THIS PROMPT — READ FIRST
+
+The list of angles below is a research guide, not a checklist. You are not required to cover every point or label every section. Use only the angles that are actually relevant to this specific race. Prioritise depth on what matters over breadth across all categories. If three angles tell the strongest story, lead with those and ignore the rest.
+
+If data on a point isn't available or you can't find it with confidence, skip it. Do not invent, infer or pad. Honest gaps are better than weak coverage. Let the race itself dictate which angles matter most.
+
+If you don't love your strongest selection, say so. If the race is unanalysable, say so. If the best advice is to pass, recommend a pass. The user trusts honesty more than confidence. Never produce a default-confident pick when the case is fragile.
+
+---
+INTERNAL CALIBRATION — do this first, before writing anything
+
+Before you write a single word of output, privately assess your confidence:
+- High — you have a genuine strong case. The angles converge. You'd back this yourself.
+- Medium — there is a selection but the case has holes. Worth noting but not piling on.
+- Low — you have a selection by process of elimination but conviction is thin. Be honest.
+- Pass — the race is genuinely unanalysable, too open, or data simply isn't there.
+
+This is not shown to the user. Let it govern the tone of everything you write.
+
+---
+CRITICAL — HOW TO SCORE CONFIDENCE (confidenceScore: one decimal place, e.g. 6.8, 7.3, 8.1):
+Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race. It has nothing to do with the profile, prestige or media coverage of the race.
+
+Score HIGH (7.0–10.0) when:
+- One horse has a clear, provable advantage — superior OR, right going, right trip, proven at the course, jockey retained
+- The market agrees and money has come
+- The form gives you genuine conviction — not just process of elimination
+
+Score LOW (3.0–5.0) when:
+- The field is evenly matched — multiple horses with realistic winning chances
+- You are picking the least-worst option rather than a genuine standout
+- Wide-open race regardless of how high-profile it is
+
+Score PASS when genuinely unanalysable.
+
+IMPORTANT: A Group 1 with 10 evenly-matched top-class fillies is LOW — score 3.0–4.0. A Class 4 handicap where one horse is on a career-low OR, trainer in red-hot form, jockey retained, money coming — score 8.0–9.0. The prestige of the race, the volume of media coverage, or the quality of the field has NO bearing on confidenceScore. Only how far ahead your selection is from its rivals.
+
+DECIMAL PRECISION IS MANDATORY: Use one decimal place. 3 strong factors but one concern? Score 6.8, not 7. Tipster signal AND market move AND trainer quote AND form all aligned? Score 7.6, not 7. Total standout — one horse the rest cannot live with? Score 8.3, not 8. A round number means you did not think hard enough. The decimal is where your genuine assessment lives.
+
+DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
+
+---
+WEB SEARCH — run exactly 2 searches:
+1. "Racing Post Timeform At The Races NAP [racecourse] [date]" — tipster consensus for this specific race
+2. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
+
+DO NOT search for: market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. The second search is specifically for horse-level news and health that the racecard cannot provide.
+
+---
+FLAT-SPECIFIC ANGLES TO LOOK FOR:
+
+FORM & CAMPAIGN:
+1. ★ Proven at today's exact distance — win/place record at this trip specifically
+2. Trip change — stepping up or dropping back, does form and pedigree back it?
+3. Bounce risk — hard race or career-best last time, flat horses fade on quick turnaround
+4. ★ Prep race targeting — last run clearly a lead-in, trainer pointing at this for weeks
+5. Weight drop — carrying significantly less than last time in a similar race
+
+GOING & GROUND:
+6. ★ Proven going preference — clear pattern of wins on specific ground
+7. Going change from last run — significant positive or negative shift
+8. All-weather vs turf switch — untested on this surface, flag either way
+
+TRAINER & JOCKEY:
+9. ★ Trainer course and meeting record — some trainers target specific tracks every season
+10. Trainer 2yo debut record — some excel first time out, others need a run
+11. ★ Jockey booking significance — champion or top jockey booked for what looks a spare, retainer vs outside booking
+12. Jockey wasting — declared significantly below their normal riding weight
+
+WEIGHT & CLASS:
+13. Penalty assessment — recent winner carrying a penalty, size depends on type of race won
+14. Handicap debut — first time off an official rating, form hard to weigh
+15. Conditions stakes — set weights often written to suit one horse, identify who
+
+PEDIGREE & AGE:
+16. ★ Sire's distance and going profile — bred for sprint or staying, what do offspring tell you?
+17. Maternal stamina line — dam's sire distance profile, does the family get better with age and further?
+18. First-time-out sire record — sharp enough to win on debut or clearly needs a run?
+19. 2yo to 3yo improvement — sire or dam known for significant seasonal jump?
+20. ★ Classic entries context — still in Guineas/Derby/Oaks entries, tells you exactly how connections rate them
+21. ★ AGE CONCERN IN STAYING RACES — for any race over 1m2f, if your leading selection is aged 7+ while 4 or 5yo rivals with improving profiles are in the field, this is a significant red flag. Older stayers decline; young progressive horses have the advantage at staying trips and often represent a generational shift. If the second web search surfaces ANY health concern, absence, or question over the older horse's wellbeing — state this explicitly in pullQuote and raceIntelligence, and lower confidence accordingly. Never pick a 7+ year old over a younger improving rival without explicitly telling the user what the questions are.
+
+FLAT INTELLIGENCE & EDGE SIGNALS:
+21. ★ Race depth — identify the true number of genuine contenders, flag weak fields and unanalysable races explicitly
+22. Weak maiden flag — pedigree narrows a 12-runner maiden to 2-3 genuine chances
+23. ★ Godolphin and Coolmore targeting — their number one jockey on a specific horse is never accidental
+24. Seasonal pattern repeat — trainer won this exact race last year with a similar profile horse
+
+PACE:
+25. ★ Pace scenario — how many confirmed front-runners declared? Natural leader or fight for the lead?
+26. Horse's pace profile — front-runner, hold-up, or come-from-behind
+27. Pace collapse risk — multiple front-runners likely to set a suicidal pace
+
+---
+TIPSTER CONSENSUS — ASSIMILATE, DON'T PARROT:
+You have searched for what Racing Post, Timeform, At The Races and private flat tipsters are saying. Now form YOUR OWN view. If the consensus agrees with your reading of the data, it is corroborating evidence — not the reason for your pick. If the consensus disagrees, explain why your reading differs. Never write "Racing Post backs X" or "Timeform say Y" as if that is your conclusion. The conclusion is always yours, built from the data. Tipster views are one signal among many — they sharpen your thinking, they don't replace it.
+
+---
+OUTPUT RULES:
+- raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. Cover: how many runners have a genuine winning chance; where the form is concentrated; any meaningful trainer or market pattern; one sentence on the key filter today (ground, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection.
+- pullQuote: 3-4 sentences in your own voice — the full case for your selection. Cover jockey booking, going, form, trainer angle. Tell the full story so the user understands the pick without needing to expand anything. Do NOT name-drop publications or attribute to other tipsters.
+- factors: exactly 4 entries — choose the 4 most compelling reasons. Each must start with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, DISTANCE, COURSE, MARKET, WEIGHT — pick whichever 4 are most relevant
+- horsesToWatch: 0–2 entries only, never padded
+- runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
+- aiRaceVerdict: 4-5 sentences. Open with "We go with [selection] because..." — give the 1-2 strongest reasons, acknowledge main danger(s), close with one horse to fade. User finishes feeling decisive.
+
+Return this exact JSON:
+{
+  "raceIntelligence": "string — 3-4 sentences, your own sharp briefing, no tipster attribution",
+  "confidenceScore": 7.3,
+  "strongestSelection": {
+    "horseName": "string",
+    "odds": "string",
+    "jockey": "string",
+    "trainer": "string",
+    "formFigures": "string",
+    "confidenceLevel": "High | Medium | Low | Pass",
+    "pullQuote": "string — 3-4 sentences in your own voice, the full case for this horse, no publication name-drops",
+    "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
+  },
+  "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
+  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}],
+  "aiRaceVerdict": "string — 4-5 sentences, open with: We go with [selection] because..."
+}`;
+
+const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligence analyst. Surface the 4 sharpest intelligence items across today's card. These are the nuggets a serious punter would pay for — things NOT obvious from the form alone.
+
+You will receive pre-computed data candidates built from the Racing API. Use these as your primary source.
+
+WEB SEARCH RULES — follow exactly:
+- USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
+- DO NOT use web search for: GROUND EDGE, GROUND ALERT, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+
+There are 7 possible signal types. Return 3 to 6 items based on genuine quality — never pad. Some days have no Ground Edge, Ground Alert, or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
+
+━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
+
+1. TIPSTER CONSENSUS
+Always search for this. Find where professional tipsters are pointing across today's card. Standard horse card — name, price, race time, CTA to that race.
+
+2. GROUND EDGE
+A single specific horse with an exceptional relationship with today's ground (Heavy or Yielding only, jumps races only). This is a tip — one horse, high conviction. Only fire if the pre-computed Ground Edge candidate has genuine standout stats (e.g. 3 wins from 5 on heavy, never won on good). Standard horse card — name, price, race time, CTA to that race.
+
+3. TRAINER
+Trainer-specific intelligence about a single horse: trainer gave an interview or press quote about this horse, trainer has specifically targeted this race, or trainer has a strong historical record at this course with this type of horse. Use web search to find quotes and targeting signals. Standard horse card — name, price, race time, CTA to that race. intelligenceText: what the trainer said or did, why this horse specifically.
+
+4. JOCKEY BOOKING
+Only when a trainer has 2+ runners in the SAME race and a senior/lead jockey has taken one specific horse over the others. Reveals trainer intent. Use pre-computed candidates and your knowledge of jockey seniority in GB/IRE racing. Standard horse card — name, price, race time, CTA to that race.
+
+5. INSIGHT
+Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
+
+━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
+
+6. GROUND ALERT
+Only fires when a specific venue has Heavy or Yielding going for jumps races AND there are multiple horses with proven winning form on this ground. This is NOT a tip — it is a venue alert empowering the user.
+- horseName: "[Venue] — [Going]" (e.g. "Cork — Heavy")
+- price: "" (empty)
+- meta: "[X] ground specialists identified"
+- intelligenceText: state the going, list ALL qualifying horses with price and time, close with "Our pick: [Horse] — [one sentence reason]" so the user has an anchor but can explore the list themselves
+- ctaLabel/ctaDestination: link to the top pick's race
+
+7. YARD ALERT
+Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when a trainer is known to target today's specific venue (e.g. Mullins at Punchestown, Henderson at Cheltenham). Both together = strongest signal. This is NOT a specific tip — it empowers the user to look at the full yard.
+- horseName: the TRAINER NAME (e.g. "Willie Mullins") — not a horse name
+- price: "" (empty)
+- meta: "[X] runners today"
+- intelligenceText: state WHY the yard is flagged (form, course record, or both), list ALL their runners today with price and time, close with "Our pick: [Horse] — [one sentence reason]"
+- ctaLabel/ctaDestination: link to the top pick's race
+
+━━━ PRESENTATION RULES ━━━
+- Never include Market Move as a signal type
+- Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
+- Every item must be grounded in a real, verifiable signal — no generic observations
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Ground Alert=#3b82f6, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
+- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight, Jockey Booking or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
+
+Return between 3 and 6 items depending on quality. Minimum 3 — never pad with weak signals to reach a number. Maximum 6 — only go above 4 if you have genuine, high-quality signals that earn their place. Quality over quantity always. Return ONLY a valid JSON array:
+[
+  {
+    "signalType": "Tipster Consensus | Ground Edge | Ground Alert | Trainer | Jockey Booking | Yard Alert | Insight",
+    "sigColor": "#hex",
+    "horseName": "Horse Name or Trainer Name or Venue — Going",
+    "price": "odds e.g. 5/2 or empty string",
+    "meta": "HH:MM Course · details or X runners today or X ground specialists",
+    "intelligenceText": "2-3 sentences — specific, actionable, no publication names",
+    "ctaLabel": "Analyse [Course] [HH:MM]",
+    "ctaDestination": "racecards"
+  }
+]`;
+
+
+const HORSE_FORM_PROMPT = `You are a horse racing form analyst for RacingEdge. Translate a horse's recent form into a specific, data-driven reading for a bettor — always in the context of TODAY's exact race conditions.
+
+Return ONLY this JSON:
+{
+  "groundFit": "X wins from Y on [today going] — [plain English take on fit]",
+  "distanceFit": "X runs at [today distance] — [plain English take on fit]",
+  "courseHandedness": "[course wins/runs and left/right hand preference if detectable from data]",
+  "formTrend": "[1 sentence on recent form direction — improving, declining, consistent]",
+  "keyAngle": "[single most important thing about this horse for today's specific conditions]",
+  "fitRating": "Ideal",
+  "formParagraph": "100-150 word analyst reading written specifically for today's race. Open with the horse's overall profile in context of today (course, going, distance). Work through ground record (exact counts), distance record (exact counts), course record or handedness pattern, recent form direction, and close with the single sharpest angle for today. Weave it into flowing prose — not a list. Every sentence must be specific to this horse and today. No verdict language."
+}
+
+fitRating values: "Ideal" (ground+distance+course all align) | "Suits" (most factors positive) | "Neutral" (mixed picture) | "Question" (limited evidence) | "Concern" (negative patterns for today)
+
+Rules:
+- Use ONLY the data provided — no invention
+- groundFit and distanceFit MUST include actual counts ("2 from 4 on Good" not "runs well on Good")
+- If fewer than 2 runs on today's going: "Only X run(s) on [going] — limited evidence"
+- courseHandedness: if no course runs, say "No previous run at [course]"
+- Keep each individual field (groundFit, distanceFit, courseHandedness, formTrend, keyAngle) under 20 words
+- formParagraph: 100-150 words, flowing prose, always names today's course, going, and distance with specific numbers throughout
+- No outcome language ("will win", "should win", "suits", "ideal") in any field — facts and patterns only`;
+
+const RACE_FORM_PROMPT = `You are a horse racing form analyst for RacingEdge. Given form profiles for all runners, write a race form overview for users who want to know which horses have the strongest form credentials for today's specific conditions.
+
+Return ONLY this JSON:
+{
+  "formSummary": "2-3 sentences — which horses have best form fit for today and why. Focus on ground, distance, course — not just recent wins.",
+  "topFormHorses": ["horse1", "horse2"],
+  "keyAngles": ["angle 1 — specific and factual", "angle 2", "angle 3"]
+}
+
+Rules:
+- topFormHorses: 1-2 horses max whose form FITS TODAY's conditions best (ground + distance + course)
+- keyAngles: specific facts not generalities ("Only 2 runners proven on Soft" not "ground is key today")
+- formSummary: write for a bettor — clear, direct, no waffle
+- Do not name horses not in the provided data`;
+
+async function generateHorseFormSummary(runner, raceContext, history) {
+  const historyText = history.map(h =>
+    `${h.date} | ${h.course} | ${h.dist} | ${h.going} | Pos: ${h.pos}/${h.ran} | SP: ${h.sp} | Jockey: ${h.jockey}`
+  ).join('\n');
+
+  const msg = `Horse: ${runner.horse || runner.name || 'Unknown'}
+Today's race: ${raceContext.course} | ${raceContext.distance} | Going: ${raceContext.going} | Type: ${raceContext.type}
+
+Last ${history.length} runs (most recent first):
+${historyText}
+
+Translate this horse's form for today's conditions.`;
+
+  try {
+    const { result, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = await callClaudeSimple(HORSE_FORM_PROMPT, msg, 700);
+    return result ? { ...result, _tokens: { input: inputTokens, output: outputTokens, cacheRead: cacheReadTokens, cacheWrite: cacheWriteTokens } }
+                  : { _failed: true, _tokens: { input: inputTokens, output: outputTokens, cacheRead: cacheReadTokens, cacheWrite: cacheWriteTokens } };
+  } catch(e) { return null; }
+}
+
+async function generateRaceFormSummary(race, raceContext, horseSummaries) {
+  const summaryText = horseSummaries.map(({ horseName, summary }) =>
+    `${horseName}: Ground=${summary.groundFit || '-'} | Dist=${summary.distanceFit || '-'} | Fit=${summary.fitRating || '-'} | Key=${summary.keyAngle || '-'}`
+  ).join('\n');
+
+  const msg = `Race: ${raceContext.course} ${race.off_time || ''} | ${raceContext.distance} | Going: ${raceContext.going} | Type: ${raceContext.type}
+
+Runner form profiles:
+${summaryText}
+
+Write the race form overview.`;
+
+  try {
+    const { result, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = await callClaudeSimple(RACE_FORM_PROMPT, msg, 400);
+    if (result) return { ...result, _tokens: { input: inputTokens, output: outputTokens, cacheRead: cacheReadTokens, cacheWrite: cacheWriteTokens } };
+    return null;
+  } catch(e) { return null; }
+}
+
+// ── ANALYSIS CALLS ────────────────────────────────────────────────────────────
+
+async function callClaude(systemPrompt, userMessage, tokens, noSearch) {
+  const body = {
+    model: 'claude-sonnet-4-6',
+    max_tokens: tokens || 6000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }]
+  };
+  if (!noSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }];
+  const resp = await apiPost('api.anthropic.com', '/v1/messages', {
+    'x-api-key': ANTHROPIC_KEY,
+    'anthropic-version': '2023-06-01',
+    'anthropic-beta': 'web-search-2025-03-05'
+  }, body);
+
+  const usage = resp.usage || {};
+  const content = resp.content || [];
+  const text = content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+  const webSearchCount = content.filter(b => (b.type === 'tool_use' || b.type === 'server_tool_use') && b.name === 'web_search').length;
+  const searchQueries = content
+    .filter(b => (b.type === 'tool_use' || b.type === 'server_tool_use') && b.name === 'web_search')
+    .map(b => (b.input && b.input.query) || '');
+  const searchResultBlocks = content.filter(b => b.type === 'web_search_tool_result');
+  if (searchResultBlocks.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    redisSet('debug:websearch:' + today + ':' + Date.now(), {
+      queries: searchQueries,
+      results: searchResultBlocks.map(b => ({ type: b.type, content: b.content }))
+    }).catch(() => {});
+  }
+  return {
+    text,
+    inputTokens: usage.input_tokens || 0,
+    outputTokens: usage.output_tokens || 0,
+    cacheReadTokens: usage.cache_read_input_tokens || 0,
+    cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+    webSearchCount,
+    searchQueries
+  };
+}
+
+function normaliseHorseName(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
+  const resp = await apiPost('api.anthropic.com', '/v1/messages', {
+    'x-api-key': ANTHROPIC_KEY,
+    'anthropic-version': '2023-06-01'
+  }, {
+    model: 'claude-sonnet-4-6',
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }]
+  });
+  const usage = resp.usage || {};
+  const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+  const result = (s !== -1 && e > s) ? JSON.parse(clean.substring(s, e + 1)) : null;
+  return {
+    result,
+    inputTokens: usage.input_tokens || 0,
+    outputTokens: usage.output_tokens || 0,
+    cacheReadTokens: usage.cache_read_input_tokens || 0,
+    cacheWriteTokens: usage.cache_creation_input_tokens || 0
+  };
+}
+
+
+async function analyseRace(race, NH, tipsterContext) {
+  const raceRunners = (race.runners || []).filter(r => !r.is_non_runner);
+  const date = new Date().toISOString().slice(0, 10);
+
+  // Fetch form history for all runners in parallel (Racing API Pro horses endpoint)
+  const formResults = await Promise.allSettled(
+    raceRunners.map(r => r.horse_id
+      ? fetchHorseHistory(r.horse_id).then(h => ({ id: r.horse_id, name: r.horse || r.name || 'Unknown', history: h }))
+      : Promise.resolve({ id: null, name: r.horse || r.name || 'Unknown', history: [] })
+    )
+  );
+  const formByName = {};
+  formResults.filter(r => r.status === 'fulfilled').forEach(r => { formByName[r.value.name] = r.value.history; });
+
+  const runners = raceRunners.map(r => {
+    const name = r.horse || r.name || 'Unknown';
+    const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+    const price = oddsArr ? (oddsArr.find(o => o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange')) || oddsArr[0] || {}).fractional || 'SP' : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+
+    const history = formByName[name] || [];
+    const historyText = history.length
+      ? history.slice(0, 4).map(h => `  ${h.date} | ${h.course} | ${h.dist} | ${h.going} | Pos: ${h.pos}/${h.ran} | SP: ${h.sp} | Jockey: ${h.jockey}`).join('\n')
+      : '  No past results available';
+
+    return `${name} | J: ${r.jockey||''} | T: ${r.trainer||''} | Odds: ${price} | Form: ${r.form||'-'} | OR: ${r.ofr||r.official_rating||'-'} | Age: ${r.age||'-'}\n${historyText}`;
+  }).join('\n\n');
+
+  const tipsterSection = tipsterContext
+    ? `\nTIPSTER CONSENSUS (from morning intelligence sweep):\n${tipsterContext}\n`
+    : '';
+
+  const msg = `Analyse this ${NH ? 'National Hunt' : 'flat'} race. Full Racing API form history is provided for each runner. You MUST run your 1 web search to find tipster picks specific to THIS race — search now for "[racecourse] [date] NAP tipster". The morning intelligence below is a broad card overview only, not race-specific tipster picks.
+
+Meeting: ${race.course}
+Date: ${date}
+Race: ${race.race_name} (${race.off_time})
+Going: ${race.going || 'Good'}
+Distance: ${race.distance || ''}
+Prize: ${race.prize || ''}
+Class: ${race.class || ''}
+${tipsterSection}
+RUNNERS (live form history from Racing API):
+${runners}
+
+Return ONLY the JSON object.`;
+
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000);
+  return { result: parseJson(text), inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount };
+}
+
+async function generateIntelligence(racecards) {
+  const date = new Date().toISOString().slice(0, 10);
+  const SOFT_RE = /soft|heavy|yield|slow/i;
+
+  function raceTime(race) {
+    if (!race.off_dt) return race.off_time || '';
+    const m = race.off_dt.match(/T(\d{2}):(\d{2})/);
+    return m ? m[1] + ':' + m[2] : race.off_time || '';
+  }
+
+  function extractPrice(r) {
+    const oddsArr = Array.isArray(r.odds) ? r.odds : [];
+    return (oddsArr.find(function(o) { return o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP';
+  }
+
+  // Pre-compute jockey booking candidates: same trainer, 2+ runners in same race
+  const jockeyBookingCandidates = [];
+  racecards.forEach(function(race) {
+    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner; });
+    const byTrainer = {};
+    runners.forEach(function(r) {
+      const t = r.trainer || 'Unknown';
+      if (!byTrainer[t]) byTrainer[t] = [];
+      byTrainer[t].push(r);
+    });
+    Object.keys(byTrainer).forEach(function(trainer) {
+      const hrs = byTrainer[trainer];
+      if (hrs.length >= 2) {
+        jockeyBookingCandidates.push({
+          race: race.course + ' ' + raceTime(race) + ' — ' + (race.race_name || ''),
+          trainer: trainer,
+          runners: hrs.map(function(r) {
+            return (r.horse || 'Unknown') + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r);
+          })
+        });
+      }
+    });
+  });
+
+  // Pre-compute in-form trainer candidates (25%+ SR, min 3 runs last 14 days)
+  const trainerFormMap = {};
+  racecards.forEach(function(race) {
+    const t = raceTime(race);
+    (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+      const t14 = r.trainer_14_days || {};
+      const runs = t14.runs || 0, wins = t14.wins || 0, pct = t14.percent || 0;
+      if (runs >= 3 && pct >= 25 && r.trainer) {
+        if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, runs: runs, wins: wins, pct: pct, horses: [] };
+        trainerFormMap[r.trainer].horses.push((r.horse || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r));
+      }
+    });
+  });
+  const trainerFormCandidates = Object.values(trainerFormMap).sort(function(a, b) { return b.pct - a.pct; }).slice(0, 5);
+
+  // Pre-compute ground edge candidates: Heavy/Yielding jumps meetings only, grouped by venue
+  const GROUND_RE = /heavy|yield/i;
+  const groundEdgeByVenue = {};
+  const heavyMeetings = racecards.filter(function(race) {
+    return GROUND_RE.test(race.going || '') && isJumps(race.race_name, race.type);
+  });
+
+  for (let mi = 0; mi < Math.min(heavyMeetings.length, 8); mi++) {
+    const race = heavyMeetings[mi];
+    const venue = race.course || 'Unknown';
+    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+    for (let ri = 0; ri < Math.min(runners.length, 8); ri++) {
+      const runner = runners[ri];
+      const history = await fetchHorseHistory(runner.horse_id);
+      if (!history.length) continue;
+
+      const groundRuns = history.filter(function(h) { return GROUND_RE.test(h.going || ''); });
+      const goodRuns = history.filter(function(h) { return !GROUND_RE.test(h.going || '') && (h.going || '').trim(); });
+      const groundWins = groundRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+      const goodWins = goodRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+
+      // Quality bar: must have won on heavy/yielding, and either 2+ wins or 33%+ SR
+      if (groundRuns.length >= 2 && groundWins >= 1) {
+        const groundSR = Math.round(groundWins / groundRuns.length * 100);
+        const goodSR = goodRuns.length ? Math.round(goodWins / goodRuns.length * 100) : 0;
+        if (groundWins >= 2 || groundSR >= 33) {
+          if (!groundEdgeByVenue[venue]) groundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
+          groundEdgeByVenue[venue].horses.push({
+            horse: runner.horse || 'Unknown',
+            price: extractPrice(runner),
+            time: raceTime(race),
+            raceName: race.race_name || '',
+            groundSR: groundSR,
+            groundWins: groundWins,
+            groundRuns: groundRuns.length,
+            groundRecord: groundWins + ' wins from ' + groundRuns.length + ' on heavy/yielding (' + groundSR + '% SR)',
+            goodRecord: goodRuns.length ? (goodWins + ' wins from ' + goodRuns.length + ' on good/firm (' + goodSR + '% SR)') : 'No runs on good/firm'
+          });
+        }
+      }
+    }
+  }
+  // Ground Alert: venue with most qualifiers
+  const groundEdgeVenues = Object.values(groundEdgeByVenue).sort(function(a, b) { return b.horses.length - a.horses.length; });
+
+  // Ground Edge: single best horse across all venues (highest groundWins, then groundSR)
+  let groundEdgeHorse = null;
+  Object.values(groundEdgeByVenue).forEach(function(v) {
+    v.horses.forEach(function(h) {
+      if (!groundEdgeHorse || h.groundWins > groundEdgeHorse.groundWins || (h.groundWins === groundEdgeHorse.groundWins && h.groundSR > groundEdgeHorse.groundSR)) {
+        groundEdgeHorse = Object.assign({}, h, { venue: v.venue, going: v.going });
+      }
+    });
+  });
+
+  // Build structured message
+  const meetingsSummary = racecards.slice(0, 20).map(function(r) {
+    return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
+  }).join('\n');
+
+  let msg = 'Today is ' + date + '.\n\nTODAY\'S RACES:\n' + meetingsSummary + '\n\n';
+
+  if (groundEdgeHorse) {
+    msg += 'GROUND EDGE CANDIDATE (single best horse — high conviction individual ground specialist):\n';
+    msg += '• ' + groundEdgeHorse.horse + ' | ' + groundEdgeHorse.venue + ' ' + groundEdgeHorse.time + ' | Going: ' + groundEdgeHorse.going + ' | Price: ' + groundEdgeHorse.price + '\n';
+    msg += '  Ground record: ' + groundEdgeHorse.groundRecord + '\n';
+    msg += '  Good/firm record: ' + groundEdgeHorse.goodRecord + '\n\n';
+  } else {
+    msg += 'GROUND EDGE: No qualifying individual ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
+  }
+
+  if (groundEdgeVenues.length) {
+    msg += 'GROUND ALERT VENUE SPOTLIGHT (Heavy/Yielding jumps meetings — list of ground specialists for user to explore):\n';
+    groundEdgeVenues.slice(0, 2).forEach(function(v) {
+      msg += '\nVenue: ' + v.venue + ' — Going: ' + v.going + ' (' + v.horses.length + ' ground specialists)\n';
+      v.horses.forEach(function(h) {
+        msg += '  • ' + h.horse + ' | ' + h.price + ' | ' + h.time + ' | ' + h.groundRecord + ' | Good/firm: ' + h.goodRecord + '\n';
+      });
+    });
+    msg += '\n';
+  } else {
+    msg += 'GROUND ALERT: No heavy/yielding jumps venues with multiple ground specialists today. Do NOT produce a Ground Alert signal.\n\n';
+  }
+
+  if (jockeyBookingCandidates.length) {
+    msg += 'JOCKEY BOOKING CANDIDATES (same trainer, multiple runners in same race):\n';
+    jockeyBookingCandidates.slice(0, 5).forEach(function(c) {
+      msg += '\n• ' + c.race + ' | Trainer: ' + c.trainer + '\n';
+      c.runners.forEach(function(r) { msg += '  - ' + r + '\n'; });
+    });
+    msg += '\n';
+  }
+
+  if (trainerFormCandidates.length) {
+    msg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 3 runs):\n';
+    trainerFormCandidates.forEach(function(c) {
+      msg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR)\n';
+      c.horses.forEach(function(h) { msg += '  - ' + h + '\n'; });
+    });
+    msg += '\n';
+  }
+
+  msg += 'Do one focused web search for tipster consensus only. Only search for a trainer signal if a specific trainer candidate has been flagged in the pre-computed data provided above — if no strong trainer candidate exists in the data, skip the trainer search entirely. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
+
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 4000);
+
+  let items = null;
+  try {
+    const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+    if (s !== -1 && e > s) items = JSON.parse(clean.substring(s, e + 1));
+  } catch(e) {}
+
+  // Deduplicate by horseName — keep first occurrence only
+  if (items && items.length) {
+    const seen = new Set();
+    items = items.filter(item => {
+      const key = (item.horseName || '').toLowerCase().trim();
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount };
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+
+exports.handler = async function(event) {
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+
+  const isScheduled = !event.httpMethod;
+  if (!isScheduled) {
+    const secret = (event.queryStringParameters && event.queryStringParameters.secret) || (event.headers && event.headers['x-build-secret']);
+    if (secret !== process.env.BUILD_SECRET) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
+    }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+
+  const report = {
+    date: today,
+    startedAt: now.toISOString(),
+    meetings: 0,
+    totalRaces: 0,
+    upcomingRaces: 0,
+    totalHorses: 0,
+    racesAnalysed: 0,
+    intelligenceItems: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    costUSD: '0.0000',
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    webSearchCount: 0,
+    redisOk: false,
+    errors: [],
+    raceBreakdown: [],
+    callLog: [],
+    analyses: [],
+    intelligence: []
+  };
+
+  try {
+    // 1. Fetch racecards
+    console.log('[daily-build] Fetching racecards...');
+    let data = await apiGet('api.theracingapi.com', '/v1/racecards/pro?date=' + today, {
+      'Authorization': 'Basic ' + RACING_AUTH
+    });
+    if (!data.racecards || !data.racecards.length) {
+      data = await apiGet('api.theracingapi.com', '/v1/racecards/standard', {
+        'Authorization': 'Basic ' + RACING_AUTH
+      });
+    }
+
+    const EXCLUDED_COURSES = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
+    const allRacecards = (data.racecards || []).filter(r => {
+      const reg = (r.region || '').toUpperCase();
+      if (reg !== 'GB' && reg !== 'IRE' && reg !== 'IE') return false;
+      if (EXCLUDED_COURSES.indexOf((r.course || '').toLowerCase().trim()) !== -1) return false;
+      return true;
+    });
+
+    // Analyse all of today's races — Redis cache prevents re-calling Claude for already-analysed races
+    const racecards = allRacecards;
+
+    const meetings = {};
+    allRacecards.forEach(r => {
+      const id = r.course_id || r.course;
+      if (!meetings[id]) meetings[id] = { name: r.course, going: r.going, races: [] };
+      meetings[id].races.push(r);
+    });
+
+    report.meetings = Object.keys(meetings).length;
+    report.totalRaces = allRacecards.length;
+    report.upcomingRaces = racecards.length;
+    report.totalHorses = racecards.reduce((s, r) => s + (r.runners || []).length, 0);
+
+    console.log(`[daily-build] ${report.upcomingRaces} upcoming races (${report.totalRaces} total today)`);
+
+    // 2. Store raw racecards in Redis — only overwrite if new data has more runners
+    // (protects the morning's full runner data from being replaced by empty-runner re-runs later in the day)
+    try {
+      const existingCards = await redisGet('racecards:' + today);
+      const existingRunners = existingCards && Array.isArray(existingCards.racecards)
+        ? existingCards.racecards.reduce((s, r) => s + (r.runners || []).length, 0) : 0;
+      const newRunners = allRacecards.reduce((s, r) => s + (r.runners || []).length, 0);
+      if (newRunners >= existingRunners) {
+        await redisSet('racecards:' + today, { racecards: allRacecards, storedAt: new Date().toISOString() });
+      }
+      report.redisOk = true;
+    } catch(e) {
+      report.errors.push('redis-store: ' + e.message);
+    }
+
+    // 2.5 Seed report.analyses with prior stored analyses for races that already ran today
+    try {
+      const priorReport = await redisGet('daily:report:' + today);
+      if (priorReport && priorReport.analyses) {
+        const upcomingLabels = new Set(racecards.map(r => {
+          const t24 = (function(offDt){ if(!offDt) return r.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:r.off_time||''; })(r.off_dt);
+          return r.course + ' ' + t24;
+        }));
+        priorReport.analyses.forEach(function(a) {
+          if (!upcomingLabels.has(a.race)) report.analyses.push(a);
+        });
+      }
+    } catch(e) {}
+
+    // 3. Generate daily intelligence FIRST — tipster consensus is passed into each race analysis
+    // Check Redis cache first — if intelligence already ran today, reuse it (prevents second builds wiping morning signals)
+    console.log('[daily-build] Generating daily intelligence...');
+    let tipsterConsensusText = '';
+    try {
+      let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
+      const cachedIntel = await redisGet('intelligence:' + today);
+      if (cachedIntel && cachedIntel.items && cachedIntel.items.length) {
+        console.log('[daily-build] Intelligence already cached today — reusing');
+        items = cachedIntel.items;
+        report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence [CACHED]', inputTokens: 0, outputTokens: 0, webSearch: false, webSearchCount: 0 });
+      } else {
+        const r = await generateIntelligence(racecards);
+        items = r.items; intIT = r.inputTokens; intOT = r.outputTokens;
+        intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
+        if (items && items.length) {
+          try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) {}
+        }
+        report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence', inputTokens: intIT, outputTokens: intOT, cacheReadTokens: intCR, cacheWriteTokens: intCW, webSearch: intWS > 0, webSearchCount: intWS });
+      }
+      if (items && items.length) {
+        report.intelligenceItems = items.length;
+        report.intelligence = items;
+        const tipsterItem = items.find(i => i.signalType === 'Tipster Consensus');
+        if (tipsterItem) tipsterConsensusText = tipsterItem.intelligenceText || '';
+      }
+      report.inputTokens += intIT;
+      report.outputTokens += intOT;
+      report.cacheReadTokens += intCR;
+      report.cacheWriteTokens += intCW;
+      report.webSearchCount += intWS;
+    } catch(e) {
+      report.errors.push('intelligence: ' + e.message);
+    }
+    try { await redisSet('daily:report:' + today, report); } catch(re) {}
+
+    // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
+    const BATCH = 4;
+    for (let i = 0; i < racecards.length; i += BATCH) {
+      const batch = racecards.slice(i, i + BATCH);
+      const results = await Promise.allSettled(batch.map(async race => {
+        const NH = isJumps(race.race_name, race.type);
+        const raceKey = `analysis:race:${today}:${race.course_id || race.course}:${race.off_time}`;
+        const t24 = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+        const label = `${race.course} ${t24}`;
+
+        try {
+          // Skip if already analysed today — prevents double-billing on re-runs
+          const existing = await redisGet(raceKey);
+          if (existing && existing.result) {
+            return { label, ok: true, inputTokens: 0, outputTokens: 0, runners: (race.runners||[]).length, result: existing.result, cached: true };
+          }
+          const { result, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await analyseRace(race, NH, tipsterConsensusText);
+          if (result) {
+            try { await redisSet(raceKey, { result, analysedAt: new Date().toISOString(), NH }); } catch(re) {}
+          }
+          return { label, ok: !!result, inputTokens, outputTokens, cacheReadTokens: cacheReadTokens || 0, cacheWriteTokens: cacheWriteTokens || 0, webSearchCount: webSearchCount || 0, runners: (race.runners||[]).length, result };
+        } catch(e) {
+          report.errors.push(label + ': ' + e.message);
+          return { label, ok: false, inputTokens: 0, outputTokens: 0, runners: 0, result: null };
+        }
+      }));
+
+      results.forEach(r => {
+        const v = r.status === 'fulfilled' ? r.value : { ok: false, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchCount: 0, label: '?', runners: 0, result: null };
+        if (v.ok) report.racesAnalysed++;
+        if (v.cached) report.racesCached = (report.racesCached || 0) + 1;
+        report.inputTokens += v.inputTokens;
+        report.outputTokens += v.outputTokens;
+        report.cacheReadTokens += (v.cacheReadTokens || 0);
+        report.cacheWriteTokens += (v.cacheWriteTokens || 0);
+        report.webSearchCount += (v.webSearchCount || 0);
+        report.raceBreakdown.push({ race: v.label, ok: v.ok, runners: v.runners, inputTokens: v.inputTokens, outputTokens: v.outputTokens, cacheReadTokens: v.cacheReadTokens || 0, cacheWriteTokens: v.cacheWriteTokens || 0, webSearch: (v.webSearchCount || 0) > 0, webSearchCount: v.webSearchCount || 0, cached: !!v.cached });
+        if (!v.cached) report.callLog.push({ type: 'race-analysis', label: v.label, inputTokens: v.inputTokens, outputTokens: v.outputTokens, cacheReadTokens: v.cacheReadTokens || 0, cacheWriteTokens: v.cacheWriteTokens || 0, webSearch: (v.webSearchCount || 0) > 0, webSearchCount: v.webSearchCount || 0 });
+        if (v.result) report.analyses.push({ race: v.label, ...v.result });
+      });
+      try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    }
+
+    // 5. Generate per-horse form summaries and race form overviews
+    // Use cached racecard data (stored at step 2 from morning fetch) so runner lists
+    // are intact even when re-running late in the day after the API strips completed runners
+    console.log('[daily-build] Generating form summaries...');
+    let formHorsesGenerated = 0, formRacesGenerated = 0;
+    let formSourceCards = allRacecards;
+    try {
+      const cachedCards = await redisGet('racecards:' + today);
+      if (cachedCards && Array.isArray(cachedCards.racecards) && cachedCards.racecards.length > 0) {
+        formSourceCards = cachedCards.racecards.filter(r => {
+          const reg = (r.region || '').toUpperCase();
+          if (reg !== 'GB' && reg !== 'IRE' && reg !== 'IE') return false;
+          const EXCL = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
+          if (EXCL.indexOf((r.course || '').toLowerCase().trim()) !== -1) return false;
+          return true;
+        });
+        console.log('[daily-build] Using cached racecards for form summaries (' + formSourceCards.length + ' races)');
+      }
+    } catch(e) { /* fall back to allRacecards */ }
+
+    for (let fi = 0; fi < formSourceCards.length; fi += 2) {
+      const formBatch = formSourceCards.slice(fi, fi + 2);
+      await Promise.allSettled(formBatch.map(async race => {
+        const raceContext = {
+          course: race.course || '',
+          distance: race.distance || '',
+          going: race.going || 'Good',
+          type: isJumps(race.race_name, race.type) ? 'NH' : 'Flat'
+        };
+        const raceKey = `analysis:race:${today}:${race.course_id || race.course}:${race.off_time}`;
+        const runners = (race.runners || []).filter(r => !r.is_non_runner && r.horse_id);
+        if (!runners.length) return;
+
+        // Fetch form history: use in-memory cache if populated (fresh build), otherwise
+        // fetch sequentially per runner to avoid Racing API rate limits on re-runs
+        const runnerForms = [];
+        for (const r of runners) {
+          const history = await fetchHorseHistory(r.horse_id);
+          if (history.length > 0) {
+            runnerForms.push({ runner: r, history });
+            // Cache history to Redis so Form Focus never needs a live API call
+            redisSet(`form:history:${r.horse_id}:${today}`, history).catch(() => {});
+          }
+        }
+
+        // Generate per-horse summaries sequentially — parallel batches cause Anthropic rate-limit errors
+        const validHorseSummaries = [];
+        for (const { runner, history } of runnerForms) {
+          try {
+            const key = `form:summary:${runner.horse_id}:${today}`;
+            const cached = await redisGet(key);
+            if (cached) {
+              validHorseSummaries.push({ horseName: runner.horse || 'Unknown', summary: cached });
+              continue;
+            }
+            const summaryData = await generateHorseFormSummary(runner, raceContext, history);
+            if (summaryData) {
+              const { _tokens, _failed, ...summary } = summaryData;
+              report.inputTokens += (_tokens?.input || 0);
+              report.outputTokens += (_tokens?.output || 0);
+              report.cacheReadTokens += (_tokens?.cacheRead || 0);
+              report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
+              report.callLog.push({ type: 'form-summary', label: runner.horse || 'Unknown', inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
+              if (!_failed) {
+                await redisSet(key, summary);
+                formHorsesGenerated++;
+                validHorseSummaries.push({ horseName: runner.horse || 'Unknown', summary });
+              }
+            }
+          } catch(e) { report.errors.push('form:horse:' + (runner.horse || '?') + ': ' + e.message); }
+        }
+
+        if (validHorseSummaries.length >= 1) {
+          // Build per-horse form fit grid data
+          const runnerFormFit = validHorseSummaries.map(({ horseName, summary }) => ({
+            horseName,
+            fitRating: summary.fitRating || 'Neutral',
+            keyAngle: summary.keyAngle || '',
+            groundFit: summary.groundFit || '',
+            distanceFit: summary.distanceFit || '',
+            courseHandedness: summary.courseHandedness || '',
+            formTrend: summary.formTrend || ''
+          }));
+
+          // Generate race-level form overview (needs >= 2 horses)
+          let formOverview = null;
+          if (validHorseSummaries.length >= 2) {
+            try {
+              const raceSummaryData = await generateRaceFormSummary(race, raceContext, validHorseSummaries);
+              if (raceSummaryData) {
+                const { _tokens, ...fo } = raceSummaryData;
+                report.inputTokens += (_tokens?.input || 0);
+                report.outputTokens += (_tokens?.output || 0);
+                report.cacheReadTokens += (_tokens?.cacheRead || 0);
+                report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
+                report.callLog.push({ type: 'race-form-overview', label: race.course + ' ' + (race.off_time || ''), inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
+                formOverview = fo;
+                formRacesGenerated++;
+              }
+            } catch(e) {
+              report.errors.push(`form:race:${race.course}: ${e.message}`);
+            }
+          }
+
+          // Merge runnerFormFit (and formOverview if generated) into race analysis
+          try {
+            const existing = await redisGet(raceKey);
+            if (existing) {
+              if (existing.result) {
+                const merged = { ...existing.result, runnerFormFit };
+                if (formOverview) merged.formOverview = formOverview;
+                await redisSet(raceKey, { ...existing, result: merged });
+              } else {
+                const merged = { ...existing, runnerFormFit };
+                if (formOverview) merged.formOverview = formOverview;
+                await redisSet(raceKey, merged);
+              }
+            }
+          } catch(e) {
+            report.errors.push(`form:merge:${race.course}: ${e.message}`);
+          }
+
+          // Also update report.analyses so get-daily-build returns runnerFormFit
+          const t24label = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+          const raceLabel = race.course + ' ' + t24label;
+          const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
+          if (analysisEntry) {
+            analysisEntry.runnerFormFit = runnerFormFit;
+            if (formOverview) analysisEntry.formOverview = formOverview;
+          }
+        }
+      }));
+    }
+    report.formHorsesGenerated = formHorsesGenerated;
+    report.formRacesGenerated = formRacesGenerated;
+    console.log(`[daily-build] Form summaries complete: ${formHorsesGenerated} horses, ${formRacesGenerated} races`);
+
+    // 5.5 Cross-reference intelligence items against race analyses
+    // Drop any intelligence card whose horse conflicts with the race analysis pick for that race.
+    // A card survives only if: (a) it has no specific race/time, (b) no analysis exists for that race,
+    // or (c) its horse matches the strongestSelection. This prevents two different horses being
+    // recommended for the same race across the two layers.
+    if (report.intelligence && report.intelligence.length && report.analyses && report.analyses.length) {
+      const _normH = s => (s || '').toLowerCase()
+        .replace(/\s*\((ire|gb|fr|usa|ger|aus|nz|ity|spa|bel|den|swe|nor|cze|pol|hun|por|tur|chi|arg|bra|jap|hkg|uae|can|saf|ind)\)/g, '')
+        .replace(/[^a-z0-9]/g, '');
+
+      // Build lookup: "TIME|courseFirstWord" → normalised strongest selection horse
+      const _aLookup = {};
+      for (const a of report.analyses) {
+        if (!a.strongestSelection || !a.strongestSelection.horseName) continue;
+        const parts = (a.race || '').split(' ');
+        const time = parts[parts.length - 1] || '';
+        const courseFirst = (parts[0] || '').toLowerCase();
+        if (time && courseFirst) _aLookup[time + '|' + courseFirst] = _normH(a.strongestSelection.horseName);
+      }
+
+      const _before = report.intelligence.length;
+      report.intelligence = report.intelligence.filter(item => {
+        // Extract time and course from meta e.g. "14:30 Ascot · Queen Mary Stakes"
+        const m = (item.meta || '').match(/^(\d{1,2}:\d{2})\s+([A-Za-z]+)/);
+        if (!m) return true; // no time pattern → yard alert / info card → keep
+        const key = m[1] + '|' + m[2].toLowerCase();
+        const selHorse = _aLookup[key];
+        if (!selHorse) return true; // no analysis for this race → keep
+        const intelHorse = _normH(item.horseName || '');
+        if (!intelHorse) return true; // no specific horse (info card) → keep
+        return intelHorse === selHorse; // keep only if signal confirms the analysis pick
+      });
+
+      const _dropped = _before - report.intelligence.length;
+      if (_dropped > 0) console.log(`[daily-build] Intelligence cross-ref: dropped ${_dropped} item(s) conflicting with race analysis picks`);
+    }
+
+    // 6. Calculate cost and store final report
+    const costTokens    = report.inputTokens * PRICE_IN + report.outputTokens * PRICE_OUT;
+    const costCache     = report.cacheWriteTokens * PRICE_CACHE_WRITE + report.cacheReadTokens * PRICE_CACHE_READ;
+    const costWebSearch = report.webSearchCount * PRICE_WEB_SEARCH;
+    const cost = costTokens + costCache + costWebSearch;
+    report.costUSD = cost.toFixed(4);
+    report.costBreakdown = {
+      inputTokenCost:      (report.inputTokens * PRICE_IN).toFixed(4),
+      outputTokenCost:     (report.outputTokens * PRICE_OUT).toFixed(4),
+      cacheWriteCost:      (report.cacheWriteTokens * PRICE_CACHE_WRITE).toFixed(4),
+      cacheReadCost:       (report.cacheReadTokens * PRICE_CACHE_READ).toFixed(4),
+      webSearchCost:       (costWebSearch).toFixed(4),
+      webSearchCount:      report.webSearchCount,
+      totalInputTokens:    report.inputTokens,
+      totalOutputTokens:   report.outputTokens,
+      totalCacheWrite:     report.cacheWriteTokens,
+      totalCacheRead:      report.cacheReadTokens
+    };
+    report.completedAt = new Date().toISOString();
+
+    try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    console.log(`[daily-build] Done. ${report.racesAnalysed}/${report.upcomingRaces} upcoming races analysed. Cost: $${report.costUSD}`);
+
+    return { statusCode: 200, headers, body: JSON.stringify(report, null, 2) };
+
+  } catch(e) {
+    report.errors.push('FATAL: ' + e.message);
+    report.completedAt = new Date().toISOString();
+    console.error('[daily-build] Fatal:', e.message);
+    return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
+  }
+};
