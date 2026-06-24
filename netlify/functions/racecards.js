@@ -249,7 +249,11 @@ exports.handler = async function(event) {
     const targetDate = dateParam || today;
     data = await apiGet('/v1/racecards/pro?date=' + targetDate);
     if (!data.racecards || !data.racecards.length) {
-      data = await apiGet('/v1/racecards/standard');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ meetings: [], _empty: true })
+      };
     }
 
     if (data.detail && data.detail.toLowerCase().includes('pro plan')) {

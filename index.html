@@ -5216,7 +5216,10 @@ function unlockCorkAnalysis(){
       </div>
       <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">Full card and single race AI analysis</div>
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <div id="home-date-strip" style="display:flex;background:#e8eaf0;border-radius:99px;padding:2px;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;max-width:240px"></div>
+        <div style="position:relative;max-width:240px;flex-shrink:0;border-radius:99px;overflow:hidden">
+          <div id="home-date-strip" style="display:flex;background:#e8eaf0;border-radius:99px;padding:2px;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+          <div style="position:absolute;top:0;right:0;width:32px;height:100%;background:linear-gradient(to right,transparent,#e8eaf0);pointer-events:none"></div>
+        </div>
         <div id="today-meetings-count" style="background:#e8eaf0;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
       </div>
     </div>
@@ -11103,7 +11106,7 @@ function renderTodayMeetingsList(){
   if(_homeRcDay==='tomorrow'){
     el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
     var cnt=document.getElementById('today-meetings-count');
-    if(cnt) cnt.textContent='';
+    if(cnt) cnt.style.display='none';
     return;
   }
   if(_homeRcDay!=='today'){
@@ -11112,12 +11115,12 @@ function renderTodayMeetingsList(){
     var fdName=days[fd.getDay()];
     el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">'+fdName+'\'s race cards will be available on the morning.</div>';
     var cnt=document.getElementById('today-meetings-count');
-    if(cnt) cnt.textContent='';
+    if(cnt) cnt.style.display='none';
     return;
   }
   var meetings=_getLiveMeetings();
   var cnt=document.getElementById('today-meetings-count');
-  if(cnt) cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');
+  if(cnt){cnt.style.display='';cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');}
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
   meetings.forEach(function(m,idx){
     var isOpen=todayOpenMeeting===m.id;
