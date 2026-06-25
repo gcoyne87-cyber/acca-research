@@ -5216,7 +5216,7 @@ function unlockCorkAnalysis(){
       </div>
       <div style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Full card and single race AI analysis</div>
     </div>
-    <div style="background:#f5f7fb;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;display:flex;align-items:center">
+    <div id="home-date-strip-bar" style="display:none;background:#f5f7fb;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center">
       <div id="home-date-strip" style="display:flex"></div>
       <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
     </div>
@@ -10894,6 +10894,8 @@ function loadRacecards(){
       if(_allRu.length) RC_RUNNERS=_allRu;
       var titleEl=document.getElementById('today-racecards-title');
       if(titleEl) titleEl.style.display='';
+      var homeStripBar=document.getElementById('home-date-strip-bar');
+      if(homeStripBar){homeStripBar.style.display='';homeStripBar.style.display='flex';}
       renderTodayMeetingsList();
       var inline=document.getElementById('racing-inline-meeting');
       if(inline&&inline.style.maxHeight&&inline.style.maxHeight!=='0px') renderInlineMeeting();
@@ -14176,6 +14178,8 @@ function selectRacingSection(s){
   if(dpb) dpb.style.display=s==="home"?"":"none";
   var tdRcTitle=document.getElementById("today-racecards-title");
   if(tdRcTitle) tdRcTitle.style.display=(s==="home"&&RC_MEETINGS.length)?"":"none";
+  var homeStripBar=document.getElementById("home-date-strip-bar");
+  if(homeStripBar) homeStripBar.style.display=s==="home"?"flex":"none";
   var picksSecTitle=document.getElementById("picks-section-title");
   if(picksSecTitle) picksSecTitle.style.display=(s==="pickofday"||s==="home")?"none":"";
   var nrHomeWrap=document.getElementById("nr-home-wrap");
