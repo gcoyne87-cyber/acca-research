@@ -1,9 +1,14 @@
 const https = require('https');
 
+module.exports.config = { schedule: '0 23 * * *' };
+
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
 const BASE_URL = 'api.theracingapi.com';
 const AUTH = Buffer.from((USERNAME || '') + ':' + (PASSWORD || '')).toString('base64');
+
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 function apiGet(path) {
   return new Promise((resolve, reject) => {
@@ -26,6 +31,18 @@ function apiGet(path) {
     });
     req.on('error', reject);
     req.end();
+  });
+}
+
+function redisSet(key, value) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.write(body); req.end();
   });
 }
 
@@ -234,86 +251,38 @@ function mapRacecards(apiData) {
   return allMeetings;
 }
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-function redisGet(key) {
-  const url = new URL(UPSTASH_URL);
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: url.hostname,
-      path: '/get/' + encodeURIComponent(key),
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
-    }, res => {
-      let d = '';
-      res.on('data', c => d += c);
-      res.on('end', () => {
-        try { const r = JSON.parse(d); resolve(r.result ? JSON.parse(r.result) : null); }
-        catch(e) { resolve(null); }
-      });
-    });
-    req.on('error', reject);
-    req.end();
-  });
-}
-
 exports.handler = async function(event) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json'
-  };
-
   try {
-    const dateParam = event.queryStringParameters && event.queryStringParameters.date;
+    const dates = [];
+    const base = new Date();
+    for (var i = 1; i <= 7; i++) {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, '0');
+      const dy = String(d.getDate()).padStart(2, '0');
+      dates.push(y + '-' + mo + '-' + dy);
+    }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const targetDate = dateParam || today;
-    const isFuture = targetDate !== today;
-
-    // For future dates check Redis cache first
-    if (isFuture) {
-      const cached = await redisGet('racecards:' + targetDate);
-      if (cached && cached.meetings && cached.meetings.length) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ meetings: cached.meetings, _fromCache: true })
-        };
+    const results = await Promise.all(dates.map(async function(dateStr) {
+      const data = await apiGet('/v1/racecards/pro?date=' + dateStr);
+      if (!data.racecards || !data.racecards.length) {
+        return { dateStr, stored: false };
       }
-    }
+      const meetings = mapRacecards(data);
+      await redisSet('racecards:' + dateStr, { meetings, storedAt: new Date().toISOString() });
+      return { dateStr, stored: true };
+    }));
 
-    // Pro plan — use pro endpoint for both today and future dates
-    let data;
-    data = await apiGet('/v1/racecards/pro?date=' + targetDate);
-    if (!data.racecards || !data.racecards.length) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ meetings: [], _empty: true })
-      };
-    }
-
-    if (data.detail && data.detail.toLowerCase().includes('pro plan')) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ meetings: [], _proRequired: true })
-      };
-    }
-
-    const meetings = mapRacecards(data);
+    const stored = results.filter(function(r) { return r.stored; }).length;
+    const empty = results.filter(function(r) { return !r.stored; }).length;
 
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify({ meetings: meetings })
+      body: JSON.stringify({ ok: true, stored, empty, dates: results })
     };
-
   } catch(e) {
     return {
       statusCode: 500,
-      headers,
       body: JSON.stringify({ error: e.message })
     };
   }

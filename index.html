@@ -10885,6 +10885,7 @@ function loadRacecards(){
     .then(function(data){
       if(!data.meetings||!data.meetings.length) return;
       RC_MEETINGS=data.meetings;
+      RC_TODAY_MEETINGS=data.meetings;
       rcActiveVenue=RC_MEETINGS[0].id;
       rcOpenMeeting=null;
       rcOpenRace={};
@@ -11019,6 +11020,7 @@ function _buildInlineAnalysisHtml(a, m, race){
 }
 
 var rcActiveVenue=RC_MEETINGS.length?RC_MEETINGS[0].id:'';
+var RC_TODAY_MEETINGS=[];
 
 // ── TODAY MEETINGS VERTICAL LIST ────────────────────────────────────
 var todayOpenMeeting="";
@@ -11092,10 +11094,43 @@ function buildDateStrip(){
 function renderFutureDateContent(dateStr){
   var el=document.getElementById('racing-future-content');
   if(!el) return;
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var d=new Date(dateStr+'T12:00:00');
-  var dayName=days[d.getDay()];
-  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">'+dayName+'\'s race cards will be available on the morning.</div>';
+  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
+  fetch('/.netlify/functions/racecards?date='+dateStr)
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(!json.meetings||!json.meetings.length){
+        el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No race cards available for this date yet.</div>';
+        return;
+      }
+      RC_MEETINGS=json.meetings;
+      todayOpenMeeting=null;
+      rcOpenRace={};
+      _rcInlineFullCardOpen={};
+      _rcInlineAnalysisOpen={};
+      var meetings=json.meetings;
+      var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+      meetings.forEach(function(m,idx){
+        var isLast=idx===meetings.length-1;
+        out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+        out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+        out+='<div style="flex:1;min-width:0">';
+        out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+        out+='</div>';
+        out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
+        out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
+        out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
+        out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:rotate(45deg);transition:transform 0.2s"></div>';
+        out+='</div>';
+        out+='</div>';
+        out+='</div>';
+        out+='</div>';
+      });
+      out+='</div>';
+      el.innerHTML=out;
+    })
+    .catch(function(){
+      el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Unable to load race cards — please try again.</div>';
+    });
 }
 
 var _rcListForCards=false;
@@ -11117,6 +11152,7 @@ function renderTodayMeetingsList(){
     if(cnt) cnt.style.display='none';
     return;
   }
+  RC_MEETINGS=RC_TODAY_MEETINGS;
   var meetings=_getLiveMeetings();
   var cnt=document.getElementById('today-meetings-count');
   if(cnt){cnt.style.display='';cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');}
