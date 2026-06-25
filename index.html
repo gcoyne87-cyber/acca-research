@@ -11070,6 +11070,8 @@ function buildDateStrip(){
   var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var activeStyle='background:#0D1B3E;color:#fff;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
   var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
+  var cardsActiveStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var cardsInactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   var homeHtml='',cardsHtml='';
   for(var i=0;i<7;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
@@ -11078,8 +11080,9 @@ function buildDateStrip(){
     var dateVal=i===0?'today':i===1?'tomorrow':ds;
     var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()];
     var style=i===0?activeStyle:inactiveStyle;
+    var cardsStyle=i===0?cardsActiveStyle:cardsInactiveStyle;
     homeHtml+='<button data-date="'+dateVal+'" onclick="selectHomeRcDay(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
-    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
+    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+cardsStyle+'">'+label+'</button>';
   }
   var hs=document.getElementById('home-date-strip');
   var cs=document.getElementById('cards-date-strip');
@@ -14095,8 +14098,8 @@ function _showHomeCarousel(){
 }
 
 function selectCardsSubTab(sub){
-  var activeStyle='background:#0D1B3E;color:#fff;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
-  var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   document.querySelectorAll('#cards-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===sub?activeStyle:inactiveStyle;
   });
@@ -14104,8 +14107,8 @@ function selectCardsSubTab(sub){
 }
 
 function selectCardsDateBtn(d){
-  var activeStyle='background:#0D1B3E;color:#fff;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
-  var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   document.querySelectorAll('#cards-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
