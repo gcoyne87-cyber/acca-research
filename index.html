@@ -11066,7 +11066,9 @@ function selectHomeRcDay(d){
   document.querySelectorAll('#home-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
-  renderTodayMeetingsList();
+  if(d==='today'){ renderTodayMeetingsList(); }
+  else if(d==='tomorrow'){ renderTomorrowMeetingsList(); }
+  else{ renderFutureDateContent(d); }
 }
 
 function buildDateStrip(){
@@ -14454,56 +14456,47 @@ function tomorrowSelectRace(mid,ri){
 function renderTomorrowMeetingsList(){
   var el=document.getElementById("tomorrow-meetings-list");
   if(!el) return;
-  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
-  return;
-  var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-  TM_MEETINGS.forEach(function(m,idx){
-    var isOpen=tmOpenMeeting===m.id;
-    var hasRace=tmOpenRace[m.id]!=null;
-    var selRace=tmOpenRace[m.id];
-    var isLast=idx===TM_MEETINGS.length-1;
-    out+='<div id="tm-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-    out+='<div style="display:flex;align-items:center;padding:6px 12px">';
-    out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
-    out+='</div>';
-    out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-    out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> Analyse All '+m.races.length+' Races &rarr;</button>';
-    out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-    out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
-    out+='</div>';
-    out+='</div>';
-    out+='</div>';
-    if(isOpen){
-      out+='<div style="border-top:1px solid #f0f2f7">';
-      out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
-      out+='<div id="tmpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
-      m.races.forEach(function(race,ri){
-        var isSel=selRace===ri;
-        out+='<div onclick="tomorrowSelectRace(\''+m.id+'\','+ri+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(isSel?"#0D1B3E":"transparent")+'">';
-        out+='<div style="font-size:15px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#0D1B3E":"#9aa3b5")+';white-space:nowrap">'+escHtml(race.t)+'</div>';
+  var now=new Date();
+  var tmrw=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+  var y=tmrw.getFullYear(),mo=String(tmrw.getMonth()+1).padStart(2,'0'),dy=String(tmrw.getDate()).padStart(2,'0');
+  var dateStr=y+'-'+mo+'-'+dy;
+  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
+  fetch('/.netlify/functions/racecards?date='+dateStr)
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(!json.meetings||!json.meetings.length){
+        el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No race cards available yet.</div>';
+        return;
+      }
+      RC_MEETINGS=json.meetings;
+      todayOpenMeeting=null;
+      rcOpenRace={};
+      _rcInlineFullCardOpen={};
+      _rcInlineAnalysisOpen={};
+      var meetings=json.meetings;
+      var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+      meetings.forEach(function(m,idx){
+        var isLast=idx===meetings.length-1;
+        out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+        out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+        out+='<div style="flex:1;min-width:0">';
+        out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+        out+='</div>';
+        out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
+        out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
+        out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
+        out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:rotate(45deg);transition:transform 0.2s"></div>';
+        out+='</div>';
+        out+='</div>';
+        out+='</div>';
         out+='</div>';
       });
       out+='</div>';
-      out+='</div>';
-      if(hasRace){
-        var sr=m.races[selRace];
-        out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
-        out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
-        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
-        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
-        out+=_raceTabsHtml(m.id,sr.t,m.name);
-        out+='</div>';
-      }
-      var _tmKey=hasRace?m.id+'-'+((m.races[selRace]||{}).t||''):'';
-      if(hasRace&&(!_rcTabState[_tmKey]||_rcTabState[_tmKey]==='form')) out+=tmRaceDetailHtml(m);
-      out+='</div>';
-    }
-    out+='</div>';
-  });
-  out+='</div>';
-  el.innerHTML=out;
-  TM_MEETINGS.forEach(function(m){ if(tmOpenRace[m.id]!=null) tmAttachSwipe(m.id); });
+      el.innerHTML=out;
+    })
+    .catch(function(){
+      el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Unable to load race cards — please try again.</div>';
+    });
 }
 
 function navigateToTomorrowMeeting(id){
