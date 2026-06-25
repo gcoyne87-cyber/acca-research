@@ -11067,8 +11067,8 @@ function selectHomeRcDay(d){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
   if(d==='today'){ renderTodayMeetingsList(); }
-  else if(d==='tomorrow'){ renderTomorrowMeetingsList(); }
-  else{ renderFutureDateContent(d); }
+  else if(d==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+  else{ renderFutureDateContent(d,document.getElementById('today-meetings-list')); }
 }
 
 function buildDateStrip(){
@@ -11093,8 +11093,8 @@ function buildDateStrip(){
   if(cs) cs.innerHTML=cardsHtml;
 }
 
-function renderFutureDateContent(dateStr){
-  var el=document.getElementById('racing-future-content');
+function renderFutureDateContent(dateStr,targetEl){
+  var el=targetEl||document.getElementById('racing-future-content');
   if(!el) return;
   el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
   fetch('/.netlify/functions/racecards?date='+dateStr)
@@ -14453,8 +14453,8 @@ function tomorrowSelectRace(mid,ri){
   },60);
 }
 
-function renderTomorrowMeetingsList(){
-  var el=document.getElementById("tomorrow-meetings-list");
+function renderTomorrowMeetingsList(targetEl){
+  var el=targetEl||document.getElementById("tomorrow-meetings-list");
   if(!el) return;
   var now=new Date();
   var tmrw=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
