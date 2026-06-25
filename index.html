@@ -5215,9 +5215,9 @@ function unlockCorkAnalysis(){
         <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
       </div>
       <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">Full card and single race AI analysis</div>
-      <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-        <div id="home-date-strip" style="display:flex;background:#e8eaf0;border-radius:99px;padding:2px;gap:2px;flex-shrink:0"></div>
-        <div id="today-meetings-count" style="background:#e8eaf0;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
+      <div style="background:#f5f7fb;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;display:flex;align-items:center">
+        <div id="home-date-strip" style="display:flex"></div>
+        <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
       </div>
     </div>
     <div id="today-meetings-list" style="background:#fff;padding:0 0 6px"></div>
@@ -11057,8 +11057,8 @@ var _homeRcDay='today';
 
 function selectHomeRcDay(d){
   _homeRcDay=d;
-  var activeStyle='background:#0D1B3E;color:#fff;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
-  var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   document.querySelectorAll('#home-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
@@ -11068,10 +11068,8 @@ function selectHomeRcDay(d){
 function buildDateStrip(){
   var now=new Date();
   var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var activeStyle='background:#0D1B3E;color:#fff;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
-  var inactiveStyle='background:transparent;color:#5a6478;border:none;border-radius:99px;padding:5px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap';
-  var cardsActiveStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
-  var cardsInactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   var homeHtml='',cardsHtml='';
   for(var i=0;i<7;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
@@ -11080,9 +11078,8 @@ function buildDateStrip(){
     var dateVal=i===0?'today':i===1?'tomorrow':ds;
     var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()];
     var style=i===0?activeStyle:inactiveStyle;
-    var cardsStyle=i===0?cardsActiveStyle:cardsInactiveStyle;
     homeHtml+='<button data-date="'+dateVal+'" onclick="selectHomeRcDay(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
-    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+cardsStyle+'">'+label+'</button>';
+    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
   }
   var hs=document.getElementById('home-date-strip');
   var cs=document.getElementById('cards-date-strip');
