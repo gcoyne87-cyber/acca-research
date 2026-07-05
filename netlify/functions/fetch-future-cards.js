@@ -228,6 +228,7 @@ function mapRacecards(apiData) {
       dist: race.distance || '',
       going: race.going || race.going_detailed || '',
       class: race.race_class || '',
+      prize: race.prize || '',
       type: race.type || '',
       tip: race.tip || '',
       verdict: race.verdict || '',

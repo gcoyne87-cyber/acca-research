@@ -1037,13 +1037,15 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 
 /* ── MOBILE BOTTOM NAV ── */
 
-.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:300;padding:6px 0 8px}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#0D1B3E;border-top:none;box-shadow:0 -4px 20px rgba(0,0,0,0.22);z-index:300;padding:6px 0 8px}
 
 @media(max-width:600px){
 
   .bottom-nav{display:flex}
 
   .main{padding:12px 0 16px}
+
+  #topnav-tabs{display:none}
 
   /* TOP NAV */
 
@@ -1239,9 +1241,13 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 
 .bottom-nav-inner{display:flex;width:100%;max-width:500px;margin:0 auto}
 
-.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 0;color:var(--muted);transition:all .18s}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 0;color:rgba(255,255,255,0.4);transition:all .18s;font-size:10px;font-weight:500;border-top:2px solid transparent}
+
+.bnav-btn svg{width:22px;height:22px;flex-shrink:0}
 
 .bnav-btn.active{color:var(--green)}
+
+.bnav-btn.act{color:#10b981;font-weight:700;border-top-color:#10b981}
 
 .bnav-icon{font-size:20px;line-height:1}
 
@@ -1523,21 +1529,23 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 
 #trending-section .home-section-head-a{margin-bottom:0!important}
 
-.rg-footer{background:#0D1B3E;color:rgba(255,255,255,.55);padding:24px 20px 32px;font-family:'Barlow',sans-serif;font-size:11px;line-height:1.6;text-align:center}
+.rg-footer{background:#f5f7fb;color:#9aa3b5;padding:24px 20px 32px;font-family:'Barlow',sans-serif;font-size:11px;line-height:1.6;text-align:center}
+
+@media(max-width:600px){.rg-footer{padding-bottom:88px}}
 
 .rg-footer-top{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 
-.rg-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:5px 12px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+.rg-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.04);border:1px solid #e4e8f0;border-radius:99px;padding:5px 12px;font-size:11px;font-weight:600;color:#5a6478;white-space:nowrap}
 
-.rg-badge-warn{background:rgba(245,197,66,.12);border-color:rgba(245,197,66,.3);color:#d4af37}
+.rg-badge-warn{background:rgba(212,175,55,.08);border-color:rgba(212,175,55,.3);color:#b8901e}
 
 .rg-links{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
 
-.rg-links a{color:rgba(255,255,255,.45);text-decoration:none;font-size:11px;font-weight:500}
+.rg-links a{color:#9aa3b5;text-decoration:none;font-size:11px;font-weight:500}
 
-.rg-links a:hover{color:#fff}
+.rg-links a:hover{color:#0D1B3E}
 
-.rg-divider{width:40px;height:1px;background:rgba(255,255,255,.1);margin:14px auto}
+.rg-divider{width:40px;height:1px;background:#e4e8f0;margin:14px auto}
 
 .top-tab-bar{display:flex;background:var(--white);border-bottom:1.5px solid var(--border);overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
 
@@ -1896,7 +1904,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
     <!-- Price -->
     <div style="text-align:center;padding:20px 24px 0">
       <div style="display:inline-flex;align-items:baseline;gap:4px">
-        <span style="font-size:42px;font-weight:900;color:#0D1B3E;letter-spacing:-1px;line-height:1">€9</span>
+        <span style="font-size:42px;font-weight:900;color:#0D1B3E;letter-spacing:-1px;line-height:1">€14.99</span>
         <span style="font-size:16px;color:#9aa3b5;font-weight:500">/month</span>
       </div>
       <div style="font-size:12px;color:#9aa3b5;margin-top:3px">Cancel anytime · No commitment</div>
@@ -1969,7 +1977,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 
     <!-- CTA -->
     <div style="padding:20px 24px 24px">
-      <button id="pro-subscribe-btn" onclick="openProCheckout()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:15px 10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:-.1px;-webkit-font-smoothing:antialiased;margin-bottom:10px">Start PRO — €9/month</button>
+      <button id="pro-subscribe-btn" onclick="openProCheckout()" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:15px 10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:-.1px;-webkit-font-smoothing:antialiased;margin-bottom:10px">Start PRO — €14.99/month</button>
       <div id="pro-maybe-later" style="display:none;margin-bottom:10px">
         <button onclick="closeProModal()" style="width:100%;background:#f0f2f7;color:#5a6478;border:1.5px solid #e0e3ec;border-radius:99px;padding:8px 10px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;-webkit-font-smoothing:antialiased">Maybe Later</button>
       </div>
@@ -2470,6 +2478,15 @@ window.addEventListener('load',function(){
 
 </div>
 
+<div id="main-bottom-nav" class="bottom-nav" style="display:none">
+  <div class="bottom-nav-inner">
+    <button class="bnav-btn" id="bnav-cards" onclick="selectMainTab('cards')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Cards</span></button>
+    <button class="bnav-btn" id="bnav-nextrace" onclick="selectMainTab('nextrace')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Next Race</span></button>
+    <button class="bnav-btn" id="bnav-results" onclick="selectMainTab('results')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg><span>Results</span></button>
+    <button class="bnav-btn" id="bnav-picks" onclick="selectMainTab('picks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Tips</span></button>
+    <button class="bnav-btn" id="bnav-myresearch" onclick="maintabResearchClick()" style="color:#d4af37"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Upgrade</span></button>
+  </div>
+</div>
 
 <div class="main" id="main-content" style="display:none;padding-top:0">
 
@@ -3154,10 +3171,12 @@ function _populateFullCardAnalysis(m){
     var a=_cachedRaceAnalyses[ck]||null;
     var wrap=document.createElement('div');
     wrap.style.cssText='background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.07)';
+    var _cp=(race.class||'')+(race.class&&race.prize?' · ':'')+(race.prize||'');
     wrap.innerHTML=
       '<div style="padding:12px 14px 8px;border-bottom:1px solid #f0f2f7">'
       +'<div style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(race.t)+'</div>'
       +'<div style="font-size:11px;color:#9aa3b5">'+escHtml(race.name||'')+(race.dist?' · '+escHtml(race.dist):'')+(race.r?' · '+race.r+' runners':'')+'</div>'
+      +(_cp?'<div style="font-size:12px;color:#9aa3b5;margin-top:2px">'+escHtml(_cp)+'</div>':'')
       +'</div>'
       +_buildInlineAnalysisHtml(a,m,race);
     content.appendChild(wrap);
@@ -10846,7 +10865,7 @@ function _buildNrFromMeetings(meetings){
       }
       var diff=raceMins-nowMins;
       if(diff<-30) return; // skip races finished more than 30 mins ago
-      allRaces.push({t:race.t,venue:m.name,hand:m.hand,mins:Math.max(0,diff),dist:race.dist,type:race.name,going:m.going,runners:race.r,next:false,_runners:race.runners||[],_t24:raceMins});
+      allRaces.push({t:race.t,venue:m.name,hand:m.hand,mins:Math.max(0,diff),dist:race.dist,type:race.name,going:m.going,runners:race.r,class:race.class||'',prize:race.prize||'',next:false,_runners:race.runners||[],_t24:raceMins});
     });
   });
   allRaces.sort(function(a,b){return a._t24-b._t24;});
@@ -10910,7 +10929,7 @@ function loadRacecards(){
       // Auto-refresh every 60s to drop past races
       if(window._rcAutoRefresh) clearInterval(window._rcAutoRefresh);
       window._rcAutoRefresh=setInterval(function(){
-        renderTodayMeetingsList();
+        _renderCurrentHomeList();
         var inl=document.getElementById('racing-inline-meeting');
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
       },60000);
@@ -11024,6 +11043,8 @@ var RC_TODAY_MEETINGS=[];
 
 // ── TODAY MEETINGS VERTICAL LIST ────────────────────────────────────
 var todayOpenMeeting="";
+var _futureDateCache={};
+var _tomorrowCache=null;
 
 function getMeetingImg(id){
   var el=document.getElementById("img-"+id);
@@ -11041,13 +11062,29 @@ function toggleTodayMeeting(id){
     var _m=(_homeRcDay==='tomorrow'?TM_MEETINGS:RC_MEETINGS).filter(function(x){return x.id===id;})[0];
     if(_m&&_m.races.length) rcOpenRace[id]=0;
   }
-  renderTodayMeetingsList();
+  var _futureEl=document.getElementById('racing-future-content');
+  var _onCardsFuture=_futureEl&&_futureEl.style.display!=='none';
+  if(_onCardsFuture){
+    renderFutureDateContent(_cardsDay);
+  } else {
+    if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
+    else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+    else{ renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list')); }
+  }
   setTimeout(function(){ rcAttachSwipe(id); },50);
 }
 
 function todaySelectRace(mid,ri){
   rcOpenRace[mid]=rcOpenRace[mid]===ri?null:ri;
-  renderTodayMeetingsList();
+  var _futureEl=document.getElementById('racing-future-content');
+  var _onCardsFuture=_futureEl&&_futureEl.style.display!=='none';
+  if(_onCardsFuture){
+    renderFutureDateContent(_cardsDay);
+  } else {
+    if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
+    else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+    else{ renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list')); }
+  }
   setTimeout(function(){
     rcAttachSwipe(mid);
     if(rcOpenRace[mid]!=null){
@@ -11058,6 +11095,7 @@ function todaySelectRace(mid,ri){
 }
 
 var _homeRcDay='today';
+var _cardsDay='today';
 
 function selectHomeRcDay(d){
   _homeRcDay=d;
@@ -11096,6 +11134,63 @@ function buildDateStrip(){
 function renderFutureDateContent(dateStr,targetEl){
   var el=targetEl||document.getElementById('racing-future-content');
   if(!el) return;
+  function _renderMeetings(meetings){
+    RC_MEETINGS=meetings;
+    var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+    meetings.forEach(function(m,idx){
+      var isOpen=todayOpenMeeting===m.id;
+      var hasRace=rcOpenRace[m.id]!=null;
+      var selRace=rcOpenRace[m.id];
+      var isLast=idx===meetings.length-1;
+      out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+      out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+      out+='<div style="flex:1;min-width:0">';
+      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='</div>';
+      out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
+      out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
+      out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='</div>';
+      out+='</div>';
+      out+='</div>';
+      if(isOpen){
+        out+='<div style="border-top:1px solid #f0f2f7">';
+        out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+        out+='<div id="tdpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+        m.races.forEach(function(race,ri){
+          var isSel=selRace===ri;
+          out+='<div onclick="todaySelectRace(\''+m.id+'\','+ri+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(isSel?"#0D1B3E":"transparent")+'">';
+          out+='<div style="font-size:15px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#0D1B3E":"#9aa3b5")+';white-space:nowrap">'+escHtml(race.t)+'</div>';
+          out+='</div>';
+        });
+        out+='</div>';
+        out+='</div>';
+        if(hasRace){
+          var sr=m.races[selRace];
+          out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
+          out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
+          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+          var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+          if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+          var _hn=new Date(),_ht=_hn.getFullYear()+'-'+String(_hn.getMonth()+1).padStart(2,'0')+'-'+String(_hn.getDate()).padStart(2,'0'),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=_hm.getFullYear()+'-'+String(_hm.getMonth()+1).padStart(2,'0')+'-'+String(_hm.getDate()).padStart(2,'0'),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+          if(_ha&&_ha.raceHook&&(dateStr===_ht||dateStr===_hms)) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
+          out+=_raceTabsHtml(m.id,sr.t,m.name);
+          out+='</div>';
+        }
+        out+=rcRaceDetailHtml(m);
+        out+='</div>';
+      }
+      out+='</div>';
+    });
+    out+='</div>';
+    el.innerHTML=out;
+  }
+  if(_futureDateCache[dateStr]){
+    _renderMeetings(_futureDateCache[dateStr]);
+    return;
+  }
   el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
   fetch('/.netlify/functions/racecards?date='+dateStr)
     .then(function(r){return r.json();})
@@ -11104,31 +11199,8 @@ function renderFutureDateContent(dateStr,targetEl){
         el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No race cards available for this date yet.</div>';
         return;
       }
-      RC_MEETINGS=json.meetings;
-      todayOpenMeeting=null;
-      rcOpenRace={};
-      _rcInlineFullCardOpen={};
-      _rcInlineAnalysisOpen={};
-      var meetings=json.meetings;
-      var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-      meetings.forEach(function(m,idx){
-        var isLast=idx===meetings.length-1;
-        out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-        out+='<div style="display:flex;align-items:center;padding:6px 12px">';
-        out+='<div style="flex:1;min-width:0">';
-        out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-        out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
-        out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-        out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:rotate(45deg);transition:transform 0.2s"></div>';
-        out+='</div>';
-        out+='</div>';
-        out+='</div>';
-        out+='</div>';
-      });
-      out+='</div>';
-      el.innerHTML=out;
+      _futureDateCache[dateStr]=json.meetings;
+      _renderMeetings(json.meetings);
     })
     .catch(function(){
       el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Unable to load race cards — please try again.</div>';
@@ -11209,7 +11281,11 @@ function renderTodayMeetingsList(){
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+        if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+        var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+        if(_ha&&_ha.raceHook) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
         out+=_raceTabsHtml(m.id,sr.t,m.name);
         out+='</div>';
       }
@@ -11222,7 +11298,9 @@ function renderTodayMeetingsList(){
           out+='<div style="border-top:1px solid #f0f2f7">';
           out+='<div style="padding:10px 14px 4px">';
           out+='<div style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(race.t)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">'+escHtml(race.name)+' &middot; '+escHtml(race.dist)+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml(race.name)+' &middot; '+escHtml(race.dist)+'</div>';
+          var _rcp=(race.class||'')+(race.class&&race.prize?' · ':'')+(race.prize||'');
+          if(_rcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:4px">'+escHtml(_rcp)+'</div>';
           out+='</div>';
           out+=_buildInlineAnalysisHtml(cachedA, m, race);
           out+='</div>';
@@ -11294,7 +11372,11 @@ function renderRcSingleList(){
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+        if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+        var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+        if(_ha&&_ha.raceHook) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
         out+=_raceTabsHtml(m.id,sr.t,m.name);
         out+='</div>';
       }
@@ -11322,14 +11404,22 @@ function toggleRcSingleMeeting(id){
 }
 var _rcTabState={};
 var _rcTabLastMs=0;
+function _renderCurrentHomeList(){
+  var _el=document.getElementById('today-meetings-list');
+  if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
+  else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(_el); }
+  else if(_homeRcDay){ renderFutureDateContent(_homeRcDay,_el); }
+}
 function rcTabSelect(mid,time,mname,tab){
   var now=Date.now();
   if(now-_rcTabLastMs<350) return;
   _rcTabLastMs=now;
   var key=mid+'-'+time;
   _rcTabState[key]=(_rcTabState[key]===tab)?null:tab;
-  if(typeof renderTodayMeetingsList==='function') renderTodayMeetingsList();
+  _renderCurrentHomeList();
   if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
+  var _fe=document.getElementById('racing-future-content');
+  if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
   if(typeof nrRenderCard==='function') nrRenderCard();
 }
 function _buildAnalysisTabHtml(a){
@@ -11418,6 +11508,7 @@ function _buildAnalysisTabHtml(a){
     if(lu.wt) wtOrParts.push(escHtml(lu.wt));
     if(lu.or) wtOrParts.push('OR '+escHtml(String(lu.or)));
     var wtOrLine=wtOrParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+wtOrParts.join(' &middot; ')+'</div>':'';
+    var ageLine=lu.age?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(lu.age)+'</div>':'';
     html+='<div style="border-bottom:1px solid #f0f2f7">'
       // ── Race card header row — exact same layout as race card ──
       +'<div style="display:flex;align-items:center;padding:9px 12px;gap:9px">'
@@ -11430,7 +11521,7 @@ function _buildAnalysisTabHtml(a){
             +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</span>'
             +formText
           +'</div>'
-          +jockeyLine+trainerLine+wtOrLine
+          +jockeyLine+trainerLine+wtOrLine+ageLine
         +'</div>'
         +(lu.price?'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(name).replace(/'/g,"\\'")+'\',\''+escHtml(lu.price)+'\')" style="flex-shrink:0"><div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(lu.price)+'</div></button>':'')
       +'</div>'
@@ -11535,7 +11626,7 @@ function _buildFormTabHtml(a){
 }
 function _raceTabsHtml(mid,time,mname){
   var key=mid+'-'+time;
-  var active=_rcTabState[key]||'analysis';
+  var active=_rcTabState[key]||'form';
   var down='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';
   var star='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;opacity:0.85"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
   var chart='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><line x1="18" y1="20" x2="18" y2="8"/><line x1="12" y1="20" x2="12" y2="3"/><line x1="6" y1="20" x2="6" y2="13"/></svg>';
@@ -12220,6 +12311,7 @@ function runnerRow(ru,ctx){
   if(ru.wt) wtOrParts.push(escHtml(ru.wt));
   if(ru.or) wtOrParts.push('OR '+escHtml(String(ru.or)));
   var wtOrLine=wtOrParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+wtOrParts.join(' &middot; ')+'</div>':'';
+  var ageLine=ru.age?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(ru.age)+'</div>':'';
 
   var badgeHtml='';
 
@@ -12331,7 +12423,7 @@ function runnerRow(ru,ctx){
         +jockeyLine
         +trainerLine
         // Weight · OR
-        +wtOrLine
+        +wtOrLine+ageLine
       +'</div>'
       +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
         +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
@@ -12612,7 +12704,9 @@ function nrRenderCard(){
           +'<div id="'+cdId+'" style="font-size:12px;font-weight:700;color:#10b981;white-space:nowrap">'+nrFmtCd(secs)+'</div>'
         +'</div>'
         +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(r.dist) +'</div>'
+        +((r.class||r.prize)?'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((r.class||'')+(r.class&&r.prize?' · ':'')+(r.prize||''))+'</div>':'')
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(r.going||'') +' · '+ r.runners +' runners</div>'
+        +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceHook?'<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_a.raceHook)+'</div>':''}())
         +_raceTabsHtml(r.venue,r.t,r.venue)
       +'</div>'
       +(_rcTabState[r.venue+'-'+r.t]&&_rcTabState[r.venue+'-'+r.t]!=='form'?'':runners)
@@ -12906,7 +13000,7 @@ function loadDailyBuild(){
       if(data.analyses&&data.analyses.length) renderAllSelections(data.analyses, data.date||'');
 
       // Re-render race cards so tabs reflect loaded analysis data
-      if(typeof renderTodayMeetingsList==='function') renderTodayMeetingsList();
+      if(typeof _renderCurrentHomeList==='function') _renderCurrentHomeList();
       // Backfill historical selections after today's load
       loadHistoricalSelections();
     })
@@ -13570,6 +13664,7 @@ function selectRacingDate(d){
   if(today) today.style.display=d==="today"?"":"none";
   if(tmrw) tmrw.style.display=d==="tomorrow"?"":"none";
   if(future) future.style.display=isFuture?"":"none";
+  _cardsDay=d;
   var wfeed=document.getElementById("racing-winners-feed");
   if(wfeed) wfeed.style.display=d==="upcoming"?"none":"";
   if(d==="tomorrow"){ renderTomorrowMeetingsList(); }
@@ -14077,6 +14172,8 @@ function selectMainTab(tab){
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
     if(b) b.className='maintab'+(t===tab?' act':'');
+    var bn=document.getElementById('bnav-'+t);
+    if(bn) bn.className='bnav-btn'+(t===tab?' act':'');
   });
   var sb=document.getElementById('topnav-subbar');
   ['cards','results','picks'].forEach(function(s){
@@ -14120,6 +14217,8 @@ function _syncMainTab(s){
   ['home','cards','nextrace','results','winners','picks','myresearch'].forEach(function(t){
     var b=document.getElementById('maintab-'+t);
     if(b) b.className='maintab'+(t===mt?' act':'');
+    var bn=document.getElementById('bnav-'+t);
+    if(bn) bn.className='bnav-btn'+(t===mt?' act':'');
   });
 }
 
@@ -14149,6 +14248,7 @@ function selectCardsDateBtn(d){
   document.querySelectorAll('#cards-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
+  _cardsDay=d;
   selectRacingDate(d);
 }
 
@@ -14456,11 +14556,69 @@ function tomorrowSelectRace(mid,ri){
 function renderTomorrowMeetingsList(targetEl){
   var el=targetEl||document.getElementById("tomorrow-meetings-list");
   if(!el) return;
+  function _renderMeetings(meetings){
+    TM_MEETINGS=meetings;
+    var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+    meetings.forEach(function(m,idx){
+      var isOpen=todayOpenMeeting===m.id;
+      var hasRace=rcOpenRace[m.id]!=null;
+      var selRace=rcOpenRace[m.id];
+      var isLast=idx===meetings.length-1;
+      out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+      out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+      out+='<div style="flex:1;min-width:0">';
+      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='</div>';
+      out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
+      out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
+      out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='</div>';
+      out+='</div>';
+      out+='</div>';
+      if(isOpen){
+        out+='<div style="border-top:1px solid #f0f2f7">';
+        out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+        out+='<div id="tdpills-'+m.id+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+        m.races.forEach(function(race,ri){
+          var isSel=selRace===ri;
+          out+='<div onclick="todaySelectRace(\''+m.id+'\','+ri+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(isSel?"#0D1B3E":"transparent")+'">';
+          out+='<div style="font-size:15px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#0D1B3E":"#9aa3b5")+';white-space:nowrap">'+escHtml(race.t)+'</div>';
+          out+='</div>';
+        });
+        out+='</div>';
+        out+='</div>';
+        if(hasRace){
+          var sr=m.races[selRace];
+          out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
+          out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
+          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+          var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+          if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+          var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+          if(_ha&&_ha.raceHook) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
+          out+=_raceTabsHtml(m.id,sr.t,m.name);
+          out+='</div>';
+        }
+        out+=rcRaceDetailHtml(m);
+        out+='</div>';
+      }
+      out+='</div>';
+    });
+    out+='</div>';
+    el.innerHTML=out;
+  }
+  if(_tomorrowCache){
+    TM_MEETINGS=_tomorrowCache;
+    _renderMeetings(_tomorrowCache);
+    return;
+  }
+  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
   var now=new Date();
   var tmrw=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
   var y=tmrw.getFullYear(),mo=String(tmrw.getMonth()+1).padStart(2,'0'),dy=String(tmrw.getDate()).padStart(2,'0');
   var dateStr=y+'-'+mo+'-'+dy;
-  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
   fetch('/.netlify/functions/racecards?date='+dateStr)
     .then(function(r){return r.json();})
     .then(function(json){
@@ -14468,31 +14626,22 @@ function renderTomorrowMeetingsList(targetEl){
         el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No race cards available yet.</div>';
         return;
       }
-      RC_MEETINGS=json.meetings;
-      todayOpenMeeting=null;
-      rcOpenRace={};
-      _rcInlineFullCardOpen={};
-      _rcInlineAnalysisOpen={};
-      var meetings=json.meetings;
-      var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-      meetings.forEach(function(m,idx){
-        var isLast=idx===meetings.length-1;
-        out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-        out+='<div style="display:flex;align-items:center;padding:6px 12px">';
-        out+='<div style="flex:1;min-width:0">';
-        out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-        out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
-        out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-        out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:rotate(45deg);transition:transform 0.2s"></div>';
-        out+='</div>';
-        out+='</div>';
-        out+='</div>';
-        out+='</div>';
-      });
-      out+='</div>';
-      el.innerHTML=out;
+      _tomorrowCache=json.meetings;
+      TM_MEETINGS=json.meetings;
+      fetch('/.netlify/functions/get-tomorrow-hooks')
+        .then(function(r){return r.json();})
+        .then(function(hooks){
+          (hooks||[]).forEach(function(item){
+            if(item.race&&item.raceHook){
+              if(!_cachedRaceAnalyses[item.race]) _cachedRaceAnalyses[item.race]={};
+              _cachedRaceAnalyses[item.race].raceHook=item.raceHook;
+            }
+          });
+          _renderMeetings(json.meetings);
+        })
+        .catch(function(){
+          _renderMeetings(json.meetings);
+        });
     })
     .catch(function(){
       el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Unable to load race cards — please try again.</div>';
@@ -16030,9 +16179,9 @@ function toggleRacingMenu(){
 
   <div>RacingEdge is a horse racing research tool for informational purposes only. We do not accept bets or handle any gambling transactions. If you or someone you know has a gambling problem, please seek help immediately.</div>
 
-  <div style="margin-top:8px;color:rgba(255,255,255,.3)">Freephone helpline: <a href="tel:1800936725" style="color:rgba(255,255,255,.45);text-decoration:none">1800 936 725</a> (Problem Gambling Ireland)</div>
+  <div style="margin-top:8px;color:#b0b8c8">Freephone helpline: <a href="tel:1800936725" style="color:#9aa3b5;text-decoration:none">1800 936 725</a> (Problem Gambling Ireland)</div>
 
-  <div style="margin-top:10px;font-size:10px;color:rgba(255,255,255,.2)">© 2026 RacingEdge · For users 18 and over only</div>
+  <div style="margin-top:10px;font-size:10px;color:#c0c8d4">© 2026 RacingEdge · For users 18 and over only</div>
 
 </div>
 

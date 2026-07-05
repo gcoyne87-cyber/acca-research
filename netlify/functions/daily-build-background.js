@@ -211,6 +211,7 @@ You have searched for what Racing Post, Timeform, At The Races and private NH ti
 ---
 OUTPUT RULES:
 - raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. How many genuine contenders? Where is the form concentrated? Key filter (going, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection.
+- raceHook: 2-3 sentences maximum. A gentle race overview that sets the scene and creates mild curiosity. Written like a knowledgeable racing journalist introducing this specific race. Never name any horse, never mention any price or odds, never hint at your selection. Every sentence must be grounded only in facts visible in the race data — going, field size, class, distance, form figures, ratings, age restriction. Tone warm and engaging. End with a sentence that makes the reader want to look deeper without revealing what they will find.
 - pullQuote: 3-4 sentences in your own voice explaining the case for your selection — jockey, going, form, trainer angle. Tell the full story so the user understands the pick. Do NOT name-drop publications or attribute to other tipsters.
 - factors: exactly 4 entries — the 4 most compelling reasons, each starting with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, WEIGHT, COURSE, MARKET, TRIP — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
@@ -220,6 +221,7 @@ OUTPUT RULES:
 Return this exact JSON:
 {
   "raceIntelligence": "string — 3-4 sentences, your own sharp briefing",
+  "raceHook": "string — 2-3 sentences, warm journalist overview, no horses or prices named",
   "confidenceScore": 7.3,
   "strongestSelection": {
     "horseName": "string",
@@ -338,6 +340,7 @@ You have searched for what Racing Post, Timeform, At The Races and private flat 
 ---
 OUTPUT RULES:
 - raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. Cover: how many runners have a genuine winning chance; where the form is concentrated; any meaningful trainer or market pattern; one sentence on the key filter today (ground, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection.
+- raceHook: 2-3 sentences maximum. A gentle race overview that sets the scene and creates mild curiosity. Written like a knowledgeable racing journalist introducing this specific race. Never name any horse, never mention any price or odds, never hint at your selection. Every sentence must be grounded only in facts visible in the race data — going, field size, class, distance, form figures, ratings, age restriction. Tone warm and engaging. End with a sentence that makes the reader want to look deeper without revealing what they will find.
 - pullQuote: 3-4 sentences in your own voice — the full case for your selection. Cover jockey booking, going, form, trainer angle. Tell the full story so the user understands the pick without needing to expand anything. Do NOT name-drop publications or attribute to other tipsters.
 - factors: exactly 4 entries — choose the 4 most compelling reasons. Each must start with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, DISTANCE, COURSE, MARKET, WEIGHT — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
@@ -347,6 +350,7 @@ OUTPUT RULES:
 Return this exact JSON:
 {
   "raceIntelligence": "string — 3-4 sentences, your own sharp briefing, no tipster attribution",
+  "raceHook": "string — 2-3 sentences, warm journalist overview, no horses or prices named",
   "confidenceScore": 7.3,
   "strongestSelection": {
     "horseName": "string",
@@ -971,6 +975,9 @@ exports.handler = async function(event) {
           const { result, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await analyseRace(race, NH, tipsterConsensusText);
           if (result) {
             try { await redisSet(raceKey, { result, analysedAt: new Date().toISOString(), NH }); } catch(re) {}
+            if (result.raceHook) {
+              try { await redisSet('hook:race:' + today + ':' + (race.course_id || race.course) + ':' + race.off_time, result.raceHook); } catch(re) {}
+            }
           }
           return { label, ok: !!result, inputTokens, outputTokens, cacheReadTokens: cacheReadTokens || 0, cacheWriteTokens: cacheWriteTokens || 0, webSearchCount: webSearchCount || 0, runners: (race.runners||[]).length, result };
         } catch(e) {
@@ -993,6 +1000,55 @@ exports.handler = async function(event) {
         if (v.result) report.analyses.push({ race: v.label, ...v.result });
       });
       try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    }
+
+    // 4b. Generate race hooks for tomorrow's races
+    console.log('[daily-build] Step 4b: generating hooks for tomorrow\'s races...');
+    try {
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDate = tomorrow.toISOString().slice(0, 10);
+      const tmrwData = await redisGet('racecards:' + tomorrowDate);
+      if (!tmrwData || !tmrwData.meetings || !tmrwData.meetings.length) {
+        console.log('[daily-build] Step 4b: no tomorrow racecards found');
+      } else {
+        const tmrwRaces = [];
+        tmrwData.meetings.forEach(function(meeting) {
+          (meeting.races || []).forEach(function(race) {
+            tmrwRaces.push({ meeting, race });
+          });
+        });
+
+        const HOOK_BATCH = 4;
+        for (let hi = 0; hi < tmrwRaces.length; hi += HOOK_BATCH) {
+          const hookBatch = tmrwRaces.slice(hi, hi + HOOK_BATCH);
+          await Promise.all(hookBatch.map(async function({ meeting, race }) {
+            const courseName = (meeting.name || '').toLowerCase().trim();
+            const offTime = race.t || '';
+            const hookKey = 'hook:race:' + tomorrowDate + ':' + courseName + ':' + offTime;
+            const existing = await redisGet(hookKey);
+            if (existing) return;
+            const runnerLines = (race.runners || []).slice(0, 20).map(function(r) {
+              return (r.name || 'Unknown') + ' | Age: ' + (r.age || '-') + ' | Form: ' + (r.form || '-') + ' | OR: ' + (r.or || '-');
+            }).join('\n');
+            const msg = 'Course: ' + (meeting.name || '') + '\nRace: ' + (race.name || '') + '\nDistance: ' + (race.dist || '') + '\nGoing: ' + (meeting.going || '') + '\nRunners: ' + (race.r || (race.runners || []).length) + '\nClass: ' + (race.class || '') + '\nPrize: ' + (race.prize || '') + '\n\nRunners:\n' + runnerLines;
+            try {
+              const { result } = await callClaudeSimple(
+                'You are a racing journalist. Return ONLY a valid JSON object with one field: raceHook. Write 2-3 sentences maximum as a gentle warm overview of this race that sets the scene and creates mild curiosity. Never name any horse, never mention prices, never hint at a selection. Ground every sentence in the race data provided.',
+                msg,
+                200
+              );
+              if (result && result.raceHook) {
+                await redisSet(hookKey, result.raceHook);
+              }
+            } catch(e) {
+              report.errors.push('hook:tomorrow:' + (meeting.name || '') + ' ' + offTime + ': ' + e.message);
+            }
+          }));
+        }
+        console.log('[daily-build] Step 4b: tomorrow hooks complete');
+      }
+    } catch(e) {
+      report.errors.push('step4b: ' + e.message);
     }
 
     // 5. Generate per-horse form summaries and race form overviews
