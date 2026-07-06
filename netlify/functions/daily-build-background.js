@@ -1139,16 +1139,22 @@ exports.handler = async function(event) {
           let formOverview = null;
           if (validHorseSummaries.length >= 2) {
             try {
-              const raceSummaryData = await generateRaceFormSummary(race, raceContext, validHorseSummaries);
-              if (raceSummaryData) {
-                const { _tokens, ...fo } = raceSummaryData;
-                report.inputTokens += (_tokens?.input || 0);
-                report.outputTokens += (_tokens?.output || 0);
-                report.cacheReadTokens += (_tokens?.cacheRead || 0);
-                report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
-                report.callLog.push({ type: 'race-form-overview', label: race.course + ' ' + (race.off_time || ''), inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
-                formOverview = fo;
-                formRacesGenerated++;
+              const existingForOverview = await redisGet(raceKey);
+              const existingResultForOverview = existingForOverview && (existingForOverview.result || existingForOverview);
+              if (existingResultForOverview && existingResultForOverview.formOverview && existingResultForOverview.formOverview.formSummary) {
+                formOverview = existingResultForOverview.formOverview;
+              } else {
+                const raceSummaryData = await generateRaceFormSummary(race, raceContext, validHorseSummaries);
+                if (raceSummaryData) {
+                  const { _tokens, ...fo } = raceSummaryData;
+                  report.inputTokens += (_tokens?.input || 0);
+                  report.outputTokens += (_tokens?.output || 0);
+                  report.cacheReadTokens += (_tokens?.cacheRead || 0);
+                  report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
+                  report.callLog.push({ type: 'race-form-overview', label: race.course + ' ' + (race.off_time || ''), inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
+                  formOverview = fo;
+                  formRacesGenerated++;
+                }
               }
             } catch(e) {
               report.errors.push(`form:race:${race.course}: ${e.message}`);

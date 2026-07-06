@@ -12539,7 +12539,19 @@ function nrLoadForm(pfx,horseId){
   if(_cached==='loading')return;
   _nrFormCache[horseId]='loading';
   tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>';
-  fetch('/.netlify/functions/horse-form?horse_id='+encodeURIComponent(horseId))
+  var _futureEl=document.getElementById('racing-future-content');
+  var _onCardsFuture=_futureEl&&_futureEl.style.display!=='none';
+  var _activeDay=_onCardsFuture?_cardsDay:_homeRcDay;
+  var _now=new Date(),_activeDateStr;
+  if(_activeDay==='today'){
+    _activeDateStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+  } else if(_activeDay==='tomorrow'){
+    var _tmrw=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate()+1);
+    _activeDateStr=_tmrw.getFullYear()+'-'+String(_tmrw.getMonth()+1).padStart(2,'0')+'-'+String(_tmrw.getDate()).padStart(2,'0');
+  } else {
+    _activeDateStr=_activeDay;
+  }
+  fetch('/.netlify/functions/horse-form?horse_id='+encodeURIComponent(horseId)+'&date='+encodeURIComponent(_activeDateStr))
     .then(function(r){return r.json();})
     .then(function(data){
       var tDiv2=document.getElementById('nrh-ft-'+pfx);
@@ -12550,6 +12562,9 @@ function nrLoadForm(pfx,horseId){
 
       // 5 labeled form rows — Ground / Distance / Course / Form / Key angle
       if(summ){
+        if(summ.formParagraph){
+          out+='<div style="font-size:12px;color:#3a4259;line-height:1.8;padding:10px 12px;font-style:italic">'+escHtml(summ.formParagraph)+'</div>';
+        }
         var _frows=[
           {label:'Ground',val:summ.groundFit},
           {label:'Distance',val:summ.distanceFit},

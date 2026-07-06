@@ -33,16 +33,17 @@ exports.handler = async function(event) {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
-  const { horse_id } = event.queryStringParameters || {};
+  const { horse_id, date } = event.queryStringParameters || {};
   if (!horse_id) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'horse_id required' }) };
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const targetDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
 
   const [summary, history] = await Promise.all([
-    redisGet('form:summary:' + horse_id + ':' + today),
-    redisGet('form:history:' + horse_id + ':' + today)
+    redisGet('form:summary:' + horse_id + ':' + targetDate),
+    redisGet('form:history:' + horse_id + ':' + targetDate)
   ]);
 
   return {
