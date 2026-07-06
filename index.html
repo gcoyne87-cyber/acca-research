@@ -12358,9 +12358,6 @@ function runnerRow(ru,ctx){
         if(ru.windSurgery) meta.push('Wind op');
         if(ru.trainer14&&ru.trainer14.runs>0) meta.push('Trainer 14d: '+ru.trainer14.wins+'/'+ru.trainer14.runs);
         if(meta.length) html+='<div style="padding:4px 12px 6px;font-size:10px;color:#9aa3b5;line-height:1.6">'+meta.join(' &middot; ')+'</div>';
-        if(ru.spotlight||ru.comment){
-          html+='<div style="padding:0 12px 8px;font-size:11px;color:#5a6478;line-height:1.65;border-bottom:1px solid #f0f2f7">'+escHtml(ru.spotlight||ru.comment)+'</div>';
-        }
         var _ih='';
         if(ru.history&&ru.history.length){
           var _thS='text-align:left;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
@@ -12540,42 +12537,6 @@ function nrLoadForm(pfx,horseId){
   var tDiv=document.getElementById('nrh-ft-'+pfx);
   if(!tDiv)return;
   if(_cached==='loading')return;
-  // DEMO — Form Focus for Vince Le Prince
-  var _fHorseName='';
-  var _fAllR=(typeof NR_RUNNERS!=='undefined'&&NR_RUNNERS.length)?NR_RUNNERS:(typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:(typeof TEST_RUNNERS!=='undefined'?TEST_RUNNERS:[]));
-  for(var _fei=0;_fei<_fAllR.length;_fei++){if(String(_fAllR[_fei].horse_id)===String(horseId)){_fHorseName=_fAllR[_fei].name;break;}}
-  if(_fHorseName.toLowerCase().indexOf('vince')>=0||_fHorseName.toLowerCase().indexOf('prince')>=0){
-    var _demoRuns=[
-      {pos:'5',course:'York',date:"18 May '26",dist:'7f',going:'Gd-Sft',sp:'7/2'},
-      {pos:'2',course:'Doncaster',date:"24 Apr '26",dist:'7f',going:'Soft',sp:'9/4'},
-      {pos:'2',course:'Catterick',date:"10 Apr '26",dist:'7f6y',going:'Gd-Sft',sp:'5/2'},
-      {pos:'7',course:'Newcastle',date:"21 Mar '26",dist:'7f',going:'Std',sp:'12/1'},
-      {pos:'2',course:'Wolve…',date:"6 Mar '26",dist:'8f',going:'Std',sp:'5/2'},
-      {pos:'5',course:'Kempton',date:"18 Feb '26",dist:'7f',going:'Std',sp:'14/1'}
-    ];
-    var _fOut='<div style="padding:8px 12px 6px;background:#fff;border-bottom:1px solid #f0f2f7">';
-    _fOut+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:50px;font-size:9px;font-weight:800;color:#0D1B3E;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">Ground</span><span style="font-size:11px;color:#0D1B3E;line-height:1.45;flex:1">Handles good to soft well — won on this going twice last season. No concerns today.</span></div>';
-    _fOut+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:50px;font-size:9px;font-weight:800;color:#0D1B3E;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">Distance</span><span style="font-size:11px;color:#0D1B3E;line-height:1.45;flex:1">Proven at 7f6y. Best form over this trip — all placed runs have come over 7f+.</span></div>';
-    _fOut+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:50px;font-size:9px;font-weight:800;color:#0D1B3E;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">Course</span><span style="font-size:11px;color:#0D1B3E;line-height:1.45;flex:1">Course & distance winner (CD flag). Won here in 2024 off a similar mark. Track suits his hold-up style.</span></div>';
-    _fOut+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:50px;font-size:9px;font-weight:800;color:#0D1B3E;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">Form</span><span style="font-size:11px;color:#0D1B3E;line-height:1.45;flex:1">Form reads 2-2275 — consistent performer, placed in 4 of last 6. Coming back from 24-day break, which suits Tim Easterby horses.</span></div>';
-    _fOut+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:50px;font-size:9px;font-weight:800;color:#0D1B3E;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">Key angle</span><span style="font-size:11px;color:#0D1B3E;line-height:1.45;flex:1">Favourite at 7/4 — market confidence high. Wears tongue tie and pacifiers, headgear suggesting yard is serious today.</span></div>';
-    _fOut+='</div>';
-    _fOut+='<div style="display:flex;gap:6px;padding:12px 12px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:1px solid #f0f2f7">';
-    _demoRuns.forEach(function(h){
-      var p=parseInt(h.pos,10);
-      var bg=p===1?'#1e9e6b':p===2?'#1a5276':p===3?'#b7860b':p>=4&&p<=6?'#6c757d':p>6?'#adb5bd':'#c0392b';
-      var lbl=p>0?String(p):(h.pos.charAt(0)||'?');
-      _fOut+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:38px">';
-      _fOut+='<div title="'+h.dist+' · '+h.going+' · '+h.sp+'" style="width:30px;height:30px;border-radius:50%;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;cursor:default">'+lbl+'</div>';
-      _fOut+='<div style="font-size:7.5px;color:#5a6478;text-align:center;white-space:nowrap">'+h.course+'</div>';
-      _fOut+='<div style="font-size:7px;color:#9aa3b5;text-align:center;white-space:nowrap">'+h.date+'</div>';
-      _fOut+='</div>';
-    });
-    _fOut+='</div>';
-    _nrFormCache[horseId]={html:_fOut};
-    tDiv.innerHTML=_fOut;
-    return;
-  }
   _nrFormCache[horseId]='loading';
   tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>';
   fetch('/.netlify/functions/horse-form?horse_id='+encodeURIComponent(horseId))
@@ -15673,14 +15634,6 @@ function _selHistCarousel(horseName) {
 
   // Build form panel — spotlight/comment from Pro API + stats + history cards if available
   var formPanelHtml = '';
-
-  // Racing Post spotlight or comment
-  if(runner.spotlight || runner.comment){
-    formPanelHtml += '<div style="margin:8px 0 10px;padding:10px 12px;background:rgba(255,255,255,0.06);border-radius:8px;border-left:3px solid #d4af37">'
-      +'<div style="font-size:9px;font-weight:700;color:#d4af37;letter-spacing:.08em;margin-bottom:4px">RACING POST</div>'
-      +'<div style="font-size:11px;color:rgba(255,255,255,0.85);line-height:1.6">'+escHtml(runner.spotlight||runner.comment)+'</div>'
-      +'</div>';
-  }
 
   // Key stats row
   var stats=[];
