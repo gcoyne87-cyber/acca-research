@@ -25,8 +25,19 @@ function apiGet(path) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch(e) { reject(new Error('Parse error: ' + data.substring(0, 200))); }
+        let parsed;
+        try { parsed = JSON.parse(data); }
+        catch(e) { reject(new Error('Parse error (status ' + res.statusCode + '): ' + data.substring(0, 200))); return; }
+        // A non-2xx response with a valid JSON error body (e.g. rate-limit or
+        // out-of-range-date errors) would otherwise resolve "successfully" here
+        // and silently look like an empty racecard day downstream. Surface it
+        // as a real error instead.
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const apiMsg = (parsed && (parsed.error || parsed.message)) || JSON.stringify(parsed).substring(0, 200);
+          reject(new Error('HTTP ' + res.statusCode + ': ' + apiMsg));
+          return;
+        }
+        resolve(parsed);
       });
     });
     req.on('error', reject);
@@ -36,6 +47,21 @@ function apiGet(path) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// One short-backoff retry for a date that fails on its first attempt. Cheap
+// and resolves transient network blips / momentary upstream hiccups without
+// adding meaningful extra load or latency to the batch.
+async function apiGetWithRetry(path, retries) {
+  try {
+    return await apiGet(path);
+  } catch (e) {
+    if (retries > 0) {
+      await sleep(1500);
+      return apiGetWithRetry(path, retries - 1);
+    }
+    throw e;
+  }
 }
 
 function redisSet(key, value) {
@@ -282,7 +308,7 @@ exports.handler = async function(event) {
     for (var bi = 0; bi < dates.length; bi += BATCH) {
       const batch = dates.slice(bi, bi + BATCH);
       const settled = await Promise.allSettled(batch.map(async function(dateStr) {
-        const data = await apiGet('/v1/racecards/pro?date=' + dateStr);
+        const data = await apiGetWithRetry('/v1/racecards/pro?date=' + dateStr, 1);
         if (!data.racecards || !data.racecards.length) {
           return { dateStr, stored: false };
         }
@@ -302,6 +328,15 @@ exports.handler = async function(event) {
 
     const stored = results.filter(function(r) { return r.stored; }).length;
     const empty = results.filter(function(r) { return !r.stored; }).length;
+
+    // Background Functions discard the handler's return value, so this is the
+    // only way to inspect the real per-date results (including error messages)
+    // after the run without access to live Netlify function logs.
+    try {
+      await redisSet('debug:fetch-future-cards:' + new Date().toISOString(), results);
+    } catch (e) {
+      // Don't let a debug-write failure mask the real run outcome.
+    }
 
     return {
       statusCode: 200,
