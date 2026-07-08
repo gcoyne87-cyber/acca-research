@@ -1,6 +1,6 @@
 const https = require('https');
 
-module.exports.config = { timeout: 900, schedule: '30 9 * * *' };
+module.exports.config = { timeout: 900 /* schedule: '30 9 * * *' */ };
 
 const RACING_AUTH = Buffer.from(
   (process.env.RACING_API_USERNAME || '') + ':' + (process.env.RACING_API_KEY || '')
