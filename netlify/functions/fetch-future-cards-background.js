@@ -34,6 +34,10 @@ function apiGet(path) {
   });
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function redisSet(key, value) {
   const url = new URL(UPSTASH_URL);
   const body = JSON.stringify(value);
@@ -264,15 +268,37 @@ exports.handler = async function(event) {
       dates.push(y + '-' + mo + '-' + dy);
     }
 
-    const results = await Promise.all(dates.map(async function(dateStr) {
-      const data = await apiGet('/v1/racecards/pro?date=' + dateStr);
-      if (!data.racecards || !data.racecards.length) {
-        return { dateStr, stored: false };
-      }
-      const meetings = mapRacecards(data);
-      await redisSet('racecards:' + dateStr, { meetings, storedAt: new Date().toISOString() });
-      return { dateStr, stored: true };
-    }));
+    // Fetch + store in small batches with a delay between batches, mirroring the
+    // pattern in fetch-horse-history-1/2-background.js ("to avoid rate limits").
+    // Two problems with firing all 7 requests at once via Promise.all:
+    //  1. 7 concurrent hits on the Racing API risk tripping its rate limiting.
+    //  2. Promise.all rejects on the FIRST failure and returns from the handler
+    //     right away — any other date whose fetch/redis-write was still in flight
+    //     gets abandoned mid-operation instead of being allowed to finish or fail
+    //     on its own. Promise.allSettled isolates each date's outcome so one
+    //     failure can't take down its siblings.
+    const BATCH = 3;
+    const results = [];
+    for (var bi = 0; bi < dates.length; bi += BATCH) {
+      const batch = dates.slice(bi, bi + BATCH);
+      const settled = await Promise.allSettled(batch.map(async function(dateStr) {
+        const data = await apiGet('/v1/racecards/pro?date=' + dateStr);
+        if (!data.racecards || !data.racecards.length) {
+          return { dateStr, stored: false };
+        }
+        const meetings = mapRacecards(data);
+        await redisSet('racecards:' + dateStr, { meetings, storedAt: new Date().toISOString() });
+        return { dateStr, stored: true };
+      }));
+      settled.forEach(function(r, idx) {
+        if (r.status === 'fulfilled') {
+          results.push(r.value);
+        } else {
+          results.push({ dateStr: batch[idx], stored: false, error: (r.reason && r.reason.message) || String(r.reason) });
+        }
+      });
+      if (bi + BATCH < dates.length) await sleep(1000);
+    }
 
     const stored = results.filter(function(r) { return r.stored; }).length;
     const empty = results.filter(function(r) { return !r.stored; }).length;
