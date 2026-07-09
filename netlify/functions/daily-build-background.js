@@ -216,7 +216,6 @@ OUTPUT RULES:
 - factors: exactly 4 entries — the 4 most compelling reasons, each starting with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, WEIGHT, COURSE, MARKET, TRIP — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
 - runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
-- aiRaceVerdict: 4-5 sentences. Open with "We go with [selection] because..." — give the 1-2 strongest reasons, acknowledge main danger(s), close with one horse to fade. User should finish feeling decisive.
 
 Return this exact JSON:
 {
@@ -234,8 +233,7 @@ Return this exact JSON:
     "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
   },
   "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
-  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}],
-  "aiRaceVerdict": "string — 4-5 sentences, open with: We go with [selection] because..."
+  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}]
 }`;
 
 const FLAT_PROMPT = `You are a specialist flat race analyst for RacingEdge. Return ONLY a valid JSON object, no text before or after.
@@ -345,7 +343,6 @@ OUTPUT RULES:
 - factors: exactly 4 entries — choose the 4 most compelling reasons. Each must start with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, DISTANCE, COURSE, MARKET, WEIGHT — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
 - runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
-- aiRaceVerdict: 4-5 sentences. Open with "We go with [selection] because..." — give the 1-2 strongest reasons, acknowledge main danger(s), close with one horse to fade. User finishes feeling decisive.
 
 Return this exact JSON:
 {
@@ -363,8 +360,7 @@ Return this exact JSON:
     "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
   },
   "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
-  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}],
-  "aiRaceVerdict": "string — 4-5 sentences, open with: We go with [selection] because..."
+  "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}]
 }`;
 
 const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligence analyst. Surface the 4 sharpest intelligence items across today's card. These are the nuggets a serious punter would pay for — things NOT obvious from the form alone.
