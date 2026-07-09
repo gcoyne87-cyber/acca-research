@@ -1,4 +1,5 @@
 const https = require('https');
+const nodemailer = require('nodemailer');
 
 module.exports.config = { schedule: '50 23 * * *', timeout: 900 };
 
@@ -61,6 +62,24 @@ function redisSet(key, value) {
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
     req.on('error', reject); req.write(body); req.end();
   });
+}
+
+// Best-effort email notification — must never affect the function's own result.
+async function sendNotification(subject, bodyText) {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    });
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: process.env.GMAIL_USER,
+      subject: subject,
+      text: bodyText
+    });
+  } catch (e) {
+    // Swallow — email failure must not affect the job's own outcome.
+  }
 }
 
 function sleep(ms) {
@@ -153,12 +172,39 @@ exports.handler = async function(event) {
 
     console.log(`[fetch-horse-history-2] Done. Fetched: ${horsesFetched}, skipped (cached): ${horsesSkippedFromCache}, failed: ${horsesFailed}, dates: ${dateStrs.join(', ')}`);
 
+    try {
+      const perDateCounts = dateStrs.map(function(d) {
+        var count = 0;
+        horseDates.forEach(function(dates) { if (dates.indexOf(d) !== -1) count++; });
+        return d + ': ' + count + ' horses found';
+      });
+      await sendNotification('Horse History Batch 2', [
+        'Timestamp: ' + new Date().toISOString(),
+        'Dates covered: ' + dateStrs.join(', '),
+        '',
+        'Horses per date:',
+        perDateCounts.join('\n'),
+        '',
+        'Totals for this run — fetched: ' + horsesFetched + ', skipped (already cached): ' + horsesSkippedFromCache + ', failed: ' + horsesFailed
+      ].join('\n'));
+    } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
+
     return {
       statusCode: 200,
       body: JSON.stringify({ ok: true, horsesFetched, horsesSkippedFromCache, horsesFailed, dates: dateStrs })
     };
   } catch(e) {
     console.log(`[fetch-horse-history-2] Error: ${e.message}. Fetched: ${horsesFetched}, skipped: ${horsesSkippedFromCache}`);
+
+    try {
+      await sendNotification('Horse History Batch 2', [
+        'Timestamp: ' + new Date().toISOString(),
+        'Job failed before completion.',
+        'Error: ' + e.message,
+        'Fetched so far: ' + horsesFetched + ', skipped (already cached): ' + horsesSkippedFromCache
+      ].join('\n'));
+    } catch (e2) { /* notification errors are swallowed inside sendNotification itself */ }
+
     return {
       statusCode: 500,
       body: JSON.stringify({ error: e.message, horsesFetched, horsesSkippedFromCache })

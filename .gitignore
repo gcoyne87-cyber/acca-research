@@ -1,2 +1,5 @@
 # Local Netlify folder
 .netlify
+
+# Function dependencies (installed at build/deploy time from package.json)
+netlify/functions/node_modules

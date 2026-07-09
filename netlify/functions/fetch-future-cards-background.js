@@ -1,4 +1,5 @@
 const https = require('https');
+const nodemailer = require('nodemailer');
 
 module.exports.config = { schedule: '0 23 * * *' };
 
@@ -74,6 +75,24 @@ function redisSet(key, value) {
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
     req.on('error', reject); req.write(body); req.end();
   });
+}
+
+// Best-effort email notification — must never affect the function's own result.
+async function sendNotification(subject, bodyText) {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    });
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: process.env.GMAIL_USER,
+      subject: subject,
+      text: bodyText
+    });
+  } catch (e) {
+    // Swallow — email failure must not affect the job's own outcome.
+  }
 }
 
 const SILK_PALETTE = [
@@ -338,11 +357,31 @@ exports.handler = async function(event) {
       // Don't let a debug-write failure mask the real run outcome.
     }
 
+    try {
+      const succeededDates = results.filter(function(r) { return r.stored; }).map(function(r) { return r.dateStr; });
+      const failedDates = results.filter(function(r) { return !r.stored; }).map(function(r) { return r.dateStr + (r.error ? ' (' + r.error + ')' : ' (empty)'); });
+      await sendNotification('Racecards', [
+        'Timestamp: ' + new Date().toISOString(),
+        'Dates stored: ' + stored + ' of ' + results.length,
+        '',
+        'Succeeded: ' + (succeededDates.length ? succeededDates.join(', ') : 'none'),
+        'Empty or failed: ' + (failedDates.length ? failedDates.join(', ') : 'none')
+      ].join('\n'));
+    } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
+
     return {
       statusCode: 200,
       body: JSON.stringify({ ok: true, stored, empty, dates: results })
     };
   } catch(e) {
+    try {
+      await sendNotification('Racecards', [
+        'Timestamp: ' + new Date().toISOString(),
+        'Job failed before completion.',
+        'Error: ' + e.message
+      ].join('\n'));
+    } catch (e2) { /* notification errors are swallowed inside sendNotification itself */ }
+
     return {
       statusCode: 500,
       body: JSON.stringify({ error: e.message })
