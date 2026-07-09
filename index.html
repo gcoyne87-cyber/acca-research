@@ -12150,6 +12150,8 @@ var NR_RUNNERS=[
 ];
 
 var nrSelected=0;
+var nrAnchor=0;      // left edge of the 5-wide Next Race strip window — only moves to keep nrSelected in view
+var nrAnchorHome=0;  // left edge of the 3-wide home mini-strip window — same rule, separate window size
 var nrMoreOpen=false;
 var nrOpenHistory={};
 var nrStartTime=Date.now();
@@ -12187,7 +12189,7 @@ function nrTick(){
   if(cur&&(cur.mins*60-elapsed)<-180){
     for(var _ni=nrSelected+1;_ni<NR_RACES.length;_ni++){
       if((NR_RACES[_ni].mins*60-elapsed)>-180){
-        nrSelected=_ni;nrMoreOpen=false;nrRenderStrip();nrRenderCard();break;
+        nrSelected=_ni;nrAnchor=_ni;nrAnchorHome=_ni;nrMoreOpen=false;nrRenderStrip();nrRenderCard();break;
       }
     }
   }
@@ -12203,10 +12205,14 @@ function nrTick(){
 }
 
 function nrRenderStrip(){
-  var visible=NR_RACES.slice(nrSelected,nrSelected+5);
+  var STRIP_WIN=5;
+  if(nrSelected<nrAnchor) nrAnchor=nrSelected;
+  else if(nrSelected>=nrAnchor+STRIP_WIN) nrAnchor=nrSelected-STRIP_WIN+1;
+  var visible=NR_RACES.slice(nrAnchor,nrAnchor+STRIP_WIN);
   var html=visible.map(function(r,i){
-    var a=i===0;
-    return '<div onclick="nrSelect('+(nrSelected+i)+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
+    var idx=nrAnchor+i;
+    var a=idx===nrSelected;
+    return '<div onclick="nrSelect('+idx+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
       +'<div style="font-size:16px;font-weight:'+(a?"700":"500")+';color:'+(a?"#10b981":"#9aa3b5")+';white-space:nowrap">'+ escHtml(r.t) +'</div>'
       +'<div style="font-size:11px;color:'+(a?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(r.venue)+'</div>'
     +'</div>';
@@ -12215,9 +12221,13 @@ function nrRenderStrip(){
   if(strip) strip.innerHTML=html;
   var stripHome=document.getElementById("nr-strip-home");
   if(stripHome){
-    var htmlHome=NR_RACES.slice(nrSelected,nrSelected+3).map(function(r,i){
-      var a=i===0;
-      return '<div onclick="nrSelect('+(nrSelected+i)+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
+    var HOME_WIN=3;
+    if(nrSelected<nrAnchorHome) nrAnchorHome=nrSelected;
+    else if(nrSelected>=nrAnchorHome+HOME_WIN) nrAnchorHome=nrSelected-HOME_WIN+1;
+    var htmlHome=NR_RACES.slice(nrAnchorHome,nrAnchorHome+HOME_WIN).map(function(r,i){
+      var idx=nrAnchorHome+i;
+      var a=idx===nrSelected;
+      return '<div onclick="nrSelect('+idx+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(a?"#10b981":"transparent")+'">'
         +'<div style="font-size:16px;font-weight:'+(a?"700":"500")+';color:'+(a?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(r.t)+'</div>'
         +'<div style="font-size:11px;color:'+(a?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(r.venue)+'</div>'
       +'</div>';
