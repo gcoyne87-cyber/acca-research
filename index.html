@@ -11175,7 +11175,7 @@ function renderFutureDateContent(dateStr,targetEl){
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
           var _hn=new Date(),_ht=_hn.getFullYear()+'-'+String(_hn.getMonth()+1).padStart(2,'0')+'-'+String(_hn.getDate()).padStart(2,'0'),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=_hm.getFullYear()+'-'+String(_hm.getMonth()+1).padStart(2,'0')+'-'+String(_hm.getDate()).padStart(2,'0'),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
-          if(_ha&&_ha.raceHook&&(dateStr===_ht||dateStr===_hms)) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
+          if(_ha&&_ha.raceHook&&dateStr===_ht) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
           out+=_raceTabsHtml(m.id,sr.t,m.name);
           out+='</div>';
         }
@@ -11376,7 +11376,7 @@ function renderRcSingleList(){
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
-        if(_ha&&_ha.raceHook) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
+        if(_ha&&_ha.raceHook&&_homeRcDay==='today') out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
         out+=_raceTabsHtml(m.id,sr.t,m.name);
         out+='</div>';
       }
@@ -14582,8 +14582,6 @@ function renderTomorrowMeetingsList(targetEl){
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
-          var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
-          if(_ha&&_ha.raceHook) out+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
           out+=_raceTabsHtml(m.id,sr.t,m.name);
           out+='</div>';
         }

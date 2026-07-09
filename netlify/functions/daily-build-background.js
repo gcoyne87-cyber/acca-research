@@ -1002,55 +1002,6 @@ exports.handler = async function(event) {
       try { await redisSet('daily:report:' + today, report); } catch(re) {}
     }
 
-    // 4b. Generate race hooks for tomorrow's races
-    console.log('[daily-build] Step 4b: generating hooks for tomorrow\'s races...');
-    try {
-      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowDate = tomorrow.toISOString().slice(0, 10);
-      const tmrwData = await redisGet('racecards:' + tomorrowDate);
-      if (!tmrwData || !tmrwData.meetings || !tmrwData.meetings.length) {
-        console.log('[daily-build] Step 4b: no tomorrow racecards found');
-      } else {
-        const tmrwRaces = [];
-        tmrwData.meetings.forEach(function(meeting) {
-          (meeting.races || []).forEach(function(race) {
-            tmrwRaces.push({ meeting, race });
-          });
-        });
-
-        const HOOK_BATCH = 4;
-        for (let hi = 0; hi < tmrwRaces.length; hi += HOOK_BATCH) {
-          const hookBatch = tmrwRaces.slice(hi, hi + HOOK_BATCH);
-          await Promise.all(hookBatch.map(async function({ meeting, race }) {
-            const courseName = (meeting.name || '').toLowerCase().trim();
-            const offTime = race.t || '';
-            const hookKey = 'hook:race:' + tomorrowDate + ':' + courseName + ':' + offTime;
-            const existing = await redisGet(hookKey);
-            if (existing) return;
-            const runnerLines = (race.runners || []).slice(0, 20).map(function(r) {
-              return (r.name || 'Unknown') + ' | Age: ' + (r.age || '-') + ' | Form: ' + (r.form || '-') + ' | OR: ' + (r.or || '-');
-            }).join('\n');
-            const msg = 'Course: ' + (meeting.name || '') + '\nRace: ' + (race.name || '') + '\nDistance: ' + (race.dist || '') + '\nGoing: ' + (meeting.going || '') + '\nRunners: ' + (race.r || (race.runners || []).length) + '\nClass: ' + (race.class || '') + '\nPrize: ' + (race.prize || '') + '\n\nRunners:\n' + runnerLines;
-            try {
-              const { result } = await callClaudeSimple(
-                'You are a racing journalist. Return ONLY a valid JSON object with one field: raceHook. Write 2-3 sentences maximum as a gentle warm overview of this race that sets the scene and creates mild curiosity. Never name any horse, never mention prices, never hint at a selection. Ground every sentence in the race data provided.',
-                msg,
-                200
-              );
-              if (result && result.raceHook) {
-                await redisSet(hookKey, result.raceHook);
-              }
-            } catch(e) {
-              report.errors.push('hook:tomorrow:' + (meeting.name || '') + ' ' + offTime + ': ' + e.message);
-            }
-          }));
-        }
-        console.log('[daily-build] Step 4b: tomorrow hooks complete');
-      }
-    } catch(e) {
-      report.errors.push('step4b: ' + e.message);
-    }
-
     // 5. Generate per-horse form summaries and race form overviews
     // Use cached racecard data (stored at step 2 from morning fetch) so runner lists
     // are intact even when re-running late in the day after the API strips completed runners
