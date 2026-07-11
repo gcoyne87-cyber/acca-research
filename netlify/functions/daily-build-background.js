@@ -369,9 +369,9 @@ You will receive pre-computed data candidates built from the Racing API. Use the
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
-- DO NOT use web search for: GROUND EDGE, GROUND ALERT, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
-There are 7 possible signal types. Return 3 to 6 items based on genuine quality — never pad. Some days have no Ground Edge, Ground Alert, or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
+There are 6 possible signal types. Return 3 to 6 items based on genuine quality — never pad. Some days have no Ground Edge or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
@@ -392,15 +392,7 @@ Your own synthesis — an angle the data reveals that doesn't fit the above. Une
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
-6. GROUND ALERT
-Only fires when a specific venue has Heavy or Yielding going for jumps races AND there are multiple horses with proven winning form on this ground. This is NOT a tip — it is a venue alert empowering the user.
-- horseName: "[Venue] — [Going]" (e.g. "Cork — Heavy")
-- price: "" (empty)
-- meta: "[X] ground specialists identified"
-- intelligenceText: state the going, list ALL qualifying horses with price and time, close with "Our pick: [Horse] — [one sentence reason]" so the user has an anchor but can explore the list themselves
-- ctaLabel/ctaDestination: link to the top pick's race
-
-7. YARD ALERT
+6. YARD ALERT
 Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when a trainer is known to target today's specific venue (e.g. Mullins at Punchestown, Henderson at Cheltenham). Both together = strongest signal. This is NOT a specific tip — it empowers the user to look at the full yard.
 - horseName: the TRAINER NAME (e.g. "Willie Mullins") — not a horse name
 - price: "" (empty)
@@ -412,13 +404,13 @@ Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Ground Alert=#3b82f6, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight, Jockey Booking or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return between 3 and 6 items depending on quality. Minimum 3 — never pad with weak signals to reach a number. Maximum 6 — only go above 4 if you have genuine, high-quality signals that earn their place. Quality over quantity always. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Ground Alert | Trainer | Jockey Booking | Yard Alert | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Trainer | Jockey Booking | Yard Alert | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -725,8 +717,6 @@ async function generateIntelligence(racecards) {
       }
     }
   }
-  // Ground Alert: venue with most qualifiers
-  const groundEdgeVenues = Object.values(groundEdgeByVenue).sort(function(a, b) { return b.horses.length - a.horses.length; });
 
   // Ground Edge: single best horse across all venues (highest groundWins, then groundSR)
   let groundEdgeHorse = null;
@@ -752,19 +742,6 @@ async function generateIntelligence(racecards) {
     msg += '  Good/firm record: ' + groundEdgeHorse.goodRecord + '\n\n';
   } else {
     msg += 'GROUND EDGE: No qualifying individual ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
-  }
-
-  if (groundEdgeVenues.length) {
-    msg += 'GROUND ALERT VENUE SPOTLIGHT (Heavy/Yielding jumps meetings — list of ground specialists for user to explore):\n';
-    groundEdgeVenues.slice(0, 2).forEach(function(v) {
-      msg += '\nVenue: ' + v.venue + ' — Going: ' + v.going + ' (' + v.horses.length + ' ground specialists)\n';
-      v.horses.forEach(function(h) {
-        msg += '  • ' + h.horse + ' | ' + h.price + ' | ' + h.time + ' | ' + h.groundRecord + ' | Good/firm: ' + h.goodRecord + '\n';
-      });
-    });
-    msg += '\n';
-  } else {
-    msg += 'GROUND ALERT: No heavy/yielding jumps venues with multiple ground specialists today. Do NOT produce a Ground Alert signal.\n\n';
   }
 
   if (jockeyBookingCandidates.length) {
