@@ -10,6 +10,15 @@
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
 
+[functions."fetch-future-cards-background"]
+  schedule = "0 23 * * *"
+
+[functions."fetch-horse-history-1-background"]
+  schedule = "30 23 * * *"
+
+[functions."fetch-horse-history-2-background"]
+  schedule = "50 23 * * *"
+
 [[headers]]
   for = "/"
   [headers.values]
