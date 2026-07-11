@@ -7,6 +7,9 @@
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = "index.html"
 
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
 [[headers]]
   for = "/"
   [headers.values]
