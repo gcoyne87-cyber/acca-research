@@ -376,7 +376,7 @@ There are 7 possible signal types. Return 3 to 6 items based on genuine quality 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
 1. TIPSTER CONSENSUS
-Always search for this. Find where professional tipsters are pointing across today's card. Standard horse card — name, price, race time, CTA to that race.
+Always search for this. Search for today's NAP selections and top tips across the major free racing publications and tipster sources. Include in your search: Templegate, Newsboy, Robin Goodfellow, Sporting Life, Timeform, Racing Post free NAPs and community tips, At The Races, Racing TV, The Times racing tips, The Guardian racing tips, The Irish Times, IrishRacing.com, Paddypower NAPs table, HorseRacing.net, OLBG. From everything you find identify which horse has the strongest genuine consensus support today. Use your own judgement to assess credibility and weight of each source. Do not select a horse priced shorter than 1/2 as the consensus pick — if the strongest consensus is on a horse shorter than 1/2 identify the next most supported horse at a better price instead. Never mention any publication website tipster name or external source in the card output. The output must read as original Racing Edge intelligence only. Standard horse card — name, price, race time, CTA to that race.
 
 2. GROUND EDGE
 A single specific horse with an exceptional relationship with today's ground (Heavy or Yielding only, jumps races only). This is a tip — one horse, high conviction. Only fire if the pre-computed Ground Edge candidate has genuine standout stats (e.g. 3 wins from 5 on heavy, never won on good). Standard horse card — name, price, race time, CTA to that race.
