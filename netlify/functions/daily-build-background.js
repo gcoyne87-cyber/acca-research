@@ -369,9 +369,9 @@ You will receive pre-computed data candidates built from the Racing API. Use the
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
-- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
-There are 7 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
+There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
@@ -396,15 +396,12 @@ Do not select a horse priced shorter than 1/2. Standard horse card — name, pri
 4. TRAINER
 Trainer-specific intelligence about a single horse: trainer gave an interview or press quote about this horse, trainer has specifically targeted this race, or trainer has a strong historical record at this course with this type of horse. Use web search to find quotes and targeting signals. Standard horse card — name, price, race time, CTA to that race. intelligenceText: what the trainer said or did, why this horse specifically.
 
-5. JOCKEY BOOKING
-Only when a trainer has 2+ runners in the SAME race and a senior/lead jockey has taken one specific horse over the others. Reveals trainer intent. Use pre-computed candidates and your knowledge of jockey seniority in GB/IRE racing. Standard horse card — name, price, race time, CTA to that race.
-
-6. INSIGHT
+5. INSIGHT
 Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
-7. YARD ALERT
+6. YARD ALERT
 Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when a trainer is known to target today's specific venue (e.g. Mullins at Punchestown, Henderson at Cheltenham). Both together = strongest signal. This is NOT a specific tip — it empowers the user to look at the full yard.
 - horseName: the TRAINER NAME (e.g. "Willie Mullins") — not a horse name
 - price: "" (empty)
@@ -416,13 +413,13 @@ Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
-- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight, Jockey Booking or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Yard Alert=#10b981, Insight=#06b6d4
+- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Jockey Booking | Yard Alert | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Yard Alert | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -655,30 +652,6 @@ async function generateIntelligence(racecards) {
     return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
   }
 
-  // Pre-compute jockey booking candidates: same trainer, 2+ runners in same race
-  const jockeyBookingCandidates = [];
-  racecards.forEach(function(race) {
-    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner; });
-    const byTrainer = {};
-    runners.forEach(function(r) {
-      const t = r.trainer || 'Unknown';
-      if (!byTrainer[t]) byTrainer[t] = [];
-      byTrainer[t].push(r);
-    });
-    Object.keys(byTrainer).forEach(function(trainer) {
-      const hrs = byTrainer[trainer];
-      if (hrs.length >= 2) {
-        jockeyBookingCandidates.push({
-          race: race.course + ' ' + raceTime(race) + ' — ' + (race.race_name || ''),
-          trainer: trainer,
-          runners: hrs.map(function(r) {
-            return (r.horse || 'Unknown') + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r);
-          })
-        });
-      }
-    });
-  });
-
   // Pre-compute in-form trainer candidates (25%+ SR, min 3 runs last 14 days)
   const trainerFormMap = {};
   racecards.forEach(function(race) {
@@ -807,15 +780,6 @@ async function generateIntelligence(racecards) {
     msg += '\n';
   } else {
     msg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
-  }
-
-  if (jockeyBookingCandidates.length) {
-    msg += 'JOCKEY BOOKING CANDIDATES (same trainer, multiple runners in same race):\n';
-    jockeyBookingCandidates.slice(0, 5).forEach(function(c) {
-      msg += '\n• ' + c.race + ' | Trainer: ' + c.trainer + '\n';
-      c.runners.forEach(function(r) { msg += '  - ' + r + '\n'; });
-    });
-    msg += '\n';
   }
 
   if (trainerFormCandidates.length) {
