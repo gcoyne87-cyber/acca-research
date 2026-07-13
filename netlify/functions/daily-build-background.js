@@ -363,15 +363,15 @@ Return this exact JSON:
   "runnerAnalysis": [{"horseName":"string","analysis":"1-3 sentences"}]
 }`;
 
-const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligence analyst. Surface the 4 sharpest intelligence items across today's card. These are the nuggets a serious punter would pay for — things NOT obvious from the form alone.
+const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligence analyst. Surface the sharpest intelligence items across today's card. These are the nuggets a serious punter would pay for — things NOT obvious from the form alone.
 
 You will receive pre-computed data candidates built from the Racing API. Use these as your primary source.
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
-- DO NOT use web search for: GROUND EDGE, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, JOCKEY BOOKING, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
-There are 6 possible signal types. Return 3 to 6 items based on genuine quality — never pad. Some days have no Ground Edge or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
+There are 7 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
@@ -379,20 +379,32 @@ There are 6 possible signal types. Return 3 to 6 items based on genuine quality 
 Always search for this. Search for today's NAP selections and top tips across the major free racing publications and tipster sources. Include in your search: Templegate, Newsboy, Robin Goodfellow, Sporting Life, Timeform, Racing Post free NAPs and community tips, At The Races, Racing TV, The Times racing tips, The Guardian racing tips, The Irish Times, IrishRacing.com, Paddypower NAPs table, HorseRacing.net, OLBG. From everything you find identify which horse has the strongest genuine consensus support today. Use your own judgement to assess credibility and weight of each source. Do not select a horse priced shorter than 1/2 as the consensus pick — if the strongest consensus is on a horse shorter than 1/2 identify the next most supported horse at a better price instead. Never mention any publication website tipster name or external source in the card output. The output must read as original Racing Edge intelligence only. Standard horse card — name, price, race time, CTA to that race.
 
 2. GROUND EDGE
-A single specific horse with an exceptional relationship with today's ground (Heavy or Yielding only, jumps races only). This is a tip — one horse, high conviction. Only fire if the pre-computed Ground Edge candidate has genuine standout stats (e.g. 3 wins from 5 on heavy, never won on good). Standard horse card — name, price, race time, CTA to that race.
+This signal is for Heavy or Yielding going jumps races only. If the user message shows 'GROUND EDGE: No qualifying individual ground specialists today' do not produce this card.
+Do NOT use web search — all data is pre-computed from the Racing API and provided in the GROUND EDGE CANDIDATE section of this message.
+Step 1 — QUALIFY: Read the GROUND EDGE CANDIDATE data. Check the horse's Heavy/Yielding strike rate versus their Good/Firm strike rate. The Heavy/Yielding strike rate must be meaningfully higher than Good/Firm. Include placed form not just wins — if wins are low check if the horse consistently finishes close on this ground.
+Step 2 — RANK: Check if the horse's Heavy/Yielding form includes runs at today's distance. If yes this strengthens the signal significantly. Weight runs from the last 12 months more heavily than older form.
+Step 3 — SELECT: Using the GROUND EDGE CANDIDATE data and your full reasoning assess whether this horse represents a genuine edge in the context of today's specific race — the field they face, today's distance, today's conditions. If the case is not compelling do not produce this card.
+Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
-3. TRAINER
+3. COURSE AND DISTANCE
+If the COURSE AND DISTANCE section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the COURSE AND DISTANCE section of this message.
+Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Minimum 2 wins at today's course and 33% or higher course win rate required. If no horse meets both do not produce this card.
+Step 2 — RANK: Prioritise in this order — horses with wins at today's exact distance first, then similar distance, then any distance at today's course. For recency weight wins from the last 2 years as strong, wins from 2-4 years ago as moderate, wins from 4+ years ago as weak. A horse with 2 wins at this course in the last 12 months ranks above one with 4 wins from 5 years ago.
+Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
+Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
+
+4. TRAINER
 Trainer-specific intelligence about a single horse: trainer gave an interview or press quote about this horse, trainer has specifically targeted this race, or trainer has a strong historical record at this course with this type of horse. Use web search to find quotes and targeting signals. Standard horse card — name, price, race time, CTA to that race. intelligenceText: what the trainer said or did, why this horse specifically.
 
-4. JOCKEY BOOKING
+5. JOCKEY BOOKING
 Only when a trainer has 2+ runners in the SAME race and a senior/lead jockey has taken one specific horse over the others. Reveals trainer intent. Use pre-computed candidates and your knowledge of jockey seniority in GB/IRE racing. Standard horse card — name, price, race time, CTA to that race.
 
-5. INSIGHT
+6. INSIGHT
 Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
-6. YARD ALERT
+7. YARD ALERT
 Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when a trainer is known to target today's specific venue (e.g. Mullins at Punchestown, Henderson at Cheltenham). Both together = strongest signal. This is NOT a specific tip — it empowers the user to look at the full yard.
 - horseName: the TRAINER NAME (e.g. "Willie Mullins") — not a horse name
 - price: "" (empty)
@@ -404,13 +416,13 @@ Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Jockey Booking=#8b5cf6, Yard Alert=#10b981, Insight=#06b6d4
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight, Jockey Booking or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
-Return between 3 and 6 items depending on quality. Minimum 3 — never pad with weak signals to reach a number. Maximum 6 — only go above 4 if you have genuine, high-quality signals that earn their place. Quality over quantity always. Return ONLY a valid JSON array:
+Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Trainer | Jockey Booking | Yard Alert | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Jockey Booking | Yard Alert | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -636,6 +648,13 @@ async function generateIntelligence(racecards) {
     return (oddsArr.find(function(o) { return o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP';
   }
 
+  function milesFurlongs(distStr) {
+    const s = String(distStr || '');
+    const miles = (s.match(/(\d+)m/) || [])[1];
+    const furlongs = (s.match(/(\d+)f/) || [])[1];
+    return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
+  }
+
   // Pre-compute jockey booking candidates: same trainer, 2+ runners in same race
   const jockeyBookingCandidates = [];
   racecards.forEach(function(race) {
@@ -728,6 +747,40 @@ async function generateIntelligence(racecards) {
     });
   });
 
+  // Pre-compute course & distance candidates: 2+ wins at today's specific course, 33%+ course win rate
+  const courseDistanceCandidates = [];
+  for (let mi = 0; mi < racecards.length; mi++) {
+    const race = racecards[mi];
+    const course = race.course || '';
+    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+    for (let ri = 0; ri < runners.length; ri++) {
+      const runner = runners[ri];
+      const history = await fetchHorseHistory(runner.horse_id);
+      if (!history.length) continue;
+
+      const courseRuns = history.filter(function(h) { return h.course === course; });
+      const courseWins = courseRuns.filter(function(h) { return String(h.pos) === '1'; });
+      if (courseWins.length < 2) continue;
+
+      const courseWinRate = Math.round(courseWins.length / courseRuns.length * 100);
+      if (courseWinRate < 33) continue;
+
+      const winAtTodaysDistance = courseWins.some(function(h) { return milesFurlongs(h.dist) === milesFurlongs(race.distance); });
+
+      courseDistanceCandidates.push({
+        horse: runner.horse || 'Unknown',
+        price: extractPrice(runner),
+        time: raceTime(race),
+        course: course,
+        courseWins: courseWins.length,
+        courseRuns: courseRuns.length,
+        courseWinRate: courseWinRate,
+        winDates: courseWins.map(function(h) { return h.date; }).join(', '),
+        winAtTodaysDistance: winAtTodaysDistance
+      });
+    }
+  }
+
   // Build structured message
   const meetingsSummary = racecards.slice(0, 20).map(function(r) {
     return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
@@ -742,6 +795,18 @@ async function generateIntelligence(racecards) {
     msg += '  Good/firm record: ' + groundEdgeHorse.goodRecord + '\n\n';
   } else {
     msg += 'GROUND EDGE: No qualifying individual ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
+  }
+
+  if (courseDistanceCandidates.length) {
+    msg += 'COURSE AND DISTANCE CANDIDATES (2+ wins at today\'s course, 33%+ course win rate):\n';
+    courseDistanceCandidates.forEach(function(c) {
+      msg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+      msg += '  Course record: ' + c.courseWins + ' wins from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseWinRate + '% SR) | Win dates: ' + c.winDates + '\n';
+      msg += '  Win at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
+    });
+    msg += '\n';
+  } else {
+    msg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
   }
 
   if (jockeyBookingCandidates.length) {
