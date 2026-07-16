@@ -406,7 +406,7 @@ Standard horse card — name, price, race time, CTA to that race.
 intelligenceText: open with the horse name and the class drop stated clearly — last run class versus today's class — so the user instantly sees the opportunity. Then one sentence using your full reasoning on what this drop means in the context of today's specific race — the field they face, whether this is a genuinely winnable race at this level, and whether the price reflects the class advantage. Every sentence must be grounded in the CLASS DROP CANDIDATES data and your reasoning about today's race context. No generic observations. Keep the total length consistent with other intelligence cards — no padding.
 
 6. INSIGHT
-Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
+Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
@@ -866,7 +866,7 @@ async function generateIntelligence(racecards) {
 
   if (courseDistanceCandidates.length) {
     msg += 'COURSE AND DISTANCE CANDIDATES (2+ wins at today\'s course, 33%+ course win rate):\n';
-    courseDistanceCandidates.forEach(function(c) {
+    courseDistanceCandidates.slice(0, 5).forEach(function(c) {
       msg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
       msg += '  Course record: ' + c.courseWins + ' wins from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseWinRate + '% SR) | Win dates: ' + c.winDates + '\n';
       msg += '  Win at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
@@ -888,7 +888,7 @@ async function generateIntelligence(racecards) {
   }
 
   if (trainerFormCandidates.length) {
-    msg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 5 runs):\n';
+    msg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 5 runs, running at least 50% above their 60 day baseline):\n';
     trainerFormCandidates.forEach(function(c) {
       msg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR) vs ' + c.baseline60 + '% SR over the trailing 60 days\n';
       c.horses.forEach(function(h) { msg += '  - ' + h + '\n'; });
