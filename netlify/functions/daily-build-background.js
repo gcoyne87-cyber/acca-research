@@ -370,9 +370,9 @@ You will receive pre-computed data candidates built from the Racing API. Use the
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search)
-- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, CLASS DROP, HOT YARD, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, CLASS DROP, HOT YARD — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
-There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard — use Insight to fill empty slots. Never force a signal that isn't there.
+There are 5 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard. Never force a signal that isn't there.
 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
@@ -405,9 +405,6 @@ Do not select a horse priced shorter than 1/2. If after applying your full reaso
 Standard horse card — name, price, race time, CTA to that race.
 intelligenceText: open with the horse name and the class drop stated clearly — last run class versus today's class — so the user instantly sees the opportunity. Then one sentence using your full reasoning on what this drop means in the context of today's specific race — the field they face, whether this is a genuinely winnable race at this level, and whether the price reflects the class advantage. Every sentence must be grounded in the CLASS DROP CANDIDATES data and your reasoning about today's race context. No generic observations. Keep the total length consistent with other intelligence cards — no padding.
 
-6. INSIGHT
-Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
-
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
 4. HOT YARD
@@ -426,13 +423,13 @@ ctaLabel/ctaDestination: link to the first runner's race
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981, Insight=#06b6d4
-- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981
+- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
