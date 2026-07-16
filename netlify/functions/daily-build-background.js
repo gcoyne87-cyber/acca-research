@@ -691,6 +691,7 @@ async function generateIntelligence(racecards) {
         '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + date,
         { 'Authorization': 'Basic ' + RACING_AUTH }
       );
+      await new Promise(resolve => setTimeout(resolve, 200));
       // Trainer results endpoint returns a flat list — one entry per race result,
       // position at the top level (not race objects with a nested runners array).
       const results = data.results || [];
@@ -821,7 +822,8 @@ async function generateIntelligence(racecards) {
     for (let ri = 0; ri < runners.length; ri++) {
       const runner = runners[ri];
       const history = await fetchHorseHistory(runner.horse_id);
-      if (history.length < 2) continue;
+      const validClassRuns = history.filter(function(h) { return parseClassNum(h.race_class) !== null; });
+      if (validClassRuns.length < 2) continue;
 
       const lastClassRun = history.find(function(h) { return parseClassNum(h.race_class) !== null; });
       if (!lastClassRun) continue;
