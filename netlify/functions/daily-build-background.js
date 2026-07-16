@@ -808,7 +808,7 @@ async function generateIntelligence(racecards) {
   // (numerically higher class number) than their most recent class-recorded run
   const classDropCandidates = [];
   function parseClassNum(classStr) {
-    if (!classStr) return null;
+    if (!classStr || !String(classStr).startsWith('Class')) return null;
     const n = parseInt(String(classStr).slice(-1), 10);
     return isNaN(n) ? null : n;
   }
@@ -821,9 +821,9 @@ async function generateIntelligence(racecards) {
     for (let ri = 0; ri < runners.length; ri++) {
       const runner = runners[ri];
       const history = await fetchHorseHistory(runner.horse_id);
-      if (!history.length) continue;
+      if (history.length < 2) continue;
 
-      const lastClassRun = history.find(function(h) { return h.race_class; });
+      const lastClassRun = history.find(function(h) { return parseClassNum(h.race_class) !== null; });
       if (!lastClassRun) continue;
 
       const lastRunClassNum = parseClassNum(lastClassRun.race_class);
