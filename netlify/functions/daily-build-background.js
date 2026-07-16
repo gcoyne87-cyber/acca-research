@@ -370,7 +370,7 @@ You will receive pre-computed data candidates built from the Racing API. Use the
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search)
-- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, HOT YARD, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, CLASS DROP, HOT YARD, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
 There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard — use Insight to fill empty slots. Never force a signal that isn't there.
 
@@ -394,7 +394,15 @@ Step 2 — RANK: Prioritise in this order — horses with wins at today's exact 
 Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
-5. INSIGHT
+5. CLASS DROP
+If the CLASS DROP CANDIDATES section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the CLASS DROP CANDIDATES section of this message.
+
+Step 1 — READ: Read the CLASS DROP CANDIDATES data. Each entry shows the horse name, trainer, course, race time, price, last run class and today's class with the size of the drop.
+Step 2 — QUALIFY: Only consider horses dropping 2 or more classes. A horse dropping from Class 2 to Class 5 is a stronger signal than one dropping from Class 4 to Class 6. Larger drops carry more weight.
+Step 3 — SELECT: Using your full reasoning assess whether this class drop represents a genuine edge in the context of today's specific race. Consider the trainer's intent, the horse's recent form, the quality of opposition today, and whether the price reflects the class advantage. If no horse has a genuinely compelling case do not produce this card.
+Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
+
+6. INSIGHT
 Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
@@ -415,13 +423,13 @@ ctaLabel/ctaDestination: link to the first runner's race
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Hot Yard=#10b981, Insight=#06b6d4
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981, Insight=#06b6d4
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Hot Yard | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -793,6 +801,48 @@ async function generateIntelligence(racecards) {
     }
   }
 
+  // Pre-compute class drop candidates: horse racing today at least 2 classes lower
+  // (numerically higher class number) than their most recent class-recorded run
+  const classDropCandidates = [];
+  function parseClassNum(classStr) {
+    if (!classStr) return null;
+    const n = parseInt(String(classStr).slice(-1), 10);
+    return isNaN(n) ? null : n;
+  }
+  for (let mi = 0; mi < racecards.length; mi++) {
+    const race = racecards[mi];
+    const todayClassNum = parseClassNum(race.race_class);
+    if (todayClassNum === null) continue;
+
+    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+    for (let ri = 0; ri < runners.length; ri++) {
+      const runner = runners[ri];
+      const history = await fetchHorseHistory(runner.horse_id);
+      if (!history.length) continue;
+
+      const lastClassRun = history.find(function(h) { return h.race_class; });
+      if (!lastClassRun) continue;
+
+      const lastRunClassNum = parseClassNum(lastClassRun.race_class);
+      if (lastRunClassNum === null) continue;
+
+      const classDrop = todayClassNum - lastRunClassNum;
+      if (classDrop < 2) continue;
+
+      classDropCandidates.push({
+        horse: runner.horse || 'Unknown',
+        trainer: runner.trainer || '',
+        price: extractPrice(runner),
+        time: raceTime(race),
+        course: race.course || '',
+        todayClass: String(race.race_class),
+        lastRunClass: String(lastClassRun.race_class),
+        classDrop: classDrop
+      });
+    }
+  }
+  classDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
+
   // Build structured message
   const meetingsSummary = racecards.slice(0, 20).map(function(r) {
     return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
@@ -819,6 +869,17 @@ async function generateIntelligence(racecards) {
     msg += '\n';
   } else {
     msg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
+  }
+
+  if (classDropCandidates.length) {
+    msg += 'CLASS DROP CANDIDATES (horses dropping 2+ classes versus last run):\n';
+    classDropCandidates.slice(0, 5).forEach(function(c) {
+      msg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+      msg += '  Last run: ' + c.lastRunClass + ' → Today: ' + c.todayClass + ' (drop of ' + c.classDrop + ' classes)\n';
+    });
+    msg += '\n';
+  } else {
+    msg += 'CLASS DROP: No horses dropping 2+ classes today. Do NOT produce a Class Drop signal.\n\n';
   }
 
   if (trainerFormCandidates.length) {
