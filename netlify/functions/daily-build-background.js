@@ -394,7 +394,7 @@ Step 2 — RANK: Prioritise in this order — horses with wins at today's exact 
 Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
-5. CLASS DROP
+4. CLASS DROP
 If the CLASS DROP CANDIDATES section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the CLASS DROP CANDIDATES section of this message.
 
 Step 1 — READ: Read the CLASS DROP CANDIDATES data. Each entry shows the horse name, trainer, course, race time, price, last run class and today's class with the size of the drop.
@@ -407,7 +407,7 @@ intelligenceText: open with the horse name and the class drop stated clearly —
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
-4. HOT YARD
+5. HOT YARD
 If the IN-FORM TRAINER CANDIDATES section of this message shows no qualifying trainers do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the IN-FORM TRAINER CANDIDATES section of this message.
 
 Step 1 — READ: Read the IN-FORM TRAINER CANDIDATES data. Each entry shows the trainer name, their current 14 day strike rate, their 60 day baseline strike rate, and all their runners today with price and race time.

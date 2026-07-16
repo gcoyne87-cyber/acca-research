@@ -2633,7 +2633,7 @@ window.addEventListener('load',function(){
     function typeColor(t){
       var m={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6',
         'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9',
-        'Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Insight':'#06b6d4',
+        'Trainer':'#d4af37','Jockey Booking':'#8b5cf6',
         'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#94a3b8'};
       return m[t]||'#6b7280';
     }
@@ -2666,7 +2666,7 @@ window.addEventListener('load',function(){
       if(news.length){
         var todayDate=news[0].date;
         var MAIN_TYPES=['NAP','NB','Strongest'];
-        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Trainer','Jockey Booking','Insight','AI Edge','Intelligence','Ground Alert','Hot Yard'];
+        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Trainer','Jockey Booking','AI Edge','Intelligence','Ground Alert','Hot Yard'];
         recs=recs.filter(function(r){
           if(r.date!==todayDate) return true;
           if(r.result&&r.result!=='') return true;
@@ -2710,7 +2710,7 @@ window.addEventListener('load',function(){
             });
           });
           // Daily intelligence signals — exclude info cards (Ground Alert, Hot Yard) as they are not horse picks
-          var TRACKER_INTEL_TYPES=['Tipster Consensus','Ground Edge','Trainer','Jockey Booking','Insight','AI Edge','Intelligence'];
+          var TRACKER_INTEL_TYPES=['Tipster Consensus','Ground Edge','Trainer','Jockey Booking','AI Edge','Intelligence'];
           (data.intelligence||[]).forEach(function(sig){
             if(TRACKER_INTEL_TYPES.indexOf(sig.signalType)<0) return;
             var meta=sig.meta||'';
@@ -2789,7 +2789,6 @@ window.addEventListener('load',function(){
         {key:'NAP',label:'NAP',color:'#d4af37'},
         {key:'Tipster Consensus',label:'Tipster',color:'#f97316'},
         {key:'Strongest',label:'Strongest',color:'#8b5cf6'},
-        {key:'Insight',label:'Insight',color:'#06b6d4'},
         {key:'Jockey Booking',label:'Jockey',color:'#8b5cf6'},
         {key:'Ground Edge',label:'Ground',color:'#0ea5e9'},
         {key:'Trainer',label:'Trainer',color:'#d4af37'}
@@ -13274,7 +13273,7 @@ function _fmtSelDate(d){
 
 function _buildSelRows(analyses,lookup,topPicks,date,dateRecs){
   var excl=(_selExclude&&date&&_selExclude[date])?_selExclude[date].map(function(s){return _normSelName(s);}):[];
-  var _tc={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6','Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Insight':'#06b6d4','Trainer Form':'#d4af37','Intelligence':'#94a3b8','Hot Yard':'#10b981'};
+  var _tc={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6','Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Trainer Form':'#d4af37','Intelligence':'#94a3b8','Hot Yard':'#10b981'};
   var rows=[];
   var seenNk={};
   analyses.forEach(function(a){
@@ -13383,7 +13382,7 @@ window._ptInjectAllSel=function(){
   (AI_INTELLIGENCE||[]).forEach(function(item){if(item.horseName){var nk=_normSelName(item.horseName);if(!todayPicks[nk])todayPicks[nk]=[];var _sl=item.signalType||'Intelligence';todayPicks[nk].push({label:_sl==='Tipster Consensus'?'Tipster':_sl,color:'#1e9e6b'});}});
 
   // allPicks + allRecs from tracker localStorage — labels and full rec list for every date
-  var _typeClr={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6','Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Insight':'#06b6d4','Trainer Form':'#d4af37','Intelligence':'#94a3b8','Hot Yard':'#10b981'};
+  var _typeClr={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6','Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Trainer Form':'#d4af37','Intelligence':'#94a3b8','Hot Yard':'#10b981'};
   var allPicks={},allRecs={};
   try{(JSON.parse(localStorage.getItem('ptRecs2'))||[]).forEach(function(r){if(!r.horse||!r.date||!r.type)return;if(!allPicks[r.date])allPicks[r.date]={};var nk=_normSelName(r.horse);if(!allPicks[r.date][nk])allPicks[r.date][nk]=[];var _rl=r.type==='Tipster Consensus'?'Tipster':r.type;allPicks[r.date][nk].push({label:_rl,color:_typeClr[r.type]||'#6b7280'});if(!allRecs[r.date])allRecs[r.date]=[];allRecs[r.date].push(r);});}catch(e){}
 
