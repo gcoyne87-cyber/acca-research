@@ -399,8 +399,11 @@ If the CLASS DROP CANDIDATES section of this message shows no qualifying horses 
 
 Step 1 — READ: Read the CLASS DROP CANDIDATES data. Each entry shows the horse name, trainer, course, race time, price, last run class and today's class with the size of the drop.
 Step 2 — QUALIFY: Only consider horses dropping 2 or more classes. A horse dropping from Class 2 to Class 5 is a stronger signal than one dropping from Class 4 to Class 6. Larger drops carry more weight.
-Step 3 — SELECT: Using your full reasoning assess whether this class drop represents a genuine edge in the context of today's specific race. Consider the trainer's intent, the horse's recent form, the quality of opposition today, and whether the price reflects the class advantage. If no horse has a genuinely compelling case do not produce this card.
-Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
+Step 3 — SELECT: Using your full reasoning assess whether this class drop represents a genuine edge in the context of today's specific race. Consider the trainer's intent, the horse's recent form, the quality of opposition today, and whether the price reflects the class advantage.
+Do not select a horse priced shorter than 1/2. If after applying your full reasoning no horse represents a genuine edge do not produce this card — an empty slot is better than a weak card.
+
+Standard horse card — name, price, race time, CTA to that race.
+intelligenceText: open with the horse name and the class drop stated clearly — last run class versus today's class — so the user instantly sees the opportunity. Then one sentence using your full reasoning on what this drop means in the context of today's specific race — the field they face, whether this is a genuinely winnable race at this level, and whether the price reflects the class advantage. Every sentence must be grounded in the CLASS DROP CANDIDATES data and your reasoning about today's race context. No generic observations. Keep the total length consistent with other intelligence cards — no padding.
 
 6. INSIGHT
 Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
