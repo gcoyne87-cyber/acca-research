@@ -898,14 +898,18 @@ async function generateIntelligence(racecards) {
 
   msg += 'Do one focused web search for tipster consensus only. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 4000);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 6000);
 
   let items = null;
+  let parseError = null;
   try {
     const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const s = clean.indexOf('['), e = clean.lastIndexOf(']');
     if (s !== -1 && e > s) items = JSON.parse(clean.substring(s, e + 1));
-  } catch(e) {}
+  } catch(e) {
+    console.error('[daily-build] Intelligence JSON parse failed:', e.message, '| Raw text:', (text || '').slice(0, 500));
+    parseError = e.message;
+  }
 
   // Deduplicate by horseName — keep first occurrence only
   if (items && items.length) {
@@ -919,7 +923,7 @@ async function generateIntelligence(racecards) {
     });
   }
 
-  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount };
+  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError };
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -1042,6 +1046,7 @@ exports.handler = async function(event) {
         const r = await generateIntelligence(racecards);
         items = r.items; intIT = r.inputTokens; intOT = r.outputTokens;
         intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
+        if (r.parseError) report.errors.push('Intelligence parse failed: ' + r.parseError);
         if (items && items.length) {
           try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) {}
         }
