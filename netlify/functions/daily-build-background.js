@@ -410,7 +410,7 @@ Step 3 — CARD: Write the intelligence card for the selected trainer. The card 
 horseName: TRAINER NAME only — not a horse name
 price: leave empty
 meta: X runners today
-intelligenceText: the yard form analysis and complete runner list
+intelligenceText: open with the trainer name and both strike rate figures side by side — current 14 day strike rate versus their 60 day average strike rate — so the user instantly sees the gap. Then one sentence explaining what this spike means. Then list every runner today with course, time and price. Keep the total length consistent with other intelligence cards — no padding.
 ctaLabel/ctaDestination: link to the first runner's race
 
 ━━━ PRESENTATION RULES ━━━
