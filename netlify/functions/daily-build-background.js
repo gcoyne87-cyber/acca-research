@@ -369,9 +369,9 @@ You will receive pre-computed data candidates built from the Racing API. Use the
 
 WEB SEARCH RULES — follow exactly:
 - USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
-- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, YARD ALERT, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
+- DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, HOT YARD, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
-There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Yard Alert — use Insight to fill empty slots. Never force a signal that isn't there.
+There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard — use Insight to fill empty slots. Never force a signal that isn't there.
 
 ━━━ SPECIFIC HORSE CARDS (horseName = the horse, price and race time in header) ━━━
 
@@ -417,13 +417,13 @@ ctaLabel/ctaDestination: link to the first runner's race
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Yard Alert=#10b981, Insight=#06b6d4
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Hot Yard=#10b981, Insight=#06b6d4
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Yard Alert | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Hot Yard | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -1212,7 +1212,7 @@ exports.handler = async function(event) {
       report.intelligence = report.intelligence.filter(item => {
         // Extract time and course from meta e.g. "14:30 Ascot · Queen Mary Stakes"
         const m = (item.meta || '').match(/^(\d{1,2}:\d{2})\s+([A-Za-z]+)/);
-        if (!m) return true; // no time pattern → yard alert / info card → keep
+        if (!m) return true; // no time pattern → hot yard / info card → keep
         const key = m[1] + '|' + m[2].toLowerCase();
         const selHorse = _aLookup[key];
         if (!selHorse) return true; // no analysis for this race → keep
