@@ -674,6 +674,7 @@ async function generateIntelligence(racecards) {
   // not a small-sample blip. One Racing API call per candidate trainer; a failed
   // call skips that trainer only — the build continues regardless.
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const trainersToRemove = [];
   for (const trainerName of Object.keys(trainerFormMap)) {
     const entry = trainerFormMap[trainerName];
     try {
@@ -692,17 +693,18 @@ async function generateIntelligence(racecards) {
       // No results or a zero baseline means the spike can't be validated —
       // drop the trainer instead of marking them HOT.
       if (!baselineRuns || !baseline60) {
-        delete trainerFormMap[trainerName];
+        trainersToRemove.push(trainerName);
         continue;
       }
 
       const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
-      if (!isHot) delete trainerFormMap[trainerName];
+      if (!isHot) trainersToRemove.push(trainerName);
     } catch (e) {
       // Baseline could not be fetched — trainer cannot be assessed, remove entirely.
-      delete trainerFormMap[trainerName];
+      trainersToRemove.push(trainerName);
     }
   }
+  trainersToRemove.forEach(function(trainerName) { delete trainerFormMap[trainerName]; });
 
   const trainerFormCandidates = Object.values(trainerFormMap).sort(function(a, b) { return b.pct - a.pct; }).slice(0, 5);
 
