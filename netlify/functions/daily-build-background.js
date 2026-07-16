@@ -393,7 +393,7 @@ Step 2 — RANK: Prioritise in this order — horses with wins at today's exact 
 Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
-4. TRAINER
+6. TRAINER
 Trainer-specific intelligence about a single horse: trainer gave an interview or press quote about this horse, trainer has specifically targeted this race, or trainer has a strong historical record at this course with this type of horse. Use web search to find quotes and targeting signals. Standard horse card — name, price, race time, CTA to that race. intelligenceText: what the trainer said or did, why this horse specifically.
 
 5. INSIGHT
@@ -401,13 +401,17 @@ Your own synthesis — an angle the data reveals that doesn't fit the above. Une
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
-6. YARD ALERT
-Fires when a yard is running hot (25%+ SR last 14 days — pre-computed) OR when a trainer is known to target today's specific venue (e.g. Mullins at Punchestown, Henderson at Cheltenham). Both together = strongest signal. This is NOT a specific tip — it empowers the user to look at the full yard.
-- horseName: the TRAINER NAME (e.g. "Willie Mullins") — not a horse name
-- price: "" (empty)
-- meta: "[X] runners today"
-- intelligenceText: state WHY the yard is flagged (form, course record, or both), list ALL their runners today with price and time, close with "Our pick: [Horse] — [one sentence reason]"
-- ctaLabel/ctaDestination: link to the top pick's race
+4. HOT YARD
+If the IN-FORM TRAINER CANDIDATES section of this message shows no qualifying trainers do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the IN-FORM TRAINER CANDIDATES section of this message.
+
+Step 1 — READ: Read the IN-FORM TRAINER CANDIDATES data. Each entry shows the trainer name, their current 14 day strike rate, their 60 day baseline strike rate, and all their runners today with price and race time.
+Step 2 — SELECT: If multiple trainers qualify select the single most compelling one. Prioritise the trainer showing the largest spike above their 60 day baseline. Also consider the quality of the opportunity today — a smaller yard with a significant spike and a genuinely winnable race at a fair price can outweigh a bigger yard with a modest spike. Use your full reasoning and judgement to pick the most compelling candidate.
+Step 3 — CARD: Write the intelligence card for the selected trainer. The card must clearly state how far above their normal level this yard is running using the actual numbers from the data provided. List every runner they have today with price and race time. Do not recommend a specific horse — present the full runner list and let the user decide. Do not produce this card if no trainer clearly stands out as genuinely exceptional.
+horseName: TRAINER NAME only — not a horse name
+price: leave empty
+meta: X runners today
+intelligenceText: the yard form analysis and complete runner list
+ctaLabel/ctaDestination: link to the first runner's race
 
 ━━━ PRESENTATION RULES ━━━
 - Never include Market Move as a signal type
@@ -652,19 +656,54 @@ async function generateIntelligence(racecards) {
     return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
   }
 
-  // Pre-compute in-form trainer candidates (25%+ SR, min 3 runs last 14 days)
+  // Pre-compute in-form trainer candidates (25%+ SR, min 5 runs last 14 days)
   const trainerFormMap = {};
   racecards.forEach(function(race) {
     const t = raceTime(race);
     (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-      const t14 = r.trainer_14_days || {};
-      const runs = t14.runs || 0, wins = t14.wins || 0, pct = t14.percent || 0;
-      if (runs >= 3 && pct >= 25 && r.trainer) {
-        if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, runs: runs, wins: wins, pct: pct, horses: [] };
+      const t14 = r.trainer14 || {};
+      const runs = t14.runs || 0, wins = t14.wins || 0, pct = t14.pct || 0;
+      if (runs >= 5 && pct >= 25 && r.trainer) {
+        if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
         trainerFormMap[r.trainer].horses.push((r.horse || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r));
       }
     });
   });
+  // 60-day baseline comparison — a trainer only counts as HOT if their current 14-day
+  // strike rate is a genuine spike (25%+ AND at least 50% above their 60-day norm),
+  // not a small-sample blip. One Racing API call per candidate trainer; a failed
+  // call skips that trainer only — the build continues regardless.
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  for (const trainerName of Object.keys(trainerFormMap)) {
+    const entry = trainerFormMap[trainerName];
+    try {
+      const data = await apiGet('api.theracingapi.com',
+        '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + date,
+        { 'Authorization': 'Basic ' + RACING_AUTH }
+      );
+      // Trainer results endpoint returns a flat list — one entry per race result,
+      // position at the top level (not race objects with a nested runners array).
+      const results = data.results || [];
+      const baselineRuns = results.length;
+      const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
+      const baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
+      entry.baseline60 = baseline60;
+
+      // No results or a zero baseline means the spike can't be validated —
+      // drop the trainer instead of marking them HOT.
+      if (!baselineRuns || !baseline60) {
+        delete trainerFormMap[trainerName];
+        continue;
+      }
+
+      const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
+      if (!isHot) delete trainerFormMap[trainerName];
+    } catch (e) {
+      // Baseline could not be fetched — trainer cannot be assessed, remove entirely.
+      delete trainerFormMap[trainerName];
+    }
+  }
+
   const trainerFormCandidates = Object.values(trainerFormMap).sort(function(a, b) { return b.pct - a.pct; }).slice(0, 5);
 
   // Pre-compute ground edge candidates: Heavy/Yielding jumps meetings only, grouped by venue
@@ -783,9 +822,9 @@ async function generateIntelligence(racecards) {
   }
 
   if (trainerFormCandidates.length) {
-    msg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 3 runs):\n';
+    msg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 5 runs):\n';
     trainerFormCandidates.forEach(function(c) {
-      msg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR)\n';
+      msg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR) vs ' + c.baseline60 + '% SR over the trailing 60 days\n';
       c.horses.forEach(function(h) { msg += '  - ' + h + '\n'; });
     });
     msg += '\n';
