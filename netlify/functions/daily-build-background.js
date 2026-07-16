@@ -102,7 +102,8 @@ async function fetchHorseHistory(horse_id) {
         pos: runner.position || '-',
         ran: (race.runners || []).length || 0,
         sp: runner.sp || '',
-        jockey: runner.jockey || ''
+        jockey: runner.jockey || '',
+        race_class: race.race_class || ''
       };
     });
     _horseHistoryCache.set(horse_id, history);
@@ -368,7 +369,7 @@ const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligen
 You will receive pre-computed data candidates built from the Racing API. Use these as your primary source.
 
 WEB SEARCH RULES — follow exactly:
-- USE web search for: TIPSTER CONSENSUS (always search) and TRAINER (search for quotes, interviews, targeting signals)
+- USE web search for: TIPSTER CONSENSUS (always search)
 - DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, HOT YARD, INSIGHT — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
 There are 6 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard — use Insight to fill empty slots. Never force a signal that isn't there.
@@ -393,9 +394,6 @@ Step 2 — RANK: Prioritise in this order — horses with wins at today's exact 
 Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
-6. TRAINER
-Trainer-specific intelligence about a single horse: trainer gave an interview or press quote about this horse, trainer has specifically targeted this race, or trainer has a strong historical record at this course with this type of horse. Use web search to find quotes and targeting signals. Standard horse card — name, price, race time, CTA to that race. intelligenceText: what the trainer said or did, why this horse specifically.
-
 5. INSIGHT
 Your own synthesis — an angle the data reveals that doesn't fit the above. Unexposed improver, class drop, fitness signal, pedigree fit. Standard horse card — name, price, race time, CTA to that race. Use to fill any slot where a better signal doesn't exist.
 
@@ -417,13 +415,13 @@ ctaLabel/ctaDestination: link to the first runner's race
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Trainer=#d4af37, Hot Yard=#10b981, Insight=#06b6d4
-- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Trainer, Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Hot Yard=#10b981, Insight=#06b6d4
+- CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under Insight or any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Trainer | Hot Yard | Insight",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Hot Yard | Insight",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -623,7 +621,7 @@ Race: ${race.race_name} (${race.off_time})
 Going: ${race.going || 'Good'}
 Distance: ${race.distance || ''}
 Prize: ${race.prize || ''}
-Class: ${race.class || ''}
+Class: ${race.race_class || ''}
 ${tipsterSection}
 RUNNERS (live form history from Racing API):
 ${runners}
@@ -832,7 +830,7 @@ async function generateIntelligence(racecards) {
     msg += '\n';
   }
 
-  msg += 'Do one focused web search for tipster consensus only. Only search for a trainer signal if a specific trainer candidate has been flagged in the pre-computed data provided above — if no strong trainer candidate exists in the data, skip the trainer search entirely. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
+  msg += 'Do one focused web search for tipster consensus only. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
 
   const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 4000);
 
