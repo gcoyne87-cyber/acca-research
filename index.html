@@ -11238,9 +11238,49 @@ function renderTodayMeetingsList(){
   }
   RC_MEETINGS=RC_TODAY_MEETINGS;
   var meetings=_getLiveMeetings();
+  var filteredRaces = null;
+  if (_trainerFilter) {
+    filteredRaces = [];
+    meetings.forEach(function(m) {
+      (m.races || []).forEach(function(race, ri) {
+        var hasMatch = (race.runners || []).some(function(ru) { return (ru.trainer || '').toLowerCase() === _trainerFilter.toLowerCase(); });
+        if (hasMatch) {
+          filteredRaces.push({ meetingId: m.id, meetingName: m.name, raceIndex: ri, raceTime: race.t, race: race, meeting: m });
+        }
+      });
+    });
+  }
   var cnt=document.getElementById('today-meetings-count');
   if(cnt){cnt.style.display='';cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');}
   var filteredMeetings = _trainerFilter ? meetings.filter(function(m) { return (m.races || []).some(function(r) { return (r.runners || []).some(function(ru) { return (ru.trainer || '').toLowerCase() === _trainerFilter.toLowerCase(); }); }); }) : meetings;
+  if (filteredRaces !== null) {
+    var out2='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+    out2+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
+    out2+='<span>Filtering: '+escHtml(_trainerFilter)+'</span>';
+    out2+='<span onclick="clearTrainerFilter()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
+    out2+='</div>';
+    if (filteredRaces.length === 0) {
+      out2+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' today</div>';
+    } else {
+      out2+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+      out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+      filteredRaces.forEach(function(fr){
+        var isSel=rcOpenRace[fr.meetingId]===fr.raceIndex;
+        out2+='<div onclick="todaySelectRace(\''+fr.meetingId+'\','+fr.raceIndex+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(isSel?"#0D1B3E":"transparent")+'">';
+        out2+='<div style="font-size:15px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#0D1B3E":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.meetingName+' '+fr.raceTime)+'</div>';
+        out2+='</div>';
+      });
+      out2+='</div>';
+      out2+='</div>';
+      var _selectedEntry=filteredRaces.filter(function(fr){ return rcOpenRace[fr.meetingId]===fr.raceIndex; })[0];
+      if(_selectedEntry){
+        out2+=rcRaceDetailHtml(_selectedEntry.meeting);
+      }
+    }
+    out2+='</div>';
+    el.innerHTML=out2;
+    return;
+  }
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
   if(_trainerFilter){
     out+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
