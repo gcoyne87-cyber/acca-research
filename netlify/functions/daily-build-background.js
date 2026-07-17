@@ -417,13 +417,15 @@ horseName: TRAINER NAME only — not a horse name
 price: leave empty
 meta: X runners today
 intelligenceText: open with the trainer name and both strike rate figures side by side — current 14 day strike rate versus their 60 day average strike rate — so the user instantly sees the gap. Then one sentence explaining what this spike means. Then list every runner today with course, time and price. Keep the total length consistent with other intelligence cards — no padding.
-ctaLabel/ctaDestination: link to the first runner's race
+ctaLabel: 'View [Trainer Name] Runners' — use the actual trainer name
+ctaDestination: 'trainer:[Trainer Name]' — use the actual trainer name exactly as it appears in the data. Example: 'trainer:Willie Mullins'
 
 ━━━ PRESENTATION RULES ━━━
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
 - sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981
+- ctaDestination format: "race:{course}:{time}" — course must be the lowercase course name with spaces replaced by hyphens, time must be the HH:MM off time of the race. Example: "race:haydock:14:30" or "race:ascot:15:45". Exception: Hot Yard uses trainer:{trainer name} format instead.
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Return items based on genuine quality alone. Return ONLY a valid JSON array:
@@ -436,7 +438,7 @@ Return items based on genuine quality alone. Return ONLY a valid JSON array:
     "meta": "HH:MM Course · details or X runners today or X ground specialists",
     "intelligenceText": "2-3 sentences — specific, actionable, no publication names",
     "ctaLabel": "Analyse [Course] [HH:MM]",
-    "ctaDestination": "racecards"
+    "ctaDestination": "race:{course}:{time}"
   }
 ]`;
 
@@ -906,6 +908,11 @@ async function generateIntelligence(racecards) {
   } catch(e) {
     console.error('[daily-build] Intelligence JSON parse failed:', e.message, '| Raw text:', (text || '').slice(0, 500));
     parseError = e.message;
+  }
+
+  if (items && items.length) {
+    const sigColorMap = {'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981'};
+    items.forEach(function(item) { item.sigColor = sigColorMap[item.signalType] || '#6b7280'; });
   }
 
   // Deduplicate by horseName — keep first occurrence only

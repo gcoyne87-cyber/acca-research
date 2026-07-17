@@ -11095,6 +11095,17 @@ function todaySelectRace(mid,ri){
 
 var _homeRcDay='today';
 var _cardsDay='today';
+var _trainerFilter=null;
+
+function setTrainerFilter(trainerName){
+  _trainerFilter=trainerName;
+  renderTodayMeetingsList();
+}
+
+function clearTrainerFilter(){
+  _trainerFilter=null;
+  renderTodayMeetingsList();
+}
 
 function selectHomeRcDay(d){
   _homeRcDay=d;
@@ -11229,13 +11240,20 @@ function renderTodayMeetingsList(){
   var meetings=_getLiveMeetings();
   var cnt=document.getElementById('today-meetings-count');
   if(cnt){cnt.style.display='';cnt.textContent=meetings.length+' meeting'+(meetings.length===1?'':'s');}
+  var filteredMeetings = _trainerFilter ? meetings.filter(function(m) { return (m.races || []).some(function(r) { return (r.runners || []).some(function(ru) { return (ru.trainer || '').toLowerCase() === _trainerFilter.toLowerCase(); }); }); }) : meetings;
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-  meetings.forEach(function(m,idx){
+  if(_trainerFilter){
+    out+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
+    out+='<span>Filtering: '+escHtml(_trainerFilter)+'</span>';
+    out+='<span onclick="clearTrainerFilter()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
+    out+='</div>';
+  }
+  filteredMeetings.forEach(function(m,idx){
     var isOpen=todayOpenMeeting===m.id;
     var hasRace=rcOpenRace[m.id]!=null;
     var selRace=rcOpenRace[m.id];
     var firstTime=m.races.length?m.races[0].t:'';
-    var isLast=idx===meetings.length-1;
+    var isLast=idx===filteredMeetings.length-1;
     // Single row: name+subtitle left | CTA + arrow right
     out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     if(_rcListForCards){
@@ -14262,6 +14280,28 @@ function selectPicksSubTab(sub){
 }
 
 function selectRacingSection(s){
+  if(typeof s==='string'&&s.indexOf('trainer:')===0){
+    var _trainerName=s.substring('trainer:'.length);
+    selectRacingSection('racecards');
+    setTrainerFilter(_trainerName);
+    return;
+  }
+  if(typeof s==='string'&&s.indexOf('race:')===0){
+    var _raceParts=s.split(':');
+    var _raceCourse=_raceParts[1]||'';
+    var _raceTime=_raceParts.slice(2).join(':');
+    selectRacingSection('racecards');
+    var _rm=RC_MEETINGS.filter(function(m){ return m.name.toLowerCase().replace(/\s+/g,'-')===_raceCourse; })[0];
+    if(_rm){
+      toggleTodayMeeting(_rm.id);
+      var _ri=-1;
+      for(var _i=0;_i<_rm.races.length;_i++){
+        if(_rm.races[_i].t===_raceTime){ _ri=_i; break; }
+      }
+      if(_ri!==-1) todaySelectRace(_rm.id,_ri);
+    }
+    return;
+  }
   if(typeof _syncMainTab==='function') _syncMainTab(s);
   var todayC=document.getElementById("racing-today-content");
   var tmrwC=document.getElementById("racing-tomorrow-content");
