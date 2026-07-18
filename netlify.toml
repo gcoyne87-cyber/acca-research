@@ -19,6 +19,9 @@
 [functions."fetch-horse-history-2-background"]
   schedule = "50 23 * * *"
 
+[functions."refresh-prices-background"]
+  schedule = "0 6-21 * * *"
+
 [[headers]]
   for = "/"
   [headers.values]
