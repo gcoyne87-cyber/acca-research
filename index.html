@@ -11123,6 +11123,17 @@ function setTrainerFilter(trainerName){
   var clr=document.getElementById('trainer-search-clear');
   if(clr) clr.style.display='flex';
   renderTodayMeetingsList();
+  var meetings=_getLiveMeetings();
+  var filteredRaces=[];
+  meetings.forEach(function(m){
+    (m.races||[]).forEach(function(race,ri){
+      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+      if(hasMatch){ filteredRaces.push({meetingId:m.id,raceIndex:ri}); }
+    });
+  });
+  if(filteredRaces.length){
+    todaySelectRace(filteredRaces[0].meetingId,filteredRaces[0].raceIndex);
+  }
 }
 
 function clearTrainerFilter(){
@@ -11354,7 +11365,20 @@ function renderTodayMeetingsList(){
       out2+='</div>';
       var _selectedEntry=filteredRaces.filter(function(fr){ return rcOpenRace[fr.meetingId]===fr.raceIndex; })[0];
       if(_selectedEntry){
-        out2+=rcRaceDetailHtml(_selectedEntry.meeting);
+        var selMeeting=_selectedEntry.meeting;
+        var sr=_selectedEntry.race;
+        out2+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
+        out2+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(selMeeting.name)+' &middot; '+escHtml(sr.t)+'</div>';
+        out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+        if(_srcp) out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
+        out2+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
+        var _hk=(selMeeting.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+        if(_ha&&_ha.raceHook) out2+='<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_ha.raceHook)+'</div>';
+        out2+=_raceTabsHtml(selMeeting.id,sr.t,selMeeting.name);
+        out2+='</div>';
+        var _tdKey2=selMeeting.id+'-'+(sr.t||'');
+        if(!_rcTabState[_tdKey2]||_rcTabState[_tdKey2]==='form') out2+=rcRaceDetailHtml(selMeeting);
       }
     }
     out2+='</div>';
