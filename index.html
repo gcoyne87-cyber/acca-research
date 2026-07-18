@@ -11180,7 +11180,7 @@ function _buildPopularTrainers(){
   var eliteTrainers=['Willie Mullins','Gordon Elliott','Henry de Bromhead','Aidan O\'Brien','Joseph O\'Brien','Nicky Henderson','Paul Nicholls','Dan Skelton','John Gosden','Charlie Appleby','William Haggas','Roger Varian','Andrew Balding','Karl Burke','Dermot Weld'];
   var counts={};
   var venues={};
-  RC_MEETINGS.forEach(function(m){
+  RC_TODAY_MEETINGS.forEach(function(m){
     (m.races||[]).forEach(function(race){
       (race.runners||[]).forEach(function(ru){
         var t=(ru.trainer||'').trim();
