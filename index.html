@@ -5238,12 +5238,24 @@ function unlockCorkAnalysis(){
       <div id="home-date-strip" style="display:flex"></div>
       <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
     </div>
-    <div id="trainer-search-wrap" style="position:relative;padding:8px 12px;background:#fff">
-      <div style="position:relative">
-        <input id="trainer-search-input" type="text" placeholder="Search trainer..." autocomplete="off" oninput="_onTrainerSearchInput(this.value)" onfocus="_onTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:10px 34px 10px 14px;border:1px solid #e4e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:#0D1B3E;background:#f8fafc;outline:none">
-        <span id="trainer-search-clear" onclick="_clearTrainerSearchInput()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;width:20px;height:20px;border-radius:50%;background:#10b981;color:#fff;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>
+    <div id="trainer-search-wrap" style="padding:12px 16px;background:#fff">
+      <div style="background:#f7f8fb;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="font-size:15px;font-weight:700;color:#0D1B3E">Filter by Trainer</div>
+          <div style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:0.02em">NEW</div>
+        </div>
+        <div style="font-size:12px;color:#9aa3b5;margin-bottom:12px">Find all horses running for a specific trainer today.</div>
+        <div style="position:relative">
+          <div style="display:flex;align-items:stretch;background:#fff;border-radius:99px;overflow:hidden;box-shadow:0 1px 3px rgba(13,27,62,0.08)">
+            <div style="position:relative;flex:1">
+              <input id="trainer-search-input" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value)" onfocus="_onTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:12px 34px 12px 18px;border:none;font-size:14px;font-family:inherit;color:#0D1B3E;background:transparent;outline:none">
+              <span id="trainer-search-clear" onclick="_clearTrainerSearchInput()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;width:20px;height:20px;border-radius:50%;background:#e4e8f0;color:#5a6478;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>
+            </div>
+            <button onclick="_submitTrainerSearch()" style="flex-shrink:0;background:#0D1B3E;color:#fff;border:none;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Search</button>
+          </div>
+          <div id="trainer-search-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08);z-index:30;overflow:hidden"></div>
+        </div>
       </div>
-      <div id="trainer-search-dropdown" style="display:none;position:absolute;left:12px;right:12px;top:100%;margin-top:4px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08);z-index:30;overflow:hidden"></div>
     </div>
     <div id="today-meetings-list" style="background:#fff;padding:0 0 6px"></div>
     <div id="rc-title-single" style="display:none;padding:16px 14px 8px;background:#f5f6f8">
@@ -11151,6 +11163,15 @@ function _onTrainerSearchInput(val){
     return '<div onclick="_selectTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
   }).join('');
   dd.style.display='block';
+}
+
+function _submitTrainerSearch(){
+  var inp=document.getElementById('trainer-search-input');
+  var val=inp?inp.value.trim():'';
+  if(!val) return;
+  var dd=document.getElementById('trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  setTrainerFilter(val);
 }
 
 function _selectTrainerSearchResult(name){
