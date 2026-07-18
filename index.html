@@ -11176,10 +11176,37 @@ function _getAllTrainerNames(){
 function _onTrainerSearchInput(val){
   var dd=document.getElementById('trainer-search-dropdown');
   if(!dd) return;
-  var q=(val||'').trim().toLowerCase();
+  var _accentRe=new RegExp('['+String.fromCharCode(768)+'-'+String.fromCharCode(879)+']','g');
+  function norm(s){
+    return String(s||'').normalize('NFD').replace(_accentRe,'').toLowerCase().replace(/['-]/g,'');
+  }
+  var q=norm((val||'').trim()).replace(/\s+/g,'');
   if(!q){ dd.style.display='none'; dd.innerHTML=''; return; }
   var all=_getAllTrainerNames();
-  var matches=all.filter(function(n){ return n.toLowerCase().indexOf(q)!==-1; }).slice(0,8);
+  var scored=all.map(function(n){
+    var words=n.trim().split(/\s+/).filter(Boolean).map(norm);
+    var score=0;
+    if(words.length){
+      var surname=words[words.length-1];
+      var firstWord=words[0];
+      if(surname.indexOf(q)===0){
+        score=4;
+      }else if(firstWord.indexOf(q)===0){
+        score=3;
+      }else{
+        for(var i=1;i<words.length-1;i++){
+          if(words[i].indexOf(q)===0){ score=2; break; }
+        }
+        if(!score){
+          var fullNorm=words.join('');
+          if(fullNorm.indexOf(q)!==-1) score=1;
+        }
+      }
+    }
+    return {name:n,score:score};
+  }).filter(function(x){ return x.score>0; });
+  scored.sort(function(a,b){ return b.score-a.score; });
+  var matches=scored.slice(0,8).map(function(x){ return x.name; });
   if(!matches.length){ dd.style.display='none'; dd.innerHTML=''; return; }
   dd.innerHTML=matches.map(function(n){
     return '<div onclick="_selectTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
