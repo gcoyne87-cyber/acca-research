@@ -11324,8 +11324,9 @@ function renderTodayMeetingsList(){
       out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       filteredRaces.forEach(function(fr){
         var isSel=rcOpenRace[fr.meetingId]===fr.raceIndex;
-        out2+='<div onclick="todaySelectRace(\''+fr.meetingId+'\','+fr.raceIndex+')" class="time-tab" style="flex-shrink:0;padding:6px 10px;border-bottom:2px solid '+(isSel?"#0D1B3E":"transparent")+'">';
-        out2+='<div style="font-size:15px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#0D1B3E":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.meetingName+' '+fr.raceTime)+'</div>';
+        out2+='<div onclick="todaySelectRace(\''+fr.meetingId+'\','+fr.raceIndex+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+        out2+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
+        out2+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
         out2+='</div>';
       });
       out2+='</div>';
