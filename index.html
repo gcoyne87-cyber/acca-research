@@ -11138,6 +11138,29 @@ function setTrainerFilter(trainerName){
   if(filteredRaces.length){
     trainerFilterSelectRace(filteredRaces[0].meetingId,filteredRaces[0].raceTime);
   }
+  if(_homeRcDay==='tomorrow'){
+    var tmMatch=null;
+    TM_MEETINGS.forEach(function(m){
+      if(tmMatch) return;
+      (m.races||[]).forEach(function(race,ri){
+        if(tmMatch) return;
+        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+        if(hasMatch){ tmMatch={meetingId:m.id,raceIndex:ri}; }
+      });
+    });
+    if(tmMatch) tomorrowSelectRace(tmMatch.meetingId,tmMatch.raceIndex);
+  }else if(_homeRcDay!=='today'){
+    var fdMatch=null;
+    RC_MEETINGS.forEach(function(m){
+      if(fdMatch) return;
+      (m.races||[]).forEach(function(race,ri){
+        if(fdMatch) return;
+        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+        if(hasMatch){ fdMatch={meetingId:m.id,raceIndex:ri}; }
+      });
+    });
+    if(fdMatch) futureSelectRace(fdMatch.meetingId,fdMatch.raceIndex,_homeRcDay);
+  }
 }
 
 function trainerFilterSelectRace(meetingId,raceTime){
@@ -11520,12 +11543,6 @@ function renderTodayMeetingsList(){
     return;
   }
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
-  if(_trainerFilter){
-    out+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
-    out+='<span>Filtering: '+escHtml(_trainerFilter)+'</span>';
-    out+='<span onclick="clearTrainerFilter()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
-    out+='</div>';
-  }
   filteredMeetings.forEach(function(m,idx){
     var isOpen=todayOpenMeeting===m.id;
     var hasRace=rcOpenRace[m.id]!=null;
