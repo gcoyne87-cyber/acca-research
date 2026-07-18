@@ -11115,6 +11115,7 @@ function todaySelectRace(mid,ri){
 var _homeRcDay='today';
 var _cardsDay='today';
 var _trainerFilter=null;
+var _trainerFilterSelected=null;
 
 function setTrainerFilter(trainerName){
   _trainerFilter=trainerName;
@@ -11128,16 +11129,26 @@ function setTrainerFilter(trainerName){
   meetings.forEach(function(m){
     (m.races||[]).forEach(function(race,ri){
       var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
-      if(hasMatch){ filteredRaces.push({meetingId:m.id,raceIndex:ri}); }
+      if(hasMatch){ filteredRaces.push({meetingId:m.id,raceIndex:ri,raceTime:race.t}); }
     });
   });
   if(filteredRaces.length){
-    todaySelectRace(filteredRaces[0].meetingId,filteredRaces[0].raceIndex);
+    trainerFilterSelectRace(filteredRaces[0].meetingId,filteredRaces[0].raceTime);
   }
+}
+
+function trainerFilterSelectRace(meetingId,raceTime){
+  if(_trainerFilterSelected&&_trainerFilterSelected.meetingId===meetingId&&_trainerFilterSelected.raceTime===raceTime){
+    _trainerFilterSelected=null;
+  }else{
+    _trainerFilterSelected={meetingId:meetingId,raceTime:raceTime};
+  }
+  renderTodayMeetingsList();
 }
 
 function clearTrainerFilter(){
   _trainerFilter=null;
+  _trainerFilterSelected=null;
   var inp=document.getElementById('trainer-search-input');
   if(inp) inp.value='';
   var clr=document.getElementById('trainer-search-clear');
@@ -11355,18 +11366,19 @@ function renderTodayMeetingsList(){
       out2+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
       out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       filteredRaces.forEach(function(fr){
-        var isSel=rcOpenRace[fr.meetingId]===fr.raceIndex;
-        out2+='<div onclick="todaySelectRace(\''+fr.meetingId+'\','+fr.raceIndex+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+        var isSel=_trainerFilterSelected&&_trainerFilterSelected.meetingId===fr.meetingId&&_trainerFilterSelected.raceTime===fr.raceTime;
+        out2+='<div onclick="trainerFilterSelectRace(\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
         out2+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
         out2+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
         out2+='</div>';
       });
       out2+='</div>';
       out2+='</div>';
-      var _selectedEntry=filteredRaces.filter(function(fr){ return rcOpenRace[fr.meetingId]===fr.raceIndex; })[0];
+      var _selectedEntry=_trainerFilterSelected?filteredRaces.filter(function(fr){ return fr.meetingId===_trainerFilterSelected.meetingId&&fr.raceTime===_trainerFilterSelected.raceTime; })[0]:null;
       if(_selectedEntry){
         var selMeeting=_selectedEntry.meeting;
         var sr=_selectedEntry.race;
+        rcOpenRace[selMeeting.id]=_selectedEntry.raceIndex;
         out2+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out2+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(selMeeting.name)+' &middot; '+escHtml(sr.t)+'</div>';
         out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
