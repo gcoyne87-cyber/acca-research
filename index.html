@@ -5238,6 +5238,13 @@ function unlockCorkAnalysis(){
       <div id="home-date-strip" style="display:flex"></div>
       <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
     </div>
+    <div id="trainer-search-wrap" style="position:relative;padding:8px 12px;background:#fff">
+      <div style="position:relative">
+        <input id="trainer-search-input" type="text" placeholder="Search trainer..." autocomplete="off" oninput="_onTrainerSearchInput(this.value)" onfocus="_onTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:10px 34px 10px 14px;border:1px solid #e4e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:#0D1B3E;background:#f8fafc;outline:none">
+        <span id="trainer-search-clear" onclick="_clearTrainerSearchInput()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;width:20px;height:20px;border-radius:50%;background:#10b981;color:#fff;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>
+      </div>
+      <div id="trainer-search-dropdown" style="display:none;position:absolute;left:12px;right:12px;top:100%;margin-top:4px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08);z-index:30;overflow:hidden"></div>
+    </div>
     <div id="today-meetings-list" style="background:#fff;padding:0 0 6px"></div>
     <div id="rc-title-single" style="display:none;padding:16px 14px 8px;background:#f5f6f8">
       <div style="display:flex;align-items:center;gap:10px">
@@ -11099,12 +11106,63 @@ var _trainerFilter=null;
 
 function setTrainerFilter(trainerName){
   _trainerFilter=trainerName;
+  var inp=document.getElementById('trainer-search-input');
+  if(inp) inp.value=trainerName;
+  var clr=document.getElementById('trainer-search-clear');
+  if(clr) clr.style.display='flex';
   renderTodayMeetingsList();
 }
 
 function clearTrainerFilter(){
   _trainerFilter=null;
+  var inp=document.getElementById('trainer-search-input');
+  if(inp) inp.value='';
+  var clr=document.getElementById('trainer-search-clear');
+  if(clr) clr.style.display='none';
   renderTodayMeetingsList();
+}
+
+function _getAllTrainerNames(){
+  var seen={};
+  var names=[];
+  RC_MEETINGS.forEach(function(m){
+    (m.races||[]).forEach(function(r){
+      (r.runners||[]).forEach(function(ru){
+        var t=(ru.trainer||'').trim();
+        if(t && !seen[t.toLowerCase()]){
+          seen[t.toLowerCase()]=true;
+          names.push(t);
+        }
+      });
+    });
+  });
+  return names;
+}
+
+function _onTrainerSearchInput(val){
+  var dd=document.getElementById('trainer-search-dropdown');
+  if(!dd) return;
+  var q=(val||'').trim().toLowerCase();
+  if(!q){ dd.style.display='none'; dd.innerHTML=''; return; }
+  var all=_getAllTrainerNames();
+  var matches=all.filter(function(n){ return n.toLowerCase().indexOf(q)!==-1; }).slice(0,8);
+  if(!matches.length){ dd.style.display='none'; dd.innerHTML=''; return; }
+  dd.innerHTML=matches.map(function(n){
+    return '<div onclick="_selectTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+
+function _selectTrainerSearchResult(name){
+  var dd=document.getElementById('trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  setTrainerFilter(name);
+}
+
+function _clearTrainerSearchInput(){
+  var dd=document.getElementById('trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  clearTrainerFilter();
 }
 
 function selectHomeRcDay(d){
