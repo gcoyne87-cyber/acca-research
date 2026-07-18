@@ -152,7 +152,7 @@ exports.handler = async function(event) {
     const freshData = await apiGet('/v1/racecards/pro?date=' + today);
     const cached = await redisGet('racecards:' + today);
 
-    if (!cached) {
+    if (!cached || !cached.meetings) {
       console.log('No cached racecard for today');
     } else if (freshData && freshData.racecards && freshData.racecards.length) {
       // Build a horse_id -> fresh price lookup from the raw Racing API response
@@ -199,7 +199,7 @@ exports.handler = async function(event) {
     const freshDataTomorrow = await apiGet('/v1/racecards/pro?date=' + tomorrow);
     const cachedTomorrow = await redisGet('racecards:' + tomorrow);
 
-    if (!cachedTomorrow) {
+    if (!cachedTomorrow || !cachedTomorrow.meetings) {
       console.log('No cached racecard for tomorrow');
     } else if (freshDataTomorrow && freshDataTomorrow.racecards && freshDataTomorrow.racecards.length) {
       // Build a horse_id -> fresh price lookup from the raw Racing API response
