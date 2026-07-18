@@ -11222,7 +11222,6 @@ function _renderPopularTrainers(){
     out+='<div onclick="setTrainerFilter(\''+tEsc+'\');var tt=document.getElementById(\'today-racecards-title\');if(tt)tt.scrollIntoView({behavior:\'smooth\',block:\'start\'});" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
     out+='<div style="font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+t.count+' Entries Today</div>';
-    if(t.venues&&t.venues.length) out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+escHtml(t.venues.join(' · '))+'</div>';
     out+='</div>';
   });
   out+='</div>';
