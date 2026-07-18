@@ -98,7 +98,8 @@ async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
       pos: runner.position || '-',
       ran: (race.runners || []).length || 0,
       sp: runner.sp || '',
-      jockey: runner.jockey || ''
+      jockey: runner.jockey || '',
+      race_class: race.race_class || ''
     };
   });
   await Promise.all(dateStrs.map(dateStr => redisSet('form:history:' + horse_id + ':' + dateStr, history)));
