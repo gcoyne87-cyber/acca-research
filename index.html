@@ -11151,7 +11151,7 @@ function setTrainerFilter(trainerName){
     if(tmMatch) tomorrowSelectRace(tmMatch.meetingId,tmMatch.raceIndex);
   }else if(_homeRcDay!=='today'){
     var fdMatch=null;
-    RC_MEETINGS.forEach(function(m){
+    (_futureDateCache[_homeRcDay]||[]).forEach(function(m){
       if(fdMatch) return;
       (m.races||[]).forEach(function(race,ri){
         if(fdMatch) return;
@@ -11179,7 +11179,21 @@ function clearTrainerFilter(){
   if(inp) inp.value='';
   var clr=document.getElementById('trainer-search-clear');
   if(clr) clr.style.display='none';
-  renderTodayMeetingsList();
+  var _cardsTmrwC=document.getElementById('racing-tomorrow-content');
+  var _cardsFutureC=document.getElementById('racing-future-content');
+  var _onCardsTomorrow=_cardsTmrwC&&_cardsTmrwC.style.display!=='none';
+  var _onCardsFuture=_cardsFutureC&&_cardsFutureC.style.display!=='none';
+  if(_onCardsTomorrow){
+    renderTomorrowMeetingsList();
+  }else if(_onCardsFuture){
+    renderFutureDateContent(_cardsDay);
+  }else if(_homeRcDay==='today'){
+    renderTodayMeetingsList();
+  }else if(_homeRcDay==='tomorrow'){
+    renderTomorrowMeetingsList(document.getElementById('today-meetings-list'));
+  }else{
+    renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list'));
+  }
 }
 
 function _getAllTrainerNames(){
