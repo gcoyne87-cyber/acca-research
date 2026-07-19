@@ -782,23 +782,23 @@ async function generateIntelligence(racecards) {
       if (!history.length) continue;
 
       const courseRuns = history.filter(function(h) { return h.course === course; });
-      const courseWins = courseRuns.filter(function(h) { return String(h.pos) === '1'; });
-      if (courseWins.length < 2) continue;
+      const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
+      if (courseTopTwo.length < 2) continue;
 
-      const courseWinRate = Math.round(courseWins.length / courseRuns.length * 100);
-      if (courseWinRate < 33) continue;
+      const courseTopTwoRate = Math.round(courseTopTwo.length / courseRuns.length * 100);
+      if (courseTopTwoRate < 33) continue;
 
-      const winAtTodaysDistance = courseWins.some(function(h) { return milesFurlongs(h.dist) === milesFurlongs(race.distance); });
+      const winAtTodaysDistance = courseTopTwo.some(function(h) { return milesFurlongs(h.dist) === milesFurlongs(race.distance); });
 
       courseDistanceCandidates.push({
         horse: runner.horse || 'Unknown',
         price: extractPrice(runner),
         time: raceTime(race),
         course: course,
-        courseWins: courseWins.length,
+        courseTopTwo: courseTopTwo.length,
         courseRuns: courseRuns.length,
-        courseWinRate: courseWinRate,
-        winDates: courseWins.map(function(h) { return h.date; }).join(', '),
+        courseTopTwoRate: courseTopTwoRate,
+        winDates: courseTopTwo.map(function(h) { return h.date; }).join(', '),
         winAtTodaysDistance: winAtTodaysDistance
       });
     }
@@ -864,11 +864,11 @@ async function generateIntelligence(racecards) {
   }
 
   if (courseDistanceCandidates.length) {
-    msg += 'COURSE AND DISTANCE CANDIDATES (2+ wins at today\'s course, 33%+ course win rate):\n';
+    msg += 'COURSE AND DISTANCE CANDIDATES (2+ top 2 finishes at today\'s course, 33%+ course win rate):\n';
     courseDistanceCandidates.slice(0, 5).forEach(function(c) {
       msg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
-      msg += '  Course record: ' + c.courseWins + ' wins from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseWinRate + '% SR) | Win dates: ' + c.winDates + '\n';
-      msg += '  Win at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
+      msg += '  Course record: ' + c.courseTopTwo + ' top 2 finishes from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseTopTwoRate + '% SR) | Top 2 dates: ' + c.winDates + '\n';
+      msg += '  Top 2 finish at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
     });
     msg += '\n';
   } else {
