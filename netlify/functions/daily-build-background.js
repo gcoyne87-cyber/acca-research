@@ -670,7 +670,7 @@ async function generateIntelligence(racecards) {
     const t = raceTime(race);
     (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
       const t14 = r.trainer14 || {};
-      const runs = t14.runs || 0, wins = t14.wins || 0, pct = t14.pct || 0;
+      const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
       if (runs >= 5 && pct >= 25 && r.trainer) {
         if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
         trainerFormMap[r.trainer].horses.push((r.horse || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r));
@@ -685,6 +685,10 @@ async function generateIntelligence(racecards) {
   const trainersToRemove = [];
   for (const trainerName of Object.keys(trainerFormMap)) {
     const entry = trainerFormMap[trainerName];
+    if (!entry.trainer_id) {
+      delete trainerFormMap[trainerName];
+      continue;
+    }
     try {
       const data = await apiGet('api.theracingapi.com',
         '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + date,
@@ -715,7 +719,11 @@ async function generateIntelligence(racecards) {
   }
   trainersToRemove.forEach(function(trainerName) { delete trainerFormMap[trainerName]; });
 
-  const trainerFormCandidates = Object.values(trainerFormMap).sort(function(a, b) { return b.pct - a.pct; }).slice(0, 5);
+  const trainerFormCandidates = Object.values(trainerFormMap).sort(function(a, b) {
+    const ratioA = a.baseline60 ? a.pct / a.baseline60 : 0;
+    const ratioB = b.baseline60 ? b.pct / b.baseline60 : 0;
+    return ratioB - ratioA;
+  }).slice(0, 5);
 
   // Pre-compute ground edge candidates: Heavy/Yielding jumps meetings only, grouped by venue
   const GROUND_RE = /heavy|yield/i;
