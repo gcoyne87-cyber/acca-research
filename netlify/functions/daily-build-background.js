@@ -381,10 +381,10 @@ Always search for this. Search for today's NAP selections and top tips across th
 
 2. GROUND EDGE
 This signal is for Heavy or Yielding going jumps races only. If the user message shows 'GROUND EDGE: No qualifying individual ground specialists today' do not produce this card.
-Do NOT use web search — all data is pre-computed from the Racing API and provided in the GROUND EDGE CANDIDATE section of this message.
-Step 1 — QUALIFY: Read the GROUND EDGE CANDIDATE data. Check the horse's Heavy/Yielding strike rate versus their Good/Firm strike rate. The Heavy/Yielding strike rate must be meaningfully higher than Good/Firm. Include placed form not just wins — if wins are low check if the horse consistently finishes close on this ground.
-Step 2 — RANK: Check if the horse's Heavy/Yielding form includes runs at today's distance. If yes this strengthens the signal significantly. Weight runs from the last 12 months more heavily than older form.
-Step 3 — SELECT: Using the GROUND EDGE CANDIDATE data and your full reasoning assess whether this horse represents a genuine edge in the context of today's specific race — the field they face, today's distance, today's conditions. If the case is not compelling do not produce this card.
+Do NOT use web search — all data is pre-computed from the Racing API and provided in the GROUND EDGE CANDIDATES section of this message.
+Step 1 — QUALIFY: Read the GROUND EDGE CANDIDATES data — you will be given up to 3 candidates. For each candidate check their Heavy/Yielding strike rate versus their Good/Firm strike rate. The Heavy/Yielding strike rate must be meaningfully higher than Good/Firm. Include placed form not just wins — if wins are low check if the horse consistently finishes close on this ground.
+Step 2 — RANK: For each candidate check if their Heavy/Yielding form includes runs at today's distance. If yes this strengthens the signal significantly. Weight runs from the last 12 months more heavily than older form.
+Step 3 — SELECT: Using the GROUND EDGE CANDIDATES data and your full reasoning, compare the candidates against each other and select the single most compelling one in the context of today's specific race — the field they face, today's distance, today's conditions. If none of the candidates represent a genuine edge do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
 3. COURSE AND DISTANCE
@@ -760,15 +760,18 @@ async function generateIntelligence(racecards) {
     }
   }
 
-  // Ground Edge: single best horse across all venues (highest groundWins, then groundSR)
-  let groundEdgeHorse = null;
+  // Ground Edge: top 3 horses across all venues (ranked by groundWins, then groundSR)
+  const _groundEdgeAll = [];
   Object.values(groundEdgeByVenue).forEach(function(v) {
     v.horses.forEach(function(h) {
-      if (!groundEdgeHorse || h.groundWins > groundEdgeHorse.groundWins || (h.groundWins === groundEdgeHorse.groundWins && h.groundSR > groundEdgeHorse.groundSR)) {
-        groundEdgeHorse = Object.assign({}, h, { venue: v.venue, going: v.going });
-      }
+      _groundEdgeAll.push(Object.assign({}, h, { venue: v.venue, going: v.going }));
     });
   });
+  _groundEdgeAll.sort(function(a, b) {
+    if (b.groundWins !== a.groundWins) return b.groundWins - a.groundWins;
+    return b.groundSR - a.groundSR;
+  });
+  const groundEdgeCandidates = _groundEdgeAll.slice(0, 3);
 
   // Pre-compute course & distance candidates: 2+ wins at today's specific course, 33%+ course win rate
   const courseDistanceCandidates = [];
@@ -854,11 +857,14 @@ async function generateIntelligence(racecards) {
 
   let msg = 'Today is ' + date + '.\n\nTODAY\'S RACES:\n' + meetingsSummary + '\n\n';
 
-  if (groundEdgeHorse) {
-    msg += 'GROUND EDGE CANDIDATE (single best horse — high conviction individual ground specialist):\n';
-    msg += '• ' + groundEdgeHorse.horse + ' | ' + groundEdgeHorse.venue + ' ' + groundEdgeHorse.time + ' | Going: ' + groundEdgeHorse.going + ' | Price: ' + groundEdgeHorse.price + '\n';
-    msg += '  Ground record: ' + groundEdgeHorse.groundRecord + '\n';
-    msg += '  Good/firm record: ' + groundEdgeHorse.goodRecord + '\n\n';
+  if (groundEdgeCandidates.length) {
+    msg += 'GROUND EDGE CANDIDATES (high conviction individual ground specialists):\n';
+    groundEdgeCandidates.forEach(function(h) {
+      msg += '\n• ' + h.horse + ' | ' + h.venue + ' ' + h.time + ' | Going: ' + h.going + ' | Price: ' + h.price + '\n';
+      msg += '  Ground record: ' + h.groundRecord + '\n';
+      msg += '  Good/firm record: ' + h.goodRecord + '\n';
+    });
+    msg += '\n';
   } else {
     msg += 'GROUND EDGE: No qualifying individual ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
   }
