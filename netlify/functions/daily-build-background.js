@@ -389,9 +389,9 @@ Do not select a horse priced shorter than 1/2. Standard horse card — name, pri
 
 3. COURSE AND DISTANCE
 If the COURSE AND DISTANCE section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the COURSE AND DISTANCE section of this message.
-Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Minimum 2 top 2 finishes at today's course and 33% or higher top 2 rate required. If no horse meets both do not produce this card.
-Step 2 — RANK: Prioritise in this order — horses with top 2 finishes at today's exact distance first, then similar distance, then any distance at today's course. For recency weight top 2 finishes from the last 2 years as strong, top 2 finishes from 2-4 years ago as moderate, top 2 finishes from 4+ years ago as weak. A horse with 2 top 2 finishes at this course in the last 12 months ranks above one with 4 top 2 finishes from 5 years ago.
-Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
+Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Candidates now include two types of horses — those with a strong top 2 record at today's course (2+ top 2 finishes with a 33% or higher top 2 rate), and horses that have won at least once at today's course regardless of distance or going. Both types are valid candidates.
+Step 2 — REASON: For each candidate use your full reasoning to weigh the strength of their case — did their win (or wins) come at today's exact distance, did it come on today's exact going, how recent was the form (weight form from the last 2 years as strong, 2-4 years ago as moderate, 4+ years ago as weak), and how does this horse compare to the rest of today's field. A recent win at today's exact distance and going is a much stronger signal than an old win at a different distance in different conditions. If the whole field has course form the signal is weak overall. If this horse is the only proven performer at this course the signal is strongest.
+Step 3 — SELECT: Using all of the above, pick the single most compelling candidate. If nothing stands out as a genuine edge do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
 4. CLASS DROP
@@ -786,10 +786,13 @@ async function generateIntelligence(racecards) {
 
       const courseRuns = history.filter(function(h) { return h.course === course; });
       const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
-      if (courseTopTwo.length < 2) continue;
+      const courseTopTwoRate = courseRuns.length ? Math.round(courseTopTwo.length / courseRuns.length * 100) : 0;
+      const meetsTopTwoRule = courseTopTwo.length >= 2 && courseTopTwoRate >= 33;
 
-      const courseTopTwoRate = Math.round(courseTopTwo.length / courseRuns.length * 100);
-      if (courseTopTwoRate < 33) continue;
+      const courseWins = courseRuns.filter(function(h) { return String(h.pos) === '1'; });
+      const meetsAnyWinRule = courseWins.length >= 1;
+
+      if (!meetsTopTwoRule && !meetsAnyWinRule) continue;
 
       const winAtTodaysDistance = courseTopTwo.some(function(h) { return milesFurlongs(h.dist) === milesFurlongs(race.distance); });
 
