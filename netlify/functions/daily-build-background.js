@@ -389,8 +389,8 @@ Do not select a horse priced shorter than 1/2. Standard horse card — name, pri
 
 3. COURSE AND DISTANCE
 If the COURSE AND DISTANCE section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the COURSE AND DISTANCE section of this message.
-Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Minimum 2 wins at today's course and 33% or higher course win rate required. If no horse meets both do not produce this card.
-Step 2 — RANK: Prioritise in this order — horses with wins at today's exact distance first, then similar distance, then any distance at today's course. For recency weight wins from the last 2 years as strong, wins from 2-4 years ago as moderate, wins from 4+ years ago as weak. A horse with 2 wins at this course in the last 12 months ranks above one with 4 wins from 5 years ago.
+Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Minimum 2 top 2 finishes at today's course and 33% or higher top 2 rate required. If no horse meets both do not produce this card.
+Step 2 — RANK: Prioritise in this order — horses with top 2 finishes at today's exact distance first, then similar distance, then any distance at today's course. For recency weight top 2 finishes from the last 2 years as strong, top 2 finishes from 2-4 years ago as moderate, top 2 finishes from 4+ years ago as weak. A horse with 2 top 2 finishes at this course in the last 12 months ranks above one with 4 top 2 finishes from 5 years ago.
 Step 3 — SELECT: Using the COURSE AND DISTANCE data and your full reasoning assess whether this horse is a genuine edge versus the specific field it faces today. If the whole field has course form the signal is weak. If this horse is the only proven performer at this course the signal is strongest. If the case is not compelling do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
@@ -806,6 +806,10 @@ async function generateIntelligence(racecards) {
       });
     }
   }
+  courseDistanceCandidates.sort(function(a, b) {
+    if (b.courseTopTwo !== a.courseTopTwo) return b.courseTopTwo - a.courseTopTwo;
+    return b.courseTopTwoRate - a.courseTopTwoRate;
+  });
 
   // Pre-compute class drop candidates: horse racing today at least 2 classes lower
   // (numerically higher class number) than their most recent class-recorded run
