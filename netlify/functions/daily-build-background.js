@@ -395,15 +395,17 @@ Step 3 — SELECT: Using all of the above, pick the single most compelling candi
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
 4. CLASS DROP
-If the CLASS DROP CANDIDATES section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the CLASS DROP CANDIDATES section of this message.
+Do NOT use web search — all data is pre-computed from the Racing API.
 
-Step 1 — READ: Read the CLASS DROP CANDIDATES data. Each entry shows the horse name, trainer, course, race time, price, last run class and today's class with the size of the drop.
-Step 2 — QUALIFY: Only consider horses dropping 2 or more classes. A horse dropping from Class 2 to Class 5 is a stronger signal than one dropping from Class 4 to Class 6. Larger drops carry more weight.
-Step 3 — SELECT: Using your full reasoning assess whether this class drop represents a genuine edge in the context of today's specific race. Consider the trainer's intent, the horse's recent form, the quality of opposition today, and whether the price reflects the class advantage.
-Do not select a horse priced shorter than 1/2. If after applying your full reasoning no horse represents a genuine edge do not produce this card — an empty slot is better than a weak card.
-
+You have two candidate pools:
+POOL 1 — CLASS DROP CANDIDATES: Horses last run in Class 1, 2 or 3 dropping at least 1 class today. Clear trainer targeting signal.
+POOL 2 — OR GAP CANDIDATES: Horses rated 8+ points above the second highest rated horse in today's race. Provably better than their rivals on official ratings.
+A horse in both pools is the strongest signal.
+Step 1 — READ both pools.
+Step 2 — SELECT the most compelling candidate using full reasoning — class drop size, quality of class dropped from, OR gap size, trainer intent, recent form, field quality, price. If nothing is genuinely compelling produce no card.
+Do not select a horse priced shorter than 1/2. Empty slot better than weak card.
 Standard horse card — name, price, race time, CTA to that race.
-intelligenceText: open with the horse name and the class drop stated clearly — last run class versus today's class — so the user instantly sees the opportunity. Then one sentence using your full reasoning on what this drop means in the context of today's specific race — the field they face, whether this is a genuinely winnable race at this level, and whether the price reflects the class advantage. Every sentence must be grounded in the CLASS DROP CANDIDATES data and your reasoning about today's race context. No generic observations. Keep the total length consistent with other intelligence cards — no padding.
+intelligenceText: state the specific edge clearly — class drop details or rating advantage or both. One sentence on what this means in today's specific race context. Grounded in data. No generic observations.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
@@ -852,9 +854,10 @@ async function generateIntelligence(racecards) {
 
       const lastRunClassNum = parseClassNum(lastClassRun.race_class);
       if (lastRunClassNum === null) continue;
+      if (lastRunClassNum > 3) continue;
 
       const classDrop = todayClassNum - lastRunClassNum;
-      if (classDrop < 2) continue;
+      if (classDrop < 1) continue;
 
       classDropCandidates.push({
         horse: runner.horse || 'Unknown',
@@ -869,6 +872,41 @@ async function generateIntelligence(racecards) {
     }
   }
   classDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
+
+  // Pre-compute OR gap candidates: top-rated horse with a significant official rating advantage over the second-best in the race
+  const orGapCandidates = [];
+  for (let mi = 0; mi < racecards.length; mi++) {
+    const race = racecards[mi];
+    const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+
+    const ratedRunners = runners.map(function(r) {
+      return { runner: r, orValue: parseFloat(r.ofr || r.official_rating || 0) };
+    }).filter(function(x) { return x.orValue > 0; });
+
+    if (ratedRunners.length < 2) continue;
+
+    ratedRunners.sort(function(a, b) { return b.orValue - a.orValue; });
+
+    const firstOR = ratedRunners[0].orValue;
+    const secondOR = ratedRunners[1].orValue;
+    const orGap = firstOR - secondOR;
+
+    if (orGap >= 8) {
+      const runner = ratedRunners[0].runner;
+      orGapCandidates.push({
+        horse: runner.horse || 'Unknown',
+        trainer: runner.trainer || '',
+        price: extractPrice(runner),
+        time: raceTime(race),
+        course: race.course || '',
+        or: firstOR,
+        secondOr: secondOR,
+        orGap: orGap
+      });
+    }
+  }
+  orGapCandidates.sort(function(a, b) { return b.orGap - a.orGap; });
+  orGapCandidates.splice(5);
 
   // Build structured message
   const meetingsSummary = racecards.slice(0, 20).map(function(r) {
@@ -903,14 +941,25 @@ async function generateIntelligence(racecards) {
   }
 
   if (classDropCandidates.length) {
-    msg += 'CLASS DROP CANDIDATES (horses dropping 2+ classes versus last run):\n';
+    msg += 'CLASS DROP CANDIDATES (horses from Class 1, 2 or 3 dropping at least 1 class today):\n';
     classDropCandidates.slice(0, 5).forEach(function(c) {
       msg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
       msg += '  Last run: ' + c.lastRunClass + ' → Today: ' + c.todayClass + ' (drop of ' + c.classDrop + ' classes)\n';
     });
     msg += '\n';
   } else {
-    msg += 'CLASS DROP: No horses dropping 2+ classes today. Do NOT produce a Class Drop signal.\n\n';
+    msg += 'CLASS DROP: No horses dropping from Class 1, 2 or 3 today. Do NOT produce a Class Drop signal.\n\n';
+  }
+
+  if (orGapCandidates.length) {
+    msg += 'OR GAP CANDIDATES (horses rated 8+ points above second highest rated horse in their race):\n';
+    orGapCandidates.forEach(function(c) {
+      msg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+      msg += '  OR: ' + c.or + ' | Second highest OR: ' + c.secondOr + ' | Gap: ' + c.orGap + ' points\n';
+    });
+    msg += '\n';
+  } else {
+    msg += 'OR GAP: No horses rated 8+ points above second highest rated in their race today.\n\n';
   }
 
   if (trainerFormCandidates.length) {
