@@ -1468,7 +1468,31 @@ exports.handler = async function(event) {
           if (tomorrowItems && tomorrowItems.length) {
             tomorrowItems.forEach(function(item) { item.isTomorrow = true; });
             try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
+            try {
+              await new Promise((resolve, reject) => {
+                const url = new URL(UPSTASH_URL);
+                const req = https.request({
+                  hostname: url.hostname,
+                  path: '/expire/' + encodeURIComponent('intelligence:' + tomorrowDate) + '/172800',
+                  method: 'POST',
+                  headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+                }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+                req.on('error', reject); req.end();
+              });
+            } catch(re) {}
             try { await redisSet('daily:report:' + tomorrowDate, { intelligence: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
+            try {
+              await new Promise((resolve, reject) => {
+                const url = new URL(UPSTASH_URL);
+                const req = https.request({
+                  hostname: url.hostname,
+                  path: '/expire/' + encodeURIComponent('daily:report:' + tomorrowDate) + '/172800',
+                  method: 'POST',
+                  headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+                }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+                req.on('error', reject); req.end();
+              });
+            } catch(re) {}
           }
         } else {
           console.log(`[daily-build] No race cards found for tomorrow (${tomorrowDate}) — tomorrow intelligence will be skipped`);
