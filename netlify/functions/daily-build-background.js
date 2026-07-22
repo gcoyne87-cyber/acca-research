@@ -1155,10 +1155,28 @@ exports.handler = async function(event) {
             return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
           };
 
+          // Flatten tomorrowCards.meetings (meeting objects with a nested races array) into a
+          // flat array of race objects shaped like today's racecards, so the precompute loops
+          // below — written to expect flat race objects — actually get the fields they read.
+          const tomorrowRacecards = [];
+          tomorrowCards.meetings.forEach(function(m) {
+            (m.races || []).forEach(function(race) {
+              tomorrowRacecards.push({
+                course: m.name,
+                going: race.going || m.going || '',
+                race_name: race.name || '',
+                distance: race.dist || '',
+                race_class: race.class || '',
+                runners: race.runners || [],
+                off_time: race.t || ''
+              });
+            });
+          });
+
           // Pre-compute ground edge candidates for tomorrow: Heavy/Yielding jumps meetings only, grouped by venue
           const tomorrowGroundRe = /heavy|yield/i;
           const tomorrowGroundEdgeByVenue = {};
-          const tomorrowHeavyMeetings = tomorrowCards.meetings.filter(function(race) {
+          const tomorrowHeavyMeetings = tomorrowRacecards.filter(function(race) {
             return tomorrowGroundRe.test(race.going || '') && isJumps(race.race_name, race.type);
           });
 
@@ -1213,8 +1231,8 @@ exports.handler = async function(event) {
 
           // Pre-compute course & distance candidates for tomorrow: 2+ wins at tomorrow's specific course, 33%+ course win rate
           const tomorrowCourseDistanceCandidates = [];
-          for (let mi = 0; mi < tomorrowCards.meetings.length; mi++) {
-            const race = tomorrowCards.meetings[mi];
+          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+            const race = tomorrowRacecards[mi];
             const course = race.course || '';
             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
             for (let ri = 0; ri < runners.length; ri++) {
@@ -1265,8 +1283,8 @@ exports.handler = async function(event) {
             const n = parseInt(String(classStr).slice(-1), 10);
             return isNaN(n) ? null : n;
           }
-          for (let mi = 0; mi < tomorrowCards.meetings.length; mi++) {
-            const race = tomorrowCards.meetings[mi];
+          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+            const race = tomorrowRacecards[mi];
             const todayClassNum = tomorrowParseClassNum(race.race_class);
             if (todayClassNum === null) continue;
 
@@ -1303,8 +1321,8 @@ exports.handler = async function(event) {
 
           // Pre-compute OR gap candidates for tomorrow: top-rated horse with a significant official rating advantage over the second-best in the race
           const tomorrowOrGapCandidates = [];
-          for (let mi = 0; mi < tomorrowCards.meetings.length; mi++) {
-            const race = tomorrowCards.meetings[mi];
+          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+            const race = tomorrowRacecards[mi];
             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
 
             const ratedRunners = runners.map(function(r) {
@@ -1338,7 +1356,7 @@ exports.handler = async function(event) {
 
           // Pre-compute in-form trainer candidates for tomorrow (25%+ SR, min 5 runs last 14 days)
           const tomorrowTrainerFormMap = {};
-          tomorrowCards.meetings.forEach(function(race) {
+          tomorrowRacecards.forEach(function(race) {
             const t = tomorrowRaceTime(race);
             (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
               const t14 = r.trainer14 || {};
@@ -1389,9 +1407,12 @@ exports.handler = async function(event) {
           }).slice(0, 5);
 
           // Build tomorrow's structured message
-          const tomorrowMeetingsSummary = tomorrowCards.meetings.slice(0, 20).map(function(r) {
-            return r.course + ' ' + tomorrowRaceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
-          }).join('\n');
+          const tomorrowMeetingsSummary = tomorrowCards.meetings.reduce(function(acc, m) {
+            (m.races || []).forEach(function(race) {
+              acc.push(m.name + ' ' + race.t + ' — ' + (race.name || '') + ' (' + (race.dist || '') + ') Going: ' + (race.going || m.going || 'Good'));
+            });
+            return acc;
+          }, []).slice(0, 20).join('\n');
 
           let tomorrowMsg = 'These are TOMORROW\'s race cards for ' + tomorrowDate + '. Apply the same signal logic but these races are for tomorrow not today.'
             + '\n\nTOMORROW\'S RACES:\n' + tomorrowMeetingsSummary + '\n\n';
@@ -1466,7 +1487,7 @@ exports.handler = async function(event) {
           }
 
           if (tomorrowItems && tomorrowItems.length) {
-            tomorrowItems.forEach(function(item) { item.isTomorrow = true; });
+            tomorrowItems.forEach(function(item) { item.isTomorrow = true; item.date = tomorrowDate; });
             try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
             try {
               await new Promise((resolve, reject) => {
