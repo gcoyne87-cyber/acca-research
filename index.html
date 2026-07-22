@@ -13236,7 +13236,7 @@ function loadDailyBuild(){
     var m=(ctaDestination||'').match(/^race:[^:]+:(\d{1,2}):(\d{2})$/);
     if(!m) return false;
     var now=new Date();
-    var raceTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),parseInt(m[1],10),parseInt(m[2],10),0,0);
+    var raceTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(m[1],10), parseInt(m[2],10), 0);
     return now>raceTime;
   }
 
@@ -13246,6 +13246,7 @@ function loadDailyBuild(){
   ]).then(function(results){
       var data=results[0];
       var tomorrowData=results[1];
+      if(!tomorrowData||tomorrowData.status!=='done') tomorrowData=null;
       if(!data||data.status==='loading'||data.status==='error') return;
 
       // Store all analyses in lookup — store under both 12h and 24h time variants

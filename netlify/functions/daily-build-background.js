@@ -1155,6 +1155,62 @@ exports.handler = async function(event) {
             return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
           };
 
+          // Pre-compute ground edge candidates for tomorrow: Heavy/Yielding jumps meetings only, grouped by venue
+          const tomorrowGroundRe = /heavy|yield/i;
+          const tomorrowGroundEdgeByVenue = {};
+          const tomorrowHeavyMeetings = tomorrowCards.meetings.filter(function(race) {
+            return tomorrowGroundRe.test(race.going || '') && isJumps(race.race_name, race.type);
+          });
+
+          for (let mi = 0; mi < Math.min(tomorrowHeavyMeetings.length, 12); mi++) {
+            const race = tomorrowHeavyMeetings[mi];
+            const venue = race.course || 'Unknown';
+            const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+            for (let ri = 0; ri < Math.min(runners.length, 15); ri++) {
+              const runner = runners[ri];
+              const history = await fetchHorseHistory(runner.horse_id);
+              if (!history.length) continue;
+
+              const groundRuns = history.filter(function(h) { return tomorrowGroundRe.test(h.going || ''); });
+              const goodRuns = history.filter(function(h) { return !tomorrowGroundRe.test(h.going || '') && (h.going || '').trim(); });
+              const groundWins = groundRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+              const goodWins = goodRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+
+              // Quality bar: must have won on heavy/yielding, and either 2+ wins or 33%+ SR
+              if (groundRuns.length >= 2 && groundWins >= 1) {
+                const groundSR = Math.round(groundWins / groundRuns.length * 100);
+                const goodSR = goodRuns.length ? Math.round(goodWins / goodRuns.length * 100) : 0;
+                if (groundWins >= 2 || groundSR >= 33) {
+                  if (!tomorrowGroundEdgeByVenue[venue]) tomorrowGroundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
+                  tomorrowGroundEdgeByVenue[venue].horses.push({
+                    horse: runner.horse || 'Unknown',
+                    price: tomorrowExtractPrice(runner),
+                    time: tomorrowRaceTime(race),
+                    raceName: race.race_name || '',
+                    groundSR: groundSR,
+                    groundWins: groundWins,
+                    groundRuns: groundRuns.length,
+                    groundRecord: groundWins + ' wins from ' + groundRuns.length + ' on heavy/yielding (' + groundSR + '% SR)',
+                    goodRecord: goodRuns.length ? (goodWins + ' wins from ' + goodRuns.length + ' on good/firm (' + goodSR + '% SR)') : 'No runs on good/firm'
+                  });
+                }
+              }
+            }
+          }
+
+          // Ground Edge for tomorrow: top 3 horses across all venues (ranked by groundWins, then groundSR)
+          const _tomorrowGroundEdgeAll = [];
+          Object.values(tomorrowGroundEdgeByVenue).forEach(function(v) {
+            v.horses.forEach(function(h) {
+              _tomorrowGroundEdgeAll.push(Object.assign({}, h, { venue: v.venue, going: v.going }));
+            });
+          });
+          _tomorrowGroundEdgeAll.sort(function(a, b) {
+            if (b.groundWins !== a.groundWins) return b.groundWins - a.groundWins;
+            return b.groundSR - a.groundSR;
+          });
+          const tomorrowGroundEdgeCandidates = _tomorrowGroundEdgeAll.slice(0, 3);
+
           // Pre-compute course & distance candidates for tomorrow: 2+ wins at tomorrow's specific course, 33%+ course win rate
           const tomorrowCourseDistanceCandidates = [];
           for (let mi = 0; mi < tomorrowCards.meetings.length; mi++) {
@@ -1339,6 +1395,18 @@ exports.handler = async function(event) {
 
           let tomorrowMsg = 'These are TOMORROW\'s race cards for ' + tomorrowDate + '. Apply the same signal logic but these races are for tomorrow not today.'
             + '\n\nTOMORROW\'S RACES:\n' + tomorrowMeetingsSummary + '\n\n';
+
+          if (tomorrowGroundEdgeCandidates.length) {
+            tomorrowMsg += 'GROUND EDGE CANDIDATES (high conviction individual ground specialists):\n';
+            tomorrowGroundEdgeCandidates.forEach(function(h) {
+              tomorrowMsg += '\n• ' + h.horse + ' | ' + h.venue + ' ' + h.time + ' | Going: ' + h.going + ' | Price: ' + h.price + '\n';
+              tomorrowMsg += '  Ground record: ' + h.groundRecord + '\n';
+              tomorrowMsg += '  Good/firm record: ' + h.goodRecord + '\n';
+            });
+            tomorrowMsg += '\n';
+          } else {
+            tomorrowMsg += 'GROUND EDGE: No qualifying ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
+          }
 
           if (tomorrowCourseDistanceCandidates.length) {
             tomorrowMsg += 'COURSE AND DISTANCE CANDIDATES (2+ top 2 finishes at today\'s course, 33%+ course win rate):\n';
