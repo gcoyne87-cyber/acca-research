@@ -380,7 +380,7 @@ There are 5 possible signal types. Return items based on genuine quality — nev
 Always search for this. Search for today's NAP selections and top tips across the major free racing publications and tipster sources. Include in your search: Templegate, Newsboy, Robin Goodfellow, Sporting Life, Timeform, Racing Post free NAPs and community tips, At The Races, Racing TV, The Times racing tips, The Guardian racing tips, The Irish Times, IrishRacing.com, Paddypower NAPs table, HorseRacing.net, OLBG. From everything you find identify which horse has the strongest genuine consensus support today. Use your own judgement to assess credibility and weight of each source. Do not select a horse priced shorter than 1/2 as the consensus pick — if the strongest consensus is on a horse shorter than 1/2 identify the next most supported horse at a better price instead. Never mention any publication website tipster name or external source in the card output. The output must read as original Racing Edge intelligence only. Standard horse card — name, price, race time, CTA to that race.
 
 2. GROUND EDGE
-This signal is for Heavy or Yielding going jumps races only. If the user message shows 'GROUND EDGE: No qualifying individual ground specialists today' do not produce this card.
+This signal is for Heavy or Yielding going jumps races only. If the user message shows 'GROUND EDGE: No qualifying ground specialists today' do not produce this card.
 Do NOT use web search — all data is pre-computed from the Racing API and provided in the GROUND EDGE CANDIDATES section of this message.
 Step 1 — QUALIFY: Read the GROUND EDGE CANDIDATES data — you will be given up to 3 candidates. For each candidate check their Heavy/Yielding strike rate versus their Good/Firm strike rate. The Heavy/Yielding strike rate must be meaningfully higher than Good/Firm. Include placed form not just wins — if wins are low check if the horse consistently finishes close on this ground.
 Step 2 — RANK: For each candidate check if their Heavy/Yielding form includes runs at today's distance. If yes this strengthens the signal significantly. Weight runs from the last 12 months more heavily than older form.
@@ -390,7 +390,7 @@ Do not select a horse priced shorter than 1/2. Standard horse card — name, pri
 3. COURSE AND DISTANCE
 If the COURSE AND DISTANCE section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the COURSE AND DISTANCE section of this message.
 Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Candidates now include two types of horses — those with a strong top 2 record at today's course (2+ top 2 finishes with a 33% or higher top 2 rate), and horses that have won at least once at today's course regardless of distance or going. Both types are valid candidates.
-Step 2 — REASON: For each candidate use your full reasoning to weigh the strength of their case — did their win (or wins) come at today's exact distance, did it come on today's exact going, how recent was the form (weight form from the last 2 years as strong, 2-4 years ago as moderate, 4+ years ago as weak), and how does this horse compare to the rest of today's field. A recent win at today's exact distance and going is a much stronger signal than an old win at a different distance in different conditions. If the whole field has course form the signal is weak overall. If this horse is the only proven performer at this course the signal is strongest.
+Step 2 — REASON: Candidates qualify one of two ways — those with a strong top 2 record at today's course (2+ top 2 finishes, 33%+ rate), and those with at least one win at today's course regardless of distance or going. Rank candidates in this priority order: 1) a win at today's exact distance AND today's going — the strongest possible signal, 2) a win at today's exact distance on any going, 3) a top 2 finish at today's course without a win at today's exact distance. Within each tier use your full reasoning to weigh how recent the form is (last 2 years as strong, 2-4 years ago as moderate, 4+ years ago as weak) and how this horse compares to the rest of today's field. If the whole field has course form the signal is weak overall. If this horse is the only proven performer at this course the signal is strongest.
 Step 3 — SELECT: Using all of the above, pick the single most compelling candidate. If nothing stands out as a genuine edge do not produce this card.
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
@@ -924,7 +924,7 @@ async function generateIntelligence(racecards) {
     });
     msg += '\n';
   } else {
-    msg += 'GROUND EDGE: No qualifying individual ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
+    msg += 'GROUND EDGE: No qualifying ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
   }
 
   if (courseDistanceCandidates.length) {

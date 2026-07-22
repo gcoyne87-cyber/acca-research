@@ -13292,23 +13292,7 @@ function loadDailyBuild(){
       }
 
       // Map analyses to intelligence cards
-      var intelItems=(data.intelligence&&data.intelligence.length)?data.intelligence:
-        (data.picks||[]).slice(0,4).map(function(p){
-          var parts=(p.race||'').split(' ');
-          var time=parts[parts.length-1]||'';
-          var course=parts.slice(0,parts.length-1).join(' ')||'';
-          return {
-            signalType:'AI Edge',
-            sigColor:'#1e9e6b',
-            horseName:p.horseName||'',
-            price:p.odds||null,
-            meta:time+' '+course,
-            intelligenceText:p.pullQuote||(p.raceIntelligence||'').split('.').slice(0,2).join('.')+('.' ),
-            ctaLabel:'Analyse '+course+' '+time,
-            ctaDestination:'racecards',
-            imgId:'img-cork'
-          };
-        });
+      var intelItems=(data.intelligence&&data.intelligence.length)?data.intelligence:[];
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
         renderAIIntelligence();
