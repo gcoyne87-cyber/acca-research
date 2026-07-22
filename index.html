@@ -13228,9 +13228,24 @@ function horseEdges(horseName){
 }
 
 function loadDailyBuild(){
-  fetch('/.netlify/functions/get-daily-build')
-    .then(function(r){return r.json();})
-    .then(function(data){
+  var td=new Date(); td.setDate(td.getDate()+1);
+  var tomorrowDate=td.toISOString().slice(0,10);
+
+  function _ctaRaceTimePassed(ctaDestination){
+    if((ctaDestination||'').indexOf('trainer:')===0) return false;
+    var m=(ctaDestination||'').match(/^race:[^:]+:(\d{1,2}):(\d{2})$/);
+    if(!m) return false;
+    var now=new Date();
+    var raceTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),parseInt(m[1],10),parseInt(m[2],10),0,0);
+    return now>raceTime;
+  }
+
+  Promise.all([
+    fetch('/.netlify/functions/get-daily-build').then(function(r){return r.json();}).catch(function(){return null;}),
+    fetch('/.netlify/functions/get-daily-build?date='+tomorrowDate).then(function(r){return r.json();}).catch(function(){return null;})
+  ]).then(function(results){
+      var data=results[0];
+      var tomorrowData=results[1];
       if(!data||data.status==='loading'||data.status==='error') return;
 
       // Store all analyses in lookup — store under both 12h and 24h time variants
@@ -13291,8 +13306,12 @@ function loadDailyBuild(){
         renderRacingPicks();
       }
 
-      // Map analyses to intelligence cards
-      var intelItems=(data.intelligence&&data.intelligence.length)?data.intelligence:[];
+      // Map analyses to intelligence cards — today's cards (with passed race times filtered out) first, tomorrow's cards after
+      var todayItems=((data.intelligence&&data.intelligence.length)?data.intelligence:[]).filter(function(item){
+        return !_ctaRaceTimePassed(item.ctaDestination);
+      });
+      var tomorrowItems=(tomorrowData&&tomorrowData.intelligence&&tomorrowData.intelligence.length)?tomorrowData.intelligence:[];
+      var intelItems=todayItems.concat(tomorrowItems);
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
         renderAIIntelligence();
@@ -13304,8 +13323,8 @@ function loadDailyBuild(){
       if(typeof _renderCurrentHomeList==='function') _renderCurrentHomeList();
       // Backfill historical selections after today's load
       loadHistoricalSelections();
-    })
-    .catch(function(){});
+  })
+  .catch(function(){});
 }
 
 function loadHistoricalSelections(){
@@ -13352,7 +13371,10 @@ function renderAIIntelligence(){
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
       +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:0px">'
-          +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+            +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+            +(item.isTomorrow?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
+          +'</div>'
           +(item.price?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+item.price+'</div>':'')
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
