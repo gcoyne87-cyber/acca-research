@@ -1452,7 +1452,7 @@ exports.handler = async function(event) {
             tomorrowMsg += '\n';
           }
 
-          tomorrowMsg += 'Do not produce Tipster Consensus or Ground Edge cards for tomorrow. Return ONLY a valid JSON array.';
+          tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
 
           const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 6000);
 
