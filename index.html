@@ -14633,6 +14633,22 @@ function selectRacingSection(s){
           if(_tm.races[_ti].t===_raceTime){ _tri=_ti; break; }
         }
         if(_tri!==-1) tomorrowSelectRace(_tm.id,_tri);
+      } else if(!TM_MEETINGS||!TM_MEETINGS.length){
+        // TM_MEETINGS not loaded yet — switch to the Tomorrow tab to trigger its load,
+        // then retry the match once it's had a moment to fetch.
+        _homeRcDay='tomorrow';
+        selectRacingDate('tomorrow');
+        setTimeout(function(){
+          var _tm2=TM_MEETINGS.filter(function(m){ return m.name.toLowerCase().replace(/\s+/g,'-')===_raceCourse; })[0];
+          if(_tm2){
+            toggleTomorrowMeeting(_tm2.id);
+            var _tri2=-1;
+            for(var _ti2=0;_ti2<_tm2.races.length;_ti2++){
+              if(_tm2.races[_ti2].t===_raceTime){ _tri2=_ti2; break; }
+            }
+            if(_tri2!==-1) tomorrowSelectRace(_tm2.id,_tri2);
+          }
+        },800);
       }
     }
     return;
