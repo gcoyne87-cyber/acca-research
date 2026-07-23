@@ -1482,12 +1482,20 @@ exports.handler = async function(event) {
           const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 6000);
 
           let tomorrowItems = null;
+          let tomorrowParseError = null;
           try {
             const tomorrowClean = tomorrowResult.text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
             const ts = tomorrowClean.indexOf('['), te = tomorrowClean.lastIndexOf(']');
             if (ts !== -1 && te > ts) tomorrowItems = JSON.parse(tomorrowClean.substring(ts, te + 1));
           } catch(e) {
             console.error('[daily-build] Tomorrow intelligence JSON parse failed:', e.message, '| Raw text:', (tomorrowResult.text || '').slice(0, 500));
+            tomorrowParseError = e.message;
+          }
+
+          if (tomorrowParseError) {
+            report.errors.push('Tomorrow intelligence parse failed: ' + tomorrowParseError);
+          } else if (!tomorrowItems || !tomorrowItems.length) {
+            report.errors.push('Tomorrow intelligence parse failed: no items returned');
           }
 
           if (tomorrowItems && tomorrowItems.length) {
