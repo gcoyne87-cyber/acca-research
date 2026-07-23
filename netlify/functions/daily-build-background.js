@@ -1118,7 +1118,11 @@ exports.handler = async function(event) {
     try {
       let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
       const cachedIntel = await redisGet('intelligence:' + today);
-      if (cachedIntel && cachedIntel.items && cachedIntel.items.length) {
+      // A cached value under intelligence:{today} might actually be yesterday's tomorrow
+      // preview (4 signals, no Tipster Consensus, every item flagged isTomorrow:true) —
+      // that is not a valid stand-in for today's real build, so treat it as no cache at all.
+      const cachedIsTomorrowPreview = !!(cachedIntel && cachedIntel.items && cachedIntel.items.some(function(item) { return item.isTomorrow === true; }));
+      if (cachedIntel && cachedIntel.items && cachedIntel.items.length && !cachedIsTomorrowPreview) {
         console.log('[daily-build] Intelligence already cached today — reusing');
         items = cachedIntel.items;
         report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence [CACHED]', inputTokens: 0, outputTokens: 0, webSearch: false, webSearchCount: 0 });
