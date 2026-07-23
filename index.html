@@ -13320,7 +13320,8 @@ function loadDailyBuild(){
           window._aiIntelligenceRefreshTimer=setInterval(function(){
             var _beforeLen=AI_INTELLIGENCE.length;
             AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
-              return item.isTomorrow?true:!_ctaRaceTimePassed(item.ctaDestination);
+              var _now = new Date().toISOString().slice(0,10);
+              return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination);
             });
             if(AI_INTELLIGENCE.length!==_beforeLen) renderAIIntelligence();
           },300000);
@@ -13370,6 +13371,7 @@ function loadHistoricalSelections(){
 }
 
 function renderAIIntelligence(){
+  var _todayStr = new Date().toISOString().slice(0, 10);
   var el=document.getElementById('ai-intelligence-list');
   if(!el) return;
 
@@ -13383,7 +13385,7 @@ function renderAIIntelligence(){
         +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:0px">'
           +'<div style="display:flex;align-items:center;gap:6px">'
             +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
-            +(item.isTomorrow?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
+            +((item.date && item.date > _todayStr)?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
           +'</div>'
           +(item.price?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+item.price+'</div>':'')
         +'</div>'
