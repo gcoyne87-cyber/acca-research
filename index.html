@@ -13316,6 +13316,15 @@ function loadDailyBuild(){
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
         renderAIIntelligence();
+        if(!window._aiIntelligenceRefreshTimer){
+          window._aiIntelligenceRefreshTimer=setInterval(function(){
+            var _beforeLen=AI_INTELLIGENCE.length;
+            AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
+              return item.isTomorrow?true:!_ctaRaceTimePassed(item.ctaDestination);
+            });
+            if(AI_INTELLIGENCE.length!==_beforeLen) renderAIIntelligence();
+          },300000);
+        }
       }
       // Render all AI selections list
       if(data.analyses&&data.analyses.length) renderAllSelections(data.analyses, data.date||'');
