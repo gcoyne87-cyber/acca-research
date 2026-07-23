@@ -13378,6 +13378,7 @@ function renderAIIntelligence(){
   el.innerHTML=AI_INTELLIGENCE.map(function(item){
     var imgEl=document.getElementById(item.imgId);
     var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
+    var _effectiveCta=(item.date&&item.date>_todayStr&&(item.ctaDestination||'').indexOf('trainer:')===0)?'tomorrowtrainer:'+item.ctaDestination.substring('trainer:'.length):item.ctaDestination;
     return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
       +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
@@ -13394,7 +13395,7 @@ function renderAIIntelligence(){
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px">'
           +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(item.price||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
-          +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
+          +'<button class="ai-cta-light" onclick="selectRacingSection(\''+_effectiveCta+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
         +'</div>'
       +'</div>'
     +'</div>';
@@ -14614,6 +14615,14 @@ function selectPicksSubTab(sub){
 }
 
 function selectRacingSection(s){
+  if(typeof s==='string'&&s.indexOf('tomorrowtrainer:')===0){
+    var _tmTrainerName=s.substring('tomorrowtrainer:'.length);
+    selectRacingSection('racecards');
+    _homeRcDay='tomorrow';
+    selectRacingDate('tomorrow');
+    setTrainerFilter(_tmTrainerName);
+    return;
+  }
   if(typeof s==='string'&&s.indexOf('trainer:')===0){
     var _trainerName=s.substring('trainer:'.length);
     selectRacingSection('racecards');
