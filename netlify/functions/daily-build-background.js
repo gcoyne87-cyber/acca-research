@@ -1009,6 +1009,7 @@ async function generateIntelligence(racecards) {
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
 exports.handler = async function(event) {
+  const RUN_FULL_BUILD = false;
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
   const isScheduled = !event.httpMethod;
@@ -1550,6 +1551,7 @@ exports.handler = async function(event) {
     try { await redisSet('daily:report:' + today, report); } catch(re) {}
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
+    if (RUN_FULL_BUILD) {
     const BATCH = 4;
     for (let i = 0; i < racecards.length; i += BATCH) {
       const batch = racecards.slice(i, i + BATCH);
@@ -1593,6 +1595,7 @@ exports.handler = async function(event) {
         if (v.result) report.analyses.push({ race: v.label, ...v.result });
       });
       try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    }
     }
 
     // 5. Generate per-horse form summaries and race form overviews
@@ -1642,6 +1645,7 @@ exports.handler = async function(event) {
 
         // Generate per-horse summaries sequentially — parallel batches cause Anthropic rate-limit errors
         const validHorseSummaries = [];
+        if (RUN_FULL_BUILD) {
         for (const { runner, history } of runnerForms) {
           try {
             const key = `form:summary:${runner.horse_id}:${today}`;
@@ -1666,6 +1670,7 @@ exports.handler = async function(event) {
             }
           } catch(e) { report.errors.push('form:horse:' + (runner.horse || '?') + ': ' + e.message); }
         }
+        }
 
         if (validHorseSummaries.length >= 1) {
           // Build per-horse form fit grid data
@@ -1681,6 +1686,7 @@ exports.handler = async function(event) {
 
           // Generate race-level form overview (needs >= 2 horses)
           let formOverview = null;
+          if (RUN_FULL_BUILD) {
           if (validHorseSummaries.length >= 2) {
             try {
               const existingForOverview = await redisGet(raceKey);
@@ -1703,6 +1709,7 @@ exports.handler = async function(event) {
             } catch(e) {
               report.errors.push(`form:race:${race.course}: ${e.message}`);
             }
+          }
           }
 
           // Merge runnerFormFit (and formOverview if generated) into race analysis
