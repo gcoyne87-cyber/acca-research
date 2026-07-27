@@ -13329,7 +13329,9 @@ function loadDailyBuild(){
               var _now = new Date().toISOString().slice(0,10);
               return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination);
             });
-            if(AI_INTELLIGENCE.length!==_beforeLen) renderAIIntelligence();
+            var _clockNow=new Date();
+            var _justAfterMidnight=_clockNow.getHours()===0 && _clockNow.getMinutes()<5;
+            if(AI_INTELLIGENCE.length!==_beforeLen || _justAfterMidnight) renderAIIntelligence();
           },300000);
         }
       }
