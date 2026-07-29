@@ -1,6 +1,7 @@
 const https = require('https');
+const nodemailer = require('nodemailer');
 
-module.exports.config = { timeout: 900 /* schedule: '30 9 * * *' */ };
+module.exports.config = { schedule: '30 9 * * *', timeout: 900 };
 
 const RACING_AUTH = Buffer.from(
   (process.env.RACING_API_USERNAME || '') + ':' + (process.env.RACING_API_KEY || '')
@@ -1804,6 +1805,67 @@ exports.handler = async function(event) {
 
     try { await redisSet('daily:report:' + today, report); } catch(re) {}
     console.log(`[daily-build] Done. ${report.racesAnalysed}/${report.upcomingRaces} upcoming races analysed. Cost: $${report.costUSD}`);
+
+    // 7. Send build report email — best-effort, must never crash the build
+    try {
+      const SIGNAL_TYPES = ['Tipster Consensus', 'Ground Edge', 'Course and Distance', 'Class Drop', 'Hot Yard'];
+      const intelligenceFailMsg = report.errors.find(function(e) { return e.indexOf('Intelligence parse failed') === 0; });
+
+      const signalLines = SIGNAL_TYPES.map(function(signalType, i) {
+        if (intelligenceFailMsg) {
+          return 'Signal ' + (i + 1) + ' ' + signalType + ': ERROR: ' + intelligenceFailMsg;
+        }
+        const count = (report.intelligence || []).filter(function(item) { return item.signalType === signalType; }).length;
+        return 'Signal ' + (i + 1) + ' ' + signalType + ': ' + (count > 0 ? count + ' card(s) produced' : 'No edge found');
+      });
+
+      const tomorrowDateForEmail = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const tomorrowFailMsg = report.errors.find(function(e) { return e.indexOf('Tomorrow intelligence parse failed') === 0; });
+      let tomorrowLine;
+      if (tomorrowFailMsg) {
+        tomorrowLine = 'Tomorrow Intelligence: ERROR: ' + tomorrowFailMsg;
+      } else {
+        let tomorrowStoredItems = [];
+        try {
+          const tomorrowIntel = await redisGet('intelligence:' + tomorrowDateForEmail);
+          tomorrowStoredItems = (tomorrowIntel && tomorrowIntel.items) || [];
+        } catch (e) { tomorrowStoredItems = []; }
+        tomorrowLine = 'Tomorrow Intelligence: ' + (tomorrowStoredItems.length > 0 ? tomorrowStoredItems.length + ' card(s) produced' : 'No signals fired');
+      }
+
+      // Cost calculated per the pricing specified for this email only — input $3/M,
+      // output $15/M, web search $0.01 each. This intentionally does NOT match
+      // report.costUSD, which also includes cache read/write cost and prices web
+      // search at $0.10 (PRICE_WEB_SEARCH) — the two figures will differ.
+      const emailCost = (report.inputTokens / 1000000) * 3
+        + (report.outputTokens / 1000000) * 15
+        + report.webSearchCount * 0.01;
+
+      const emailSubject = (report.errors && report.errors.length)
+        ? 'Daily Intelligence FAILED - ' + today
+        : 'Daily Intelligence Complete - ' + today;
+
+      const emailBody = signalLines.concat([
+        tomorrowLine,
+        '',
+        'Total cost: $' + emailCost.toFixed(2),
+        '',
+        'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None')
+      ]).join('\n');
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      });
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: 'gcoyne87@gmail.com',
+        subject: emailSubject,
+        text: emailBody
+      });
+    } catch (e) {
+      // Email failure must never crash the build — swallow.
+    }
 
     return { statusCode: 200, headers, body: JSON.stringify(report, null, 2) };
 
