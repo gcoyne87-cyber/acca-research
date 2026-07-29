@@ -1117,6 +1117,7 @@ exports.handler = async function(event) {
     // Check Redis cache first — if intelligence already ran today, reuse it (prevents second builds wiping morning signals)
     console.log('[daily-build] Generating daily intelligence...');
     let tipsterConsensusText = '';
+    let tomorrowInputTokens = 0, tomorrowOutputTokens = 0;
     try {
       let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
       const cachedIntel = await redisGet('intelligence:' + today);
@@ -1482,6 +1483,8 @@ exports.handler = async function(event) {
           tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
 
           const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 6000);
+          tomorrowInputTokens = tomorrowResult.inputTokens || 0;
+          tomorrowOutputTokens = tomorrowResult.outputTokens || 0;
 
           let tomorrowItems = null;
           let tomorrowParseError = null;
@@ -1837,8 +1840,8 @@ exports.handler = async function(event) {
       // output $15/M, web search $0.01 each. This intentionally does NOT match
       // report.costUSD, which also includes cache read/write cost and prices web
       // search at $0.10 (PRICE_WEB_SEARCH) — the two figures will differ.
-      const emailCost = (report.inputTokens / 1000000) * 3
-        + (report.outputTokens / 1000000) * 15
+      const emailCost = ((report.inputTokens + tomorrowInputTokens) / 1000000) * 3
+        + ((report.outputTokens + tomorrowOutputTokens) / 1000000) * 15
         + report.webSearchCount * 0.01;
 
       const emailSubject = (report.errors && report.errors.length)
@@ -1848,7 +1851,7 @@ exports.handler = async function(event) {
       const emailBody = signalLines.concat([
         tomorrowLine,
         '',
-        'Total cost: $' + emailCost.toFixed(2),
+        'Total Cost: $' + emailCost.toFixed(4),
         '',
         'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None')
       ]).join('\n');
