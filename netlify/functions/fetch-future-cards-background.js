@@ -77,6 +77,23 @@ function redisSet(key, value) {
   });
 }
 
+function redisGet(key) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/get/' + encodeURIComponent(key), method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        try { const r = JSON.parse(d); resolve(r.result ? JSON.parse(r.result) : null); }
+        catch(e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null)); req.end();
+  });
+}
+
 // Best-effort email notification — must never affect the function's own result.
 async function sendNotification(subject, bodyText) {
   try {
@@ -368,6 +385,44 @@ exports.handler = async function(event) {
         'Empty or failed: ' + (failedDates.length ? failedDates.join(', ') : 'none')
       ].join('\n'));
     } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
+
+    // Tomorrow's Daily Intelligence readiness check — separate email, must never
+    // affect this function's own result or the "Racecards" email sent above.
+    try {
+      const tmrBase = new Date();
+      const td = new Date(tmrBase.getFullYear(), tmrBase.getMonth(), tmrBase.getDate() + 1);
+      const tomorrowDate = td.getFullYear() + '-' + String(td.getMonth() + 1).padStart(2, '0') + '-' + String(td.getDate()).padStart(2, '0');
+
+      const tomorrowIntel = await redisGet('intelligence:' + tomorrowDate);
+      const tomorrowItems = (tomorrowIntel && tomorrowIntel.items) || [];
+      const ready = tomorrowItems.length > 0;
+
+      const readySubject = ready
+        ? 'Daily Intelligence Ready - ' + tomorrowDate
+        : 'Daily Intelligence Not Ready - ' + tomorrowDate;
+
+      const readyBodyLines = [
+        'Tomorrow: ' + tomorrowDate,
+        'Cards ready: ' + (ready ? tomorrowItems.length : 'None found'),
+        'Signals: ' + tomorrowItems.map(function(item) { return item.signalType; }).join(', ')
+      ];
+      if (!ready) {
+        readyBodyLines.push('Morning build may not have run. Check Netlify logs.');
+      }
+
+      const readyTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      });
+      await readyTransporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: 'gcoyne87@gmail.com',
+        subject: readySubject,
+        text: readyBodyLines.join('\n')
+      });
+    } catch (e) {
+      // Swallow — this email must never affect the job's own outcome or the email above.
+    }
 
     return {
       statusCode: 200,
