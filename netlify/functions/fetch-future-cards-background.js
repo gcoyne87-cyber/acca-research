@@ -404,7 +404,7 @@ exports.handler = async function(event) {
       const readyBodyLines = [
         'Tomorrow: ' + tomorrowDate,
         'Cards ready: ' + (ready ? tomorrowItems.length : 'None found'),
-        'Signals: ' + tomorrowItems.map(function(item) { return item.signalType; }).join(', ')
+        'Signals: ' + tomorrowItems.map(function(item) { return item.signalType || 'Unknown'; }).join(', ')
       ];
       if (!ready) {
         readyBodyLines.push('Morning build may not have run. Check Netlify logs.');
