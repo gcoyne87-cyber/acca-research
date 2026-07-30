@@ -925,7 +925,7 @@ async function generateIntelligence(racecards) {
     return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
   }).join('\n');
 
-  const freeReinSummary = racecards.slice(0, 40).map(function(race) {
+  const freeReinSummary = racecards.map(function(race) {
     const header = raceTime(race) + ' ' + race.course + ' ' + (race.distance || '') + ' ' + (race.going || '') + ' ' + (race.race_class || '');
     const runnerLines = (race.runners || []).filter(function(r) { return !r.is_non_runner; }).map(function(r) {
       return '  ' + r.horse + ' | J: ' + (r.jockey || '') + ' | T: ' + (r.trainer || '') + ' | Form: ' + (r.form || '-') + ' | OR: ' + (r.ofr || '-') + ' | Price: ' + extractPrice(r);
