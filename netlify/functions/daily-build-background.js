@@ -922,6 +922,14 @@ async function generateIntelligence(racecards) {
     return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
   }).join('\n');
 
+  const freeReinSummary = racecards.slice(0, 40).map(function(race) {
+    const header = raceTime(race) + ' ' + race.course + ' ' + (race.distance || '') + ' ' + (race.going || '') + ' ' + (race.race_class || '');
+    const runnerLines = (race.runners || []).filter(function(r) { return !r.is_non_runner; }).map(function(r) {
+      return '  ' + r.horse + ' | J: ' + (r.jockey || '') + ' | T: ' + (r.trainer || '') + ' | Form: ' + (r.form || '-') + ' | OR: ' + (r.ofr || '-') + ' | Price: ' + extractPrice(r);
+    });
+    return [header].concat(runnerLines).join('\n');
+  }).join('\n');
+
   let msg = 'Today is ' + date + '.\n\nTODAY\'S RACES:\n' + meetingsSummary + '\n\n';
 
   if (groundEdgeCandidates.length) {
@@ -979,6 +987,10 @@ async function generateIntelligence(racecards) {
     });
     msg += '\n';
   }
+
+  msg += 'FREE REIN INTELLIGENCE:\n';
+  msg += 'Below is today\'s complete race card. You have full freedom to identify any horses not already in the structured candidate pools above that you consider have a genuine strong chance of winning their race today — for any reason. Consider form, going, class, trainer intent, jockey booking, price, race setup or anything else relevant. Web search is available if you want additional research. Add up to 3 selections from this analysis with signalType: \'Intelligence\'.\n\n';
+  msg += freeReinSummary + '\n\n';
 
   msg += 'Do one focused web search for tipster consensus only. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
 
