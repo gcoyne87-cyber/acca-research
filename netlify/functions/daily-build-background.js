@@ -370,7 +370,7 @@ const INTELLIGENCE_PROMPT = `You are RacingEdge AI — a daily racing intelligen
 You will receive pre-computed data candidates built from the Racing API. Use these as your primary source.
 
 WEB SEARCH RULES — follow exactly:
-- USE web search for: TIPSTER CONSENSUS (always search)
+- USE web search for: TIPSTER CONSENSUS (always search), INTELLIGENCE (as needed for additional research)
 - DO NOT use web search for: GROUND EDGE, COURSE AND DISTANCE, CLASS DROP, HOT YARD — the data for these is pre-computed from the Racing API and provided to you. Do not search for anything to validate or enrich these signals. Use only what is in the data provided.
 
 There are 5 possible signal types. Return items based on genuine quality — never pad. Some days have no Ground Edge, Course and Distance or Hot Yard. Never force a signal that isn't there.
@@ -423,18 +423,21 @@ intelligenceText: open with the trainer name and both strike rate figures side b
 ctaLabel: 'View [Trainer Name] Runners' — use the actual trainer name
 ctaDestination: 'trainer:[Trainer Name]' — use the actual trainer name exactly as it appears in the data. Example: 'trainer:Willie Mullins'
 
+6. INTELLIGENCE
+Use the FREE REIN INTELLIGENCE race card data in the user message. Find up to 3 horses not already covered by signals 1-5 with a genuine strong chance of winning today for any reason. No restrictions. Web search available. If nothing compelling produce no cards. signalType must be exactly Intelligence. Standard horse card format.
+
 ━━━ PRESENTATION RULES ━━━
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
-- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981
+- sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981, Intelligence=#8b5cf6
 - ctaDestination format: "race:{course}:{time}" — course must be the lowercase course name with spaces replaced by hyphens, time must be the HH:MM off time of the race. Example: "race:haydock:14:30" or "race:ascot:15:45". Exception: Hot Yard uses trainer:{trainer name} format instead.
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
-Return items based on genuine quality alone. Return ONLY a valid JSON array:
+Produce the best 3-6 cards from the combined pool of candidates across signals 1-6. Judge every candidate purely on genuine chance of winning today — regardless of which signal found the horse. Return ONLY a valid JSON array:
 [
   {
-    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard",
+    "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard | Intelligence",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
@@ -992,7 +995,7 @@ async function generateIntelligence(racecards) {
   msg += 'Below is today\'s complete race card. You have full freedom to identify any horses not already in the structured candidate pools above that you consider have a genuine strong chance of winning their race today — for any reason. Consider form, going, class, trainer intent, jockey booking, price, race setup or anything else relevant. Web search is available if you want additional research. Add up to 3 selections from this analysis with signalType: \'Intelligence\'.\n\n';
   msg += freeReinSummary + '\n\n';
 
-  msg += 'Do one focused web search for tipster consensus only. Do not run any other searches. Return ONLY a valid JSON array with 3–6 items — quality over quantity, never pad with weak signals.';
+  msg += 'You may use web search for tipster consensus and for any additional research needed for the Intelligence signal. Return ONLY a valid JSON array with 3-6 items. Quality over quantity. Empty slot better than weak card.';
 
   const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 6000);
 
@@ -1012,7 +1015,7 @@ async function generateIntelligence(racecards) {
   }
 
   if (items && items.length) {
-    const sigColorMap = {'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981'};
+    const sigColorMap = {'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981','Intelligence':'#8b5cf6'};
     items.forEach(function(item) { item.sigColor = sigColorMap[item.signalType] || '#6b7280'; });
   }
 
@@ -1894,7 +1897,7 @@ exports.handler = async function(event) {
 
     // 7. Send build report email — best-effort, must never crash the build
     try {
-      const SIGNAL_TYPES = ['Tipster Consensus', 'Ground Edge', 'Course and Distance', 'Class Drop', 'Hot Yard'];
+      const SIGNAL_TYPES = ['Tipster Consensus', 'Ground Edge', 'Course and Distance', 'Class Drop', 'Hot Yard', 'Intelligence'];
       const intelligenceFailMsg = report.errors.find(function(e) { return e.indexOf('Intelligence parse failed') === 0; });
 
       const signalLines = SIGNAL_TYPES.map(function(signalType, i) {
