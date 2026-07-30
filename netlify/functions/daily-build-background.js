@@ -686,6 +686,7 @@ async function generateIntelligence(racecards) {
   // call skips that trainer only — the build continues regardless.
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const trainersToRemove = [];
+  const hotYardBaselineErrors = [];
   for (const trainerName of Object.keys(trainerFormMap)) {
     const entry = trainerFormMap[trainerName];
     if (!entry.trainer_id) {
@@ -718,6 +719,7 @@ async function generateIntelligence(racecards) {
     } catch (e) {
       // Baseline could not be fetched — trainer cannot be assessed, remove entirely.
       console.log('[daily-build] Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
+      hotYardBaselineErrors.push('Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
       trainersToRemove.push(trainerName);
     }
   }
@@ -736,6 +738,7 @@ async function generateIntelligence(racecards) {
     return GROUND_RE.test(race.going || '') && isJumps(race.race_name, race.type);
   });
 
+  let groundEdgeSkippedCount = 0;
   for (let mi = 0; mi < Math.min(heavyMeetings.length, 12); mi++) {
     const race = heavyMeetings[mi];
     const venue = race.course || 'Unknown';
@@ -743,7 +746,7 @@ async function generateIntelligence(racecards) {
     for (let ri = 0; ri < Math.min(runners.length, 15); ri++) {
       const runner = runners[ri];
       const history = await fetchHorseHistory(runner.horse_id);
-      if (!history.length) continue;
+      if (!history.length) { groundEdgeSkippedCount++; continue; }
 
       const groundRuns = history.filter(function(h) { return GROUND_RE.test(h.going || ''); });
       const goodRuns = history.filter(function(h) { return !GROUND_RE.test(h.going || '') && (h.going || '').trim(); });
@@ -796,7 +799,7 @@ async function generateIntelligence(racecards) {
       const history = await fetchHorseHistory(runner.horse_id);
       if (!history.length) continue;
 
-      const courseRuns = history.filter(function(h) { return h.course === course; });
+      const courseRuns = history.filter(function(h) { return (h.course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim() === (course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim(); });
       const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
       const courseTopTwoRate = courseRuns.length ? Math.round(courseTopTwo.length / courseRuns.length * 100) : 0;
       const meetsTopTwoRule = courseTopTwo.length >= 2 && courseTopTwoRate >= 33;
@@ -834,6 +837,7 @@ async function generateIntelligence(racecards) {
   // Pre-compute class drop candidates: horse racing today at least 2 classes lower
   // (numerically higher class number) than their most recent class-recorded run
   const classDropCandidates = [];
+  let classDropSkippedCount = 0;
   function parseClassNum(classStr) {
     if (!classStr || !String(classStr).startsWith('Class')) return null;
     const n = parseInt(String(classStr).slice(-1), 10);
@@ -849,6 +853,9 @@ async function generateIntelligence(racecards) {
       const runner = runners[ri];
       const history = await fetchHorseHistory(runner.horse_id);
       const validClassRuns = history.filter(function(h) { return parseClassNum(h.race_class) !== null; });
+      if (validClassRuns.length === 0 && history.length > 0) {
+        classDropSkippedCount++;
+      }
       if (validClassRuns.length < 2) continue;
 
       const lastClassRun = history.find(function(h) { return parseClassNum(h.race_class) !== null; });
@@ -1009,7 +1016,7 @@ async function generateIntelligence(racecards) {
     });
   }
 
-  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError };
+  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError, groundEdgeSkippedCount, classDropSkippedCount, hotYardBaselineErrors };
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -1051,6 +1058,19 @@ exports.handler = async function(event) {
     analyses: [],
     intelligence: []
   };
+
+  const REQUIRED_ENV_VARS = {
+    RACING_API_USERNAME: process.env.RACING_API_USERNAME,
+    RACING_API_KEY: process.env.RACING_API_KEY,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY
+  };
+  const missingEnvVars = Object.keys(REQUIRED_ENV_VARS).filter(function(key) { return !REQUIRED_ENV_VARS[key]; });
+  if (missingEnvVars.length) {
+    report.errors.push('Missing required environment variables: ' + missingEnvVars.join(', '));
+    return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
+  }
 
   try {
     // 1. Fetch racecards
@@ -1157,9 +1177,18 @@ exports.handler = async function(event) {
         items = r.items; intIT = r.inputTokens; intOT = r.outputTokens;
         intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
         if (r.parseError) report.errors.push('Intelligence parse failed: ' + r.parseError);
+        if (r.groundEdgeSkippedCount > 5) {
+          report.errors.push('Ground Edge: ' + r.groundEdgeSkippedCount + ' horses had no cached form history');
+        }
+        if (r.classDropSkippedCount > 5) {
+          report.errors.push('Class Drop: ' + r.classDropSkippedCount + ' horses had runs but no valid class data');
+        }
+        if (r.hotYardBaselineErrors && r.hotYardBaselineErrors.length) {
+          r.hotYardBaselineErrors.forEach(function(msg) { report.errors.push(msg); });
+        }
         if (items && items.length) {
           items.forEach(function(item) { item.date = today; });
-          try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) {}
+          try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) { report.errors.push('redis-write intelligence:' + today + ': ' + re.message); }
         }
 
         if (allRacecards.length) {
@@ -1211,6 +1240,7 @@ exports.handler = async function(event) {
             return tomorrowGroundRe.test(race.going || '') && isJumps(race.race_name, race.type);
           });
 
+          let tomorrowGroundEdgeSkippedCount = 0;
           for (let mi = 0; mi < Math.min(tomorrowHeavyMeetings.length, 12); mi++) {
             const race = tomorrowHeavyMeetings[mi];
             const venue = race.course || 'Unknown';
@@ -1218,7 +1248,7 @@ exports.handler = async function(event) {
             for (let ri = 0; ri < Math.min(runners.length, 15); ri++) {
               const runner = runners[ri];
               const history = await fetchHorseHistory(runner.horse_id);
-              if (!history.length) continue;
+              if (!history.length) { tomorrowGroundEdgeSkippedCount++; continue; }
 
               const groundRuns = history.filter(function(h) { return tomorrowGroundRe.test(h.going || ''); });
               const goodRuns = history.filter(function(h) { return !tomorrowGroundRe.test(h.going || '') && (h.going || '').trim(); });
@@ -1246,6 +1276,9 @@ exports.handler = async function(event) {
               }
             }
           }
+          if (tomorrowGroundEdgeSkippedCount > 5) {
+            report.errors.push('Tomorrow Ground Edge: ' + tomorrowGroundEdgeSkippedCount + ' horses had no cached form history');
+          }
 
           // Ground Edge for tomorrow: top 3 horses across all venues (ranked by groundWins, then groundSR)
           const _tomorrowGroundEdgeAll = [];
@@ -1271,7 +1304,7 @@ exports.handler = async function(event) {
               const history = await fetchHorseHistory(runner.horse_id);
               if (!history.length) continue;
 
-              const courseRuns = history.filter(function(h) { return h.course === course; });
+              const courseRuns = history.filter(function(h) { return (h.course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim() === (course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim(); });
               const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
               const courseTopTwoRate = courseRuns.length ? Math.round(courseTopTwo.length / courseRuns.length * 100) : 0;
               const meetsTopTwoRule = courseTopTwo.length >= 2 && courseTopTwoRate >= 33;
@@ -1309,6 +1342,7 @@ exports.handler = async function(event) {
           // Pre-compute class drop candidates for tomorrow: horse racing tomorrow at least 1 class lower
           // (numerically higher class number) than their most recent class-recorded run, last classed run Class 1-3
           const tomorrowClassDropCandidates = [];
+          let tomorrowClassDropSkippedCount = 0;
           function tomorrowParseClassNum(classStr) {
             if (!classStr || !String(classStr).startsWith('Class')) return null;
             const n = parseInt(String(classStr).slice(-1), 10);
@@ -1324,6 +1358,9 @@ exports.handler = async function(event) {
               const runner = runners[ri];
               const history = await fetchHorseHistory(runner.horse_id);
               const validClassRuns = history.filter(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
+              if (validClassRuns.length === 0 && history.length > 0) {
+                tomorrowClassDropSkippedCount++;
+              }
               if (validClassRuns.length < 2) continue;
 
               const lastClassRun = history.find(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
@@ -1349,6 +1386,9 @@ exports.handler = async function(event) {
             }
           }
           tomorrowClassDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
+          if (tomorrowClassDropSkippedCount > 5) {
+            report.errors.push('Tomorrow Class Drop: ' + tomorrowClassDropSkippedCount + ' horses had runs but no valid class data');
+          }
 
           // Pre-compute OR gap candidates for tomorrow: top-rated horse with a significant official rating advantage over the second-best in the race
           const tomorrowOrGapCandidates = [];
@@ -1427,6 +1467,7 @@ exports.handler = async function(event) {
               if (!isHot) tomorrowTrainersToRemove.push(trainerName);
             } catch (e) {
               console.log('[daily-build] Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
+              report.errors.push('Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
               tomorrowTrainersToRemove.push(trainerName);
             }
           }
@@ -1513,6 +1554,9 @@ exports.handler = async function(event) {
 
           let tomorrowItems = null;
           let tomorrowParseError = null;
+          if (!tomorrowResult.text) {
+            tomorrowParseError = 'Tomorrow intelligence call returned no result';
+          } else {
           try {
             const tomorrowClean = tomorrowResult.text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
             const ts = tomorrowClean.indexOf('['), te = tomorrowClean.lastIndexOf(']');
@@ -1520,6 +1564,7 @@ exports.handler = async function(event) {
           } catch(e) {
             console.error('[daily-build] Tomorrow intelligence JSON parse failed:', e.message, '| Raw text:', (tomorrowResult.text || '').slice(0, 500));
             tomorrowParseError = e.message;
+          }
           }
 
           if (tomorrowParseError) {
@@ -1580,7 +1625,7 @@ exports.handler = async function(event) {
     } catch(e) {
       report.errors.push('intelligence: ' + e.message);
     }
-    try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
     if (RUN_FULL_BUILD) {
@@ -1626,7 +1671,7 @@ exports.handler = async function(event) {
         if (!v.cached) report.callLog.push({ type: 'race-analysis', label: v.label, inputTokens: v.inputTokens, outputTokens: v.outputTokens, cacheReadTokens: v.cacheReadTokens || 0, cacheWriteTokens: v.cacheWriteTokens || 0, webSearch: (v.webSearchCount || 0) > 0, webSearchCount: v.webSearchCount || 0 });
         if (v.result) report.analyses.push({ race: v.label, ...v.result });
       });
-      try { await redisSet('daily:report:' + today, report); } catch(re) {}
+      try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
     }
     }
 
@@ -1832,7 +1877,7 @@ exports.handler = async function(event) {
     };
     report.completedAt = new Date().toISOString();
 
-    try { await redisSet('daily:report:' + today, report); } catch(re) {}
+    try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
     console.log(`[daily-build] Done. ${report.racesAnalysed}/${report.upcomingRaces} upcoming races analysed. Cost: $${report.costUSD}`);
 
     // 7. Send build report email — best-effort, must never crash the build
@@ -1845,6 +1890,9 @@ exports.handler = async function(event) {
           return 'Signal ' + (i + 1) + ' ' + signalType + ': ERROR: ' + intelligenceFailMsg;
         }
         const count = (report.intelligence || []).filter(function(item) { return item.signalType === signalType; }).length;
+        if (count === 0 && signalType === 'Tipster Consensus' && report.webSearchCount === 0) {
+          return 'Signal ' + (i + 1) + ' ' + signalType + ': No web search fired — possible web search tool failure';
+        }
         return 'Signal ' + (i + 1) + ' ' + signalType + ': ' + (count > 0 ? count + ' card(s) produced' : 'No edge found');
       });
 
