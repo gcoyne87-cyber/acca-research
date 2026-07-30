@@ -1067,6 +1067,10 @@ exports.handler = async function(event) {
       return true;
     });
 
+    if (allRacecards.length === 0) {
+      report.errors.push('Racing API returned zero race cards for ' + today + ' — Intelligence skipped');
+    }
+
     // Analyse all of today's races — Redis cache prevents re-calling Claude for already-analysed races
     const racecards = allRacecards;
 
@@ -1139,6 +1143,7 @@ exports.handler = async function(event) {
           try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) {}
         }
 
+        if (allRacecards.length) {
         const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         const tomorrowCards = await redisGet('racecards:' + tomorrowDate);
         if (tomorrowCards && Array.isArray(tomorrowCards.meetings) && tomorrowCards.meetings.length > 0) {
@@ -1534,6 +1539,9 @@ exports.handler = async function(event) {
           }
         } else {
           console.log(`[daily-build] No race cards found for tomorrow (${tomorrowDate}) — tomorrow intelligence will be skipped`);
+        }
+        } else {
+          report.errors.push('Tomorrow intelligence skipped — today\'s race cards were empty');
         }
 
         report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence', inputTokens: intIT, outputTokens: intOT, cacheReadTokens: intCR, cacheWriteTokens: intCW, webSearch: intWS > 0, webSearchCount: intWS });
