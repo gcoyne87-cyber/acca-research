@@ -717,6 +717,7 @@ async function generateIntelligence(racecards) {
       if (!isHot) trainersToRemove.push(trainerName);
     } catch (e) {
       // Baseline could not be fetched — trainer cannot be assessed, remove entirely.
+      console.log('[daily-build] Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
       trainersToRemove.push(trainerName);
     }
   }
@@ -978,6 +979,9 @@ async function generateIntelligence(racecards) {
 
   let items = null;
   let parseError = null;
+  if (!text) {
+    parseError = 'Intelligence call returned no result';
+  } else {
   try {
     const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const s = clean.indexOf('['), e = clean.lastIndexOf(']');
@@ -985,6 +989,7 @@ async function generateIntelligence(racecards) {
   } catch(e) {
     console.error('[daily-build] Intelligence JSON parse failed:', e.message, '| Raw text:', (text || '').slice(0, 500));
     parseError = e.message;
+  }
   }
 
   if (items && items.length) {
@@ -1050,20 +1055,34 @@ exports.handler = async function(event) {
   try {
     // 1. Fetch racecards
     console.log('[daily-build] Fetching racecards...');
-    let data = await apiGet('api.theracingapi.com', '/v1/racecards/pro?date=' + today, {
-      'Authorization': 'Basic ' + RACING_AUTH
-    });
+    let data;
+    try {
+      data = await apiGet('api.theracingapi.com', '/v1/racecards/pro?date=' + today, {
+        'Authorization': 'Basic ' + RACING_AUTH
+      });
+    } catch (e) {
+      data = {};
+    }
+    if (!data.racecards || !data.racecards.length) {
+      console.log('[daily-build] Racecards fetch empty or failed — retrying in 5 seconds...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      try {
+        data = await apiGet('api.theracingapi.com', '/v1/racecards/pro?date=' + today, {
+          'Authorization': 'Basic ' + RACING_AUTH
+        });
+      } catch (e) {
+        data = {};
+      }
+    }
     if (!data.racecards || !data.racecards.length) {
       data = await apiGet('api.theracingapi.com', '/v1/racecards/standard', {
         'Authorization': 'Basic ' + RACING_AUTH
       });
     }
 
-    const EXCLUDED_COURSES = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
     const allRacecards = (data.racecards || []).filter(r => {
       const reg = (r.region || '').toUpperCase();
       if (reg !== 'GB' && reg !== 'IRE' && reg !== 'IE') return false;
-      if (EXCLUDED_COURSES.indexOf((r.course || '').toLowerCase().trim()) !== -1) return false;
       return true;
     });
 
@@ -1407,6 +1426,7 @@ exports.handler = async function(event) {
               const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
               if (!isHot) tomorrowTrainersToRemove.push(trainerName);
             } catch (e) {
+              console.log('[daily-build] Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
               tomorrowTrainersToRemove.push(trainerName);
             }
           }
@@ -1622,8 +1642,6 @@ exports.handler = async function(event) {
         formSourceCards = cachedCards.racecards.filter(r => {
           const reg = (r.region || '').toUpperCase();
           if (reg !== 'GB' && reg !== 'IRE' && reg !== 'IE') return false;
-          const EXCL = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
-          if (EXCL.indexOf((r.course || '').toLowerCase().trim()) !== -1) return false;
           return true;
         });
         console.log('[daily-build] Using cached racecards for form summaries (' + formSourceCards.length + ' races)');
