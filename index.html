@@ -14638,46 +14638,63 @@ function selectRacingSection(s){
     return;
   }
   if(typeof s==='string'&&s.indexOf('race:')===0){
-    var _raceParts=s.split(':');
-    var _raceCourse=_raceParts[1]||'';
-    var _raceTime=_raceParts.slice(2).join(':');
-    selectRacingSection('racecards');
-    var _rm=RC_MEETINGS.filter(function(m){ return m.name.toLowerCase().replace(/\s+/g,'-')===_raceCourse; })[0];
-    if(_rm){
-      toggleTodayMeeting(_rm.id);
-      var _ri=-1;
-      for(var _i=0;_i<_rm.races.length;_i++){
-        if(_rm.races[_i].t===_raceTime){ _ri=_i; break; }
-      }
-      if(_ri!==-1) todaySelectRace(_rm.id,_ri);
-    } else {
-      var _tm=TM_MEETINGS.filter(function(m){ return m.name.toLowerCase().replace(/\s+/g,'-')===_raceCourse; })[0];
-      if(_tm){
-        _homeRcDay='tomorrow';
-        selectRacingDate('tomorrow');
-        toggleTomorrowMeeting(_tm.id);
-        var _tri=-1;
-        for(var _ti=0;_ti<_tm.races.length;_ti++){
-          if(_tm.races[_ti].t===_raceTime){ _tri=_ti; break; }
+    // Never leave the user on a blank screen: only switch views AFTER a match is found,
+    // fall back to the course meeting when the exact race isn't matched, and swallow
+    // any error so a failed click does nothing visible instead of breaking the page.
+    try{
+      var _raceParts=s.split(':');
+      var _raceCourse=_raceParts[1]||'';
+      var _raceTime=_raceParts.slice(2).join(':');
+      // Normalise both sides the same way the build does: lowercase, strip parenthetical
+      // country codes like "(IRE)", collapse all non-alphanumerics to hyphens.
+      var _normCourse=function(n){return (n||'').toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');};
+      var _wantCourse=_normCourse(_raceCourse);
+      // Accept the card's time in 24h, 12h, or zero-padded form against race.t
+      var _timeVariants=(function(t){
+        var m=(t||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return [t];
+        var h=parseInt(m[1],10),mm=m[2],out=[t];
+        var v24=(h<13?String(h+12):String(h))+':'+mm; if(out.indexOf(v24)===-1) out.push(v24);
+        var v12=(h>12?String(h-12):String(h))+':'+mm; if(out.indexOf(v12)===-1) out.push(v12);
+        var vp=('0'+h).slice(-2)+':'+mm; if(out.indexOf(vp)===-1) out.push(vp);
+        return out;
+      })(_raceTime);
+      var _findMeeting=function(list){ if(!list||!list.length) return null; return list.filter(function(m){ return _normCourse(m.name)===_wantCourse; })[0]||null; };
+      var _findRaceIdx=function(m){ for(var i=0;i<((m&&m.races)||[]).length;i++){ if(_timeVariants.indexOf(m.races[i].t)!==-1) return i; } return -1; };
+      var _rm=_findMeeting(typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null);
+      if(_rm){
+        selectRacingSection('racecards');
+        toggleTodayMeeting(_rm.id);
+        var _ri=_findRaceIdx(_rm);
+        if(_ri!==-1) todaySelectRace(_rm.id,_ri);
+        // no matching race time → meeting stays open as the course-level fallback
+      } else {
+        var _tm=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
+        if(_tm){
+          _homeRcDay='tomorrow';
+          selectRacingDate('tomorrow');
+          toggleTomorrowMeeting(_tm.id);
+          var _tri=_findRaceIdx(_tm);
+          if(_tri!==-1) tomorrowSelectRace(_tm.id,_tri);
+        } else if(typeof TM_MEETINGS==='undefined'||!TM_MEETINGS.length){
+          // Tomorrow data may still be loading — retry once WITHOUT switching view first,
+          // so a no-match click leaves the user exactly where they were.
+          setTimeout(function(){
+            try{
+              var _tm2=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
+              if(_tm2){
+                _homeRcDay='tomorrow';
+                selectRacingDate('tomorrow');
+                toggleTomorrowMeeting(_tm2.id);
+                var _tri2=_findRaceIdx(_tm2);
+                if(_tri2!==-1) tomorrowSelectRace(_tm2.id,_tri2);
+              }
+            }catch(_e2){}
+          },800);
         }
-        if(_tri!==-1) tomorrowSelectRace(_tm.id,_tri);
-      } else if(!TM_MEETINGS||!TM_MEETINGS.length){
-        // TM_MEETINGS not loaded yet — switch to the Tomorrow tab to trigger its load,
-        // then retry the match once it's had a moment to fetch.
-        _homeRcDay='tomorrow';
-        selectRacingDate('tomorrow');
-        setTimeout(function(){
-          var _tm2=TM_MEETINGS.filter(function(m){ return m.name.toLowerCase().replace(/\s+/g,'-')===_raceCourse; })[0];
-          if(_tm2){
-            toggleTomorrowMeeting(_tm2.id);
-            var _tri2=-1;
-            for(var _ti2=0;_ti2<_tm2.races.length;_ti2++){
-              if(_tm2.races[_ti2].t===_raceTime){ _tri2=_ti2; break; }
-            }
-            if(_tri2!==-1) tomorrowSelectRace(_tm2.id,_tri2);
-          }
-        },800);
+        // no meeting found anywhere → stay on the current view, do nothing visible
       }
+    }catch(_navErr){
+      try{ console.warn('[RacingEdge] race CTA navigation failed:',_navErr); }catch(_e3){}
     }
     return;
   }

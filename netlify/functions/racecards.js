@@ -168,7 +168,10 @@ function offDtTo24h(offDt) {
   return m ? m[1] + ':' + m[2] : '';
 }
 
-const EXCLUDED_COURSES = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
+// Emptied to match the daily build, which no longer excludes any courses —
+// intelligence cards can recommend horses at any GB/IRE course, so the frontend
+// must carry those meetings or card CTAs have nothing to navigate to.
+const EXCLUDED_COURSES = [];
 
 function mapRacecards(apiData) {
   const racecards = (apiData && apiData.racecards) ? apiData.racecards : [];
