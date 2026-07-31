@@ -1038,6 +1038,16 @@ async function generateIntelligence(racecards) {
 
 exports.handler = async function(event) {
   console.log('[BUILD START]', new Date().toISOString(), 'ctx:', process.env.CONTEXT, 'scheduled:', !event.httpMethod);
+  // Heartbeat: fire-and-forget first write so even an invocation killed early leaves evidence in Redis
+  try {
+    if (UPSTASH_URL && UPSTASH_TOKEN) {
+      redisSet('debug:build-heartbeat:' + new Date().toISOString().slice(0, 10), {
+        startedAt: new Date().toISOString(),
+        scheduled: !event.httpMethod,
+        ctx: process.env.CONTEXT || ''
+      }).catch(function() {});
+    }
+  } catch (hbErr) {}
   const RUN_FULL_BUILD = false;
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
