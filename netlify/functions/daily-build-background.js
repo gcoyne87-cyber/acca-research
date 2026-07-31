@@ -1079,6 +1079,7 @@ exports.handler = async function(event) {
     webSearchCount: 0,
     redisOk: false,
     errors: [],
+    warnings: [],
     raceBreakdown: [],
     callLog: [],
     analyses: [],
@@ -1214,13 +1215,13 @@ exports.handler = async function(event) {
         intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
         if (r.parseError) report.errors.push('Intelligence parse failed: ' + r.parseError);
         if (r.groundEdgeSkippedCount > 5) {
-          report.errors.push('Ground Edge: ' + r.groundEdgeSkippedCount + ' horses had no cached form history');
+          report.warnings.push('Ground Edge: ' + r.groundEdgeSkippedCount + ' horses had no cached form history');
         }
         if (r.classDropSkippedCount > 5) {
-          report.errors.push('Class Drop: ' + r.classDropSkippedCount + ' horses had runs but no valid class data');
+          report.warnings.push('Class Drop: ' + r.classDropSkippedCount + ' horses had runs but no valid class data');
         }
         if (r.hotYardBaselineErrors && r.hotYardBaselineErrors.length) {
-          r.hotYardBaselineErrors.forEach(function(msg) { report.errors.push(msg); });
+          r.hotYardBaselineErrors.forEach(function(msg) { report.warnings.push(msg); });
         }
         if (items && items.length) {
           items.forEach(function(item) { item.date = today; });
@@ -1313,7 +1314,7 @@ exports.handler = async function(event) {
             }
           }
           if (tomorrowGroundEdgeSkippedCount > 5) {
-            report.errors.push('Tomorrow Ground Edge: ' + tomorrowGroundEdgeSkippedCount + ' horses had no cached form history');
+            report.warnings.push('Tomorrow Ground Edge: ' + tomorrowGroundEdgeSkippedCount + ' horses had no cached form history');
           }
 
           // Ground Edge for tomorrow: top 3 horses across all venues (ranked by groundWins, then groundSR)
@@ -1423,7 +1424,7 @@ exports.handler = async function(event) {
           }
           tomorrowClassDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
           if (tomorrowClassDropSkippedCount > 5) {
-            report.errors.push('Tomorrow Class Drop: ' + tomorrowClassDropSkippedCount + ' horses had runs but no valid class data');
+            report.warnings.push('Tomorrow Class Drop: ' + tomorrowClassDropSkippedCount + ' horses had runs but no valid class data');
           }
 
           // Pre-compute OR gap candidates for tomorrow: top-rated horse with a significant official rating advantage over the second-best in the race
@@ -1503,7 +1504,7 @@ exports.handler = async function(event) {
               if (!isHot) tomorrowTrainersToRemove.push(trainerName);
             } catch (e) {
               console.log('[daily-build] Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
-              report.errors.push('Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
+              report.warnings.push('Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
               tomorrowTrainersToRemove.push(trainerName);
             }
           }
@@ -1605,8 +1606,10 @@ exports.handler = async function(event) {
 
           if (tomorrowParseError) {
             report.errors.push('Tomorrow intelligence parse failed: ' + tomorrowParseError);
-          } else if (!tomorrowItems || !tomorrowItems.length) {
-            report.errors.push('Tomorrow intelligence parse failed: no items returned');
+          } else if (!tomorrowItems) {
+            report.errors.push('Tomorrow intelligence parse failed: no JSON array found in response');
+          } else if (!tomorrowItems.length) {
+            report.warnings.push('Tomorrow intelligence returned zero cards');
           }
 
           if (tomorrowItems && tomorrowItems.length) {
@@ -1963,7 +1966,10 @@ exports.handler = async function(event) {
         '',
         'Total Cost: $' + emailCost.toFixed(4),
         '',
-        'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None')
+        'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None'),
+        '',
+        'Warnings:',
+        (report.warnings && report.warnings.length ? report.warnings.map(function(w) { return '- ' + w; }).join('\n') : 'None')
       ]).join('\n');
 
       const transporter = nodemailer.createTransport({
