@@ -251,8 +251,6 @@ function offDtTo24h(offDt) {
   return m ? m[1] + ':' + m[2] : '';
 }
 
-const EXCLUDED_COURSES = ['bath', 'thirsk', 'musselburgh', 'clonmel', 'hexham'];
-
 function mapRacecards(apiData) {
   const racecards = (apiData && apiData.racecards) ? apiData.racecards : [];
   const byVenue = {};
@@ -261,8 +259,6 @@ function mapRacecards(apiData) {
   racecards.forEach(function(race) {
     const rawId = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     if (!rawId) return;
-    if (EXCLUDED_COURSES.indexOf((race.course || '').toLowerCase().trim()) !== -1) return;
-
     const reg = (race.region || '').toUpperCase();
     if (reg !== 'GB' && reg !== 'IRE' && reg !== 'IE') return;
 
@@ -308,9 +304,9 @@ function mapRacecards(apiData) {
     if (m.races.length) m.nextMins = calcNextMins(m.races[0]._offDt);
     return m;
   }).filter(function(m) {
+    // Status-based only — never exclude by course name, so every course the
+    // daily build can recommend is present for intelligence card CTAs.
     if ((m.going || '').toLowerCase() === 'abandoned') return false;
-    var name = (m.name || '').toLowerCase();
-    if (name === 'newton abbot' || name === 'market rasen') return false;
     return true;
   });
 
