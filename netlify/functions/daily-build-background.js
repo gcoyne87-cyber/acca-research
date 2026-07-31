@@ -431,7 +431,7 @@ Use the FREE REIN INTELLIGENCE race card data in the user message. Find up to 3 
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
 - sigColor values: Tipster Consensus=#f97316, Ground Edge=#0ea5e9, Course and Distance=#6366f1, Class Drop=#f59e0b, Hot Yard=#10b981, Intelligence=#8b5cf6
-- ctaDestination format: "race:{course}:{time}" — course must be the lowercase course name with spaces replaced by hyphens, time must be the HH:MM off time of the race. Example: "race:haydock:14:30" or "race:ascot:15:45". Exception: Hot Yard uses trainer:{trainer name} format instead.
+- ctaDestination format: "race:{course}:{time}" — course must be the lowercase course name with spaces replaced by hyphens, time must be the HH:MM off time of the race. Example: "race:haydock:14:30" or "race:ascot:15:45". Exception: Hot Yard uses trainer:{trainer name} format instead. Intelligence signal cards must use the same race:{course}:{time} format as all other horse cards.
 - CRITICAL — NO DUPLICATE HORSES: each horse may appear in ONE signal only. If a horse is your Tipster Consensus pick, that same horse cannot appear under any other type. Before returning, check every horseName — if any horse appears more than once, replace the duplicate with a different horse or a different signal type entirely.
 
 Produce the best 3-6 cards from the combined pool of candidates across signals 1-6. Judge every candidate purely on genuine chance of winning today — regardless of which signal found the horse. Return ONLY a valid JSON array:
@@ -997,7 +997,7 @@ async function generateIntelligence(racecards) {
 
   msg += 'You may use web search for tipster consensus and for any additional research needed for the Intelligence signal. Return ONLY a valid JSON array with 3-6 items. Quality over quantity. Empty slot better than weak card.';
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 6000);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 8000);
 
   let items = null;
   let parseError = null;
@@ -1110,9 +1110,13 @@ exports.handler = async function(event) {
       }
     }
     if (!data.racecards || !data.racecards.length) {
-      data = await apiGet('api.theracingapi.com', '/v1/racecards/standard', {
-        'Authorization': 'Basic ' + RACING_AUTH
-      });
+      try {
+        data = await apiGet('api.theracingapi.com', '/v1/racecards/standard', {
+          'Authorization': 'Basic ' + RACING_AUTH
+        });
+      } catch (e) {
+        data = {};
+      }
     }
 
     const allRacecards = (data.racecards || []).filter(r => {
