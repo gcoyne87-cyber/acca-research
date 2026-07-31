@@ -13318,6 +13318,11 @@ function loadDailyBuild(){
         if(item.date && item.date > _todayDateStr && (item.ctaDestination||'').indexOf('trainer:')===0){
           item.ctaDestination='tomorrowtrainer:'+item.ctaDestination.substring('trainer:'.length);
         }
+        // Tomorrow race cards use the same race: prefix as today's — retag them so the
+        // CTA handler knows to search tomorrow's meetings instead of today's.
+        if(item.date && item.date > _todayDateStr && (item.ctaDestination||'').indexOf('race:')===0){
+          item.ctaDestination='tomorrowrace:'+item.ctaDestination.substring('race:'.length);
+        }
       });
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
@@ -14637,14 +14642,17 @@ function selectRacingSection(s){
     setTrainerFilter(_trainerName);
     return;
   }
-  if(typeof s==='string'&&s.indexOf('race:')===0){
+  if(typeof s==='string'&&(s.indexOf('race:')===0||s.indexOf('tomorrowrace:')===0)){
     // Never leave the user on a blank screen: only switch views AFTER a match is found,
     // fall back to the course meeting when the exact race isn't matched, and swallow
     // any error so a failed click does nothing visible instead of breaking the page.
+    // tomorrowrace: (retagged in loadDailyBuild) searches TOMORROW's meetings; race:
+    // searches today's first — the same course can race both days.
     try{
-      var _raceParts=s.split(':');
-      var _raceCourse=_raceParts[1]||'';
-      var _raceTime=_raceParts.slice(2).join(':');
+      var _isTomorrowDest=s.indexOf('tomorrowrace:')===0;
+      var _raceParts=s.substring(_isTomorrowDest?'tomorrowrace:'.length:'race:'.length).split(':');
+      var _raceCourse=_raceParts[0]||'';
+      var _raceTime=_raceParts.slice(1).join(':');
       // Normalise both sides the same way the build does: lowercase, strip parenthetical
       // country codes like "(IRE)", collapse all non-alphanumerics to hyphens.
       var _normCourse=function(n){return (n||'').toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');};
@@ -14660,36 +14668,57 @@ function selectRacingSection(s){
       })(_raceTime);
       var _findMeeting=function(list){ if(!list||!list.length) return null; return list.filter(function(m){ return _normCourse(m.name)===_wantCourse; })[0]||null; };
       var _findRaceIdx=function(m){ for(var i=0;i<((m&&m.races)||[]).length;i++){ if(_timeVariants.indexOf(m.races[i].t)!==-1) return i; } return -1; };
-      var _rm=_findMeeting(typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null);
-      if(_rm){
+      // Idempotent navigation: open (never toggle closed) the meeting, then select the
+      // race only if it isn't already selected — repeat clicks stay on the race.
+      var _navToday=function(m){
         selectRacingSection('racecards');
-        toggleTodayMeeting(_rm.id);
-        var _ri=_findRaceIdx(_rm);
-        if(_ri!==-1) todaySelectRace(_rm.id,_ri);
-        // no matching race time → meeting stays open as the course-level fallback
-      } else {
-        var _tm=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
-        if(_tm){
-          _homeRcDay='tomorrow';
-          selectRacingDate('tomorrow');
-          toggleTomorrowMeeting(_tm.id);
-          var _tri=_findRaceIdx(_tm);
-          if(_tri!==-1) tomorrowSelectRace(_tm.id,_tri);
-        } else if(typeof TM_MEETINGS==='undefined'||!TM_MEETINGS.length){
-          // Tomorrow data may still be loading — retry once WITHOUT switching view first,
-          // so a no-match click leaves the user exactly where they were.
+        if(todayOpenMeeting!==m.id) toggleTodayMeeting(m.id);
+        var ri=_findRaceIdx(m);
+        if(ri!==-1&&rcOpenRace[m.id]!==ri) todaySelectRace(m.id,ri);
+      };
+      var _navTomorrow=function(m){
+        _homeRcDay='tomorrow';
+        selectRacingDate('tomorrow');
+        if(tmOpenMeeting!==m.id) toggleTomorrowMeeting(m.id);
+        var ri=_findRaceIdx(m);
+        if(ri!==-1&&tmOpenRace[m.id]!==ri) tomorrowSelectRace(m.id,ri);
+      };
+      var _rcList=typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null;
+      var _tmList=typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null;
+      if(_isTomorrowDest){
+        var _tmm=_findMeeting(_tmList);
+        if(_tmm){
+          _navTomorrow(_tmm);
+        } else if(_tmList&&_tmList.length){
+          // Tomorrow data loaded but course absent — likely past midnight and the card's
+          // "tomorrow" is now today: fall back to today's meetings.
+          var _rcf=_findMeeting(_rcList);
+          if(_rcf) _navToday(_rcf);
+        } else {
+          // Tomorrow data still loading — retry once WITHOUT switching view first.
           setTimeout(function(){
             try{
-              var _tm2=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
-              if(_tm2){
-                _homeRcDay='tomorrow';
-                selectRacingDate('tomorrow');
-                toggleTomorrowMeeting(_tm2.id);
-                var _tri2=_findRaceIdx(_tm2);
-                if(_tri2!==-1) tomorrowSelectRace(_tm2.id,_tri2);
-              }
+              var _tmm2=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
+              if(_tmm2) _navTomorrow(_tmm2);
             }catch(_e2){}
           },800);
+        }
+      } else {
+        var _rm=_findMeeting(_rcList);
+        if(_rm){
+          _navToday(_rm);
+        } else {
+          var _tm=_findMeeting(_tmList);
+          if(_tm){
+            _navTomorrow(_tm);
+          } else if(!_tmList||!_tmList.length){
+            setTimeout(function(){
+              try{
+                var _tm2=_findMeeting(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null);
+                if(_tm2) _navTomorrow(_tm2);
+              }catch(_e2){}
+            },800);
+          }
         }
         // no meeting found anywhere → stay on the current view, do nothing visible
       }
