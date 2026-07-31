@@ -1524,6 +1524,25 @@ exports.handler = async function(event) {
             return acc;
           }, []).slice(0, 20).join('\n');
 
+          // TEMPORARY DIAGNOSTIC — captures full candidate pools before AI selection, to audit
+          // why a recent run produced Goodwood-only cards despite 6 meetings racing tomorrow.
+          try {
+            const _courseCounts = {};
+            tomorrowRacecards.forEach(function(r){ _courseCounts[r.course] = (_courseCounts[r.course]||0) + 1; });
+            await redisSet('debug:tomorrow-candidates:' + tomorrowDate, {
+              generatedAt: new Date().toISOString(),
+              meetingsInput: tomorrowCards.meetings.map(function(m){ return { course: m.name, raceCount: (m.races||[]).length }; }),
+              racesByCourseFlattened: _courseCounts,
+              meetingsSummaryTotalRaces: tomorrowRacecards.length,
+              meetingsSummaryLinesShown: tomorrowMeetingsSummary.split('\n').length,
+              groundEdgeCandidates_ALL: _tomorrowGroundEdgeAll,
+              courseDistanceCandidates_ALL: tomorrowCourseDistanceCandidates,
+              classDropCandidates_ALL: tomorrowClassDropCandidates,
+              orGapCandidates_ALL: tomorrowOrGapCandidates,
+              trainerFormCandidates_ALL: Object.values(tomorrowTrainerFormMap)
+            });
+          } catch(e) {}
+
           let tomorrowMsg = 'These are TOMORROW\'s race cards for ' + tomorrowDate + '. Apply the same signal logic but these races are for tomorrow not today.'
             + '\n\nTOMORROW\'S RACES:\n' + tomorrowMeetingsSummary + '\n\n';
 
