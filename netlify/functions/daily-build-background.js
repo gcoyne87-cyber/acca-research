@@ -1087,6 +1087,10 @@ exports.handler = async function(event) {
     const presentEnvVars = Object.keys(REQUIRED_ENV_VARS).filter(function(key) { return !!REQUIRED_ENV_VARS[key]; });
     console.error('[ENV CHECK FAILED] missing:', missingEnvVars.join(', '), '| present:', presentEnvVars.join(', ') || 'none');
     report.errors.push('Missing required environment variables: ' + missingEnvVars.join(', '));
+    // Leave evidence in Redis even on a failed run — only possible if the Upstash vars themselves are present
+    try {
+      if (UPSTASH_URL && UPSTASH_TOKEN) await redisSet('daily:report:' + today, report);
+    } catch (re) {}
     return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
   }
 
