@@ -1,4 +1,4 @@
-var CACHE = 'racingedge-v1';
+var CACHE = 'racingedge-v2';
 var SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json'];
 
 self.addEventListener('install', function(e) {
@@ -22,7 +22,16 @@ self.addEventListener('fetch', function(e) {
     return;
   }
   e.respondWith(
-    fetch(e.request).catch(function() {
+    fetch(e.request).then(function(resp) {
+      // Keep the offline fallback cache fresh: every successful GET updates the
+      // cached copy, so a network failure can only ever serve the LAST GOOD
+      // version — never a months-old install-time snapshot.
+      if (resp && resp.ok && e.request.method === 'GET') {
+        var copy = resp.clone();
+        caches.open(CACHE).then(function(c) { c.put(e.request, copy); });
+      }
+      return resp;
+    }).catch(function() {
       return caches.match(e.request).then(function(r) { return r || caches.match('/'); });
     })
   );
