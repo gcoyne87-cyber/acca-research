@@ -1037,6 +1037,7 @@ async function generateIntelligence(racecards) {
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
 exports.handler = async function(event) {
+  console.log('[BUILD START]', new Date().toISOString(), 'ctx:', process.env.CONTEXT, 'scheduled:', !event.httpMethod);
   const RUN_FULL_BUILD = false;
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
@@ -1083,6 +1084,8 @@ exports.handler = async function(event) {
   };
   const missingEnvVars = Object.keys(REQUIRED_ENV_VARS).filter(function(key) { return !REQUIRED_ENV_VARS[key]; });
   if (missingEnvVars.length) {
+    const presentEnvVars = Object.keys(REQUIRED_ENV_VARS).filter(function(key) { return !!REQUIRED_ENV_VARS[key]; });
+    console.error('[ENV CHECK FAILED] missing:', missingEnvVars.join(', '), '| present:', presentEnvVars.join(', ') || 'none');
     report.errors.push('Missing required environment variables: ' + missingEnvVars.join(', '));
     return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
   }
