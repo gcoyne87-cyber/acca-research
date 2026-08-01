@@ -75,6 +75,34 @@ function redisGet(key) {
   });
 }
 
+// Guard against a failed/zero-card run silently erasing a good same-day report
+// (AUDIT-DAILY-INTELLIGENCE.md, finding C1 — this happened for real once already:
+// a parse failure wrote intelligenceItems:0 over a good 5-card report and wiped
+// the live site's carousel). If a report already exists for this date with cards,
+// and the report we're about to write has zero cards AND at least one error,
+// something went wrong mid-build — keep the existing cards and fold the new
+// error(s) in, rather than replacing a working day with an empty one.
+async function safeWriteReport(dateKey, newReport) {
+  try {
+    const existing = await redisGet('daily:report:' + dateKey);
+    const existingItems = existing && Array.isArray(existing.intelligence) ? existing.intelligence.length : 0;
+    const newItems = Array.isArray(newReport.intelligence) ? newReport.intelligence.length : 0;
+    const newHasErrors = Array.isArray(newReport.errors) && newReport.errors.length > 0;
+    if (existing && existingItems > 0 && newItems === 0 && newHasErrors) {
+      const mergedErrors = (existing.errors || []).concat(newReport.errors);
+      const merged = Object.assign({}, existing, {
+        errors: mergedErrors.filter(function(e, i) { return mergedErrors.indexOf(e) === i; }),
+        warnings: (existing.warnings || []).concat(newReport.warnings || []),
+        preservedFromPriorRun: true,
+        lastFailedAttempt: { at: new Date().toISOString(), errors: newReport.errors }
+      });
+      await redisSet('daily:report:' + dateKey, merged);
+      return;
+    }
+  } catch (e) { /* guard check itself failed — fall through and write the new report rather than losing the run entirely */ }
+  await redisSet('daily:report:' + dateKey, newReport);
+}
+
 const _horseHistoryCache = new Map();
 
 async function fetchHorseHistory(horse_id) {
@@ -104,7 +132,12 @@ async function fetchHorseHistory(horse_id) {
         ran: (race.runners || []).length || 0,
         sp: runner.sp || '',
         jockey: runner.jockey || '',
-        race_class: race.race_class || ''
+        // AUDIT-DAILY-INTELLIGENCE.md, item 3: the Racing API results endpoint returns
+        // the class under `class`, not `race_class` — this field was always empty
+        // (100% of sampled historical results), starving Class Drop's Pool 1. Confirmed
+        // via a live raw API call: {"class":"Class 1", ...}. Keep race_class as a
+        // fallback in case a future response shape reintroduces that name.
+        race_class: race.class || race.race_class || ''
       };
     });
     _horseHistoryCache.set(horse_id, history);
@@ -119,11 +152,12 @@ function isJumps(raceName, raceType) {
   return /hurdle|chase|bumper|steeplechase|national hunt|hrd/.test(s);
 }
 
+// AUDIT-DAILY-INTELLIGENCE.md, finding S3: this used to do the same naive
+// indexOf('{')/lastIndexOf('}') extraction that broke the (now-hardened)
+// Intelligence array parse twice in production. Delegates to the shared
+// balanced-scanner (extractBalancedJson, defined below) instead.
 function parseJson(text) {
-  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-  if (s === -1 || e <= s) return null;
-  try { return JSON.parse(clean.substring(s, e + 1)); } catch { return null; }
+  try { return extractBalancedJson(text, '{', '}'); } catch (e) { return null; }
 }
 
 // ── SYSTEM PROMPTS ────────────────────────────────────────────────────────────
@@ -574,14 +608,18 @@ function normaliseHorseName(s) {
   return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// A naive indexOf('[')/lastIndexOf(']') extraction breaks whenever the model
-// appends any trailing content after the JSON array (seen live: "Unexpected
-// non-whitespace character after JSON"). This scans for the first top-level
-// balanced array instead, correctly ignoring brackets inside string literals,
-// and simply stops at its true closing bracket regardless of what follows.
-function extractJsonArray(text) {
+// A naive indexOf/lastIndexOf extraction breaks whenever the model appends any
+// trailing content after the JSON value (seen live: "Unexpected non-whitespace
+// character after JSON" — broke the Intelligence parse and wiped the day's cards
+// twice before this was written). Scans for the first top-level balanced value
+// starting at openChar instead, correctly ignoring open/close chars inside string
+// literals, and stops at the true matching closeChar regardless of what follows.
+// Shared by extractJsonArray (arrays) and parseJson (objects) — AUDIT-DAILY-INTELLIGENCE.md,
+// finding S3 flagged parseJson and callClaudeSimple as still using the old naive
+// pattern after only the array case was hardened.
+function extractBalancedJson(text, openChar, closeChar) {
   const clean = (text || '').replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  const start = clean.indexOf('[');
+  const start = clean.indexOf(openChar);
   if (start === -1) return null;
   let depth = 0, inStr = false, esc = false;
   for (let i = start; i < clean.length; i++) {
@@ -593,13 +631,17 @@ function extractJsonArray(text) {
       continue;
     }
     if (c === '"') { inStr = true; continue; }
-    if (c === '[') depth++;
-    else if (c === ']') {
+    if (c === openChar) depth++;
+    else if (c === closeChar) {
       depth--;
       if (depth === 0) return JSON.parse(clean.substring(start, i + 1));
     }
   }
   return null;
+}
+
+function extractJsonArray(text) {
+  return extractBalancedJson(text, '[', ']');
 }
 
 // Data-verified signals (concrete computed evidence) outrank the free-rein
@@ -666,6 +708,89 @@ function dedupeRaceCollisionsAndCapPerMeeting(items, warningsOut) {
   return deduped;
 }
 
+// Validates and repairs race:{course}:{time} ctaDestinations against the real
+// racecard data before cards are saved (AUDIT-DAILY-INTELLIGENCE.md, finding C3
+// — the model is otherwise trusted to copy the time correctly with nothing
+// checking it, which produced real off-by-a-few-minutes cards like 17:20 vs the
+// actual 17:25). Matches primarily by horseName — a horse runs in exactly one
+// real race that day, so this is the most reliable anchor — and repairs the
+// course/time to match. Falls back to course + nearest real off-time if the
+// horse name can't be matched (formatting mismatch, trainer-style cards, etc).
+// A card that matches no real race at all is dropped rather than saved with an
+// unverified destination; the drop is logged to warningsOut either way.
+function validateAndRepairCtaDestinations(items, flatRaces, warningsOut) {
+  if (!items || !items.length) return items;
+
+  function normCourse(n) {
+    return (n || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  function normHorse(n) {
+    return (n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  function timeToMinutes(t) {
+    const m = (t || '').match(/^(\d{1,2}):(\d{2})$/);
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  }
+
+  const horseToRace = {};
+  const racesByCourse = {};
+  (flatRaces || []).forEach(function(race) {
+    const course = race.course || '';
+    const time = race.off_time || '';
+    if (!course || !time) return;
+    const cKey = normCourse(course);
+    if (!racesByCourse[cKey]) racesByCourse[cKey] = [];
+    racesByCourse[cKey].push({ course: course, time: time });
+    (race.runners || []).forEach(function(r) {
+      const hName = r.horse || r.name || '';
+      if (hName) horseToRace[normHorse(hName)] = { course: course, time: time };
+    });
+  });
+
+  const kept = [];
+  items.forEach(function(item) {
+    const dest = item.ctaDestination || '';
+    if (dest.indexOf('race:') !== 0) { kept.push(item); return; } // trainer: cards etc — nothing to validate
+
+    const parts = dest.substring('race:'.length).split(':');
+    const destCourse = parts[0] || '';
+    const destTime = parts.slice(1).join(':');
+
+    const byHorse = horseToRace[normHorse(item.horseName)];
+    if (byHorse) {
+      const correctDest = 'race:' + normCourse(byHorse.course) + ':' + byHorse.time;
+      if (correctDest !== dest) {
+        warningsOut.push('Repaired ctaDestination for ' + item.horseName + ': ' + dest + ' -> ' + correctDest);
+        item.ctaDestination = correctDest;
+      }
+      kept.push(item);
+      return;
+    }
+
+    const candidates = racesByCourse[normCourse(destCourse)];
+    if (candidates && candidates.length) {
+      const wantMin = timeToMinutes(destTime);
+      let best = candidates[0], bestDiff = Infinity;
+      candidates.forEach(function(c) {
+        const cMin = timeToMinutes(c.time);
+        const diff = (wantMin !== null && cMin !== null) ? Math.abs(cMin - wantMin) : Infinity;
+        if (diff < bestDiff) { bestDiff = diff; best = c; }
+      });
+      const correctDest = 'race:' + normCourse(best.course) + ':' + best.time;
+      if (correctDest !== dest) {
+        warningsOut.push('Repaired ctaDestination by course+nearest-time for ' + item.horseName + ': ' + dest + ' -> ' + correctDest);
+        item.ctaDestination = correctDest;
+      }
+      kept.push(item);
+      return;
+    }
+
+    warningsOut.push('Dropped card with unverifiable ctaDestination: ' + item.horseName + ' (' + item.signalType + ') — ' + dest + ' does not match any real race today');
+  });
+
+  return kept;
+}
+
 async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
   const resp = await apiPost('api.anthropic.com', '/v1/messages', {
     'x-api-key': ANTHROPIC_KEY,
@@ -678,9 +803,7 @@ async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
   });
   const usage = resp.usage || {};
   const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-  const result = (s !== -1 && e > s) ? JSON.parse(clean.substring(s, e + 1)) : null;
+  const result = extractBalancedJson(text, '{', '}');
   return {
     result,
     inputTokens: usage.input_tokens || 0,
@@ -1122,10 +1245,13 @@ async function generateIntelligence(racecards) {
     });
   }
 
+  const ctaValidationDrops = [];
+  items = validateAndRepairCtaDestinations(items, racecards, ctaValidationDrops);
+
   const duplicateRaceDrops = [];
   items = dedupeRaceCollisionsAndCapPerMeeting(items, duplicateRaceDrops);
 
-  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError, groundEdgeSkippedCount, classDropSkippedCount, hotYardBaselineErrors, duplicateRaceDrops };
+  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError, groundEdgeSkippedCount, classDropSkippedCount, hotYardBaselineErrors, duplicateRaceDrops, ctaValidationDrops };
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -1155,6 +1281,24 @@ exports.handler = async function(event) {
 
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
+
+  // Build-in-progress lock (AUDIT-DAILY-INTELLIGENCE.md, finding C2). If Netlify's
+  // scheduler and the GitHub Actions safety net both fire — or the safety net fires
+  // while a slow scheduled run is still mid-flight — this stops a second, fully
+  // redundant build from running concurrently with the first (which would otherwise
+  // double the Anthropic spend and send two separate emails for the same day).
+  const LOCK_WINDOW_MS = 30 * 60 * 1000;
+  try {
+    const existingLock = await redisGet('build:lock:' + today);
+    if (existingLock && existingLock.startedAt) {
+      const lockAgeMs = now.getTime() - new Date(existingLock.startedAt).getTime();
+      if (lockAgeMs >= 0 && lockAgeMs < LOCK_WINDOW_MS) {
+        console.log('[daily-build] Build already in progress (started ' + Math.round(lockAgeMs / 1000) + 's ago) — standing down.');
+        return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'build already in progress', lockStartedAt: existingLock.startedAt }) };
+      }
+    }
+    await redisSet('build:lock:' + today, { startedAt: now.toISOString(), scheduled: isScheduled });
+  } catch (lockErr) { /* lock check/write failure must never block the build itself */ }
 
   const report = {
     date: today,
@@ -1194,8 +1338,9 @@ exports.handler = async function(event) {
     report.errors.push('Missing required environment variables: ' + missingEnvVars.join(', '));
     // Leave evidence in Redis even on a failed run — only possible if the Upstash vars themselves are present
     try {
-      if (UPSTASH_URL && UPSTASH_TOKEN) await redisSet('daily:report:' + today, report);
+      if (UPSTASH_URL && UPSTASH_TOKEN) await safeWriteReport(today, report);
     } catch (re) {}
+    try { await redisSet('build:lock:' + today, null); } catch (ue) {}
     return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
   }
 
@@ -1291,7 +1436,7 @@ exports.handler = async function(event) {
     // Check Redis cache first — if intelligence already ran today, reuse it (prevents second builds wiping morning signals)
     console.log('[daily-build] Generating daily intelligence...');
     let tipsterConsensusText = '';
-    let tomorrowInputTokens = 0, tomorrowOutputTokens = 0;
+    let tomorrowInputTokens = 0, tomorrowOutputTokens = 0, tomorrowCacheReadTokens = 0, tomorrowCacheWriteTokens = 0, tomorrowWebSearchCount = 0;
     try {
       let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
       const cachedIntel = await redisGet('intelligence:' + today);
@@ -1319,6 +1464,9 @@ exports.handler = async function(event) {
         }
         if (r.duplicateRaceDrops && r.duplicateRaceDrops.length) {
           r.duplicateRaceDrops.forEach(function(msg) { report.warnings.push(msg); });
+        }
+        if (r.ctaValidationDrops && r.ctaValidationDrops.length) {
+          r.ctaValidationDrops.forEach(function(msg) { report.warnings.push(msg); });
         }
         if (items && items.length) {
           items.forEach(function(item) { item.date = today; });
@@ -1366,6 +1514,18 @@ exports.handler = async function(event) {
               });
             });
           });
+
+          // TODO(S1, AUDIT-DAILY-INTELLIGENCE.md): everything from here to the tomorrow
+          // message assembly below is a near-complete line-for-line duplicate of the
+          // "today" pre-computation block above (Ground Edge / Course & Distance / Class
+          // Drop / OR Gap / Hot Yard), independently maintained with tomorrow-prefixed
+          // names instead of a shared, day-parameterized function. This duplication is
+          // the root cause of at least 3 confirmed bugs (Unknown horse names, the
+          // tomorrow-CTA render bug, Intelligence leaking into tomorrow) — a fix applied
+          // to one side has to be remembered and reapplied to the other by hand. Flagged
+          // per the audit; deliberately NOT restructured in this pass so the fixes above
+          // stay easy to review — collapsing today/tomorrow into one shared code path is
+          // the next real piece of work here, ideally before any more signals are added.
 
           // Pre-compute ground edge candidates for tomorrow: Heavy/Yielding jumps meetings only, grouped by venue
           const tomorrowGroundRe = /heavy|yield/i;
@@ -1699,11 +1859,15 @@ exports.handler = async function(event) {
             tomorrowMsg += '\n';
           }
 
-          tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
+          tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Do not produce Intelligence cards for tomorrow either — there is no FREE REIN INTELLIGENCE section in this message, so any Intelligence-type card would not be grounded in real data. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
 
           const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 12000);
           tomorrowInputTokens = tomorrowResult.inputTokens || 0;
           tomorrowOutputTokens = tomorrowResult.outputTokens || 0;
+          tomorrowCacheReadTokens = tomorrowResult.cacheReadTokens || 0;
+          tomorrowCacheWriteTokens = tomorrowResult.cacheWriteTokens || 0;
+          tomorrowWebSearchCount = tomorrowResult.webSearchCount || 0;
+          report.callLog.push({ type: 'intelligence-tomorrow', label: 'Daily Intelligence (Tomorrow)', inputTokens: tomorrowInputTokens, outputTokens: tomorrowOutputTokens, cacheReadTokens: tomorrowCacheReadTokens, cacheWriteTokens: tomorrowCacheWriteTokens, webSearch: tomorrowWebSearchCount > 0, webSearchCount: tomorrowWebSearchCount });
 
           let tomorrowItems = null;
           let tomorrowParseError = null;
@@ -1727,6 +1891,17 @@ exports.handler = async function(event) {
           }
 
           if (tomorrowItems && tomorrowItems.length) {
+            // Code-level backstop for the prompt instruction above (AUDIT-DAILY-INTELLIGENCE.md,
+            // finding S5): Intelligence is a today-only signal — tomorrow's message never
+            // includes the FREE REIN INTELLIGENCE data section it's meant to draw from, but
+            // a real run still produced an Intelligence-type card for tomorrow once. Drop any
+            // that slip through regardless of whether the prompt instruction was followed.
+            const _preIntelDropCount = tomorrowItems.length;
+            tomorrowItems = tomorrowItems.filter(function(item) { return item.signalType !== 'Intelligence'; });
+            if (tomorrowItems.length < _preIntelDropCount) {
+              report.warnings.push('Dropped ' + (_preIntelDropCount - tomorrowItems.length) + ' Intelligence-type card(s) from tomorrow output — Intelligence is today-only');
+            }
+            tomorrowItems = validateAndRepairCtaDestinations(tomorrowItems, tomorrowRacecards, report.warnings);
             tomorrowItems = dedupeRaceCollisionsAndCapPerMeeting(tomorrowItems, report.warnings);
             tomorrowItems.forEach(function(item) { item.isTomorrow = true; item.date = tomorrowDate; });
             try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
@@ -1742,7 +1917,7 @@ exports.handler = async function(event) {
                 req.on('error', reject); req.end();
               });
             } catch(re) {}
-            try { await redisSet('daily:report:' + tomorrowDate, { intelligence: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
+            try { await safeWriteReport(tomorrowDate, { intelligence: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
             try {
               await new Promise((resolve, reject) => {
                 const url = new URL(UPSTASH_URL);
@@ -1779,7 +1954,7 @@ exports.handler = async function(event) {
     } catch(e) {
       report.errors.push('intelligence: ' + e.message);
     }
-    try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
+    try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
     if (RUN_FULL_BUILD) {
@@ -1825,7 +2000,7 @@ exports.handler = async function(event) {
         if (!v.cached) report.callLog.push({ type: 'race-analysis', label: v.label, inputTokens: v.inputTokens, outputTokens: v.outputTokens, cacheReadTokens: v.cacheReadTokens || 0, cacheWriteTokens: v.cacheWriteTokens || 0, webSearch: (v.webSearchCount || 0) > 0, webSearchCount: v.webSearchCount || 0 });
         if (v.result) report.analyses.push({ race: v.label, ...v.result });
       });
-      try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
+      try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
     }
     }
 
@@ -2012,26 +2187,42 @@ exports.handler = async function(event) {
     }
 
     // 6. Calculate cost and store final report
-    const costTokens    = report.inputTokens * PRICE_IN + report.outputTokens * PRICE_OUT;
-    const costCache     = report.cacheWriteTokens * PRICE_CACHE_WRITE + report.cacheReadTokens * PRICE_CACHE_READ;
-    const costWebSearch = report.webSearchCount * PRICE_WEB_SEARCH;
+    // AUDIT-DAILY-INTELLIGENCE.md, finding S4: report.costUSD used to silently
+    // omit the tomorrow call's entire cost — its tokens were tracked in separate
+    // tomorrowInputTokens/etc. accumulators but never folded into the total here.
+    // report.inputTokens/etc. stay today-only (other code reads them for that
+    // purpose); the cost figures below combine both calls into one true total,
+    // plus a today/tomorrow split for transparency.
+    const combinedInputTokens      = report.inputTokens + tomorrowInputTokens;
+    const combinedOutputTokens     = report.outputTokens + tomorrowOutputTokens;
+    const combinedCacheWriteTokens = report.cacheWriteTokens + tomorrowCacheWriteTokens;
+    const combinedCacheReadTokens  = report.cacheReadTokens + tomorrowCacheReadTokens;
+    const combinedWebSearchCount   = report.webSearchCount + tomorrowWebSearchCount;
+
+    const costTokens    = combinedInputTokens * PRICE_IN + combinedOutputTokens * PRICE_OUT;
+    const costCache     = combinedCacheWriteTokens * PRICE_CACHE_WRITE + combinedCacheReadTokens * PRICE_CACHE_READ;
+    const costWebSearch = combinedWebSearchCount * PRICE_WEB_SEARCH;
     const cost = costTokens + costCache + costWebSearch;
+    const todayCostUSD = (report.inputTokens * PRICE_IN + report.outputTokens * PRICE_OUT + report.cacheWriteTokens * PRICE_CACHE_WRITE + report.cacheReadTokens * PRICE_CACHE_READ + report.webSearchCount * PRICE_WEB_SEARCH);
+    const tomorrowCostUSD = (tomorrowInputTokens * PRICE_IN + tomorrowOutputTokens * PRICE_OUT + tomorrowCacheWriteTokens * PRICE_CACHE_WRITE + tomorrowCacheReadTokens * PRICE_CACHE_READ + tomorrowWebSearchCount * PRICE_WEB_SEARCH);
     report.costUSD = cost.toFixed(4);
     report.costBreakdown = {
-      inputTokenCost:      (report.inputTokens * PRICE_IN).toFixed(4),
-      outputTokenCost:     (report.outputTokens * PRICE_OUT).toFixed(4),
-      cacheWriteCost:      (report.cacheWriteTokens * PRICE_CACHE_WRITE).toFixed(4),
-      cacheReadCost:       (report.cacheReadTokens * PRICE_CACHE_READ).toFixed(4),
+      inputTokenCost:      (combinedInputTokens * PRICE_IN).toFixed(4),
+      outputTokenCost:     (combinedOutputTokens * PRICE_OUT).toFixed(4),
+      cacheWriteCost:      (combinedCacheWriteTokens * PRICE_CACHE_WRITE).toFixed(4),
+      cacheReadCost:       (combinedCacheReadTokens * PRICE_CACHE_READ).toFixed(4),
       webSearchCost:       (costWebSearch).toFixed(4),
-      webSearchCount:      report.webSearchCount,
-      totalInputTokens:    report.inputTokens,
-      totalOutputTokens:   report.outputTokens,
-      totalCacheWrite:     report.cacheWriteTokens,
-      totalCacheRead:      report.cacheReadTokens
+      webSearchCount:      combinedWebSearchCount,
+      totalInputTokens:    combinedInputTokens,
+      totalOutputTokens:   combinedOutputTokens,
+      totalCacheWrite:     combinedCacheWriteTokens,
+      totalCacheRead:      combinedCacheReadTokens,
+      todayCostUSD:        todayCostUSD.toFixed(4),
+      tomorrowCostUSD:     tomorrowCostUSD.toFixed(4)
     };
     report.completedAt = new Date().toISOString();
 
-    try { await redisSet('daily:report:' + today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
+    try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
     console.log(`[daily-build] Done. ${report.racesAnalysed}/${report.upcomingRaces} upcoming races analysed. Cost: $${report.costUSD}`);
 
     // 7. Send build report email — best-effort, must never crash the build
@@ -2064,13 +2255,13 @@ exports.handler = async function(event) {
         tomorrowLine = 'Tomorrow Intelligence: ' + (tomorrowStoredItems.length > 0 ? tomorrowStoredItems.length + ' card(s) produced' : 'No signals fired');
       }
 
-      // Cost calculated per the pricing specified for this email only — input $3/M,
-      // output $15/M, web search $0.01 each. This intentionally does NOT match
-      // report.costUSD, which also includes cache read/write cost and prices web
-      // search at $0.10 (PRICE_WEB_SEARCH) — the two figures will differ.
-      const emailCost = ((report.inputTokens + tomorrowInputTokens) / 1000000) * 3
-        + ((report.outputTokens + tomorrowOutputTokens) / 1000000) * 15
-        + report.webSearchCount * 0.01;
+      // AUDIT-DAILY-INTELLIGENCE.md, finding S4: this used to run its own separate,
+      // hand-rolled cost calculation that intentionally diverged from report.costUSD
+      // (omitted cache cost, priced web search at a stale $0.01 instead of the
+      // correct $0.10) — the emailed number was simply wrong. report.costUSD /
+      // report.costBreakdown are now the one correct, combined-today+tomorrow total
+      // (see step 6 above); the email just reports that figure directly.
+      const cb = report.costBreakdown || {};
 
       const emailSubject = (report.errors && report.errors.length)
         ? 'Daily Intelligence FAILED - ' + today
@@ -2079,7 +2270,9 @@ exports.handler = async function(event) {
       const emailBody = signalLines.concat([
         tomorrowLine,
         '',
-        'Total Cost: $' + emailCost.toFixed(4),
+        'Total Cost: $' + report.costUSD,
+        '  Input: $' + (cb.inputTokenCost || '0.0000') + ' | Output: $' + (cb.outputTokenCost || '0.0000') + ' | Cache write: $' + (cb.cacheWriteCost || '0.0000') + ' | Cache read: $' + (cb.cacheReadCost || '0.0000') + ' | Web search: $' + (cb.webSearchCost || '0.0000') + ' (' + (cb.webSearchCount || 0) + ' searches)',
+        '  Today: $' + (cb.todayCostUSD || '0.0000') + ' | Tomorrow: $' + (cb.tomorrowCostUSD || '0.0000'),
         '',
         'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None'),
         '',
@@ -2101,12 +2294,23 @@ exports.handler = async function(event) {
       // Email failure must never crash the build — swallow.
     }
 
+    try { await redisSet('build:lock:' + today, null); } catch (ue) {}
     return { statusCode: 200, headers, body: JSON.stringify(report, null, 2) };
 
   } catch(e) {
     report.errors.push('FATAL: ' + e.message);
     report.completedAt = new Date().toISOString();
     console.error('[daily-build] Fatal:', e.message);
+    // AUDIT-DAILY-INTELLIGENCE.md, finding S2: a crash before the first mid-build
+    // redisSet used to leave zero evidence in Redis beyond the bare heartbeat —
+    // the report body above is never observed by anything for a background
+    // function. Write the crash itself so an early failure leaves a trail.
+    try {
+      if (UPSTASH_URL && UPSTASH_TOKEN) {
+        await redisSet('build:crash:' + today, { message: e.message, stack: e.stack || '', at: new Date().toISOString() });
+      }
+    } catch (ce) {}
+    try { if (UPSTASH_URL && UPSTASH_TOKEN) await redisSet('build:lock:' + today, null); } catch (ue) {}
     return { statusCode: 500, headers, body: JSON.stringify(report, null, 2) };
   }
 };
