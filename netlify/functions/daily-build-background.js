@@ -574,6 +574,34 @@ function normaliseHorseName(s) {
   return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+// A naive indexOf('[')/lastIndexOf(']') extraction breaks whenever the model
+// appends any trailing content after the JSON array (seen live: "Unexpected
+// non-whitespace character after JSON"). This scans for the first top-level
+// balanced array instead, correctly ignoring brackets inside string literals,
+// and simply stops at its true closing bracket regardless of what follows.
+function extractJsonArray(text) {
+  const clean = (text || '').replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const start = clean.indexOf('[');
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < clean.length; i++) {
+    const c = clean[i];
+    if (inStr) {
+      if (esc) { esc = false; }
+      else if (c === '\\') { esc = true; }
+      else if (c === '"') { inStr = false; }
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '[') depth++;
+    else if (c === ']') {
+      depth--;
+      if (depth === 0) return JSON.parse(clean.substring(start, i + 1));
+    }
+  }
+  return null;
+}
+
 // Data-verified signals (concrete computed evidence) outrank the free-rein
 // Intelligence catch-all when two cards collide on the same race or meeting.
 const SIGNAL_STRENGTH_PRIORITY = { 'Tipster Consensus': 1, 'Course and Distance': 2, 'Class Drop': 3, 'Ground Edge': 4, 'Hot Yard': 5, 'Intelligence': 6 };
@@ -1070,9 +1098,7 @@ async function generateIntelligence(racecards) {
     parseError = 'Intelligence call returned no result';
   } else {
   try {
-    const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
-    if (s !== -1 && e > s) items = JSON.parse(clean.substring(s, e + 1));
+    items = extractJsonArray(text);
   } catch(e) {
     console.error('[daily-build] Intelligence JSON parse failed:', e.message, '| Raw text:', (text || '').slice(0, 500));
     parseError = e.message;
@@ -1685,9 +1711,7 @@ exports.handler = async function(event) {
             tomorrowParseError = 'Tomorrow intelligence call returned no result';
           } else {
           try {
-            const tomorrowClean = tomorrowResult.text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-            const ts = tomorrowClean.indexOf('['), te = tomorrowClean.lastIndexOf(']');
-            if (ts !== -1 && te > ts) tomorrowItems = JSON.parse(tomorrowClean.substring(ts, te + 1));
+            tomorrowItems = extractJsonArray(tomorrowResult.text);
           } catch(e) {
             console.error('[daily-build] Tomorrow intelligence JSON parse failed:', e.message, '| Raw text:', (tomorrowResult.text || '').slice(0, 500));
             tomorrowParseError = e.message;
