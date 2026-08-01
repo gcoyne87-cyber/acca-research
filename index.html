@@ -14727,6 +14727,14 @@ function selectRacingSection(s){
     }
     return;
   }
+  // Never treat an unrecognized destination as "home" — an unmatched or malformed
+  // value must do nothing visible rather than hiding every section with nothing
+  // to replace it (AUDIT-DAILY-INTELLIGENCE.md, finding C3).
+  var _KNOWN_SECTIONS={home:1,racecards:1,nextrace:1,winners:1,pickofday:1,myresearch:1,results:1};
+  if(typeof s!=='string'||!_KNOWN_SECTIONS[s]){
+    try{ console.warn('[RacingEdge] selectRacingSection: unrecognized destination, ignoring:',s); }catch(_e4){}
+    return;
+  }
   if(typeof _syncMainTab==='function') _syncMainTab(s);
   var todayC=document.getElementById("racing-today-content");
   var tmrwC=document.getElementById("racing-tomorrow-content");
