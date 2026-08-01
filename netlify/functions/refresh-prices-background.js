@@ -177,6 +177,13 @@ exports.handler = async function(event) {
         });
       });
 
+      if (todayUpdated === 0) {
+        // Cache and fresh API data were both non-empty but nothing matched —
+        // likely a cache shape/ID mismatch. Never let this fail silently.
+        todayError = 'Today racecard and fresh API data both non-empty but 0 runners updated (possible cache shape or horse_id mismatch)';
+        await sendErrorEmail('today (' + today + ')', new Error(todayError));
+      }
+
       await redisSet('racecards:' + today, cached);
     }
   } catch (e) {

@@ -1405,13 +1405,17 @@ exports.handler = async function(event) {
 
     // 2. Store raw racecards in Redis — only overwrite if new data has more runners
     // (protects the morning's full runner data from being replaced by empty-runner re-runs later in the day)
+    // Uses a private key (not 'racecards:<date>') because that key is the shared
+    // { meetings: [...] } cache written by fetch-future-cards-background.js and
+    // updated by refresh-prices-background.js — writing the raw { racecards: [...] }
+    // shape there clobbers it and silently breaks today's price refresh.
     try {
-      const existingCards = await redisGet('racecards:' + today);
+      const existingCards = await redisGet('daily-build:raw-racecards:' + today);
       const existingRunners = existingCards && Array.isArray(existingCards.racecards)
         ? existingCards.racecards.reduce((s, r) => s + (r.runners || []).length, 0) : 0;
       const newRunners = allRacecards.reduce((s, r) => s + (r.runners || []).length, 0);
       if (newRunners >= existingRunners) {
-        await redisSet('racecards:' + today, { racecards: allRacecards, storedAt: new Date().toISOString() });
+        await redisSet('daily-build:raw-racecards:' + today, { racecards: allRacecards, storedAt: new Date().toISOString() });
       }
       report.redisOk = true;
     } catch(e) {
@@ -2011,7 +2015,7 @@ exports.handler = async function(event) {
     let formHorsesGenerated = 0, formRacesGenerated = 0;
     let formSourceCards = allRacecards;
     try {
-      const cachedCards = await redisGet('racecards:' + today);
+      const cachedCards = await redisGet('daily-build:raw-racecards:' + today);
       if (cachedCards && Array.isArray(cachedCards.racecards) && cachedCards.racecards.length > 0) {
         formSourceCards = cachedCards.racecards.filter(r => {
           const reg = (r.region || '').toUpperCase();
