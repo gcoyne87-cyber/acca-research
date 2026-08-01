@@ -744,7 +744,7 @@ async function generateIntelligence(racecards) {
       const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
       if (runs >= 5 && pct >= 25 && r.trainer) {
         if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
-        trainerFormMap[r.trainer].horses.push((r.horse || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r));
+        trainerFormMap[r.trainer].horses.push((r.horse || r.name || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + extractPrice(r));
       }
     });
   });
@@ -828,7 +828,7 @@ async function generateIntelligence(racecards) {
         if (groundWins >= 2 || groundSR >= 33) {
           if (!groundEdgeByVenue[venue]) groundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
           groundEdgeByVenue[venue].horses.push({
-            horse: runner.horse || 'Unknown',
+            horse: runner.horse || runner.name || 'Unknown',
             price: extractPrice(runner),
             time: raceTime(race),
             raceName: race.race_name || '',
@@ -884,7 +884,7 @@ async function generateIntelligence(racecards) {
       }, []);
 
       courseDistanceCandidates.push({
-        horse: runner.horse || 'Unknown',
+        horse: runner.horse || runner.name || 'Unknown',
         price: extractPrice(runner),
         time: raceTime(race),
         course: course,
@@ -937,7 +937,7 @@ async function generateIntelligence(racecards) {
       if (classDrop < 1) continue;
 
       classDropCandidates.push({
-        horse: runner.horse || 'Unknown',
+        horse: runner.horse || runner.name || 'Unknown',
         trainer: runner.trainer || '',
         price: extractPrice(runner),
         time: raceTime(race),
@@ -971,7 +971,7 @@ async function generateIntelligence(racecards) {
     if (orGap >= 8) {
       const runner = ratedRunners[0].runner;
       orGapCandidates.push({
-        horse: runner.horse || 'Unknown',
+        horse: runner.horse || runner.name || 'Unknown',
         trainer: runner.trainer || '',
         price: extractPrice(runner),
         time: raceTime(race),
@@ -1370,7 +1370,7 @@ exports.handler = async function(event) {
                 if (groundWins >= 2 || groundSR >= 33) {
                   if (!tomorrowGroundEdgeByVenue[venue]) tomorrowGroundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
                   tomorrowGroundEdgeByVenue[venue].horses.push({
-                    horse: runner.horse || 'Unknown',
+                    horse: runner.horse || runner.name || 'Unknown',
                     price: tomorrowExtractPrice(runner),
                     time: tomorrowRaceTime(race),
                     raceName: race.race_name || '',
@@ -1429,7 +1429,7 @@ exports.handler = async function(event) {
               }, []);
 
               tomorrowCourseDistanceCandidates.push({
-                horse: runner.horse || 'Unknown',
+                horse: runner.horse || runner.name || 'Unknown',
                 price: tomorrowExtractPrice(runner),
                 time: tomorrowRaceTime(race),
                 course: course,
@@ -1482,7 +1482,7 @@ exports.handler = async function(event) {
               if (classDrop < 1) continue;
 
               tomorrowClassDropCandidates.push({
-                horse: runner.horse || 'Unknown',
+                horse: runner.horse || runner.name || 'Unknown',
                 trainer: runner.trainer || '',
                 price: tomorrowExtractPrice(runner),
                 time: tomorrowRaceTime(race),
@@ -1519,7 +1519,7 @@ exports.handler = async function(event) {
             if (orGap >= 8) {
               const runner = ratedRunners[0].runner;
               tomorrowOrGapCandidates.push({
-                horse: runner.horse || 'Unknown',
+                horse: runner.horse || runner.name || 'Unknown',
                 trainer: runner.trainer || '',
                 price: tomorrowExtractPrice(runner),
                 time: tomorrowRaceTime(race),
@@ -1542,7 +1542,7 @@ exports.handler = async function(event) {
               const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
               if (runs >= 5 && pct >= 25 && r.trainer) {
                 if (!tomorrowTrainerFormMap[r.trainer]) tomorrowTrainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
-                tomorrowTrainerFormMap[r.trainer].horses.push((r.horse || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + tomorrowExtractPrice(r));
+                tomorrowTrainerFormMap[r.trainer].horses.push((r.horse || r.name || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + tomorrowExtractPrice(r));
               }
             });
           });
@@ -1856,7 +1856,7 @@ exports.handler = async function(event) {
             const key = `form:summary:${runner.horse_id}:${today}`;
             const cached = await redisGet(key);
             if (cached) {
-              validHorseSummaries.push({ horseName: runner.horse || 'Unknown', summary: cached });
+              validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary: cached });
               continue;
             }
             const summaryData = await generateHorseFormSummary(runner, raceContext, history);
@@ -1866,11 +1866,11 @@ exports.handler = async function(event) {
               report.outputTokens += (_tokens?.output || 0);
               report.cacheReadTokens += (_tokens?.cacheRead || 0);
               report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
-              report.callLog.push({ type: 'form-summary', label: runner.horse || 'Unknown', inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
+              report.callLog.push({ type: 'form-summary', label: runner.horse || runner.name || 'Unknown', inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
               if (!_failed) {
                 await redisSet(key, summary);
                 formHorsesGenerated++;
-                validHorseSummaries.push({ horseName: runner.horse || 'Unknown', summary });
+                validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary });
               }
             }
           } catch(e) { report.errors.push('form:horse:' + (runner.horse || '?') + ': ' + e.message); }
