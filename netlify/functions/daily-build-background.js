@@ -427,6 +427,7 @@ ctaDestination: 'trainer:[Trainer Name]' — use the actual trainer name exactly
 Use the FREE REIN INTELLIGENCE race card data in the user message. Find up to 3 horses not already covered by signals 1-5 with a genuine strong chance of winning today for any reason. No restrictions. Web search available. If nothing compelling produce no cards. signalType must be exactly Intelligence. Standard horse card format.
 
 ━━━ PRESENTATION RULES ━━━
+- Venue prestige is not a factor. A feature meeting at a big track carries no more weight than a small evening card — judge every candidate purely on the strength of its own data. Do not let a meeting's profile, field size or media coverage influence which candidates you select.
 - Never include Market Move as a signal type
 - Never name publications — say "professional tipsters", "the tipster consensus", "the morning market"
 - Every item must be grounded in a real, verifiable signal — no generic observations
@@ -571,6 +572,70 @@ async function callClaude(systemPrompt, userMessage, tokens, noSearch) {
 
 function normaliseHorseName(s) {
   return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Data-verified signals (concrete computed evidence) outrank the free-rein
+// Intelligence catch-all when two cards collide on the same race or meeting.
+const SIGNAL_STRENGTH_PRIORITY = { 'Tipster Consensus': 1, 'Course and Distance': 2, 'Class Drop': 3, 'Ground Edge': 4, 'Hot Yard': 5, 'Intelligence': 6 };
+
+function raceKeyAndCourse(item) {
+  const dest = item.ctaDestination || '';
+  if (dest.indexOf('race:') !== 0) return null;
+  const parts = dest.substring('race:'.length).split(':');
+  const course = parts[0] || '';
+  return { raceKey: course + ':' + parts.slice(1).join(':'), course: course };
+}
+
+// Product rules applied identically to today's and tomorrow's card sets:
+// 1. One card per race — on collision, keep the stronger (data-verified) signal.
+// 2. Max 3 cards per meeting when qualifying candidates exist at other meetings.
+// Both drops are logged into warningsOut so they surface in the build report.
+function dedupeRaceCollisionsAndCapPerMeeting(items, warningsOut) {
+  if (!items || !items.length) return items;
+
+  const byRace = {};
+  let deduped = [];
+  items.forEach(function(item) {
+    const info = raceKeyAndCourse(item);
+    if (!info) { deduped.push(item); return; }
+    const existing = byRace[info.raceKey];
+    if (!existing) { byRace[info.raceKey] = item; deduped.push(item); return; }
+    const existingP = SIGNAL_STRENGTH_PRIORITY[existing.signalType] || 99;
+    const newP = SIGNAL_STRENGTH_PRIORITY[item.signalType] || 99;
+    if (newP < existingP) {
+      deduped = deduped.filter(function(x) { return x !== existing; });
+      warningsOut.push('Dropped duplicate-race card: ' + existing.horseName + ' (' + existing.signalType + ') at ' + info.raceKey + ' — kept ' + item.horseName + ' (' + item.signalType + ')');
+      byRace[info.raceKey] = item;
+      deduped.push(item);
+    } else {
+      warningsOut.push('Dropped duplicate-race card: ' + item.horseName + ' (' + item.signalType + ') at ' + info.raceKey + ' — kept ' + existing.horseName + ' (' + existing.signalType + ')');
+    }
+  });
+
+  const byCourse = {};
+  deduped.forEach(function(item) {
+    const info = raceKeyAndCourse(item);
+    if (!info) return;
+    if (!byCourse[info.course]) byCourse[info.course] = [];
+    byCourse[info.course].push(item);
+  });
+  const coursesWithCards = Object.keys(byCourse);
+  if (coursesWithCards.length > 1) {
+    const toDrop = new Set();
+    coursesWithCards.forEach(function(course) {
+      const list = byCourse[course];
+      if (list.length <= 3) return;
+      list.slice().sort(function(a, b) {
+        return (SIGNAL_STRENGTH_PRIORITY[a.signalType] || 99) - (SIGNAL_STRENGTH_PRIORITY[b.signalType] || 99);
+      }).slice(3).forEach(function(item) {
+        toDrop.add(item);
+        warningsOut.push('Dropped card over 3-per-meeting cap: ' + item.horseName + ' (' + item.signalType + ') at ' + course);
+      });
+    });
+    if (toDrop.size) deduped = deduped.filter(function(item) { return !toDrop.has(item); });
+  }
+
+  return deduped;
 }
 
 async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
@@ -921,7 +986,7 @@ async function generateIntelligence(racecards) {
   orGapCandidates.splice(5);
 
   // Build structured message
-  const meetingsSummary = racecards.slice(0, 20).map(function(r) {
+  const meetingsSummary = racecards.map(function(r) {
     return r.course + ' ' + raceTime(r) + ' — ' + (r.race_name || '') + ' (' + (r.distance || '') + ') Going: ' + (r.going || 'Good');
   }).join('\n');
 
@@ -997,7 +1062,7 @@ async function generateIntelligence(racecards) {
 
   msg += 'You may use web search for tipster consensus and for any additional research needed for the Intelligence signal. Return ONLY a valid JSON array with 3-6 items. Quality over quantity. Empty slot better than weak card.';
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 8000);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(INTELLIGENCE_PROMPT, msg, 12000);
 
   let items = null;
   let parseError = null;
@@ -1031,7 +1096,10 @@ async function generateIntelligence(racecards) {
     });
   }
 
-  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError, groundEdgeSkippedCount, classDropSkippedCount, hotYardBaselineErrors };
+  const duplicateRaceDrops = [];
+  items = dedupeRaceCollisionsAndCapPerMeeting(items, duplicateRaceDrops);
+
+  return { items, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, parseError, groundEdgeSkippedCount, classDropSkippedCount, hotYardBaselineErrors, duplicateRaceDrops };
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -1222,6 +1290,9 @@ exports.handler = async function(event) {
         }
         if (r.hotYardBaselineErrors && r.hotYardBaselineErrors.length) {
           r.hotYardBaselineErrors.forEach(function(msg) { report.warnings.push(msg); });
+        }
+        if (r.duplicateRaceDrops && r.duplicateRaceDrops.length) {
+          r.duplicateRaceDrops.forEach(function(msg) { report.warnings.push(msg); });
         }
         if (items && items.length) {
           items.forEach(function(item) { item.date = today; });
@@ -1522,7 +1593,7 @@ exports.handler = async function(event) {
               acc.push(m.name + ' ' + race.t + ' — ' + (race.name || '') + ' (' + (race.dist || '') + ') Going: ' + (race.going || m.going || 'Good'));
             });
             return acc;
-          }, []).slice(0, 20).join('\n');
+          }, []).join('\n');
 
           // TEMPORARY DIAGNOSTIC — captures full candidate pools before AI selection, to audit
           // why a recent run produced Goodwood-only cards despite 6 meetings racing tomorrow.
@@ -1604,7 +1675,7 @@ exports.handler = async function(event) {
 
           tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
 
-          const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 6000);
+          const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 12000);
           tomorrowInputTokens = tomorrowResult.inputTokens || 0;
           tomorrowOutputTokens = tomorrowResult.outputTokens || 0;
 
@@ -1632,6 +1703,7 @@ exports.handler = async function(event) {
           }
 
           if (tomorrowItems && tomorrowItems.length) {
+            tomorrowItems = dedupeRaceCollisionsAndCapPerMeeting(tomorrowItems, report.warnings);
             tomorrowItems.forEach(function(item) { item.isTomorrow = true; item.date = tomorrowDate; });
             try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
             try {
