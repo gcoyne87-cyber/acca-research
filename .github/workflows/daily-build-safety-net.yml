@@ -7,6 +7,12 @@ name: Daily Build Safety Net
 # Irish time. This does NOT touch the heartbeat tripwires in daily-build-background.js
 # — those keep recording whether Netlify's own scheduler actually fired, so this net
 # adds a fallback without hiding the underlying evidence.
+#
+# Also checks build:lock:{today} (AUDIT-DAILY-INTELLIGENCE.md, finding C2): if a
+# build is already mid-flight — Netlify's scheduled run just happens to be a slow
+# one — the report may not exist yet even though nothing has actually failed.
+# Standing down on a fresh lock avoids firing a second, redundant build on top of
+# a still-running one.
 
 on:
   schedule:
@@ -17,7 +23,7 @@ jobs:
   safety-net:
     runs-on: ubuntu-latest
     steps:
-      - name: Check whether today's report already exists
+      - name: Check whether today's report already exists or a build is in progress
         id: check
         env:
           UPSTASH_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
@@ -25,10 +31,12 @@ jobs:
         run: |
           set -euo pipefail
           TODAY=$(date -u +%Y-%m-%d)
-          echo "Checking daily:report:$TODAY"
+          echo "Checking daily:report:$TODAY and build:lock:$TODAY"
 
-          RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
+          REPORT_RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
             "$UPSTASH_URL/get/daily%3Areport%3A$TODAY")
+          LOCK_RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
+            "$UPSTASH_URL/get/build%3Alock%3A$TODAY")
 
           ITEMS=$(node -e '
             let data = "";
@@ -42,22 +50,43 @@ jobs:
                 console.log(n);
               } catch (e) { console.log(0); }
             });
-          ' <<< "$RESPONSE")
+          ' <<< "$REPORT_RESPONSE")
+
+          LOCK_ACTIVE=$(node -e '
+            let data = "";
+            process.stdin.on("data", c => data += c);
+            process.stdin.on("end", () => {
+              try {
+                const raw = JSON.parse(data);
+                if (!raw.result) { console.log("false"); return; }
+                const lock = JSON.parse(raw.result);
+                if (!lock || !lock.startedAt) { console.log("false"); return; }
+                const ageMs = Date.now() - new Date(lock.startedAt).getTime();
+                console.log(ageMs >= 0 && ageMs < 30 * 60 * 1000 ? "true" : "false");
+              } catch (e) { console.log("false"); }
+            });
+          ' <<< "$LOCK_RESPONSE")
 
           echo "today=$TODAY" >> "$GITHUB_OUTPUT"
           echo "items=$ITEMS" >> "$GITHUB_OUTPUT"
-          if [ "$ITEMS" -gt 0 ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          echo "lockActive=$LOCK_ACTIVE" >> "$GITHUB_OUTPUT"
+          if [ "$ITEMS" -gt 0 ] || [ "$LOCK_ACTIVE" = "true" ]; then
+            echo "standDown=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "standDown=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Stand down — Netlify's scheduler already produced a report
-        if: steps.check.outputs.exists == 'true'
-        run: echo "daily:report:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.items }} card(s). Netlify's scheduled build ran — nothing to do."
+      - name: Stand down — report already exists or a build is in progress
+        if: steps.check.outputs.standDown == 'true'
+        run: |
+          if [ "${{ steps.check.outputs.items }}" -gt 0 ]; then
+            echo "daily:report:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.items }} card(s). Netlify's scheduled build ran — nothing to do."
+          else
+            echo "build:lock:${{ steps.check.outputs.today }} shows a build already in progress — standing down to avoid a duplicate."
+          fi
 
-      - name: Trigger fallback build — no report found for today
-        if: steps.check.outputs.exists != 'true'
+      - name: Trigger fallback build — no report found and no build in progress
+        if: steps.check.outputs.standDown != 'true'
         env:
           BUILD_SECRET: ${{ secrets.BUILD_SECRET }}
         run: |
