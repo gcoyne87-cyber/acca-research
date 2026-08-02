@@ -12486,6 +12486,7 @@ var nrStartTime=Date.now();
 
 function nrSecsLeft(idx){
   var r=NR_RACES[idx];
+  if(!r) return 0;
   var elapsed=Math.floor((Date.now()-nrStartTime)/1000);
   return Math.max(0,r.mins*60-elapsed);
 }
@@ -13009,6 +13010,12 @@ function nrRenderCard(){
   var cardHome=document.getElementById("nr-card-home");
   if(!card&&!cardHome) return;
   var r=NR_RACES[nrSelected];
+  if(!r){
+    var noMoreMsg='<div style="padding:20px 14px;text-align:center;color:#9aa3b5;font-size:13px">No more races today</div>';
+    if(card) card.innerHTML=noMoreMsg;
+    if(cardHome) cardHome.innerHTML=noMoreMsg;
+    return;
+  }
   var secs=nrSecsLeft(nrSelected);
   function buildNrCard(runnerCtx){
     var raceRunners=_sortByPrice((r._runners&&r._runners.length)?r._runners:NR_RUNNERS);
@@ -13383,6 +13390,63 @@ function loadHistoricalSelections(){
   })(datesToCheck);
 }
 
+// Shared course/time matching — single source of truth reused by both the
+// Intelligence card live-price lookup (renderAIIntelligence, below) and the
+// race: CTA navigation (selectRacingSection). A rule changed here doesn't
+// need to be remembered and reapplied in two places (AUDIT-DAILY-INTELLIGENCE.md
+// finding S1 — today/tomorrow-style duplication is this file's #1 bug source).
+function _reNormCourse(n){return (n||'').toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function _reTimeVariants(t){
+  var m=(t||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return [t];
+  var h=parseInt(m[1],10),mm=m[2],out=[t];
+  var v24=(h<13?String(h+12):String(h))+':'+mm; if(out.indexOf(v24)===-1) out.push(v24);
+  var v12=(h>12?String(h-12):String(h))+':'+mm; if(out.indexOf(v12)===-1) out.push(v12);
+  var vp=('0'+h).slice(-2)+':'+mm; if(out.indexOf(vp)===-1) out.push(vp);
+  return out;
+}
+function _reFindMeeting(list, courseRaw){
+  if(!list||!list.length) return null;
+  var want=_reNormCourse(courseRaw);
+  return list.filter(function(m){ return _reNormCourse(m.name)===want; })[0]||null;
+}
+function _reFindRaceIdx(meeting, timeRaw){
+  var variants=_reTimeVariants(timeRaw);
+  for(var i=0;i<((meeting&&meeting.races)||[]).length;i++){
+    if(variants.indexOf(meeting.races[i].t)!==-1) return i;
+  }
+  return -1;
+}
+// Live price for an Intelligence card: parses course+time out of ctaDestination
+// (same "race:{course}:{time}" / "tomorrowrace:{course}:{time}" format the CTA
+// button navigates with — the tomorrowrace: prefix is what picks today's
+// RC_MEETINGS vs tomorrow's TM_MEETINGS, so the price shown always matches the
+// day the card's own CTA would actually open), then does a case-insensitive
+// exact match on horse name within that race's already-loaded runners. Returns
+// null on no match (withdrawn horse, race not yet loaded, malformed
+// destination, etc.) so the caller falls back to the card's baked price.
+function _reLiveCardPrice(ctaDestination, horseName){
+  try{
+    if(!horseName) return null;
+    var isTomorrowDest=(ctaDestination||'').indexOf('tomorrowrace:')===0;
+    var isTodayDest=!isTomorrowDest && (ctaDestination||'').indexOf('race:')===0;
+    if(!isTomorrowDest && !isTodayDest) return null;
+    var parts=ctaDestination.substring(isTomorrowDest?'tomorrowrace:'.length:'race:'.length).split(':');
+    var courseRaw=parts[0]||'';
+    var timeRaw=parts.slice(1).join(':');
+    var list=isTomorrowDest?(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null):(typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null);
+    var meeting=_reFindMeeting(list, courseRaw);
+    if(!meeting) return null;
+    var ri=_reFindRaceIdx(meeting, timeRaw);
+    if(ri===-1) return null;
+    var runners=(meeting.races[ri]&&meeting.races[ri].runners)||[];
+    var wantName=(horseName||'').toLowerCase().trim();
+    for(var i=0;i<runners.length;i++){
+      if((runners[i].name||'').toLowerCase().trim()===wantName) return runners[i].price||null;
+    }
+    return null;
+  }catch(e){ return null; }
+}
+
 function renderAIIntelligence(){
   var _todayStr = new Date().toISOString().slice(0, 10);
   var el=document.getElementById('ai-intelligence-list');
@@ -13391,6 +13455,11 @@ function renderAIIntelligence(){
   el.innerHTML=AI_INTELLIGENCE.map(function(item){
     var imgEl=document.getElementById(item.imgId);
     var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
+    // Prefer the live racecard price (refreshed hourly) over the price baked
+    // into the card at build time; fall back to the baked price only when no
+    // live match is found (e.g. the horse was withdrawn since generation).
+    var _livePrice=_reLiveCardPrice(item.ctaDestination, item.horseName);
+    var _displayPrice=_livePrice||item.price;
     return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
       +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
@@ -13400,13 +13469,13 @@ function renderAIIntelligence(){
             +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
             +((item.date && item.date > _todayStr)?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
           +'</div>'
-          +(item.price?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+item.price+'</div>':'')
+          +(_displayPrice?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+_displayPrice+'</div>':'')
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
         +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+item.meta+'</div>'
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px">'
-          +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(item.price||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
+          +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(_displayPrice||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
           +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
         +'</div>'
       +'</div>'
@@ -14653,21 +14722,12 @@ function selectRacingSection(s){
       var _raceParts=s.substring(_isTomorrowDest?'tomorrowrace:'.length:'race:'.length).split(':');
       var _raceCourse=_raceParts[0]||'';
       var _raceTime=_raceParts.slice(1).join(':');
-      // Normalise both sides the same way the build does: lowercase, strip parenthetical
-      // country codes like "(IRE)", collapse all non-alphanumerics to hyphens.
-      var _normCourse=function(n){return (n||'').toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');};
-      var _wantCourse=_normCourse(_raceCourse);
-      // Accept the card's time in 24h, 12h, or zero-padded form against race.t
-      var _timeVariants=(function(t){
-        var m=(t||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return [t];
-        var h=parseInt(m[1],10),mm=m[2],out=[t];
-        var v24=(h<13?String(h+12):String(h))+':'+mm; if(out.indexOf(v24)===-1) out.push(v24);
-        var v12=(h>12?String(h-12):String(h))+':'+mm; if(out.indexOf(v12)===-1) out.push(v12);
-        var vp=('0'+h).slice(-2)+':'+mm; if(out.indexOf(vp)===-1) out.push(vp);
-        return out;
-      })(_raceTime);
-      var _findMeeting=function(list){ if(!list||!list.length) return null; return list.filter(function(m){ return _normCourse(m.name)===_wantCourse; })[0]||null; };
-      var _findRaceIdx=function(m){ for(var i=0;i<((m&&m.races)||[]).length;i++){ if(_timeVariants.indexOf(m.races[i].t)!==-1) return i; } return -1; };
+      // Course/time normalisation lives in the shared _reFindMeeting/_reFindRaceIdx
+      // helpers (defined above renderAIIntelligence) so this navigation and the
+      // Intelligence card live-price lookup use exactly the same matching rules —
+      // one copy, not two (AUDIT-DAILY-INTELLIGENCE.md finding S1 / Co3).
+      var _findMeeting=function(list){ return _reFindMeeting(list, _raceCourse); };
+      var _findRaceIdx=function(m){ return _reFindRaceIdx(m, _raceTime); };
       // Idempotent navigation: open (never toggle closed) the meeting, then select the
       // race only if it isn't already selected — repeat clicks stay on the race.
       var _navToday=function(m){
