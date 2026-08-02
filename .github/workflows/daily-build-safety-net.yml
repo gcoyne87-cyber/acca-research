@@ -38,7 +38,16 @@ jobs:
           LOCK_RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
             "$UPSTASH_URL/get/build%3Alock%3A$TODAY")
 
-          ITEMS=$(node -e '
+          # Item count alone isn't proof today's build ran: daily:report:{today} is
+          # also where YESTERDAY's tomorrow-preview pass writes its cards (same key,
+          # since today's date was "tomorrow" as of last night). If today's own
+          # 09:30 build never overwrites it, this key can sit there non-empty all
+          # day with no real same-day content — an item-count-only check reads that
+          # as success and wrongly stands down. Require generatedAt to actually be
+          # today's UTC date before trusting the count. (2026-08-02: this exact scenario
+          # happened live — Netlify's scheduler silently didn't fire, and this stale
+          # leftover made the safety net stand down instead of triggering the fallback.)
+          ITEMS=$(TODAY="$TODAY" node -e '
             let data = "";
             process.stdin.on("data", c => data += c);
             process.stdin.on("end", () => {
@@ -46,7 +55,10 @@ jobs:
                 const raw = JSON.parse(data);
                 if (!raw.result) { console.log(0); return; }
                 const report = JSON.parse(raw.result);
-                const n = Array.isArray(report.intelligence) ? report.intelligence.length : (report.intelligenceItems || 0);
+                const genDate = (report.generatedAt || "").slice(0, 10);
+                if (genDate !== process.env.TODAY) { console.log(0); return; }
+                const items = Array.isArray(report.intelligence) ? report.intelligence : [];
+                const n = items.filter(function(it) { return it && it.isTomorrow !== true; }).length;
                 console.log(n);
               } catch (e) { console.log(0); }
             });
