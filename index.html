@@ -13238,8 +13238,13 @@ function loadDailyBuild(){
   var td=new Date(); td.setDate(td.getDate()+1);
   var tomorrowDate=td.toISOString().slice(0,10);
 
-  function _ctaRaceTimePassed(ctaDestination){
+  function _ctaRaceTimePassed(ctaDestination,itemDate){
     if((ctaDestination||'').indexOf('trainer:')===0) return false;
+    if(itemDate){
+      var _ld=new Date();
+      var _localTodayStr=_ld.getFullYear()+'-'+String(_ld.getMonth()+1).padStart(2,'0')+'-'+String(_ld.getDate()).padStart(2,'0');
+      if(itemDate<_localTodayStr) return true;
+    }
     var m=(ctaDestination||'').match(/^race:[^:]+:(\d{1,2}):(\d{2})$/);
     if(!m) return false;
     var now=new Date();
@@ -13316,11 +13321,12 @@ function loadDailyBuild(){
 
       // Map analyses to intelligence cards — today's cards (with passed race times filtered out) first, tomorrow's cards after
       var todayItems=((data.intelligence&&data.intelligence.length)?data.intelligence:[]).filter(function(item){
-        return !_ctaRaceTimePassed(item.ctaDestination);
+        return !_ctaRaceTimePassed(item.ctaDestination,item.date);
       });
       var tomorrowItems=(tomorrowData&&tomorrowData.intelligence&&tomorrowData.intelligence.length)?tomorrowData.intelligence:[];
       var intelItems=todayItems.concat(tomorrowItems);
-      var _todayDateStr=new Date().toISOString().slice(0,10);
+      var _ldToday=new Date();
+      var _todayDateStr=_ldToday.getFullYear()+'-'+String(_ldToday.getMonth()+1).padStart(2,'0')+'-'+String(_ldToday.getDate()).padStart(2,'0');
       intelItems.forEach(function(item){
         if(item.date && item.date > _todayDateStr && (item.ctaDestination||'').indexOf('trainer:')===0){
           item.ctaDestination='tomorrowtrainer:'+item.ctaDestination.substring('trainer:'.length);
@@ -13339,7 +13345,7 @@ function loadDailyBuild(){
             var _beforeLen=AI_INTELLIGENCE.length;
             AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
               var _now = new Date().toISOString().slice(0,10);
-              return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination);
+              return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination,item.date);
             });
             var _clockNow=new Date();
             var _justAfterMidnight=_clockNow.getHours()===0 && _clockNow.getMinutes()<5;
@@ -13448,7 +13454,8 @@ function _reLiveCardPrice(ctaDestination, horseName){
 }
 
 function renderAIIntelligence(){
-  var _todayStr = new Date().toISOString().slice(0, 10);
+  var _ldNow=new Date();
+  var _todayStr = _ldNow.getFullYear()+'-'+String(_ldNow.getMonth()+1).padStart(2,'0')+'-'+String(_ldNow.getDate()).padStart(2,'0');
   var el=document.getElementById('ai-intelligence-list');
   if(!el) return;
 
