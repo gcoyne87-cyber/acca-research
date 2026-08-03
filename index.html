@@ -13460,10 +13460,29 @@ function highlightHorse(name){
   _horseHighlight=name;
   renderTodayMeetingsList();
   renderTomorrowMeetingsList();
-  setTimeout(function(){
-    var _hEl=document.querySelector('[data-horse-highlight="1"]');
-    if(_hEl) _hEl.scrollIntoView({behavior:'smooth',block:'center'});
-  },300);
+  // Poll instead of guessing a fixed delay — the target race's runner list may not
+  // exist in the DOM yet (meeting still opening, race still being selected, or the
+  // tomorrow-data-not-loaded-yet 800ms retry in selectRacingSection), and runnerRow()
+  // is rendered from 4 separate call sites (today list x2, Next Race, tomorrow list),
+  // so a plain querySelector can silently grab a hidden/collapsed duplicate instead of
+  // the visible one. Check every 150ms for up to 3s, and only scroll to a match that
+  // actually has visible size (skips any hidden/closed-tab duplicate).
+  if(window._horseScrollPoll) clearInterval(window._horseScrollPoll);
+  var _attempts=0;
+  window._horseScrollPoll=setInterval(function(){
+    _attempts++;
+    var _candidates=document.querySelectorAll('[data-horse-highlight="1"]');
+    var _hEl=null;
+    for(var i=0;i<_candidates.length;i++){
+      var _rect=_candidates[i].getBoundingClientRect();
+      if(_rect.width>0&&_rect.height>0){ _hEl=_candidates[i]; break; }
+    }
+    if(_hEl||_attempts>=20){
+      if(_hEl) _hEl.scrollIntoView({behavior:'smooth',block:'center'});
+      clearInterval(window._horseScrollPoll);
+      window._horseScrollPoll=null;
+    }
+  },150);
 }
 
 function renderAIIntelligence(){
