@@ -3060,10 +3060,12 @@ window.addEventListener('load',function(){
       // reached localStorage via the normal fetchToday flow. Add them back once, with
       // results already known, so they count in their signal type's live stats row.
       [
-        {id:signalPickId('Leucothea','2026-08-03'),date:'2026-08-03',course:'Nottingham',time:'15:40',horse:'Leucothea',type:'Class Drop',price:'SP',angle:'',sp:'',pos:'2',result:'P'},
-        {id:signalPickId('Amber Hamur','2026-08-03'),date:'2026-08-03',course:'Ripon',time:'16:54',horse:'Amber Hamur',type:'Intelligence',price:'SP',angle:'',sp:'',pos:'1',result:'W'}
+        {id:signalPickId('Leucothea','2026-08-03'),date:'2026-08-03',course:'Nottingham',time:'15:40',horse:'Leucothea',type:'Class Drop',price:'8/1',angle:'',sp:'8/1',pos:'2',result:'P'},
+        {id:signalPickId('Amber Hamur','2026-08-03'),date:'2026-08-03',course:'Ripon',time:'16:54',horse:'Amber Hamur',type:'Intelligence',price:'2/1',angle:'',sp:'2/1',pos:'1',result:'W'}
       ].forEach(function(rec){
-        if(!cleaned.some(function(r){ return r.id===rec.id; })) cleaned.push(rec);
+        var existing=cleaned.filter(function(r){ return r.id===rec.id; })[0];
+        if(existing){ existing.price=rec.price; existing.sp=rec.sp; }
+        else cleaned.push(rec);
       });
       saveRecs(cleaned);
       var today=new Date().toISOString().slice(0,10);
