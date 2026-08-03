@@ -14746,9 +14746,15 @@ function selectRacingSection(s){
       var _findRaceIdx=function(m){ return _reFindRaceIdx(m, _raceTime); };
       // Idempotent navigation: open (never toggle closed) the meeting, then select the
       // race only if it isn't already selected — repeat clicks stay on the race.
+      // Fires after todaySelectRace/tomorrowSelectRace's own internal 60ms scroll
+      // (which targets the race-time pills bar) so ours always executes last and
+      // wins — otherwise that later scroll overrides this one on every first-time
+      // race selection.
       var _scrollToRacecardsTop=function(containerId){
-        var _el=document.getElementById(containerId);
-        if(_el) _el.scrollIntoView({behavior:'smooth',block:'start'});
+        setTimeout(function(){
+          var _el=document.getElementById(containerId);
+          if(_el) _el.scrollIntoView({behavior:'smooth',block:'start'});
+        },120);
       };
       var _navToday=function(m){
         selectRacingSection('racecards');
@@ -14758,6 +14764,12 @@ function selectRacingSection(s){
         _scrollToRacecardsTop('racing-today-content');
       };
       var _navTomorrow=function(m){
+        // Route through the same shared 'racecards' branch _navToday uses — this is
+        // what hides every other section and re-evaluates the carousel's visibility
+        // against the current _horseHighlight. Without it, a tomorrow-card click left
+        // whatever section/carousel state was already on screen untouched, which is
+        // what broke repeat or alternating clicks.
+        selectRacingSection('racecards');
         _homeRcDay='tomorrow';
         selectRacingDate('tomorrow');
         if(tmOpenMeeting!==m.id) toggleTomorrowMeeting(m.id);
