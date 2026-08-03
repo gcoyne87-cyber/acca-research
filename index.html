@@ -10971,11 +10971,19 @@ function _buildNrFromMeetings(meetings){
 
 function _getLiveMeetings(){
   var now=new Date();
+  var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   var nowMins=now.getHours()*60+now.getMinutes();
   var result=[];
   RC_MEETINGS.forEach(function(m){
     var activeRaces=m.races.filter(function(r){
-      return !r.t24||r.t24>=nowMins;
+      if(!r.t24) return true;
+      var raceDateStr=(r._offDt||'').slice(0,10);
+      // No date on this race (shouldn't happen) — fall back to time-only check
+      if(!raceDateStr) return r.t24>=nowMins;
+      // Race belongs to a different calendar day than local "today" — always drop it,
+      // regardless of what its time-of-day happens to be (this is the midnight bug fix)
+      if(raceDateStr!==todayStr) return false;
+      return r.t24>=nowMins;
     });
     if(activeRaces.length){
       result.push({id:m.id,flag:m.flag,name:m.name,hand:m.hand,going:m.going,
@@ -10989,6 +10997,7 @@ function loadRacecards(){
   var now=new Date();
   var tmrw=new Date(now); tmrw.setDate(tmrw.getDate()+1);
   var tmrwStr=tmrw.toISOString().slice(0,10);
+  window._rcLoadedDateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
 
   fetch('/.netlify/functions/racecards')
     .then(function(res){return res.json();})
@@ -11018,9 +11027,17 @@ function loadRacecards(){
         NR_RUNNERS=nr.races[nr.nextIdx]._runners;
       }
       renderNextRaceSection();
-      // Auto-refresh every 60s to drop past races
+      // Auto-refresh every 60s to drop past races; also detect the calendar date
+      // rolling over (e.g. crossing midnight) and re-fetch fresh cards for the
+      // new "today" instead of just re-filtering yesterday's stale data.
       if(window._rcAutoRefresh) clearInterval(window._rcAutoRefresh);
       window._rcAutoRefresh=setInterval(function(){
+        var _n=new Date();
+        var _nStr=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0');
+        if(_nStr!==window._rcLoadedDateStr){
+          loadRacecards();
+          return;
+        }
         _renderCurrentHomeList();
         var inl=document.getElementById('racing-inline-meeting');
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
