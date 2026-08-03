@@ -12747,8 +12747,9 @@ function runnerRow(ru,ctx){
   +'</div>';
 
   var _rowBg=(_trainerFilter&&trainer&&trainer.toLowerCase()===_trainerFilter.toLowerCase())?'#ecfdf5':'#fff';
-  if(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim()) _rowBg='#ecfdf5';
-  return '<div style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
+  var _isHorseHighlighted=!!(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim());
+  if(_isHorseHighlighted) _rowBg='#ecfdf5';
+  return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
     +'<div style="display:flex;align-items:center;padding:9px 12px;gap:9px;background:transparent">'
       +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px">'
         +'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+ru.n+'</span>'
@@ -13459,6 +13460,10 @@ function highlightHorse(name){
   _horseHighlight=name;
   renderTodayMeetingsList();
   renderTomorrowMeetingsList();
+  setTimeout(function(){
+    var _hEl=document.querySelector('[data-horse-highlight="1"]');
+    if(_hEl) _hEl.scrollIntoView({behavior:'smooth',block:'center'});
+  },300);
 }
 
 function renderAIIntelligence(){
