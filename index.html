@@ -2608,7 +2608,29 @@ window.addEventListener('load',function(){
       document.getElementById('pt-tracker').style.display='none';
     };
 
-    function getRecs(){ try{ return JSON.parse(localStorage.getItem(RK))||[]; }catch(e){ return []; } }
+    // Collapses any records sharing the same (date, type, horse) down to one —
+    // a permanent safety net against duplicate picks, regardless of what created
+    // them (this immediately cleans up existing duplicates on the very next read,
+    // since every getRecs() call now runs through this, and the next saveRecs()
+    // call anywhere in the code persists the cleaned result). A resulted entry is
+    // always kept over an unresulted one so a recorded W/L/2nd is never lost.
+    function dedupeRecs(recs){
+      var keep={};
+      var order=[];
+      recs.forEach(function(r){
+        var key=(r.date||'')+'|'+(r.type||'')+'|'+(r.horse||'').toLowerCase().trim();
+        var existing=keep[key];
+        if(!existing){
+          keep[key]=r;
+          order.push(key);
+        } else if(r.result && !existing.result){
+          keep[key]=r;
+        }
+      });
+      return order.map(function(key){ return keep[key]; });
+    }
+
+    function getRecs(){ try{ return dedupeRecs(JSON.parse(localStorage.getItem(RK))||[]); }catch(e){ return []; } }
     function saveRecs(r){ localStorage.setItem(RK,JSON.stringify(r)); }
 
     function mkid(date,course,time,horse){
