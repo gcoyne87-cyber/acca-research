@@ -14802,6 +14802,7 @@ function selectRacingSection(s){
     }
     return;
   }
+  if(s!=='home'&&s!=='racecards') _horseHighlight=null;
   // Never treat an unrecognized destination as "home" — an unmatched or malformed
   // value must do nothing visible rather than hiding every section with nothing
   // to replace it (AUDIT-DAILY-INTELLIGENCE.md, finding C3).
@@ -14842,7 +14843,7 @@ function selectRacingSection(s){
   var homeNRL=document.getElementById('home-nextrace-label');
   if(homeNRL) homeNRL.style.display='none';
   var carouselSec=document.getElementById("home-carousel-section");
-  if(carouselSec) carouselSec.style.display=s==="home"?"":"none";
+  if(carouselSec) carouselSec.style.display=(s==="home"||_horseHighlight)?"":"none";
   var hws=document.getElementById("home-winners-strip");
   if(hws) hws.style.display="none";
   var dpb=document.getElementById("racing-datepills-bar");
