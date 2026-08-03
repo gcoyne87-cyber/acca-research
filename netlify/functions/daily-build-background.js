@@ -718,6 +718,12 @@ function dedupeRaceCollisionsAndCapPerMeeting(items, warningsOut) {
 // horse name can't be matched (formatting mismatch, trainer-style cards, etc).
 // A card that matches no real race at all is dropped rather than saved with an
 // unverified destination; the drop is logged to warningsOut either way.
+function raceTime(race) {
+  if (!race.off_dt) return race.off_time || '';
+  const m = race.off_dt.match(/T(\d{2}):(\d{2})/);
+  return m ? m[1] + ':' + m[2] : race.off_time || '';
+}
+
 function validateAndRepairCtaDestinations(items, flatRaces, warningsOut) {
   if (!items || !items.length) return items;
 
@@ -736,7 +742,7 @@ function validateAndRepairCtaDestinations(items, flatRaces, warningsOut) {
   const racesByCourse = {};
   (flatRaces || []).forEach(function(race) {
     const course = race.course || '';
-    const time = race.off_time || '';
+    const time = raceTime(race);
     if (!course || !time) return;
     const cKey = normCourse(course);
     if (!racesByCourse[cKey]) racesByCourse[cKey] = [];
@@ -867,12 +873,6 @@ Return ONLY the JSON object.`;
 async function generateIntelligence(racecards) {
   const date = new Date().toISOString().slice(0, 10);
   const SOFT_RE = /soft|heavy|yield|slow/i;
-
-  function raceTime(race) {
-    if (!race.off_dt) return race.off_time || '';
-    const m = race.off_dt.match(/T(\d{2}):(\d{2})/);
-    return m ? m[1] + ':' + m[2] : race.off_time || '';
-  }
 
   function extractPrice(r) {
     const oddsArr = Array.isArray(r.odds) ? r.odds : [];
