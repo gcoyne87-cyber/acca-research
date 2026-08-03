@@ -33,20 +33,28 @@ jobs:
           TODAY=$(date -u +%Y-%m-%d)
           echo "Checking daily:report:$TODAY and build:lock:$TODAY"
 
-          REPORT_RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
-            "$UPSTASH_URL/get/daily%3Areport%3A$TODAY")
-          LOCK_RESPONSE=$(curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" \
-            "$UPSTASH_URL/get/build%3Alock%3A$TODAY")
+          fetch_redis() {
+            local key="$1"
+            local out status
+            out=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $UPSTASH_TOKEN" "$UPSTASH_URL/get/$key")
+            status=$(echo "$out" | tail -n1)
+            if [ "$status" != "200" ]; then
+              echo "::error::Upstash Redis check failed for key $key (HTTP $status) — cannot verify today's build state. Refusing to silently stand down or silently skip the fallback."
+              exit 1
+            fi
+            echo "$out" | sed '$d'
+          }
 
-          # Item count alone isn't proof today's build ran: daily:report:{today} is
-          # also where YESTERDAY's tomorrow-preview pass writes its cards (same key,
-          # since today's date was "tomorrow" as of last night). If today's own
-          # 09:30 build never overwrites it, this key can sit there non-empty all
-          # day with no real same-day content — an item-count-only check reads that
-          # as success and wrongly stands down. Require generatedAt to actually be
-          # today's UTC date before trusting the count. (2026-08-02: this exact scenario
-          # happened live — Netlify's scheduler silently didn't fire, and this stale
-          # leftover made the safety net stand down instead of triggering the fallback.)
+          REPORT_RESPONSE=$(fetch_redis "daily%3Areport%3A$TODAY")
+          INTEL_RESPONSE=$(fetch_redis "intelligence%3A$TODAY")
+          LOCK_RESPONSE=$(fetch_redis "build%3Alock%3A$TODAY")
+
+          # report.generatedAt does not exist on a real build's report object — the
+          # real report skeleton (daily-build-background.js:1303-1325) only ever sets
+          # date/startedAt/completedAt. Only the minimal tomorrow-preview shape has
+          # generatedAt, so the old check could never pass for a genuinely fresh
+          # same-day report. Use startedAt instead — every real build sets that as
+          # literally its first field.
           ITEMS=$(TODAY="$TODAY" node -e '
             let data = "";
             process.stdin.on("data", c => data += c);
@@ -55,14 +63,36 @@ jobs:
                 const raw = JSON.parse(data);
                 if (!raw.result) { console.log(0); return; }
                 const report = JSON.parse(raw.result);
-                const genDate = (report.generatedAt || "").slice(0, 10);
-                if (genDate !== process.env.TODAY) { console.log(0); return; }
+                const startDate = (report.startedAt || "").slice(0, 10);
+                if (startDate !== process.env.TODAY) { console.log(0); return; }
                 const items = Array.isArray(report.intelligence) ? report.intelligence : [];
                 const n = items.filter(function(it) { return it && it.isTomorrow !== true; }).length;
                 console.log(n);
               } catch (e) { console.log(0); }
             });
           ' <<< "$REPORT_RESPONSE")
+
+          # Second, independent signal: intelligence:{today} is written directly by a
+          # real build whenever it generates non-empty cards for today. Checking it
+          # separately from daily:report:{today} is what actually prevents the
+          # duplicate-email case — Netlify's 09:30 build can finish and clear its
+          # lock well before this net's own 09:40 check runs, and daily:report's own
+          # shape has already changed once (generatedAt -> startedAt); a second,
+          # independently-sourced signal survives a future reshape of either key.
+          INTEL_ITEMS=$(node -e '
+            let data = "";
+            process.stdin.on("data", c => data += c);
+            process.stdin.on("end", () => {
+              try {
+                const raw = JSON.parse(data);
+                if (!raw.result) { console.log(0); return; }
+                const intel = JSON.parse(raw.result);
+                const items = Array.isArray(intel.items) ? intel.items : [];
+                const n = items.filter(function(it) { return it && it.isTomorrow !== true; }).length;
+                console.log(n);
+              } catch (e) { console.log(0); }
+            });
+          ' <<< "$INTEL_RESPONSE")
 
           LOCK_ACTIVE=$(node -e '
             let data = "";
@@ -81,8 +111,9 @@ jobs:
 
           echo "today=$TODAY" >> "$GITHUB_OUTPUT"
           echo "items=$ITEMS" >> "$GITHUB_OUTPUT"
+          echo "intelItems=$INTEL_ITEMS" >> "$GITHUB_OUTPUT"
           echo "lockActive=$LOCK_ACTIVE" >> "$GITHUB_OUTPUT"
-          if [ "$ITEMS" -gt 0 ] || [ "$LOCK_ACTIVE" = "true" ]; then
+          if [ "$ITEMS" -gt 0 ] || [ "$INTEL_ITEMS" -gt 0 ] || [ "$LOCK_ACTIVE" = "true" ]; then
             echo "standDown=true" >> "$GITHUB_OUTPUT"
           else
             echo "standDown=false" >> "$GITHUB_OUTPUT"
@@ -93,6 +124,8 @@ jobs:
         run: |
           if [ "${{ steps.check.outputs.items }}" -gt 0 ]; then
             echo "daily:report:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.items }} card(s). Netlify's scheduled build ran — nothing to do."
+          elif [ "${{ steps.check.outputs.intelItems }}" -gt 0 ]; then
+            echo "intelligence:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.intelItems }} card(s). Netlify's scheduled build ran — nothing to do."
           else
             echo "build:lock:${{ steps.check.outputs.today }} shows a build already in progress — standing down to avoid a duplicate."
           fi

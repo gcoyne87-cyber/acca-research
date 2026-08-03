@@ -1,7 +1,7 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-module.exports.config = { schedule: '30 9 * * *', timeout: 900 };
+module.exports.config = { timeout: 900 };
 
 const RACING_AUTH = Buffer.from(
   (process.env.RACING_API_USERNAME || '') + ':' + (process.env.RACING_API_KEY || '')

@@ -10,7 +10,7 @@
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
 
-[functions."daily-build-background"]
+[functions."daily-build-trigger"]
   schedule = "30 9 * * *"
 
 [functions."fetch-future-cards-background"]
