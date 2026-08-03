@@ -11119,6 +11119,7 @@ var _homeRcDay='today';
 var _cardsDay='today';
 var _trainerFilter=null;
 var _trainerFilterSelected=null;
+var _horseHighlight=null;
 
 function setTrainerFilter(trainerName){
   _trainerFilter=trainerName;
@@ -12746,6 +12747,7 @@ function runnerRow(ru,ctx){
   +'</div>';
 
   var _rowBg=(_trainerFilter&&trainer&&trainer.toLowerCase()===_trainerFilter.toLowerCase())?'#ecfdf5':'#fff';
+  if(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim()) _rowBg='#ecfdf5';
   return '<div style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
     +'<div style="display:flex;align-items:center;padding:9px 12px;gap:9px;background:transparent">'
       +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px">'
@@ -13453,6 +13455,12 @@ function _reLiveCardPrice(ctaDestination, horseName){
   }catch(e){ return null; }
 }
 
+function highlightHorse(name){
+  _horseHighlight=name;
+  renderTodayMeetingsList();
+  renderTomorrowMeetingsList();
+}
+
 function renderAIIntelligence(){
   var _ldNow=new Date();
   var _todayStr = _ldNow.getFullYear()+'-'+String(_ldNow.getMonth()+1).padStart(2,'0')+'-'+String(_ldNow.getDate()).padStart(2,'0');
@@ -13483,7 +13491,7 @@ function renderAIIntelligence(){
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px">'
           +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(_displayPrice||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
-          +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
+          +'<button class="ai-cta-light" onclick="highlightHorse(\''+item.horseName.replace(/'/g,"\\'")+'\');selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
         +'</div>'
       +'</div>'
     +'</div>';
