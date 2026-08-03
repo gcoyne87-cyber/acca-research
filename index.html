@@ -3046,17 +3046,6 @@ window.addEventListener('load',function(){
     function ptShow(){
       document.getElementById('pt-gate').style.display='none';
       document.getElementById('pt-tracker').style.display='block';
-      // ONE-TIME MIGRATION: 2026-08-03 accumulated duplicate picks across several
-      // manual build reruns before the id scheme below was fixed. If any 2026-08-03
-      // pick still has no result recorded, the whole date is corrupted/incomplete —
-      // wipe every 2026-08-03 record entirely rather than try to reconcile it, and
-      // let the fresh fetch below rebuild it clean, one entry per horse. Already-
-      // resulted 2026-08-03 picks (or any other date) are never touched.
-      var _preMigration=getRecs();
-      var _corruptedToday=_preMigration.some(function(r){ return r.date==='2026-08-03' && (!r.result||r.result===''); });
-      if(_corruptedToday){
-        saveRecs(_preMigration.filter(function(r){ return r.date!=='2026-08-03'; }));
-      }
       // Purge stable whisper, each-way and market move records
       var cleaned=getRecs().filter(function(r){ return !isStableWhisper(r.type) && r.type!=='Each Way' && r.type!=='Market Move'; });
       // Reset: Jockey Booking picks before 2026-06-17 used a looser prompt — wipe and start fresh
@@ -3064,6 +3053,17 @@ window.addEventListener('load',function(){
       // Migrate: any record with pos=2 stored as L should be P (old sync didn't track 2nds)
       cleaned.forEach(function(r){
         if(r.result==='L' && parseInt(r.pos,10)===2) r.result='P';
+      });
+      // ONE-TIME BACKFILL: Leucothea (Class Drop, 15:40 Nottingham, finished 2nd) and
+      // Amber Hamur (Intelligence, 16:54 Ripon, won) were dropped from the 2026-08-03
+      // intelligence report when it was regenerated later that day, so they never
+      // reached localStorage via the normal fetchToday flow. Add them back once, with
+      // results already known, so they count in their signal type's live stats row.
+      [
+        {id:signalPickId('Leucothea','2026-08-03'),date:'2026-08-03',course:'Nottingham',time:'15:40',horse:'Leucothea',type:'Class Drop',price:'SP',angle:'',sp:'',pos:'2',result:'P'},
+        {id:signalPickId('Amber Hamur','2026-08-03'),date:'2026-08-03',course:'Ripon',time:'16:54',horse:'Amber Hamur',type:'Intelligence',price:'SP',angle:'',sp:'',pos:'1',result:'W'}
+      ].forEach(function(rec){
+        if(!cleaned.some(function(r){ return r.id===rec.id; })) cleaned.push(rec);
       });
       saveRecs(cleaned);
       var today=new Date().toISOString().slice(0,10);
