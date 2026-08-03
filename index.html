@@ -2618,7 +2618,7 @@ window.addEventListener('load',function(){
       var keep={};
       var order=[];
       recs.forEach(function(r){
-        var key=(r.date||'')+'|'+(r.type||'')+'|'+(r.horse||'').toLowerCase().trim();
+        var key=(r.date||'')+'|'+(r.horse||'').toLowerCase().trim();
         var existing=keep[key];
         if(!existing){
           keep[key]=r;
@@ -2635,6 +2635,13 @@ window.addEventListener('load',function(){
 
     function mkid(date,course,time,horse){
       return (date+course+time+horse).replace(/[^a-z0-9]/gi,'').toLowerCase();
+    }
+
+    // The ONLY identity a Daily Intelligence pick has: horseName + date. Nothing
+    // else — not signalType, not course, not time, not id string — ever factors in.
+    // Two records with the same horse on the same date are always the same pick.
+    function signalPickId(horseName,date){
+      return (horseName+date).replace(/[^a-z0-9]/gi,'').toLowerCase()+'sig';
     }
 
     function fracToDec(f){
@@ -2699,15 +2706,28 @@ window.addEventListener('load',function(){
           return MAIN_TYPES.indexOf(r.type)<0 && INTEL_TYPES.indexOf(r.type)<0;
         });
       }
-      var byId={};
-      recs.forEach(function(r){ byId[r.id]=r; });
+      // Enforced here directly, not just trusted from whatever id string a record
+      // happens to carry: the dedup key is horseName+date only. If a record with the
+      // same horse on the same date already exists, it is updated in place — its
+      // type/course/time/price/angle refreshed to the latest fetch, but its result/
+      // pos/sp (anything a human or syncResults has already set) is left untouched.
+      // A second copy of the same horse+date is never created, regardless of id.
+      function pickKey(r){ return (r.date||'')+'|'+(r.horse||'').toLowerCase().trim(); }
+      var byKey={};
+      recs.forEach(function(r){ byKey[pickKey(r)]=r; });
       news.forEach(function(n){
-        if(byId[n.id]){
-          // Backfill angle on existing records that don't have it yet
-          if(n.angle&&!byId[n.id].angle) byId[n.id].angle=n.angle;
+        var key=pickKey(n);
+        var existing=byKey[key];
+        if(existing){
+          existing.type=n.type;
+          existing.course=n.course;
+          existing.time=n.time;
+          existing.price=n.price;
+          if(n.angle&&!existing.angle) existing.angle=n.angle;
+          if(!existing.id) existing.id=n.id;
         } else {
           recs.push(n);
-          byId[n.id]=n;
+          byKey[key]=n;
         }
       });
       recs.sort(function(a,b){
@@ -2739,13 +2759,9 @@ window.addEventListener('load',function(){
             var time=mm?mm[1]:'', course=mm?mm[2]:'';
             var price=(sig.price&&sig.price!=='-')?sig.price:'SP';
             var angle=cleanAngle(sig.intelligenceText);
-            // id keyed on (date, signalType, horseName) — NOT course/time. A horse's
-            // assigned race/off-time can differ between two AI regenerations of the
-            // same day's build (e.g. re-running a build to test a fix); course/time
-            // in the id meant that alone created a duplicate entry instead of
-            // updating the existing one. course/time are still stored on the record
-            // for display — just no longer part of its identity.
-            news.push({id:mkid(date,sig.signalType,'',sig.horseName)+'sig',date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
+            // id is horseName+date ONLY (signalPickId) — see mergeRecs for why
+            // signalType is deliberately not part of identity either.
+            news.push({id:signalPickId(sig.horseName,date),date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
           });
           cb(mergeRecs(news));
         })
@@ -3030,6 +3046,17 @@ window.addEventListener('load',function(){
     function ptShow(){
       document.getElementById('pt-gate').style.display='none';
       document.getElementById('pt-tracker').style.display='block';
+      // ONE-TIME MIGRATION: 2026-08-03 accumulated duplicate picks across several
+      // manual build reruns before the id scheme below was fixed. If any 2026-08-03
+      // pick still has no result recorded, the whole date is corrupted/incomplete —
+      // wipe every 2026-08-03 record entirely rather than try to reconcile it, and
+      // let the fresh fetch below rebuild it clean, one entry per horse. Already-
+      // resulted 2026-08-03 picks (or any other date) are never touched.
+      var _preMigration=getRecs();
+      var _corruptedToday=_preMigration.some(function(r){ return r.date==='2026-08-03' && (!r.result||r.result===''); });
+      if(_corruptedToday){
+        saveRecs(_preMigration.filter(function(r){ return r.date!=='2026-08-03'; }));
+      }
       // Purge stable whisper, each-way and market move records
       var cleaned=getRecs().filter(function(r){ return !isStableWhisper(r.type) && r.type!=='Each Way' && r.type!=='Market Move'; });
       // Reset: Jockey Booking picks before 2026-06-17 used a looser prompt — wipe and start fresh
