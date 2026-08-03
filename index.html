@@ -2573,8 +2573,6 @@ window.addEventListener('load',function(){
       <div id="pt-type-rows" style="margin-top:8px"></div>
       <div id="pt-sync-status" style="display:none;font-size:10px;color:#9aa3b5;text-align:right;margin-top:6px;letter-spacing:0.04em"></div>
     </div>
-    <!-- Dated daily-intelligence signal sections — one per day, 6 fixed rows each, built automatically from live build data -->
-    <div id="pt-daily-sections" style="padding:14px 14px 0"></div>
     <!-- Loading state -->
     <div id="pt-loading" style="text-align:center;padding:40px 0;color:#9aa3b5;font-size:13px">Loading today&rsquo;s picks&hellip;</div>
     <!-- Pick cards grouped by date -->
@@ -2633,10 +2631,14 @@ window.addEventListener('load',function(){
     }
 
     function typeColor(t){
+      // Colors for Tipster Consensus/Ground Edge/Course and Distance/Class Drop/Hot
+      // Yard/Intelligence match the canonical sigColorMap in daily-build-background.js
+      // / renderAIIntelligence, so a pick's badge here matches its card color there.
       var m={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6',
         'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9',
+        'Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981',
         'Trainer':'#d4af37','Jockey Booking':'#8b5cf6',
-        'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#94a3b8'};
+        'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#8b5cf6'};
       return m[t]||'#6b7280';
     }
 
@@ -2699,12 +2701,25 @@ window.addEventListener('load',function(){
       fetch('/.netlify/functions/get-daily-build?date='+date)
         .then(function(r){ return r.json(); })
         .then(function(data){
-          // NAP/NB/Strongest/Tipster Consensus (the frozen top rows) no longer get
-          // fed by this fetch at all. The 6 real signal types are routed into the
-          // dated-section store instead (storeDailySignalSection), which persists
-          // and re-renders automatically — same fetch, no extra network call.
-          storeDailySignalSection(date,data);
-          cb(mergeRecs([]));
+          var news=[];
+          // The 6 real Daily Intelligence signal types daily-build-background.js
+          // produces. NB/NAP/Strongest are deliberately absent — those 3 (plus the
+          // frozen "Tipster" row) never get new entries again. Every matching card
+          // becomes one resultable pick in the same list NAP/NB picks already use;
+          // ptRenderTypeRows separates these from the frozen rows purely by date
+          // (FREEZE_DATE), even though 'Tipster Consensus' shares its type string
+          // with the frozen "Tipster" row.
+          var SIGNAL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence'];
+          (data.intelligence||[]).forEach(function(sig){
+            if(SIGNAL_TYPES.indexOf(sig.signalType)<0) return;
+            var meta=sig.meta||'';
+            var mm=meta.match(/(\d{2}:\d{2})\s+(\S+)/);
+            var time=mm?mm[1]:'', course=mm?mm[2]:'';
+            var price=(sig.price&&sig.price!=='-')?sig.price:'SP';
+            var angle=cleanAngle(sig.intelligenceText);
+            news.push({id:mkid(date,course,time,sig.horseName)+'sig',date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
+          });
+          cb(mergeRecs(news));
         })
         .catch(function(){ cb(getRecs()); });
     }
@@ -2767,15 +2782,29 @@ window.addEventListener('load',function(){
     function ptRenderTypeRows(recs){
       var el=document.getElementById('pt-type-rows');
       if(!el) return;
-      // Frozen forever — these 4 are the only rows this ever shows again.
-      // fetchToday() no longer feeds this pipeline anything for these types.
-      var TYPES=[
+      // Rollout date for the 6 live signal rows below. Anything dated before this is
+      // historical/frozen data only; from this date on, matching records feed the live
+      // signal rows instead. This is what keeps the frozen "Tipster" row permanently
+      // separate from the new live "Tipster Consensus" row below, even though they
+      // share the exact same underlying type string in recs.
+      var FREEZE_DATE='2026-08-04';
+      // Frozen forever — untouched by anything dated on/after FREEZE_DATE.
+      var FROZEN_TYPES=[
         {key:'NB',label:'NB',color:'#3b82f6'},
         {key:'NAP',label:'NAP',color:'#d4af37'},
         {key:'Tipster Consensus',label:'Tipster',color:'#f97316'},
         {key:'Strongest',label:'Strongest',color:'#8b5cf6'}
       ];
-      var byType={};
+      // Live — auto-populated by fetchToday() going forward, restricted to
+      // FREEZE_DATE onward so historical data above is never touched.
+      var LIVE_TYPES=[
+        {key:'Tipster Consensus',label:'Tipster Consensus',color:'#f97316'},
+        {key:'Ground Edge',label:'Ground Edge',color:'#0ea5e9'},
+        {key:'Course and Distance',label:'Course & Dist',color:'#6366f1'},
+        {key:'Class Drop',label:'Class Drop',color:'#f59e0b'},
+        {key:'Hot Yard',label:'Hot Yard',color:'#10b981'},
+        {key:'Intelligence',label:'Intelligence',color:'#8b5cf6'}
+      ];
       function parseDec(pr){
         if(!pr||pr==='SP'||pr==='—') return 0;
         var p=String(pr).trim();
@@ -2793,36 +2822,30 @@ window.addEventListener('load',function(){
         t.forEach(function(f){var df=Math.abs(o-f[0]/f[1]);if(df<bd){bd=df;b=f;}});
         return b[0]+'/'+b[1];
       }
-      recs.forEach(function(r){
-        var k=r.type||'Other';
-        if(!byType[k]) byType[k]={wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
-        byType[k].total++;
-        if(r.result==='W') byType[k].wins++;
-        else if(r.result==='P') byType[k].placed++;
-        else if(r.result==='L') byType[k].losses++;
-        if(r.result==='W'){var dec=parseDec(r.sp||r.price||'');if(dec>0){byType[k].psum+=dec;byType[k].pcount++;}}
-      });
-      var html='';
-      var sortedTypes=TYPES.slice();
-      sortedTypes.sort(function(a,b){
-        var da=byType[a.key]||{wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
-        var db=byType[b.key]||{wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
-        var ra=da.wins+da.placed+da.losses, rb=db.wins+db.placed+db.losses;
-        var sra=ra?da.wins/ra:0, srb=rb?db.wins/rb:0;
-        return srb-sra;
-      });
-      sortedTypes.forEach(function(t){
-        var d=byType[t.key]||{wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
+      function computeRow(key,wantLive){
+        var d={wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
+        recs.forEach(function(r){
+          if((r.type||'')!==key) return;
+          var isLive=(r.date||'')>=FREEZE_DATE;
+          if(isLive!==wantLive) return;
+          d.total++;
+          if(r.result==='W'){ d.wins++; var dec=parseDec(r.sp||r.price||''); if(dec>0){d.psum+=dec;d.pcount++;} }
+          else if(r.result==='P') d.placed++;
+          else if(r.result==='L') d.losses++;
+        });
+        return d;
+      }
+      function strikeRate(d){ var raced=d.wins+d.placed+d.losses; return raced?d.wins/raced:0; }
+      function rowHtml(t,d){
         var raced=d.wins+d.placed+d.losses;
         var sr=raced?Math.round(d.wins/raced*100):0;
-        var barW=raced?Math.round(d.wins/raced*100):0;
         var avgDec=d.pcount?d.psum/d.pcount:0;
         var avgStr=avgDec?decToFrac(avgDec):'—';
-        html+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-top:1px solid #e4e8f0">';
+        var html='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-top:1px solid #e4e8f0">';
         html+='<div style="width:6px;height:6px;border-radius:50%;background:'+t.color+';flex-shrink:0"></div>';
-        html+='<span style="font-size:11px;font-weight:700;color:#0D1B3E;width:52px;flex-shrink:0">'+t.label+'</span>';
+        html+='<span style="font-size:11px;font-weight:700;color:#0D1B3E;width:76px;flex-shrink:0">'+t.label+'</span>';
         html+='<div style="flex:1;background:#e4e8f0;border-radius:3px;height:4px;overflow:hidden">';
-        html+='<div style="height:100%;border-radius:3px;background:'+t.color+';width:'+barW+'%"></div>';
+        html+='<div style="height:100%;border-radius:3px;background:'+t.color+';width:'+sr+'%"></div>';
         html+='</div>';
         html+='<span style="font-size:10px;color:#5a6478;width:28px;text-align:right;flex-shrink:0">'+d.wins+'W</span>';
         if(d.placed) html+='<span style="font-size:10px;color:#3b82f6;width:24px;text-align:right;flex-shrink:0">'+d.placed+'×2</span>';
@@ -2830,7 +2853,16 @@ window.addEventListener('load',function(){
         html+='<span style="font-size:11px;font-weight:700;color:'+t.color+';width:30px;text-align:right;flex-shrink:0">'+sr+'%</span>';
         html+='<span style="font-size:10px;color:#9aa3b5;width:34px;text-align:right;flex-shrink:0">'+avgStr+'</span>';
         html+='</div>';
-      });
+        return html;
+      }
+      var html='';
+      FROZEN_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,false)}; })
+        .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
+        .forEach(function(x){ html+=rowHtml(x.t,x.d); });
+      html+='<div style="margin:6px 0 2px;border-top:2px solid #e4e8f0"></div>';
+      LIVE_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,true)}; })
+        .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
+        .forEach(function(x){ html+=rowHtml(x.t,x.d); });
       el.innerHTML=html;
     }
 
@@ -2967,72 +2999,6 @@ window.addEventListener('load',function(){
       }
     }
 
-    var DSK='ptDailySignals1';
-    var SIGNAL_TYPES_ORDER=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence'];
-    // Matches the canonical sigColorMap used for these exact 6 types in
-    // daily-build-background.js / renderAIIntelligence.
-    var SIGNAL_COLORS={'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981','Intelligence':'#8b5cf6'};
-
-    function getDailySignalSections(){ try{ return JSON.parse(localStorage.getItem(DSK))||[]; }catch(e){ return []; } }
-    function saveDailySignalSections(arr){ localStorage.setItem(DSK,JSON.stringify(arr)); }
-
-    // Reads live intelligence for `date` (already fetched by fetchToday, no separate
-    // call needed), maps it onto the 6 fixed signal rows, and persists it as that
-    // date's section — creating a new one the first time a date is seen, refreshing
-    // it in place on later visits the same day (build reruns, live corrections),
-    // and leaving every earlier date's entry alone forever once the day has passed.
-    function storeDailySignalSection(date,data){
-      if(!data||data.status!=='done'||!data.intelligence||!data.intelligence.length) return;
-      // A preview payload (every item flagged isTomorrow:true) is not this date's own
-      // real build — e.g. right after midnight, before the real build has run yet.
-      var isPreview=data.intelligence.every(function(it){ return it.isTomorrow===true; });
-      if(isPreview) return;
-      var byType={};
-      data.intelligence.forEach(function(it){
-        if(SIGNAL_TYPES_ORDER.indexOf(it.signalType)<0) return;
-        if(!byType[it.signalType]) byType[it.signalType]=[];
-        if(it.horseName) byType[it.signalType].push(it.horseName);
-      });
-      var rows=SIGNAL_TYPES_ORDER.map(function(t){
-        var names=byType[t]||[];
-        return {signal:t,value:names.length?names.join(', '):'No edge found'};
-      });
-      var sections=getDailySignalSections();
-      var idx=-1;
-      sections.forEach(function(s,i){ if(s.date===date) idx=i; });
-      var entry={date:date,rows:rows};
-      if(idx>=0) sections[idx]=entry; else sections.push(entry);
-      sections.sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:0; });
-      saveDailySignalSections(sections);
-      ptRenderDailySignalSections();
-    }
-
-    function ptRenderDailySignalSections(){
-      var el=document.getElementById('pt-daily-sections');
-      if(!el) return;
-      var sections=getDailySignalSections();
-      var html='';
-      sections.forEach(function(sec){
-        html+='<div style="margin-bottom:18px">';
-        html+='<div style="font-size:13px;font-weight:800;color:#0D1B3E;letter-spacing:-0.2px;margin-bottom:8px;padding:0 2px">'+fmtDate(sec.date)+'</div>';
-        html+='<div style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.07)">';
-        sec.rows.forEach(function(row,idx){
-          var bdr=idx<sec.rows.length-1?'border-bottom:1px solid #f0f2f7':'';
-          var tc=SIGNAL_COLORS[row.signal]||'#6b7280';
-          html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;'+bdr+'">';
-          html+='<div style="width:3px;height:28px;border-radius:2px;background:'+tc+';flex-shrink:0"></div>';
-          html+='<div style="flex:1;min-width:0">';
-          html+='<div style="font-size:10px;font-weight:700;color:#9aa3b5;text-transform:uppercase;letter-spacing:0.05em">'+row.signal+'</div>';
-          html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-top:1px">'+row.value+'</div>';
-          html+='</div>';
-          html+='</div>';
-        });
-        html+='</div></div>';
-      });
-      if(!sections.length) html='<div style="text-align:center;color:#9aa3b5;padding:30px 0;font-size:13px">No daily signal data yet.</div>';
-      el.innerHTML=html;
-    }
-
     function ptShow(){
       document.getElementById('pt-gate').style.display='none';
       document.getElementById('pt-tracker').style.display='block';
@@ -3045,7 +3011,6 @@ window.addEventListener('load',function(){
         if(r.result==='L' && parseInt(r.pos,10)===2) r.result='P';
       });
       saveRecs(cleaned);
-      ptRenderDailySignalSections();
       var today=new Date().toISOString().slice(0,10);
       fetchToday(today,function(recs){ ptRender(recs); syncResults(); });
     }
