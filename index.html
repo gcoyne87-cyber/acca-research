@@ -2670,7 +2670,7 @@ window.addEventListener('load',function(){
       if(news.length){
         var todayDate=news[0].date;
         var MAIN_TYPES=['NAP','NB','Strongest'];
-        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Trainer','Jockey Booking','AI Edge','Intelligence','Ground Alert','Hot Yard'];
+        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert'];
         recs=recs.filter(function(r){
           if(r.date!==todayDate) return true;
           if(r.result&&r.result!=='') return true;
@@ -2717,7 +2717,13 @@ window.addEventListener('load',function(){
             var time=mm?mm[1]:'', course=mm?mm[2]:'';
             var price=(sig.price&&sig.price!=='-')?sig.price:'SP';
             var angle=cleanAngle(sig.intelligenceText);
-            news.push({id:mkid(date,course,time,sig.horseName)+'sig',date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
+            // id keyed on (date, signalType, horseName) — NOT course/time. A horse's
+            // assigned race/off-time can differ between two AI regenerations of the
+            // same day's build (e.g. re-running a build to test a fix); course/time
+            // in the id meant that alone created a duplicate entry instead of
+            // updating the existing one. course/time are still stored on the record
+            // for display — just no longer part of its identity.
+            news.push({id:mkid(date,sig.signalType,'',sig.horseName)+'sig',date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
           });
           cb(mergeRecs(news));
         })
