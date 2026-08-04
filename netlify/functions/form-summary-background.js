@@ -1,0 +1,519 @@
+const https = require('https');
+const nodemailer = require('nodemailer');
+
+module.exports.config = { schedule: '0 5 * * *', timeout: 900 };
+
+const USERNAME = process.env.RACING_API_USERNAME;
+const PASSWORD = process.env.RACING_API_KEY;
+const BASE_URL = 'api.theracingapi.com';
+const AUTH = Buffer.from((USERNAME || '') + ':' + (PASSWORD || '')).toString('base64');
+
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+function redisGet(key) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/get/' + encodeURIComponent(key), method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        try { const r = JSON.parse(d); resolve(r.result ? JSON.parse(r.result) : null); }
+        catch(e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null)); req.end();
+  });
+}
+
+// Builds today + next 4 days (5 dates total) as Europe/Dublin calendar dates —
+// using UTC-based Date methods here would drift a day off during BST, the
+// same bug just fixed in racecards.js's irishTodayStr().
+async function readRacecards() {
+  const dates = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(Date.now() + i * 86400000);
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(d);
+    const y = parts.find(p => p.type === 'year').value;
+    const mo = parts.find(p => p.type === 'month').value;
+    const dy = parts.find(p => p.type === 'day').value;
+    dates.push(y + '-' + mo + '-' + dy);
+  }
+
+  const runners = [];
+  const seen = new Set();
+
+  for (const dateStr of dates) {
+    const cached = await redisGet('racecards:' + dateStr);
+    let countForDate = 0;
+
+    if (cached && Array.isArray(cached.meetings)) {
+      // racecards:{date} is already GB/IRE-only (mapRacecards filters by region
+      // before storing), so every meeting here qualifies — no region check needed.
+      cached.meetings.forEach(function(meeting) {
+        (meeting.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(r) {
+            if (!r.horse_id) return;
+            const dedupeKey = r.horse_id + '|' + dateStr;
+            if (seen.has(dedupeKey)) return;
+            seen.add(dedupeKey);
+            runners.push({
+              horse_id: r.horse_id,
+              horseName: r.name || '',
+              course: meeting.name || '',
+              time: race.t || '',
+              date: dateStr
+            });
+            countForDate++;
+          });
+        });
+      });
+    }
+
+    console.log('[form-summary] readRacecards: ' + dateStr + ' -> ' + countForDate + ' runners');
+  }
+
+  return runners;
+}
+
+function apiGet(path) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: BASE_URL,
+      path: path,
+      method: 'GET',
+      headers: {
+        'Authorization': 'Basic ' + AUTH,
+        'Accept': 'application/json'
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch(e) { reject(new Error('Parse error: ' + data.substring(0, 200))); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function formatFullDate(dateStr) {
+  if (!dateStr) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const parts = String(dateStr).split('-');
+  if (parts.length !== 3) return dateStr;
+  const y = parts[0], m = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+  return String(d).padStart(2, '0') + ' ' + (months[m] || '') + ' ' + y;
+}
+
+function compressClass(raceClass) {
+  if (!raceClass) return '';
+  const m = String(raceClass).match(/\d+/);
+  return m ? 'C' + m[0] : String(raceClass);
+}
+
+function formatWeight(w) {
+  // The API already returns this pre-formatted as "9-7" (stone-lbs) in r.weight —
+  // no conversion needed. r.weight_lbs (raw lbs, e.g. "133") is a fallback only.
+  if (w === undefined || w === null || w === '') return '';
+  return String(w).trim();
+}
+
+function formatOR(o) {
+  // Confirmed field name is "or", but it comes back as the literal string "–"
+  // (en dash) when a horse has no official rating yet (young horses, maidens) —
+  // that must render as blank, not "OR–". official_rating/ofr don't exist on
+  // this endpoint at all, so there's no fallback chain needed here anymore.
+  if (o === undefined || o === null || o === '') return '';
+  const s = String(o).trim();
+  if (!/^\d+$/.test(s)) return '';
+  return 'OR' + s;
+}
+
+function compressLine(entry) {
+  const pos = (entry.pos !== undefined && entry.pos !== null && entry.pos !== '') ? entry.pos : '-';
+  return [
+    formatFullDate(entry.date),
+    entry.course || '',
+    entry.dist || '',
+    entry.going || '',
+    compressClass(entry.class),
+    pos + '/' + (entry.ran || 0),
+    entry.wt || '',
+    entry.or || ''
+  ].join(' | ');
+}
+
+// Accepts one runner ({ horse_id, horseName, course, time, date }) from
+// readRacecards()'s output. Cache-hit and live-fetch both return the same
+// compressed-string shape so callClaude() never has to branch on it.
+async function getFormHistory(runner) {
+  const cacheKey = 'form:history:' + runner.horse_id + ':' + runner.date;
+  const cached = await redisGet(cacheKey);
+  if (cached && Array.isArray(cached) && cached.length) {
+    // Cached shape is whatever fetch-horse-history-1/2-background.js already
+    // wrote overnight — { date, course, dist, going, pos, ran, sp, jockey,
+    // race_class }. That mapping never captured weight or official rating, AND
+    // used the wrong field name race_class (the API's real field is "class"),
+    // so class/weight/OR all come out blank on a cache hit. This is a
+    // pre-existing bug in those older files, not introduced here — flagged to
+    // fix separately, not touched in this change.
+    return cached.map(compressLine).join('\n');
+  }
+
+  let data;
+  try {
+    data = await apiGet('/v1/horses/' + encodeURIComponent(runner.horse_id) + '/results?limit=6');
+  } catch (e) {
+    return null;
+  }
+
+  const results = (data && data.results) || [];
+  if (!results.length) return null;
+
+  const lines = results.map(function(race) {
+    const r = (race.runners || []).find(function(x) { return x.horse_id === runner.horse_id; }) || {};
+    return compressLine({
+      date: race.date || '',
+      course: race.course || '',
+      dist: race.dist || '',
+      going: race.going || '',
+      class: race.class || '',
+      pos: r.position || '-',
+      ran: (race.runners || []).length || 0,
+      wt: formatWeight(r.weight || r.weight_lbs),
+      or: formatOR(r.or)
+    });
+  });
+
+  return lines.join('\n');
+}
+
+function apiPost(hostname, path, headers, body) {
+  const b = JSON.stringify(body);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(b), ...headers }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        if (res.statusCode === 429) {
+          reject(new Error('429: rate limited by ' + hostname + path));
+          return;
+        }
+        try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse')); }
+      });
+    });
+    req.on('error', reject); req.setTimeout(290000); req.write(b); req.end();
+  });
+}
+
+// Accepts up to 10 runners ({ horse_id, horseName, course, time, date,
+// formHistory }) from getFormHistory()'s output. Runners with no form history
+// are skipped before the call — sending an empty/absent history section would
+// just invite the model to invent facts, which rule 1 explicitly forbids.
+async function callClaude(runners) {
+  const usable = (runners || []).filter(function(r) {
+    if (!r.formHistory) {
+      console.log('[form-summary] callClaude: skipping ' + (r.horseName || r.horse_id) + ' — no form history');
+      return false;
+    }
+    return true;
+  });
+
+  if (!usable.length) {
+    return { summaries: [], inputTokens: 0, outputTokens: 0 };
+  }
+
+  const systemPrompt = 'You are an expert horse racing analyst.';
+
+  const horseBlocks = usable.map(function(r) {
+    return 'HORSE: ' + r.horseName + ' | ' + r.course + ' ' + r.time + ' ' + r.date + '\n' + r.formHistory;
+  }).join('\n\n');
+
+  const userMessage = 'For each horse below, write one paragraph of form analysis based ' +
+    'solely on its race history. Do not reference today\'s going or today\'s race — describe ' +
+    'what the horse\'s form tells us about its preferences and profile.\n\n' +
+    'Rules — every paragraph must follow all four:\n' +
+    '1. Cite at least 2 specific facts from the horse\'s actual form — a specific date, course ' +
+    'name, going description, finishing position, or official rating. Invented or vague facts ' +
+    'are not acceptable.\n' +
+    '2. Never use these phrases: should go close, respected, one to watch, cannot be discounted, ' +
+    'each-way claims, if in the mood, hard to assess, eye-catching, promising, interesting, ' +
+    'capable of better.\n' +
+    '3. The opening three words of each paragraph must be different from every other paragraph ' +
+    'in this batch.\n' +
+    '4. If the form genuinely says little — few runs, no clear pattern — say so honestly in 2-3 ' +
+    'sentences. Never pad.\n\n' +
+    'Return in this exact format for each horse, nothing else:\n' +
+    'HORSE: [horse name]\n' +
+    'SUMMARY: [one paragraph]\n\n' +
+    'Horses:\n' + horseBlocks;
+
+  const resp = await apiPost('api.anthropic.com', '/v1/messages', {
+    'x-api-key': ANTHROPIC_API_KEY,
+    'anthropic-version': '2023-06-01'
+  }, {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }]
+  });
+
+  const usage = resp.usage || {};
+  const content = resp.content || [];
+  const text = content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
+
+  // Matches "HORSE: <name>\nSUMMARY: <paragraph>" blocks, each summary running
+  // until the next HORSE: marker or end of text.
+  const summaries = [];
+  const blockRe = /HORSE:\s*(.+?)\s*\nSUMMARY:\s*([\s\S]*?)(?=\nHORSE:|$)/g;
+  let match;
+  while ((match = blockRe.exec(text)) !== null) {
+    const parsedName = match[1].trim();
+    const summary = match[2].trim();
+    const runner = usable.find(function(r) { return (r.horseName || '').trim().toLowerCase() === parsedName.toLowerCase(); });
+    if (!runner) {
+      console.log('[form-summary] callClaude: could not match parsed horse "' + parsedName + '" back to a runner — skipping');
+      continue;
+    }
+    summaries.push({ horse_id: runner.horse_id, horseName: runner.horseName, summary: summary });
+  }
+
+  return {
+    summaries: summaries,
+    inputTokens: usage.input_tokens || 0,
+    outputTokens: usage.output_tokens || 0
+  };
+}
+
+function redisSet(key, value) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
+// Accepts callClaude()'s summaries array ({ horse_id, horseName, summary }).
+// No expiry on form-summary:{horse_id} — form analysis doesn't depend on
+// today's going/course, so it stays valid until the horse runs again and a
+// future call overwrites it. Sequential by design (point 4) rather than
+// Promise.all, so one slow/failing write can't be blamed on concurrency.
+async function storeResults(summaries) {
+  let stored = 0;
+  let failed = 0;
+  const errors = [];
+
+  for (const item of (summaries || [])) {
+    try {
+      await redisSet('form-summary:' + item.horse_id, {
+        horseName: item.horseName,
+        summary: item.summary,
+        generatedAt: new Date().toISOString()
+      });
+      stored++;
+    } catch (e) {
+      failed++;
+      const msg = 'form-summary:' + item.horse_id + ': ' + e.message;
+      console.log('[form-summary] storeResults: ' + msg);
+      errors.push(msg);
+    }
+  }
+
+  return { stored, failed, errors };
+}
+
+function sleep(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+// Accepts { dates, horsesGenerated, horsesSkipped, horsesFailed, errors,
+// inputTokens, outputTokens, isTest } from the handler. Best-effort — matches
+// the sendNotification pattern used elsewhere in this codebase (e.g.
+// fetch-horse-history-1-background.js): a mail failure must never affect the
+// job's own success/failure result, so errors are swallowed here.
+async function sendEmail(summary) {
+  const cost = ((summary.inputTokens || 0) * 3 / 1000000 + (summary.outputTokens || 0) * 15 / 1000000).toFixed(4);
+  const dateLabel = (summary.dates && summary.dates.length) ? summary.dates.join(', ') : 'None';
+  const hasErrors = (summary.errors || []).length > 0;
+  const todayLabel = (summary.dates && summary.dates.length) ? summary.dates[0] : new Date().toISOString().slice(0, 10);
+
+  let subject = hasErrors
+    ? 'Form Summary Complete (with errors) - ' + todayLabel
+    : 'Form Summary Complete - ' + todayLabel;
+  if (summary.isTest) subject = 'TEST: ' + subject;
+
+  const bodyLines = [
+    'Dates covered: ' + dateLabel,
+    'Horses summarised: ' + (summary.horsesGenerated || 0),
+    'Horses skipped (already cached): ' + (summary.horsesSkipped || 0),
+    'Horses failed: ' + (summary.horsesFailed || 0),
+    'Errors: ' + (hasErrors ? summary.errors.join('; ') : 'None'),
+    'Total Cost: $' + cost
+  ];
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    });
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: process.env.GMAIL_USER,
+      subject: subject,
+      text: bodyLines.join('\n')
+    });
+  } catch (e) {
+    console.log('[form-summary] sendEmail failed: ' + e.message);
+  }
+}
+
+exports.handler = async function(event) {
+  console.log('[form-summary] START', new Date().toISOString(), 'scheduled:', !event.httpMethod);
+
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+
+  const isScheduled = !event.httpMethod;
+  const hasTestFilters = !!(event.queryStringParameters && (event.queryStringParameters.date || event.queryStringParameters.course));
+  const isTest = !isScheduled && hasTestFilters;
+
+  if (!isScheduled) {
+    const secret = (event.queryStringParameters && event.queryStringParameters.secret) || (event.headers && event.headers['x-build-secret']);
+    if (secret !== process.env.BUILD_SECRET) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
+    }
+  }
+
+  try {
+    let runners = await readRacecards();
+
+    // Manual test mode — a scheduled run always processes every runner across
+    // all 5 dates; a manual HTTP trigger can optionally narrow that down to
+    // one meeting via ?date=&course=, so a test run doesn't burn a full-scale
+    // Claude bill just to check the pipeline works.
+    if (isTest) {
+      const dateParam = event.queryStringParameters && event.queryStringParameters.date;
+      const courseParam = event.queryStringParameters && event.queryStringParameters.course;
+      if (dateParam) runners = runners.filter(function(r) { return r.date === dateParam; });
+      if (courseParam) runners = runners.filter(function(r) { return (r.course || '').toLowerCase() === courseParam.toLowerCase(); });
+      console.log('[form-summary] test mode — date filter: ' + (dateParam || '(none)') + ', course filter: ' + (courseParam || '(none)') + ' -> ' + runners.length + ' runner(s)');
+    }
+
+    const dates = Array.from(new Set(runners.map(function(r) { return r.date; }))).sort();
+
+    let horsesSkipped = 0;
+    let horsesFailed = 0;
+    let horsesGenerated = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const errors = [];
+
+    // Pre-filter: skip any horse that already has a stored summary (no expiry —
+    // see storeResults), and drop any horse getFormHistory couldn't produce
+    // history for, before anything reaches Claude.
+    const toProcess = [];
+    for (const runner of runners) {
+      const existingSummary = await redisGet('form-summary:' + runner.horse_id);
+      if (existingSummary) {
+        horsesSkipped++;
+        continue;
+      }
+      const formHistory = await getFormHistory(runner);
+      if (!formHistory) {
+        horsesFailed++;
+        console.log('[form-summary] no form history for ' + runner.horseName + ' (' + runner.horse_id + ') — failed');
+        continue;
+      }
+      toProcess.push(Object.assign({}, runner, { formHistory: formHistory }));
+    }
+
+    const BATCH = 10;
+    for (let i = 0; i < toProcess.length; i += BATCH) {
+      const batch = toProcess.slice(i, i + BATCH);
+      const batchNum = Math.floor(i / BATCH) + 1;
+
+      let result;
+      try {
+        result = await callClaude(batch);
+      } catch (e) {
+        if (e.message && e.message.indexOf('429') !== -1) {
+          console.log('[form-summary] batch ' + batchNum + ': 429 from Claude — waiting 5s and retrying once');
+          await sleep(5000);
+          try {
+            result = await callClaude(batch);
+          } catch (e2) {
+            console.log('[form-summary] batch ' + batchNum + ': retry failed — ' + e2.message);
+            errors.push('batch ' + batchNum + ': ' + e2.message);
+            horsesFailed += batch.length;
+            continue;
+          }
+        } else {
+          console.log('[form-summary] batch ' + batchNum + ': ' + e.message);
+          errors.push('batch ' + batchNum + ': ' + e.message);
+          horsesFailed += batch.length;
+          continue;
+        }
+      }
+
+      totalInputTokens += result.inputTokens || 0;
+      totalOutputTokens += result.outputTokens || 0;
+
+      const summarisedIds = new Set(result.summaries.map(function(s) { return s.horse_id; }));
+      batch.forEach(function(r) {
+        if (!summarisedIds.has(r.horse_id)) {
+          horsesFailed++;
+          console.log('[form-summary] ' + r.horseName + ' sent to Claude but no summary came back — failed');
+        }
+      });
+
+      const storeResult = await storeResults(result.summaries);
+      horsesGenerated += storeResult.stored;
+      horsesFailed += storeResult.failed;
+      if (storeResult.errors.length) errors.push.apply(errors, storeResult.errors);
+
+      if (i + BATCH < toProcess.length) await sleep(1000);
+    }
+
+    const summary = {
+      dates: dates,
+      horsesGenerated: horsesGenerated,
+      horsesSkipped: horsesSkipped,
+      horsesFailed: horsesFailed,
+      errors: errors,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      isTest: isTest
+    };
+
+    await sendEmail(summary);
+
+    console.log('[form-summary] DONE', new Date().toISOString(), JSON.stringify(summary));
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ ok: true, summary: summary })
+    };
+  } catch (e) {
+    console.log('[form-summary] ERROR', e.message);
+
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: e.message })
+    };
+  }
+};
