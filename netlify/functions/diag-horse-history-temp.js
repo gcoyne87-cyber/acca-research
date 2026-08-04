@@ -42,7 +42,8 @@ exports.handler = async function(event) {
   }
 
   try {
-    const data = await apiGet('/v1/horses/1096008/results?limit=1');
+    const horseId = (event.queryStringParameters && event.queryStringParameters.horse_id) || 'hrs_17390101400';
+    const data = await apiGet('/v1/horses/' + encodeURIComponent(horseId) + '/results?limit=1');
     return { statusCode: 200, headers, body: JSON.stringify(data, null, 2) };
   } catch (e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
