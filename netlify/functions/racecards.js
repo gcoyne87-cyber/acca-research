@@ -5,6 +5,19 @@ const PASSWORD = process.env.RACING_API_KEY;
 const BASE_URL = 'api.theracingapi.com';
 const AUTH = Buffer.from((USERNAME || '') + ':' + (PASSWORD || '')).toString('base64');
 
+// Netlify functions run on UTC servers — new Date().toISOString() rolls over at UTC
+// midnight, which during BST is an hour after Irish local midnight, serving stale
+// "yesterday" cards to Irish users for that whole window. Use the Europe/Dublin
+// calendar date instead so "today" matches what users actually see on their clock,
+// and Intl handles the BST/GMT switch automatically.
+function irishTodayStr() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return y + '-' + m + '-' + d;
+}
+
 function apiGet(path) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -265,7 +278,7 @@ exports.handler = async function(event) {
   try {
     const dateParam = event.queryStringParameters && event.queryStringParameters.date;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = irishTodayStr();
     const targetDate = dateParam || today;
     const isFuture = targetDate !== today;
 

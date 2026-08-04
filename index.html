@@ -10997,12 +10997,18 @@ function loadRacecards(){
   var now=new Date();
   var tmrw=new Date(now); tmrw.setDate(tmrw.getDate()+1);
   var tmrwStr=tmrw.toISOString().slice(0,10);
-  window._rcLoadedDateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var _rcLoadingDateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  window._rcFetchInFlight=true;
 
   fetch('/.netlify/functions/racecards')
     .then(function(res){return res.json();})
     .then(function(data){
+      window._rcFetchInFlight=false;
       if(!data.meetings||!data.meetings.length) return;
+      // Only mark today's data as "loaded" once we actually have it — an empty/stale
+      // response must not be treated as done, or the auto-refresh checks below give
+      // up retrying and the page is stuck showing nothing.
+      window._rcLoadedDateStr=_rcLoadingDateStr;
       RC_MEETINGS=data.meetings;
       RC_TODAY_MEETINGS=data.meetings;
       rcActiveVenue=RC_MEETINGS[0].id;
@@ -11034,7 +11040,7 @@ function loadRacecards(){
       window._rcAutoRefresh=setInterval(function(){
         var _n=new Date();
         var _nStr=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0');
-        if(_nStr!==window._rcLoadedDateStr){
+        if(_nStr!==window._rcLoadedDateStr && !window._rcFetchInFlight){
           loadRacecards();
           return;
         }
@@ -11043,7 +11049,7 @@ function loadRacecards(){
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
       },60000);
     })
-    .catch(function(err){console.warn('[RacingEdge] Today racecard load failed:',err);});
+    .catch(function(err){window._rcFetchInFlight=false;console.warn('[RacingEdge] Today racecard load failed:',err);});
 
   fetch('/.netlify/functions/racecards?date='+tmrwStr)
     .then(function(res){return res.json();})
@@ -11589,6 +11595,19 @@ function renderTodayMeetingsList(){
   }
   RC_MEETINGS=RC_TODAY_MEETINGS;
   var meetings=_getLiveMeetings();
+  if(!meetings.length && RC_MEETINGS.length && !window._rcFetchInFlight){
+    var _sampleRace=(RC_MEETINGS[0].races||[])[0];
+    var _sampleDateStr=_sampleRace&&(_sampleRace._offDt||'').slice(0,10);
+    var _nowD=new Date();
+    var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
+    if(_sampleDateStr && _sampleDateStr!==_todayD){
+      // Every loaded race is dated before today — this is yesterday's stale data
+      // that the date filter correctly emptied out. Fetch today's fresh card
+      // immediately instead of leaving the page showing nothing until reload.
+      loadRacecards();
+      return;
+    }
+  }
   var filteredRaces = null;
   if (_trainerFilter) {
     filteredRaces = [];
