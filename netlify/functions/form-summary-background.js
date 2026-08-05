@@ -390,6 +390,23 @@ exports.handler = async function(event) {
   const hasTestFilters = !!(event.queryStringParameters && (event.queryStringParameters.date || event.queryStringParameters.course));
   const isTest = !isScheduled && hasTestFilters;
 
+  // Heartbeat: fire-and-forget first write so even an invocation killed early
+  // (e.g. hitting the 900s timeout mid-run, as happened on 2026-08-05) leaves
+  // evidence in Redis — mirrors debug:build-heartbeat:{date} in
+  // daily-build-background.js. Keyed per Europe/Dublin calendar day, same as
+  // readRacecards(), so it lines up with the dates this run actually covers.
+  try {
+    if (UPSTASH_URL && UPSTASH_TOKEN) {
+      const hbParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
+      const hbDate = hbParts.find(p => p.type === 'year').value + '-' + hbParts.find(p => p.type === 'month').value + '-' + hbParts.find(p => p.type === 'day').value;
+      redisSet('form-summary:heartbeat:' + hbDate, {
+        startedAt: new Date().toISOString(),
+        scheduled: isScheduled,
+        isTest: isTest
+      }).catch(function() {});
+    }
+  } catch (hbErr) {}
+
   if (!isScheduled) {
     const secret = (event.queryStringParameters && event.queryStringParameters.secret) || (event.headers && event.headers['x-build-secret']);
     if (secret !== process.env.BUILD_SECRET) {
