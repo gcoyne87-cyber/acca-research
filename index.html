@@ -11587,7 +11587,9 @@ function renderFutureDateContent(dateStr,targetEl){
     _renderMeetings(_futureDateCache[dateStr]);
     return;
   }
-  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
+  // Leave whatever is currently on screen in place instead of blanking it —
+  // the fetch below swaps in real content once it arrives, so there's no
+  // gap where the user sees nothing.
   fetch('/.netlify/functions/racecards?date='+dateStr)
     .then(function(r){return r.json();})
     .then(function(json){
@@ -14981,6 +14983,19 @@ function selectRacingSection(s){
     return;
   }
   if(typeof _syncMainTab==='function') _syncMainTab(s);
+  // #topnav-subbar/#subbar-cards is otherwise only managed by selectMainTab —
+  // any entry into this section via a path other than the top "Cards" nav
+  // button (CTA clicks, trainer filters, race navigation) left it stuck in
+  // whatever a previous, unrelated selectMainTab call last set, hiding the
+  // date tabs until a full page reload. Keep it in sync here too.
+  var _subbar=document.getElementById('topnav-subbar');
+  var _subbarCards=document.getElementById('subbar-cards');
+  if(s==='racecards'){
+    if(_subbar) _subbar.style.display='block';
+    if(_subbarCards) _subbarCards.style.display='flex';
+  } else if(s!=='results'&&s!=='pickofday'){
+    if(_subbar) _subbar.style.display='none';
+  }
   var todayC=document.getElementById("racing-today-content");
   var tmrwC=document.getElementById("racing-tomorrow-content");
   var futureC=document.getElementById("racing-future-content");
@@ -15247,19 +15262,33 @@ function toggleTomorrowMeeting(id){
     var _m=TM_MEETINGS.filter(function(x){return x.id===id;})[0];
     if(_m&&_m.races.length) tmOpenRace[id]=0;
   }
-  renderTomorrowMeetingsList();
+  // Re-render into whichever container is actually on screen — the Racecards
+  // section's own Tomorrow tab uses #tomorrow-meetings-list (default target);
+  // the Home page's Tomorrow strip uses #today-meetings-list. Without this
+  // check, a click made on the Home page always updates the wrong, invisible
+  // container and the click appears to do nothing.
+  var _tmrwC=document.getElementById('racing-tomorrow-content');
+  var _onTomorrowCards=_tmrwC&&_tmrwC.style.display!=='none';
+  if(_onTomorrowCards){ renderTomorrowMeetingsList(); }
+  else{ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
   setTimeout(function(){ tmAttachSwipe(id); },50);
 }
 
 function tomorrowSelectRace(mid,ri){
   tmOpenRace[mid]=tmOpenRace[mid]===ri?null:ri;
-  renderTomorrowMeetingsList();
+  var _tmrwC=document.getElementById('racing-tomorrow-content');
+  var _onTomorrowCards=_tmrwC&&_tmrwC.style.display!=='none';
+  var _render=function(){
+    if(_onTomorrowCards){ renderTomorrowMeetingsList(); }
+    else{ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+  };
+  _render();
   if(tmOpenRace[mid]!=null){
     var _m=TM_MEETINGS.filter(function(x){return x.id===mid;})[0];
     var _race=_m&&_m.races[tmOpenRace[mid]];
     if(_race&&_race.runners&&_race.runners.length){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
-      _fetchFormSummaries(_ids,function(){ renderTomorrowMeetingsList(); });
+      _fetchFormSummaries(_ids,_render);
     }
   }
   setTimeout(function(){
@@ -15367,7 +15396,6 @@ function renderTomorrowMeetingsList(targetEl){
     _renderMeetings(_tomorrowCache);
     return;
   }
-  el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px">Loading...</div>';
   var now=new Date();
   var tmrw=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
   var y=tmrw.getFullYear(),mo=String(tmrw.getMonth()+1).padStart(2,'0'),dy=String(tmrw.getDate()).padStart(2,'0');
