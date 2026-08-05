@@ -15042,14 +15042,21 @@ function selectRacingSection(s){
     renderTodayMeetingsList();
     renderNextRaceSection();
   } else if(s==="racecards"){
-    if(todayC) todayC.style.display="";
-    var e8f=document.getElementById("racing-today-meetings");
-    if(e8f) e8f.style.display="";
     if(nrHomeWrap) nrHomeWrap.style.display="none";
-    _homeRcDay='today';
-    selectRacingDate("today");
     _rcListForCards=false;
-    renderTodayMeetingsList();
+    if(!_homeRcDay || _homeRcDay==='today'){
+      _homeRcDay='today';
+      if(todayC) todayC.style.display="";
+      var e8f=document.getElementById("racing-today-meetings");
+      if(e8f) e8f.style.display="";
+      selectRacingDate("today");
+      renderTodayMeetingsList();
+    } else {
+      if(todayC) todayC.style.display="";
+      var e8f=document.getElementById("racing-today-meetings");
+      if(e8f) e8f.style.display="";
+      selectRacingDate(_homeRcDay);
+    }
   } else if(s==="nextrace"){
     if(nrPanel) nrPanel.style.display="";
     renderNextRaceSection();
