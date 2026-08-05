@@ -390,6 +390,9 @@ exports.handler = async function(event) {
   const hasTestFilters = !!(event.queryStringParameters && (event.queryStringParameters.date || event.queryStringParameters.course));
   const isTest = !isScheduled && hasTestFilters;
 
+  const nowParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
+  const todayStr = nowParts.find(p => p.type === 'year').value + '-' + nowParts.find(p => p.type === 'month').value + '-' + nowParts.find(p => p.type === 'day').value;
+
   // Heartbeat: fire-and-forget first write so even an invocation killed early
   // (e.g. hitting the 900s timeout mid-run, as happened on 2026-08-05) leaves
   // evidence in Redis — mirrors debug:build-heartbeat:{date} in
@@ -397,9 +400,7 @@ exports.handler = async function(event) {
   // readRacecards(), so it lines up with the dates this run actually covers.
   try {
     if (UPSTASH_URL && UPSTASH_TOKEN) {
-      const hbParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
-      const hbDate = hbParts.find(p => p.type === 'year').value + '-' + hbParts.find(p => p.type === 'month').value + '-' + hbParts.find(p => p.type === 'day').value;
-      redisSet('form-summary:heartbeat:' + hbDate, {
+      redisSet('form-summary:heartbeat:' + todayStr, {
         startedAt: new Date().toISOString(),
         scheduled: isScheduled,
         isTest: isTest
@@ -413,6 +414,28 @@ exports.handler = async function(event) {
       return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
     }
   }
+
+  // In-progress lock — without this, re-triggering (manually, or a scheduled
+  // run overlapping a still-running one) starts a second, fully independent
+  // invocation racing the first over the same runners and Redis keys. That's
+  // exactly what happened on 2026-08-05: several overlapping runs, all making
+  // real progress (form-summary:* climbed past 800 keys), none ever reaching
+  // sendEmail(). Mirrors build:lock:{date} in daily-build-background.js, with
+  // the window set just under the function's own 900s timeout so a lock left
+  // behind by a run that really did time out doesn't block the next one forever.
+  const LOCK_WINDOW_MS = 800 * 1000;
+  const now = new Date();
+  try {
+    const existingLock = await redisGet('form-summary:lock:' + todayStr);
+    if (existingLock && existingLock.startedAt) {
+      const lockAgeMs = now.getTime() - new Date(existingLock.startedAt).getTime();
+      if (lockAgeMs >= 0 && lockAgeMs < LOCK_WINDOW_MS) {
+        console.log('[form-summary] already in progress (started ' + Math.round(lockAgeMs / 1000) + 's ago) — standing down.');
+        return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'form-summary already in progress', lockStartedAt: existingLock.startedAt }) };
+      }
+    }
+    await redisSet('form-summary:lock:' + todayStr, { startedAt: now.toISOString(), scheduled: isScheduled, isTest: isTest });
+  } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
   try {
     let runners = await readRacecards();
@@ -519,6 +542,7 @@ exports.handler = async function(event) {
 
     console.log('[form-summary] DONE', new Date().toISOString(), JSON.stringify(summary));
 
+    try { await redisSet('form-summary:lock:' + todayStr, null); } catch (ue) {}
     return {
       statusCode: 200,
       headers,
@@ -527,6 +551,7 @@ exports.handler = async function(event) {
   } catch (e) {
     console.log('[form-summary] ERROR', e.message);
 
+    try { await redisSet('form-summary:lock:' + todayStr, null); } catch (ue) {}
     return {
       statusCode: 500,
       headers,
