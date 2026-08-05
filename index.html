@@ -13037,11 +13037,23 @@ function nrLoadForm(pfx,horseId){
   fetch('/.netlify/functions/horse-form?horse_id='+encodeURIComponent(horseId)+'&date='+encodeURIComponent(_activeDateStr))
     .then(function(r){return r.json();})
     .then(function(data){
+      // The panel is rebuilt from scratch right below — anything runnerRow
+      // pre-rendered into nrh-ft (including the form-summary paragraph) is
+      // overwritten here, which is why summaries never appeared. Resolve the
+      // summary BEFORE building so it can be prepended; _fetchFormSummaries
+      // calls back synchronously when the id is already cached from race open.
+      return new Promise(function(res){ _fetchFormSummaries([horseId],function(){ res(data); }); });
+    })
+    .then(function(data){
       var tDiv2=document.getElementById('nrh-ft-'+pfx);
       if(!tDiv2)return;
       var hist=data.history||[];
       var summ=data.summary||null;
       var out='';
+      var _fsum=_formSummaries[horseId];
+      if(_fsum&&_fsum.summary){
+        out+='<div style="padding:10px 12px 8px;font-size:11px;color:#5a6478;line-height:1.6">'+escHtml(_fsum.summary.replace(/[\s—-]+$/,''))+'</div>';
+      }
 
       // 5 labeled form rows — Ground / Distance / Course / Form / Key angle
       if(summ){
