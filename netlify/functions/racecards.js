@@ -280,18 +280,17 @@ exports.handler = async function(event) {
 
     const today = irishTodayStr();
     const targetDate = dateParam || today;
-    const isFuture = targetDate !== today;
 
-    // For future dates check Redis cache first
-    if (isFuture) {
-      const cached = await redisGet('racecards:' + targetDate);
-      if (cached && cached.meetings && cached.meetings.length) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ meetings: cached.meetings, _fromCache: true })
-        };
-      }
+    // Check Redis cache first for any date, including today — fetch-future-cards-background.js
+    // already caches today's card overnight, so a live-API gap (rate limit, provider timing)
+    // no longer leaves the page empty when good data is sitting right there.
+    const cached = await redisGet('racecards:' + targetDate);
+    if (cached && cached.meetings && cached.meetings.length) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ meetings: cached.meetings, _fromCache: true })
+      };
     }
 
     // Pro plan — use pro endpoint for both today and future dates
