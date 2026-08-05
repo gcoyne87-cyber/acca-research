@@ -13614,6 +13614,36 @@ function _reLiveCardPrice(ctaDestination, horseName){
     return null;
   }catch(e){ return null; }
 }
+// Same course/time/horse-name matching as _reLiveCardPrice, but returns the
+// whole runner record — Daily Intelligence cards don't carry jockey/trainer/
+// form themselves (only signalType, horseName, price, meta, intelligenceText,
+// ctaLabel, ctaDestination — see daily-build-background.js's card schema), so
+// this looks them up from the already-loaded racecard runner the card's own
+// ctaDestination points at. Returns null on no match (race not loaded yet,
+// withdrawn horse, or a non-race: destination like Hot Yard's trainer:...) so
+// the caller just omits the line rather than showing something stale/blank.
+function _reLiveCardRunner(ctaDestination, horseName){
+  try{
+    if(!horseName) return null;
+    var isTomorrowDest=(ctaDestination||'').indexOf('tomorrowrace:')===0;
+    var isTodayDest=!isTomorrowDest && (ctaDestination||'').indexOf('race:')===0;
+    if(!isTomorrowDest && !isTodayDest) return null;
+    var parts=ctaDestination.substring(isTomorrowDest?'tomorrowrace:'.length:'race:'.length).split(':');
+    var courseRaw=parts[0]||'';
+    var timeRaw=parts.slice(1).join(':');
+    var list=isTomorrowDest?(typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null):(typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null);
+    var meeting=_reFindMeeting(list, courseRaw);
+    if(!meeting) return null;
+    var ri=_reFindRaceIdx(meeting, timeRaw);
+    if(ri===-1) return null;
+    var runners=(meeting.races[ri]&&meeting.races[ri].runners)||[];
+    var wantName=(horseName||'').toLowerCase().trim();
+    for(var i=0;i<runners.length;i++){
+      if((runners[i].name||'').toLowerCase().trim()===wantName) return runners[i];
+    }
+    return null;
+  }catch(e){ return null; }
+}
 
 function highlightHorse(name){
   _horseHighlight=name;
@@ -13635,6 +13665,24 @@ function renderAIIntelligence(){
     // live match is found (e.g. the horse was withdrawn since generation).
     var _livePrice=_reLiveCardPrice(item.ctaDestination, item.horseName);
     var _displayPrice=_livePrice||item.price;
+    // Jockey / trainer / form line — same fields, same style, same &middot;
+    // join as the NAP/NB pick cards (renderRacingPicks, fullMetaParts). The
+    // card object itself never carries these fields, so they're pulled live
+    // from the runner the card's own ctaDestination points at. Hot Yard cards
+    // are trainer intelligence, not a single-horse pick — their horseName
+    // field IS the trainer name (see daily-build-background.js's card schema),
+    // already shown as the card headline, and they navigate via
+    // trainer:{name} rather than race:{course}:{time} so there's no runner to
+    // look up anyway — no line at all for these, not even a trainer repeat.
+    var _isHotYard=item.signalType==='Hot Yard';
+    var _liveRunner=_isHotYard?null:_reLiveCardRunner(item.ctaDestination, item.horseName);
+    var _jtfParts=[];
+    if(_liveRunner){
+      if(_liveRunner.jockey) _jtfParts.push(escHtml(_liveRunner.jockey));
+      if(_liveRunner.trainer) _jtfParts.push(escHtml(_liveRunner.trainer));
+      if(_liveRunner.form) _jtfParts.push(escHtml(_liveRunner.form));
+    }
+    var _jtfLine=_jtfParts.length?'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+_jtfParts.join(' &middot; ')+'</div>':'';
     return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
       +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
@@ -13647,6 +13695,7 @@ function renderAIIntelligence(){
           +(_displayPrice?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+_displayPrice+'</div>':'')
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
+        +_jtfLine
         +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+item.meta+'</div>'
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px">'
