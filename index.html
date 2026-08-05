@@ -11160,11 +11160,29 @@ var RC_TODAY_MEETINGS=[];
 var todayOpenMeeting="";
 var _futureDateCache={};
 var _tomorrowCache=null;
+var _formSummaries={};
 
 function getMeetingImg(id){
   var el=document.getElementById("img-"+id);
   if(!el||!el.src) el=document.getElementById("img-fairyhouse");
   return el?el.src:"";
+}
+
+// Batched form-summary fetch — call with the horse_ids of a just-opened race's
+// runners. Skips ids already resolved (found or confirmed absent, tracked via
+// `id in _formSummaries`) so re-opening a race never re-fetches. cb runs once
+// the batch settles (success or failure) so callers can re-render either way.
+function _fetchFormSummaries(horseIds,cb){
+  var missing=horseIds.filter(function(id){ return id&&!(id in _formSummaries); });
+  if(!missing.length){ if(cb) cb(); return; }
+  fetch('/.netlify/functions/get-form-summaries?horse_ids='+missing.map(encodeURIComponent).join(','))
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var summaries=data.summaries||{};
+      missing.forEach(function(id){ _formSummaries[id]=summaries[id]||null; });
+      if(cb) cb();
+    })
+    .catch(function(){ if(cb) cb(); });
 }
 
 function toggleTodayMeeting(id){
@@ -11193,12 +11211,23 @@ function todaySelectRace(mid,ri){
   rcOpenRace[mid]=rcOpenRace[mid]===ri?null:ri;
   var _futureEl=document.getElementById('racing-future-content');
   var _onCardsFuture=_futureEl&&_futureEl.style.display!=='none';
-  if(_onCardsFuture){
-    renderFutureDateContent(_cardsDay);
-  } else {
-    if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
-    else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
-    else{ renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list')); }
+  var _render=function(){
+    if(_onCardsFuture){
+      renderFutureDateContent(_cardsDay);
+    } else {
+      if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
+      else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+      else{ renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list')); }
+    }
+  };
+  _render();
+  if(rcOpenRace[mid]!=null){
+    var _m=RC_MEETINGS.filter(function(x){return x.id===mid;})[0];
+    var _race=_m&&_m.races[rcOpenRace[mid]];
+    if(_race&&_race.runners&&_race.runners.length){
+      var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
+      _fetchFormSummaries(_ids,_render);
+    }
   }
   setTimeout(function(){
     rcAttachSwipe(mid);
@@ -12838,7 +12867,9 @@ function runnerRow(ru,ctx){
           });
           _ih+='</tbody></table></div>';
         }
-        html+='<div id="nrh-ft-'+pfx+'">'+_ih+'</div>';
+        var _fs=ru.horse_id?_formSummaries[ru.horse_id]:null;
+        var _summaryHtml=(_fs&&_fs.summary)?'<div style="padding:0 12px 8px;font-size:11px;color:#5a6478;line-height:1.6">'+escHtml(_fs.summary)+'</div>':'';
+        html+='<div id="nrh-ft-'+pfx+'">'+_summaryHtml+_ih+'</div>';
         return html;
       })()
     +'</div>'
@@ -15204,6 +15235,14 @@ function toggleTomorrowMeeting(id){
 function tomorrowSelectRace(mid,ri){
   tmOpenRace[mid]=tmOpenRace[mid]===ri?null:ri;
   renderTomorrowMeetingsList();
+  if(tmOpenRace[mid]!=null){
+    var _m=TM_MEETINGS.filter(function(x){return x.id===mid;})[0];
+    var _race=_m&&_m.races[tmOpenRace[mid]];
+    if(_race&&_race.runners&&_race.runners.length){
+      var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
+      _fetchFormSummaries(_ids,function(){ renderTomorrowMeetingsList(); });
+    }
+  }
   setTimeout(function(){
     tmAttachSwipe(mid);
     if(tmOpenRace[mid]!=null){
