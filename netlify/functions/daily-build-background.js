@@ -769,6 +769,11 @@ function validateAndRepairCtaDestinations(items, flatRaces, warningsOut) {
         warningsOut.push('Repaired ctaDestination for ' + item.horseName + ': ' + dest + ' -> ' + correctDest);
         item.ctaDestination = correctDest;
       }
+      // ctaLabel is written independently by the model and never checked against
+      // real race data — it can carry a different time than ctaDestination even
+      // when the destination itself is already correct. Always resync it here so
+      // the button text can never diverge from where it actually navigates.
+      item.ctaLabel = 'Analyse ' + byHorse.course + ' ' + byHorse.time;
       kept.push(item);
       return;
     }
@@ -787,6 +792,7 @@ function validateAndRepairCtaDestinations(items, flatRaces, warningsOut) {
         warningsOut.push('Repaired ctaDestination by course+nearest-time for ' + item.horseName + ': ' + dest + ' -> ' + correctDest);
         item.ctaDestination = correctDest;
       }
+      item.ctaLabel = 'Analyse ' + best.course + ' ' + best.time;
       kept.push(item);
       return;
     }
