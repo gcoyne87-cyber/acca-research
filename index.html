@@ -11358,7 +11358,7 @@ function _tfLoadDays(){
     _tfDayLabels[ds]=i===1?'Tomorrow':dayNames[d.getDay()];
   }
   _tfDayMeetings.today=_getLiveMeetings();
-  renderTodayMeetingsList();
+  renderTodayMeetingsList(true);
   if(_tfDaysLoaded||_tfDaysLoading) return;
   _tfDaysLoading=true;
   fetch('/.netlify/functions/racecards?dates='+_tfDayDates.join(','))
@@ -11378,16 +11378,16 @@ function _tfLoadDays(){
 
 function _tfSelectDay(dayKey){
   _tfSelectedDay=dayKey;
-  renderTodayMeetingsList();
+  renderTodayMeetingsList(false);
 }
 
 function _tfSelectRace(dayKey,meetingId,raceTime){
   var key=dayKey+'|'+meetingId;
   _tfRaceSel[key]=(_tfRaceSel[key]===raceTime)?null:raceTime;
-  renderTodayMeetingsList();
+  renderTodayMeetingsList(false);
 }
 
-function renderTrainerFilterMultiDay(el){
+function renderTrainerFilterMultiDay(el,isInitial){
   var dayKeys=['today'].concat(_tfDayDates);
   var dayMatches={};
   dayKeys.forEach(function(k){ dayMatches[k]=_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
@@ -11408,6 +11408,7 @@ function renderTrainerFilterMultiDay(el){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' in the next 5 days</div>';
     out+='</div>';
     el.innerHTML=out;
+    if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
 
@@ -11431,6 +11432,7 @@ function renderTrainerFilterMultiDay(el){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
     out+='</div>';
     el.innerHTML=out;
+    if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
 
@@ -11470,6 +11472,7 @@ function renderTrainerFilterMultiDay(el){
 
   out+='</div>';
   el.innerHTML=out;
+  if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function _getAllTrainerNames(){
@@ -11532,7 +11535,7 @@ function _renderPopularTrainers(){
   out+='<div style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
-    out+='<div onclick="setTrainerFilter(\''+tEsc+'\');var tt=document.getElementById(\'today-racecards-title\');if(tt)tt.scrollIntoView({behavior:\'smooth\',block:\'start\'});" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
+    out+='<div onclick="setTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
     out+='<div style="font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+t.count+' Entries Today</div>';
     out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:6px">View Runners &rarr;</div>';
@@ -11764,11 +11767,11 @@ function renderFutureDateContent(dateStr,targetEl){
 }
 
 var _rcListForCards=false;
-function renderTodayMeetingsList(){
+function renderTodayMeetingsList(isInitial){
   var el=document.getElementById("today-meetings-list");
   if(!el) return;
   if(_trainerFilter){
-    renderTrainerFilterMultiDay(el);
+    renderTrainerFilterMultiDay(el,isInitial);
     return;
   }
   if(_homeRcDay==='tomorrow'){
