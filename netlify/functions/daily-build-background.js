@@ -1978,8 +1978,8 @@ exports.handler = async function(event) {
       const trainerTableMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-          const t14 = r.trainer14 || {};
-          const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
+          const t14 = r.trainer_14_days || {};
+          const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
           if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
             trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
           }
