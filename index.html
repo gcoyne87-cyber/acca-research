@@ -11427,7 +11427,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   });
   out+='</div>';
 
-  var dayRaces=dayMatches[_tfSelectedDay]||[];
+  var dayRaces=(dayMatches[_tfSelectedDay]||[]).slice().sort(function(a,b){ return (a.race.t24||0)-(b.race.t24||0); });
   if(!dayRaces.length){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
     out+='</div>';
