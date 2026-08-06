@@ -1990,32 +1990,39 @@ exports.handler = async function(event) {
         return b.pct - a.pct;
       }).slice(0, 30);
 
-      for (const entry of trainerTableTop30) {
-        if (!entry.trainer_id) { entry.baseline60 = 0; continue; }
+      await Promise.all(trainerTableTop30.map(async function(entry) {
+        if (!entry.trainer_id) { entry.baseline60 = 0; return; }
         try {
           const data = await apiGet('api.theracingapi.com',
             '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + today,
             { 'Authorization': 'Basic ' + RACING_AUTH }
           );
-          await new Promise(resolve => setTimeout(resolve, 200));
           const results = data.results || [];
+          if (!Array.isArray(data.results) || results.length === 0) {
+            // apiGet resolves ANY parseable JSON body, including API error shapes like
+            // {"detail":"..."} — log the raw body so a silent auth/param failure is
+            // distinguishable from a trainer genuinely having zero runs in 60 days.
+            console.log('[daily-build] trainer-form baseline empty for ' + entry.trainer + ' (' + entry.trainer_id + '): ' + JSON.stringify(data).slice(0, 300));
+          }
           const baselineRuns = results.length;
           const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
           entry.baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
         } catch (e) {
+          console.log('[daily-build] trainer-form baseline fetch failed for ' + entry.trainer + ' (' + entry.trainer_id + '): ' + e.message);
           entry.baseline60 = 0;
         }
-      }
+      }));
 
       const trainerFormTable = trainerTableTop30.map(function(entry) {
+        const spikeRatio = entry.baseline60 ? Math.round((entry.pct / entry.baseline60) * 100) / 100 : 1;
         return {
           trainerName: entry.trainer,
           runners14d: entry.runs,
           winners14d: entry.wins,
           strikeRate: entry.pct,
           baseline60d: entry.baseline60,
-          spikeRatio: entry.baseline60 ? Math.round((entry.pct / entry.baseline60) * 100) / 100 : 0,
-          isHotYard: entry.pct >= 25 && entry.baseline60 > 0 && entry.pct >= entry.baseline60 * 1.5
+          spikeRatio: spikeRatio,
+          isHotYard: entry.pct >= 25 && spikeRatio >= 1.5
         };
       });
 
