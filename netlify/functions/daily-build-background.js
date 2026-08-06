@@ -956,60 +956,6 @@ async function generateIntelligence(racecards) {
     return ratioB - ratioA;
   }).slice(0, 5);
 
-  // Trainer form table — a full leaderboard of today's trainers by 14-day strike rate,
-  // independent of the Hot Yard signal above (which only ever surfaces trainers meeting
-  // its 25%+ SR / genuine-spike bar). Additional read/write only — does not feed into or
-  // alter the Hot Yard signal or its candidates in any way.
-  try {
-    const trainerTableMap = {};
-    racecards.forEach(function(race) {
-      (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-        const t14 = r.trainer14 || {};
-        const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
-        if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
-          trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
-        }
-      });
-    });
-
-    const trainerTableTop30 = Object.values(trainerTableMap).sort(function(a, b) {
-      return b.pct - a.pct;
-    }).slice(0, 30);
-
-    for (const entry of trainerTableTop30) {
-      if (!entry.trainer_id) { entry.baseline60 = 0; continue; }
-      try {
-        const data = await apiGet('api.theracingapi.com',
-          '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + date,
-          { 'Authorization': 'Basic ' + RACING_AUTH }
-        );
-        await new Promise(resolve => setTimeout(resolve, 200));
-        const results = data.results || [];
-        const baselineRuns = results.length;
-        const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
-        entry.baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
-      } catch (e) {
-        entry.baseline60 = 0;
-      }
-    }
-
-    const trainerFormTable = trainerTableTop30.map(function(entry) {
-      return {
-        trainerName: entry.trainer,
-        runners14d: entry.runs,
-        winners14d: entry.wins,
-        strikeRate: entry.pct,
-        baseline60d: entry.baseline60,
-        spikeRatio: entry.baseline60 ? Math.round((entry.pct / entry.baseline60) * 100) / 100 : 0,
-        isHotYard: entry.pct >= 25 && entry.baseline60 > 0 && entry.pct >= entry.baseline60 * 1.5
-      };
-    });
-
-    await redisSet('trainer-form:table:' + date, trainerFormTable);
-  } catch (e) {
-    console.log('[daily-build] trainer-form:table write failed: ' + e.message);
-  }
-
   // Pre-compute ground edge candidates: Heavy/Yielding jumps meetings only, grouped by venue
   const GROUND_RE = /heavy|yield/i;
   const groundEdgeByVenue = {};
@@ -2019,6 +1965,64 @@ exports.handler = async function(event) {
       report.errors.push('intelligence: ' + e.message);
     }
     try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
+
+    // 3.5 Trainer form table — a full leaderboard of today's trainers by 14-day strike
+    // rate. Placed here, outside the cache-check above, so it runs unconditionally on
+    // every build regardless of whether Daily Intelligence (and therefore the Hot Yard
+    // signal, which only runs inside generateIntelligence()) was served from cache or
+    // regenerated — Hot Yard's own trainerFormMap/trainerFormCandidates are local to
+    // that function and never computed at all on a cache hit, so this does its own
+    // independent pass over racecards instead of depending on that data.
+    try {
+      const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const trainerTableMap = {};
+      racecards.forEach(function(race) {
+        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+          const t14 = r.trainer14 || {};
+          const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
+          if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
+            trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
+          }
+        });
+      });
+
+      const trainerTableTop30 = Object.values(trainerTableMap).sort(function(a, b) {
+        return b.pct - a.pct;
+      }).slice(0, 30);
+
+      for (const entry of trainerTableTop30) {
+        if (!entry.trainer_id) { entry.baseline60 = 0; continue; }
+        try {
+          const data = await apiGet('api.theracingapi.com',
+            '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sixtyDaysAgo + '&end_date=' + today,
+            { 'Authorization': 'Basic ' + RACING_AUTH }
+          );
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const results = data.results || [];
+          const baselineRuns = results.length;
+          const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
+          entry.baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
+        } catch (e) {
+          entry.baseline60 = 0;
+        }
+      }
+
+      const trainerFormTable = trainerTableTop30.map(function(entry) {
+        return {
+          trainerName: entry.trainer,
+          runners14d: entry.runs,
+          winners14d: entry.wins,
+          strikeRate: entry.pct,
+          baseline60d: entry.baseline60,
+          spikeRatio: entry.baseline60 ? Math.round((entry.pct / entry.baseline60) * 100) / 100 : 0,
+          isHotYard: entry.pct >= 25 && entry.baseline60 > 0 && entry.pct >= entry.baseline60 * 1.5
+        };
+      });
+
+      await redisSet('trainer-form:table:' + today, trainerFormTable);
+    } catch (e) {
+      console.log('[daily-build] trainer-form:table write failed: ' + e.message);
+    }
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
     if (RUN_FULL_BUILD) {
