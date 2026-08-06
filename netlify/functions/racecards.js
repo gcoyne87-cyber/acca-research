@@ -276,6 +276,31 @@ exports.handler = async function(event) {
   };
 
   try {
+    const datesParam = event.queryStringParameters && event.queryStringParameters.dates;
+
+    if (datesParam) {
+      // Multi-day lookup (Filter by Trainer, 5-day view) — read-only from Redis,
+      // no live API calls. A missing/empty racecards:{date} key returns an empty
+      // array for that date rather than erroring, so one bad date never breaks
+      // the rest of the response.
+      const dates = datesParam.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      const days = await Promise.all(dates.map(async function(d) {
+        try {
+          const cached = await redisGet('racecards:' + d);
+          const meetings = (cached && Array.isArray(cached.meetings)) ? cached.meetings : [];
+          meetings.forEach(function(m) { m.date = d; });
+          return { date: d, meetings: meetings };
+        } catch (e) {
+          return { date: d, meetings: [] };
+        }
+      }));
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ days: days })
+      };
+    }
+
     const dateParam = event.queryStringParameters && event.queryStringParameters.date;
 
     const today = irishTodayStr();

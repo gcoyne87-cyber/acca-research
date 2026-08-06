@@ -11245,6 +11245,15 @@ var _trainerFilter=null;
 var _trainerFilterSelected=null;
 var _horseHighlight=null;
 
+// Filter by Trainer — 5-day view (today + next 4 days)
+var _tfDayDates=[];       // ['2026-08-07','2026-08-08','2026-08-09','2026-08-10'] — tomorrow..day5
+var _tfDayLabels={};      // date -> tab label ('Tomorrow','Wed',...), plus 'today'->'Today'
+var _tfDayMeetings={};    // 'today'|date -> raw meetings array for that day
+var _tfDaysLoaded=false;  // true once the 4 future days have been fetched this session
+var _tfDaysLoading=false;
+var _tfSelectedDay=null;  // active tab key: 'today' or a date string
+var _tfRaceSel={};        // per-day-per-meeting selected race: key = dayKey+'|'+meetingId -> raceTime
+
 function setTrainerFilter(trainerName){
   _trainerFilter=trainerName;
   var inp=document.getElementById('trainer-search-input');
@@ -11286,6 +11295,9 @@ function setTrainerFilter(trainerName){
     });
     if(fdMatch) futureSelectRace(fdMatch.meetingId,fdMatch.raceIndex,_homeRcDay);
   }
+  _tfSelectedDay=null;
+  _tfRaceSel={};
+  _tfLoadDays();
 }
 
 function trainerFilterSelectRace(meetingId,raceTime){
@@ -11300,6 +11312,8 @@ function trainerFilterSelectRace(meetingId,raceTime){
 function clearTrainerFilter(){
   _trainerFilter=null;
   _trainerFilterSelected=null;
+  _tfSelectedDay=null;
+  _tfRaceSel={};
   var inp=document.getElementById('trainer-search-input');
   if(inp) inp.value='';
   var clr=document.getElementById('trainer-search-clear');
@@ -11319,6 +11333,143 @@ function clearTrainerFilter(){
   }else{
     renderFutureDateContent(_homeRcDay,document.getElementById('today-meetings-list'));
   }
+}
+
+function _tfMatchesForDay(meetings,trainerName){
+  var out=[];
+  (meetings||[]).forEach(function(m){
+    (m.races||[]).forEach(function(race,ri){
+      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+      if(hasMatch){ out.push({meetingId:m.id,meetingName:m.name,meeting:m,raceIndex:ri,raceTime:race.t,race:race}); }
+    });
+  });
+  return out;
+}
+
+function _tfLoadDays(){
+  var now=new Date();
+  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  _tfDayDates=[];
+  _tfDayLabels={today:'Today'};
+  for(var i=1;i<=4;i++){
+    var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
+    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    _tfDayDates.push(ds);
+    _tfDayLabels[ds]=i===1?'Tomorrow':dayNames[d.getDay()];
+  }
+  _tfDayMeetings.today=_getLiveMeetings();
+  renderTodayMeetingsList();
+  if(_tfDaysLoaded||_tfDaysLoading) return;
+  _tfDaysLoading=true;
+  fetch('/.netlify/functions/racecards?dates='+_tfDayDates.join(','))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      (json.days||[]).forEach(function(d){ _tfDayMeetings[d.date]=d.meetings||[]; });
+      _tfDaysLoaded=true;
+      _tfDaysLoading=false;
+      renderTodayMeetingsList();
+    })
+    .catch(function(){
+      _tfDayDates.forEach(function(ds){ if(!_tfDayMeetings[ds]) _tfDayMeetings[ds]=[]; });
+      _tfDaysLoading=false;
+      renderTodayMeetingsList();
+    });
+}
+
+function _tfSelectDay(dayKey){
+  _tfSelectedDay=dayKey;
+  renderTodayMeetingsList();
+}
+
+function _tfSelectRace(dayKey,meetingId,raceTime){
+  var key=dayKey+'|'+meetingId;
+  _tfRaceSel[key]=(_tfRaceSel[key]===raceTime)?null:raceTime;
+  renderTodayMeetingsList();
+}
+
+function renderTrainerFilterMultiDay(el){
+  var dayKeys=['today'].concat(_tfDayDates);
+  var dayMatches={};
+  dayKeys.forEach(function(k){ dayMatches[k]=_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
+
+  if(_tfSelectedDay===null){
+    var firstWithRunners=dayKeys.filter(function(k){ return dayMatches[k].length>0; })[0];
+    _tfSelectedDay=firstWithRunners||'today';
+  }
+
+  var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
+  out+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
+  out+='<span>Filtering: '+escHtml(_trainerFilter)+'</span>';
+  out+='<span onclick="clearTrainerFilter()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
+  out+='</div>';
+
+  var totalMatches=dayKeys.reduce(function(s,k){ return s+dayMatches[k].length; },0);
+  if(!totalMatches){
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' in the next 5 days</div>';
+    out+='</div>';
+    el.innerHTML=out;
+    return;
+  }
+
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap';
+  var disabledStyle='background:none;color:#ccd1dc;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:default;font-family:inherit;white-space:nowrap';
+
+  out+='<div style="display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7">';
+  dayKeys.forEach(function(k){
+    var label=_tfDayLabels[k]||k;
+    var count=dayMatches[k].length;
+    var isActive=k===_tfSelectedDay;
+    var style=count===0?disabledStyle:(isActive?activeStyle:inactiveStyle);
+    var onclick=count===0?'':' onclick="_tfSelectDay(\''+k+'\')"';
+    out+='<button'+onclick+' style="'+style+'">'+escHtml(label)+' ('+count+')</button>';
+  });
+  out+='</div>';
+
+  var dayRaces=dayMatches[_tfSelectedDay]||[];
+  if(!dayRaces.length){
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
+    out+='</div>';
+    el.innerHTML=out;
+    return;
+  }
+
+  out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
+  out+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+  var selKeyPrefix=_tfSelectedDay+'|';
+  var selectedFr=null;
+  dayRaces.forEach(function(fr){
+    var rk=selKeyPrefix+fr.meetingId;
+    var isSel=_tfRaceSel[rk]?_tfRaceSel[rk]===fr.raceTime:fr===dayRaces[0];
+    if(isSel) selectedFr=fr;
+    out+='<div onclick="_tfSelectRace(\''+_tfSelectedDay+'\',\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+    out+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
+    out+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
+    out+='</div>';
+  });
+  out+='</div>';
+  out+='</div>';
+
+  if(selectedFr){
+    var selMeeting=selectedFr.meeting;
+    var sr=selectedFr.race;
+    out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
+    out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(selMeeting.name)+' &middot; '+escHtml(sr.t)+'</div>';
+    out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+    var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+    if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
+    out+=_raceTabsHtml(selMeeting.id,sr.t,selMeeting.name);
+    var _tfTabKey=selMeeting.id+'-'+sr.t;
+    if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
+      var runnersForRace=_sortByPrice((sr.runners&&sr.runners.length)?sr.runners:[]);
+      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf');}).join('')+'</div>';
+    }
+    out+='</div>';
+  }
+
+  out+='</div>';
+  el.innerHTML=out;
 }
 
 function _getAllTrainerNames(){
@@ -11616,6 +11767,10 @@ var _rcListForCards=false;
 function renderTodayMeetingsList(){
   var el=document.getElementById("today-meetings-list");
   if(!el) return;
+  if(_trainerFilter){
+    renderTrainerFilterMultiDay(el);
+    return;
+  }
   if(_homeRcDay==='tomorrow'){
     el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
     var cnt=document.getElementById('today-meetings-count');
