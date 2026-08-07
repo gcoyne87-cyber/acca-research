@@ -5299,6 +5299,7 @@ function unlockCorkAnalysis(){
     </div>
 
     <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
+    <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
 
     <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
@@ -11545,6 +11546,54 @@ function _renderPopularTrainers(){
   el.innerHTML=out;
   el.style.display='';
 }
+
+function _trainerFormSrColor(sr){
+  if(sr>=30) return '#10b981';
+  if(sr>=20) return '#f59e0b';
+  return '#ef4444';
+}
+
+function renderTrainerFormTable(trainers){
+  var el=document.getElementById('trainer-form-section');
+  if(!el) return;
+  var header='<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">'
+    +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
+    +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
+  +'</div>'
+  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">Last 14 days &middot; Winners / Runners &middot; Strike Rate</div>';
+  if(!trainers||!trainers.length){
+    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
+    return;
+  }
+  var rows=trainers.slice().sort(function(a,b){ return (b.strikeRate||0)-(a.strikeRate||0); }).slice(0,20);
+  var rankBorders=['3px solid #d4af37','3px solid #c0c0c0','3px solid #cd7f32'];
+  var out=header+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
+  rows.forEach(function(t,i){
+    var name=t.trainerName||'';
+    var nameEsc=name.replace(/'/g,"\\'");
+    var wr=(t.winners14d!=null?t.winners14d:'-')+'/'+(t.runners14d!=null?t.runners14d:'-');
+    var sr=Math.round(t.strikeRate||0);
+    var leftBorder=i<3?('border-left:'+rankBorders[i]+';'):'border-left:3px solid transparent;';
+    out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;'+leftBorder+(i<rows.length-1?'border-bottom:1px solid #f0f2f7;':'')+'">';
+    out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
+    out+='<div style="flex-shrink:0;width:52px;text-align:right;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(wr)+'</div>';
+    out+='<div style="flex-shrink:0;width:44px;text-align:right;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr)+'">'+sr+'%</div>';
+    out+='</div>';
+  });
+  out+='</div>';
+  el.innerHTML=out;
+}
+
+function loadTrainerFormTable(){
+  var el=document.getElementById('trainer-form-section');
+  if(!el) return;
+  el.innerHTML='<div style="padding:14px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500">Loading trainer form&hellip;</div>';
+  fetch('/.netlify/functions/get-trainer-form')
+    .then(function(r){ return r.json(); })
+    .then(function(data){ renderTrainerFormTable(Array.isArray(data)?data:[]); })
+    .catch(function(){ renderTrainerFormTable([]); });
+}
+loadTrainerFormTable();
 
 function _onTrainerSearchInput(val){
   var dd=document.getElementById('trainer-search-dropdown');
