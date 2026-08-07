@@ -11583,19 +11583,22 @@ function renderTrainerFormTable(trainers){
   var out=header+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
   out+='<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">';
   out+='<div style="flex:1;min-width:0;text-align:left;'+colHeadStyle+'">Trainer</div>';
-  out+='<div style="flex-shrink:0;width:80px;text-align:center;'+colHeadStyle+'">W/R</div>';
+  out+='<div style="flex-shrink:0;width:38px;text-align:center;'+colHeadStyle+'">Runs</div>';
+  out+='<div style="flex-shrink:0;width:38px;text-align:center;'+colHeadStyle+'">Wins</div>';
   out+='<div style="flex-shrink:0;width:48px;text-align:right;'+colHeadStyle+'">Strike %</div>';
   out+='</div>';
   rows.forEach(function(t,i){
     var name=t.trainerName||'';
     var nameEsc=name.replace(/'/g,"\\'");
-    var wr=(t.winners14d!=null?t.winners14d:'-')+' from '+(t.runners14d!=null?t.runners14d:'-');
+    var runsVal=t.runners14d!=null?t.runners14d:'-';
+    var winsVal=t.winners14d!=null?t.winners14d:'-';
     var sr=Math.round(t.strikeRate||0);
     var leftBorder=i<3?('border-left:'+rankBorders[i]+';'):'border-left:3px solid transparent;';
     var isLastVisible=(i===rows.length-1)&&!hasMore;
     out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;'+leftBorder+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
     out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
-    out+='<div style="flex-shrink:0;width:80px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(wr)+'</div>';
+    out+='<div style="flex-shrink:0;width:38px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runsVal))+'</div>';
+    out+='<div style="flex-shrink:0;width:38px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(winsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:48px;text-align:right;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr)+'">'+sr+'%</div>';
     out+='</div>';
   });
