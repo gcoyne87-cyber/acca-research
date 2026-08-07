@@ -351,9 +351,14 @@ async function sendEmail(summary) {
   const hasErrors = (summary.errors || []).length > 0;
   const todayLabel = (summary.dates && summary.dates.length) ? summary.dates[0] : new Date().toISOString().slice(0, 10);
 
-  let subject = hasErrors
-    ? 'Form Summary Complete (with errors) - ' + todayLabel
-    : 'Form Summary Complete - ' + todayLabel;
+  let subject;
+  if (summary.timedOut) {
+    subject = 'Form Summary Partial - ' + todayLabel + ' - rerunning tomorrow';
+  } else {
+    subject = hasErrors
+      ? 'Form Summary Complete (with errors) - ' + todayLabel
+      : 'Form Summary Complete - ' + todayLabel;
+  }
   if (summary.isTest) subject = 'TEST: ' + subject;
 
   const bodyLines = [
@@ -382,6 +387,7 @@ async function sendEmail(summary) {
 }
 
 exports.handler = async function(event) {
+  const startTime = Date.now();
   console.log('[form-summary] START', new Date().toISOString(), 'scheduled:', !event.httpMethod);
 
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
@@ -471,17 +477,32 @@ exports.handler = async function(event) {
         horsesSkipped++;
         continue;
       }
-      const formHistory = await getFormHistory(runner);
+      let formHistory = await getFormHistory(runner);
+      if (!formHistory) {
+        // Transient API errors (timeouts, brief rate limits) can make a single
+        // attempt fail even though the horse genuinely has history — one retry
+        // after a short pause catches those without permanently skipping the horse.
+        await sleep(2000);
+        formHistory = await getFormHistory(runner);
+      }
       if (!formHistory) {
         horsesFailed++;
-        console.log('[form-summary] no form history for ' + runner.horseName + ' (' + runner.horse_id + ') — failed');
+        console.log('[form-summary] no form history for ' + runner.horseName + ' (' + runner.horse_id + ') — failed after retry');
         continue;
       }
       toProcess.push(Object.assign({}, runner, { formHistory: formHistory }));
     }
 
+    const TIMEOUT_MS = 780 * 1000;
+    let timedOut = false;
+
     const BATCH = 10;
     for (let i = 0; i < toProcess.length; i += BATCH) {
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        timedOut = true;
+        console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — stopping with ' + (toProcess.length - i) + ' horse(s) still unprocessed; next scheduled run will pick them up');
+        break;
+      }
       const batch = toProcess.slice(i, i + BATCH);
       const batchNum = Math.floor(i / BATCH) + 1;
 
@@ -535,8 +556,20 @@ exports.handler = async function(event) {
       errors: errors,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
-      isTest: isTest
+      isTest: isTest,
+      timedOut: timedOut
     };
+
+    try {
+      await redisSet('form-summary:complete:' + todayStr, {
+        completedAt: new Date().toISOString(),
+        status: timedOut ? 'partial' : 'complete',
+        horsesGenerated: horsesGenerated,
+        horsesSkipped: horsesSkipped,
+        horsesFailed: horsesFailed,
+        timedOut: timedOut
+      });
+    } catch (ce) {}
 
     await sendEmail(summary);
 
