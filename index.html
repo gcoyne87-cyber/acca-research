@@ -15212,7 +15212,7 @@ function selectRacingSection(s){
         if(todayOpenMeeting!==m.id) toggleTodayMeeting(m.id);
         var ri=_findRaceIdx(m);
         if(ri!==-1&&rcOpenRace[m.id]!==ri) todaySelectRace(m.id,ri);
-        _scrollToRacecardsTop('racing-today-content');
+        _scrollToRacecardsTop('today-meetings-list');
       };
       var _navTomorrow=function(m){
         // Route through the same shared 'racecards' branch _navToday uses — this is
@@ -15226,7 +15226,7 @@ function selectRacingSection(s){
         if(tmOpenMeeting!==m.id) toggleTomorrowMeeting(m.id);
         var ri=_findRaceIdx(m);
         if(ri!==-1&&tmOpenRace[m.id]!==ri) tomorrowSelectRace(m.id,ri);
-        _scrollToRacecardsTop('racing-tomorrow-content');
+        _scrollToRacecardsTop('tomorrow-meetings-list');
       };
       var _rcList=typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null;
       var _tmList=typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null;
