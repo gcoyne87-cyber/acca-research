@@ -939,7 +939,7 @@ async function generateIntelligence(racecards) {
         continue;
       }
 
-      const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
+      const isHot = entry.pct >= 25;
       if (!isHot) trainersToRemove.push(trainerName);
     } catch (e) {
       // Baseline could not be fetched — trainer cannot be assessed, remove entirely.
