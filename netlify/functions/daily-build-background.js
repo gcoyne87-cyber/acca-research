@@ -430,17 +430,23 @@ Step 3 — SELECT: Using all of the above, pick the single most compelling candi
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
 4. CLASS DROP
-Do NOT use web search — all data is pre-computed from the Racing API.
-
-You have two candidate pools:
-POOL 1 — CLASS DROP CANDIDATES: Horses last run in Class 1, 2 or 3 dropping at least 1 class today. Clear trainer targeting signal.
-POOL 2 — OR GAP CANDIDATES: Horses rated 8+ points above the second highest rated horse in today's race. Provably better than their rivals on official ratings.
-A horse in both pools is the strongest signal.
-Step 1 — READ both pools.
-Step 2 — SELECT the most compelling candidate using full reasoning — class drop size, quality of class dropped from, OR gap size, trainer intent, recent form, field quality, price. If nothing is genuinely compelling produce no card.
-Do not select a horse priced shorter than 1/2. Empty slot better than weak card.
-Standard horse card — name, price, race time, CTA to that race.
-intelligenceText: state the specific edge clearly — class drop details or rating advantage or both. One sentence on what this means in today's specific race context. Grounded in data. No generic observations.
+Do NOT use web search — all data is pre-computed.
+You have been given Class Drop and OR Gap candidates with
+their recent form and full race field.
+Use everything — class drop size, OR advantage, recent form,
+race field, price — to judge whether any candidate genuinely
+stands out in the context of their specific race today.
+If a candidate has poor recent form or is clearly outclassed
+despite the signal, do not card it.
+Producing no card is always better than a weak card.
+If one candidate genuinely stands out, produce a standard
+horse card with the specific edge stated clearly.
+Do not select a horse priced shorter than 1/2. Empty slot
+better than weak card.
+intelligenceText: state the specific edge clearly — class
+drop details or rating advantage or both. One sentence on
+what this means in today's specific race context. Grounded
+in data. No generic observations.
 
 ━━━ INFO/EMPOWERMENT CARDS (no specific pick in the header — give users the intelligence to decide) ━━━
 
@@ -1096,13 +1102,19 @@ async function generateIntelligence(racecards) {
 
       classDropCandidates.push({
         horse: runner.horse || runner.name || 'Unknown',
+        horse_id: runner.horse_id,
         trainer: runner.trainer || '',
         price: extractPrice(runner),
         time: raceTime(race),
         course: race.course || '',
         todayClass: String(race.race_class),
         lastRunClass: String(lastClassRun.race_class),
-        classDrop: classDrop
+        classDrop: classDrop,
+        field: (race.runners||[]).filter(function(x){
+          return !x.is_non_runner && x!==runner;
+        }).map(function(x){
+          return (x.horse||x.name||'Unknown')+' '+extractPrice(x)+' OR'+(x.ofr||x.official_rating||'-');
+        }).join(', ')
       });
     }
   }
@@ -1130,13 +1142,19 @@ async function generateIntelligence(racecards) {
       const runner = ratedRunners[0].runner;
       orGapCandidates.push({
         horse: runner.horse || runner.name || 'Unknown',
+        horse_id: runner.horse_id,
         trainer: runner.trainer || '',
         price: extractPrice(runner),
         time: raceTime(race),
         course: race.course || '',
         or: firstOR,
         secondOr: secondOR,
-        orGap: orGap
+        orGap: orGap,
+        field: (race.runners||[]).filter(function(x){
+          return !x.is_non_runner && x!==runner;
+        }).map(function(x){
+          return (x.horse||x.name||'Unknown')+' '+extractPrice(x)+' OR'+(x.ofr||x.official_rating||'-');
+        }).join(', ')
       });
     }
   }
@@ -1183,12 +1201,26 @@ async function generateIntelligence(racecards) {
     msg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
   }
 
+  const CD_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (classDropCandidates.length) {
     msg += 'CLASS DROP CANDIDATES (horses from Class 1, 2 or 3 dropping at least 1 class today):\n';
-    classDropCandidates.slice(0, 5).forEach(function(c) {
+    for (const c of classDropCandidates.slice(0, 5)) {
       msg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
       msg += '  Last run: ' + c.lastRunClass + ' → Today: ' + c.todayClass + ' (drop of ' + c.classDrop + ' classes)\n';
-    });
+      msg += '  Field: ' + (c.field || 'unavailable') + '\n';
+      if (c.horse_id) {
+        try {
+          const hist = await redisGet('form:history:' + c.horse_id + ':' + date);
+          if (Array.isArray(hist) && hist.length) {
+            msg += '  Last 6 runs:\n' + hist.slice(0, 6).map(function(run) {
+              const p = String(run.date || '').split('-');
+              const runDate = p.length === 3 ? (p[2] + ' ' + (CD_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (run.date || '');
+              return '    ' + runDate + ' | ' + (run.course || '') + ' | ' + (run.dist || '') + ' | ' + (run.going || '') + ' | ' + (run.pos || '-') + '/' + (run.ran || 0) + ' | ' + (run.sp || '');
+            }).join('\n') + '\n';
+          }
+        } catch (ce) { /* missing history is skipped silently — never errors */ }
+      }
+    }
     msg += '\n';
   } else {
     msg += 'CLASS DROP: No horses dropping from Class 1, 2 or 3 today. Do NOT produce a Class Drop signal.\n\n';
@@ -1196,10 +1228,23 @@ async function generateIntelligence(racecards) {
 
   if (orGapCandidates.length) {
     msg += 'OR GAP CANDIDATES (horses rated 8+ points above second highest rated horse in their race):\n';
-    orGapCandidates.forEach(function(c) {
+    for (const c of orGapCandidates) {
       msg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
       msg += '  OR: ' + c.or + ' | Second highest OR: ' + c.secondOr + ' | Gap: ' + c.orGap + ' points\n';
-    });
+      msg += '  Field: ' + (c.field || 'unavailable') + '\n';
+      if (c.horse_id) {
+        try {
+          const hist = await redisGet('form:history:' + c.horse_id + ':' + date);
+          if (Array.isArray(hist) && hist.length) {
+            msg += '  Last 6 runs:\n' + hist.slice(0, 6).map(function(run) {
+              const p = String(run.date || '').split('-');
+              const runDate = p.length === 3 ? (p[2] + ' ' + (CD_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (run.date || '');
+              return '    ' + runDate + ' | ' + (run.course || '') + ' | ' + (run.dist || '') + ' | ' + (run.going || '') + ' | ' + (run.pos || '-') + '/' + (run.ran || 0) + ' | ' + (run.sp || '');
+            }).join('\n') + '\n';
+          }
+        } catch (ce) { /* missing history is skipped silently — never errors */ }
+      }
+    }
     msg += '\n';
   } else {
     msg += 'OR GAP: No horses rated 8+ points above second highest rated in their race today.\n\n';
