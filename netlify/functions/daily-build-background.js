@@ -887,8 +887,8 @@ async function generateIntelligence(racecards) {
   racecards.forEach(function(race) {
     const t = raceTime(race);
     (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-      const t14 = r.trainer14 || {};
-      const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
+      const t14 = r.trainer_14_days || {};
+      const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
       if (runs >= 5 && pct >= 25 && r.trainer) {
         if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
         trainerFormMap[r.trainer].horses.push({
@@ -933,10 +933,10 @@ async function generateIntelligence(racecards) {
       const baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
       entry.baseline60 = baseline60;
 
-      // No results or a zero baseline means the spike can't be validated —
-      // drop the trainer instead of marking them HOT.
+      // No results or a zero baseline just means the spike can't be validated —
+      // keep the trainer (isHot below only requires pct >= 25) with baseline60 = 0.
       if (!baselineRuns || !baseline60) {
-        trainersToRemove.push(trainerName);
+        entry.baseline60 = 0;
         continue;
       }
 
