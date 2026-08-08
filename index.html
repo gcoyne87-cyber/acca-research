@@ -15162,6 +15162,14 @@ function selectPicksSubTab(sub){
   selectPicksDate(sub);
 }
 
+// Set by _navToday/_navTomorrow immediately before their internal
+// selectRacingSection('racecards') call — the CTA nav path switches section
+// exactly like the explicit Cards nav tab does, so the date-tab-bar visibility
+// check below can't otherwise tell "user clicked Cards" from "CTA click just
+// switched sections". Consumed and cleared on the very next check so it never
+// suppresses a later, genuine Cards-tab click.
+var _ctaSuppressDateStrip=false;
+
 function selectRacingSection(s){
   if(typeof s==='string'&&s.indexOf('tomorrowtrainer:')===0){
     _trainerFilterSelected = null;
@@ -15208,6 +15216,7 @@ function selectRacingSection(s){
         },120);
       };
       var _navToday=function(m){
+        _ctaSuppressDateStrip=true;
         selectRacingSection('racecards');
         if(todayOpenMeeting!==m.id) toggleTodayMeeting(m.id);
         var ri=_findRaceIdx(m);
@@ -15220,6 +15229,7 @@ function selectRacingSection(s){
         // against the current _horseHighlight. Without it, a tomorrow-card click left
         // whatever section/carousel state was already on screen untouched, which is
         // what broke repeat or alternating clicks.
+        _ctaSuppressDateStrip=true;
         selectRacingSection('racecards');
         _homeRcDay='tomorrow';
         selectRacingDate('tomorrow');
@@ -15334,7 +15344,8 @@ function selectRacingSection(s){
   var tdRcTitle=document.getElementById("today-racecards-title");
   if(tdRcTitle) tdRcTitle.style.display=((s==="home"||s==="racecards")&&RC_MEETINGS.length)?"":"none";
   var homeStripBar=document.getElementById("home-date-strip-bar");
-  if(homeStripBar) homeStripBar.style.display=(s==="home"||s==="racecards")?"flex":"none";
+  if(homeStripBar) homeStripBar.style.display=((s==="home"||s==="racecards")&&!_ctaSuppressDateStrip)?"flex":"none";
+  _ctaSuppressDateStrip=false;
   var picksSecTitle=document.getElementById("picks-section-title");
   if(picksSecTitle) picksSecTitle.style.display=(s==="pickofday"||s==="home")?"none":"";
   var nrHomeWrap=document.getElementById("nr-home-wrap");
