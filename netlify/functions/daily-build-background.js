@@ -423,11 +423,22 @@ Step 3 — SELECT: Using the GROUND EDGE CANDIDATES data and your full reasoning
 Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
 
 3. COURSE AND DISTANCE
-If the COURSE AND DISTANCE section of this message shows no qualifying horses do not produce this card. Do NOT use web search — all data is pre-computed from the Racing API and provided in the COURSE AND DISTANCE section of this message.
-Step 1 — QUALIFY: Read COURSE AND DISTANCE data. Candidates now include two types of horses — those with a strong top 2 record at today's course (2+ top 2 finishes with a 33% or higher top 2 rate), and horses that have won at least once at today's course regardless of distance or going. Both types are valid candidates.
-Step 2 — REASON: Candidates qualify one of two ways — those with a strong top 2 record at today's course (2+ top 2 finishes, 33%+ rate), and those with at least one win at today's course regardless of distance or going. Rank candidates in this priority order: 1) a win at today's exact distance AND today's going — the strongest possible signal, 2) a win at today's exact distance on any going, 3) a top 2 finish at today's course without a win at today's exact distance. Within each tier use your full reasoning to weigh how recent the form is (last 2 years as strong, 2-4 years ago as moderate, 4+ years ago as weak) and how this horse compares to the rest of today's field. If the whole field has course form the signal is weak overall. If this horse is the only proven performer at this course the signal is strongest.
-Step 3 — SELECT: Using all of the above, pick the single most compelling candidate. If nothing stands out as a genuine edge do not produce this card.
-Do not select a horse priced shorter than 1/2. Standard horse card — name, price, race time, CTA to that race.
+Do NOT use web search — all data is pre-computed.
+You have been given Course and Distance candidates with
+their course record, recent form history, and full race
+field for today.
+Use everything — course record strength, how recent the
+form is, recent overall form, race field, price — to judge
+whether any candidate genuinely stands out in the context
+of their specific race today.
+If the horse has strong course form but poor recent form
+overall, or is clearly outclassed by the field, do not card it.
+Producing no card is always better than a weak card.
+Do not select a horse priced shorter than 1/2.
+If one candidate genuinely stands out, produce a standard
+horse card with the specific course and distance edge stated.
+intelligenceText: state why this horse stands out at this
+course today, in context of the race. Grounded in data.
 
 4. CLASS DROP
 Do NOT use web search — all data is pre-computed.
@@ -1049,6 +1060,7 @@ async function generateIntelligence(racecards) {
 
       courseDistanceCandidates.push({
         horse: runner.horse || runner.name || 'Unknown',
+        horse_id: runner.horse_id,
         price: extractPrice(runner),
         time: raceTime(race),
         course: course,
@@ -1057,7 +1069,12 @@ async function generateIntelligence(racecards) {
         courseTopTwoRate: courseTopTwoRate,
         topTwoDates: courseTopTwo.map(function(h) { return h.date; }).join(', '),
         winAtTodaysDistance: winAtTodaysDistance,
-        topTwoGoings: topTwoGoings
+        topTwoGoings: topTwoGoings,
+        field: (race.runners||[]).filter(function(x){
+          return !x.is_non_runner && x!==runner;
+        }).map(function(x){
+          return (x.horse||x.name||'Unknown')+' '+extractPrice(x)+' OR'+(x.ofr||x.official_rating||'-');
+        }).join(', ')
       });
     }
   }
@@ -1188,20 +1205,33 @@ async function generateIntelligence(racecards) {
     msg += 'GROUND EDGE: No qualifying ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
   }
 
+  const CD_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (courseDistanceCandidates.length) {
     msg += 'COURSE AND DISTANCE CANDIDATES (2+ top 2 finishes at today\'s course, 33%+ course win rate):\n';
-    courseDistanceCandidates.slice(0, 5).forEach(function(c) {
+    for (const c of courseDistanceCandidates.slice(0, 5)) {
       msg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
       msg += '  Course record: ' + c.courseTopTwo + ' top 2 finishes from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseTopTwoRate + '% SR) | Top 2 dates: ' + c.topTwoDates + '\n';
       msg += '  Top 2 finish at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
       msg += '  Going on course form: ' + (c.topTwoGoings.length ? c.topTwoGoings.join(', ') : 'Unknown') + '\n';
-    });
+      msg += '  Field: ' + (c.field || 'unavailable') + '\n';
+      if (c.horse_id) {
+        try {
+          const hist = await redisGet('form:history:' + c.horse_id + ':' + date);
+          if (Array.isArray(hist) && hist.length) {
+            msg += '  Last 6 runs:\n' + hist.slice(0, 6).map(function(run) {
+              const p = String(run.date || '').split('-');
+              const runDate = p.length === 3 ? (p[2] + ' ' + (CD_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (run.date || '');
+              return '    ' + runDate + ' | ' + (run.course || '') + ' | ' + (run.dist || '') + ' | ' + (run.going || '') + ' | ' + (run.pos || '-') + '/' + (run.ran || 0) + ' | ' + (run.sp || '');
+            }).join('\n') + '\n';
+          }
+        } catch (ce) { /* missing history is skipped silently — never errors */ }
+      }
+    }
     msg += '\n';
   } else {
     msg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
   }
 
-  const CD_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (classDropCandidates.length) {
     msg += 'CLASS DROP CANDIDATES (horses from Class 1, 2 or 3 dropping at least 1 class today):\n';
     for (const c of classDropCandidates.slice(0, 5)) {
