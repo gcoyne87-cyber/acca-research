@@ -1338,7 +1338,7 @@ async function generateIntelligence(racecards) {
   const hotYardCards = [];
   const hotYardOrdered = trainerFormCandidates.slice().sort(function(a, b) { return b.pct - a.pct; });
   for (const cand of hotYardOrdered) {
-    if (hotYardCards.length >= 2) break;
+    if (hotYardCards.length >= 1) break;
     try {
       let hyMsg = 'Trainer: ' + cand.trainer + ' — ' + cand.wins + ' winners from ' + cand.runs + ' runners in last 14 days (' + cand.pct + '% strike rate)\n\nToday\'s runners:\n';
       for (const h of cand.horses) {
