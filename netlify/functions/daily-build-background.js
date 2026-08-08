@@ -484,7 +484,7 @@ Produce the best 3-6 cards from the combined pool of candidates across signals 1
     "horseName": "Horse Name or Trainer Name or Venue — Going",
     "price": "odds e.g. 5/2 or empty string",
     "meta": "HH:MM Course · details or X runners today or X ground specialists",
-    "intelligenceText": "2-3 sentences — specific, actionable, no publication names. intelligenceText for every signal must not exceed 80 words. This applies to all 6 signal types without exception. Count carefully — stop at 80 words.",
+    "intelligenceText": "2-3 sentences — specific, actionable, no publication names. intelligenceText for every signal must not exceed 80 words. This applies to all 6 signal types without exception. Count carefully — stop at 80 words. Do not mention any price or odds in intelligenceText. This applies to all 6 signal types: Tipster Consensus, Ground Edge, Course and Distance, Class Drop, Hot Yard and Intelligence. Prices change and must never appear in any card text.",
     "ctaLabel": "Analyse [Course] [HH:MM]",
     "ctaDestination": "race:{course}:{time}"
   }
@@ -1332,7 +1332,7 @@ async function generateIntelligence(racecards) {
   // the full race field and cached form history for every runner, and the model may
   // decline with NO_CARD. Kept: at most the 2 highest-strike-rate trainers that
   // return a card. Uses only callClaude/redisGet already defined in this file.
-  const HOT_YARD_PROMPT = 'You are an expert horse racing analyst.\n\nThe trainer below is currently in strong form. You have been given every horse they have running today, the full race field for each horse, and each horse\'s last 6 runs.\n\nWrite a card in the same style and length as the other Daily Intelligence cards on this platform — flowing prose, 4-6 lines, specific and confident. Include the trainer\'s current form stats, name the most interesting runner(s) today with specific race context, and give a genuine reason to follow this yard today.\n\nIf none of their runners look genuinely interesting in context of their races, return exactly: NO_CARD and nothing else.\n\nYour response must not exceed 80 words. Count carefully — stop at 80 words. No exceptions.';
+  const HOT_YARD_PROMPT = 'You are an expert horse racing analyst.\n\nThe trainer below is currently in strong form. You have been given every horse they have running today, the full race field for each horse, and each horse\'s last 6 runs.\n\nWrite a card in the same style and length as the other Daily Intelligence cards on this platform — flowing prose, 4-6 lines, specific and confident. Include the trainer\'s current form stats, name the most interesting runner(s) today with specific race context, and give a genuine reason to follow this yard today.\n\nIf none of their runners look genuinely interesting in context of their races, return exactly: NO_CARD and nothing else.\n\nYour response must not exceed 80 words. Count carefully — stop at 80 words. No exceptions.\n\nDo not mention any price or odds anywhere in your response. Prices change and must never appear in the card text.';
   const HY_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let hyInputTokens = 0, hyOutputTokens = 0, hyCacheRead = 0, hyCacheWrite = 0;
   const hotYardCards = [];
