@@ -13631,7 +13631,23 @@ function loadDailyBuild(){
   var tomorrowDate=td.toISOString().slice(0,10);
 
   function _ctaRaceTimePassed(ctaDestination,itemDate){
-    if((ctaDestination||'').indexOf('trainer:')===0) return false;
+    var _dest=ctaDestination||'';
+    if(_dest.indexOf('trainer:')===0){
+      var _trainerName=_dest.substring('trainer:'.length).trim().toLowerCase();
+      var _latestMins=null;
+      (typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:[]).forEach(function(m){
+        (m.races||[]).forEach(function(race){
+          var _hasTrainer=(race.runners||[]).some(function(r){
+            return !r.is_non_runner&&(r.trainer||'').trim().toLowerCase()===_trainerName;
+          });
+          if(_hasTrainer&&race.t24!=null&&(_latestMins===null||race.t24>_latestMins)) _latestMins=race.t24;
+        });
+      });
+      if(_latestMins===null) return true;
+      var _now2=new Date();
+      var _nowMins=_now2.getHours()*60+_now2.getMinutes();
+      return _nowMins>_latestMins;
+    }
     if(itemDate){
       var _ld=new Date();
       var _localTodayStr=_ld.getFullYear()+'-'+String(_ld.getMonth()+1).padStart(2,'0')+'-'+String(_ld.getDate()).padStart(2,'0');
