@@ -11235,6 +11235,9 @@ function todaySelectRace(mid,ri){
     if(rcOpenRace[mid]!=null){
       var el=document.getElementById("tdpills-"+mid);
       if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"});
+      var pills=el?el.querySelectorAll(".time-tab"):null;
+      var pill=pills?pills[ri]:null;
+      if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
     }
   },60);
 }
@@ -11385,6 +11388,9 @@ function _tfSelectRace(dayKey,meetingId,raceTime){
   var key=dayKey+'|'+meetingId;
   _tfRaceSel[key]=(_tfRaceSel[key]===raceTime)?null:raceTime;
   renderTodayMeetingsList(false);
+  var el=document.getElementById("tf-race-pills");
+  var pill=el?el.querySelector(".time-tab.active"):null;
+  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
 }
 
 function renderTrainerFilterMultiDay(el,isInitial){
@@ -11437,14 +11443,14 @@ function renderTrainerFilterMultiDay(el,isInitial){
   }
 
   out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
-  out+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+  out+='<div id="tf-race-pills" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
   var selKeyPrefix=_tfSelectedDay+'|';
   var selectedFr=null;
   dayRaces.forEach(function(fr){
     var rk=selKeyPrefix+fr.meetingId;
     var isSel=_tfRaceSel[rk]?_tfRaceSel[rk]===fr.raceTime:fr===dayRaces[0];
     if(isSel) selectedFr=fr;
-    out+='<div onclick="_tfSelectRace(\''+_tfSelectedDay+'\',\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+    out+='<div onclick="_tfSelectRace(\''+_tfSelectedDay+'\',\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab'+(isSel?' active':'')+'" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
     out+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
     out+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
     out+='</div>';
@@ -11715,6 +11721,9 @@ var futureDateOpenRace={};
 function futureSelectRace(meetingId,raceIndex,dateStr){
   futureDateOpenRace[meetingId]=futureDateOpenRace[meetingId]===raceIndex?null:raceIndex;
   renderFutureDateContent(dateStr);
+  var el=document.getElementById("fd-race-pills");
+  var pill=el?el.querySelector(".time-tab.active"):null;
+  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
 }
 
 function renderFutureDateContent(dateStr,targetEl){
@@ -11744,10 +11753,10 @@ function renderFutureDateContent(dateStr,targetEl){
         out2+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' today</div>';
       }else{
         out2+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
-        out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+        out2+='<div id="fd-race-pills" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
         filteredRaces.forEach(function(fr){
           var isSel=futureDateOpenRace[fr.meetingId]===fr.raceIndex;
-          out2+='<div onclick="futureSelectRace(\''+fr.meetingId+'\','+fr.raceIndex+',\''+dateStr+'\')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+          out2+='<div onclick="futureSelectRace(\''+fr.meetingId+'\','+fr.raceIndex+',\''+dateStr+'\')" class="time-tab'+(isSel?' active':'')+'" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
           out2+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
           out2+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
           out2+='</div>';
@@ -12353,6 +12362,12 @@ function _raceTabsHtml(mid,time,mname){
 function rcSingleSelectRace(id,ri){
   _rcSingleOpenRace[id]=_rcSingleOpenRace[id]===ri?null:ri;
   renderRcSingleList();
+  if(_rcSingleOpenRace[id]!=null){
+    var el=document.getElementById("rcspills-"+id);
+    var pills=el?el.querySelectorAll(".time-tab"):null;
+    var pill=pills?pills[ri]:null;
+    if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
+  }
 }
 function rcPillsHtml(m){
 
@@ -13455,7 +13470,17 @@ function nrAttachSwipe(){
   });
 }
 
-function nrSelect(i){nrSelected=i;nrMoreOpen=false;nrRenderStrip();nrRenderCard();}
+function nrSelect(i){
+  nrSelected=i;nrMoreOpen=false;nrRenderStrip();nrRenderCard();
+  var strip=document.getElementById("nr-strip");
+  var pills=strip?strip.querySelectorAll(".time-tab"):null;
+  var pill=pills?pills[i-nrAnchor]:null;
+  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
+  var stripHome=document.getElementById("nr-strip-home");
+  var pillsHome=stripHome?stripHome.querySelectorAll(".time-tab"):null;
+  var pillHome=pillsHome?pillsHome[i-nrAnchorHome]:null;
+  if(pillHome) pillHome.scrollIntoView({behavior:"smooth",inline:"nearest"});
+}
 function nrArrow(dir){
   var next=nrSelected+dir;
   if(next<0||next>=NR_RACES.length) return;
@@ -15624,6 +15649,9 @@ function tomorrowSelectRace(mid,ri){
     if(tmOpenRace[mid]!=null){
       var el=document.getElementById("tmpills-"+mid);
       if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"});
+      var pills=el?el.querySelectorAll(".time-tab"):null;
+      var pill=pills?pills[ri]:null;
+      if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
     }
   },60);
 }
