@@ -196,11 +196,10 @@ DECIMAL PRECISION IS MANDATORY: Use one decimal place. Do I have 3 strong factor
 DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
 
 ---
-WEB SEARCH — run exactly 2 searches:
-1. "Racing Post Timeform At The Races NAP [racecourse] [date]" — tipster consensus for this specific race
-2. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
+WEB SEARCH — run exactly 1 search:
+1. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
 
-DO NOT search for: market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. The second search is specifically for horse-level news and health that the racecard cannot provide.
+DO NOT search for: tipster picks, market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. This search is specifically for horse-level news and health that the racecard cannot provide.
 
 ---
 NH-SPECIFIC ANGLES TO LOOK FOR:
@@ -239,10 +238,6 @@ NH INTELLIGENCE & EDGE SIGNALS:
 21. ★ Seasonal timing — NH horses improve through the season; early season form vs late season peak
 22. Stable in-form signal — yard running hot, multiple winners recently
 23. ★ AGE & HEALTH QUESTIONS — NH horses aged 9+ rarely win at the top level; horses aged 8+ who have had significant health concerns, lengthy absences, or are returning from illness or injury carry serious question marks regardless of their form profile. If your leading selection is 8+ and the second web search surfaces ANY health concern, absence, intensive care, or stable worry — state this explicitly in the analysis, flag it in pullQuote, and reduce confidence accordingly. Do not pick an ageing horse with health questions over a younger, improving rival without explicitly acknowledging the risk to the user.
-
----
-TIPSTER CONSENSUS — ASSIMILATE, DON'T PARROT:
-You have searched for what Racing Post, Timeform, At The Races and private NH tipsters are saying. Now form YOUR OWN view. If the consensus agrees with your reading of the data, it is corroborating evidence — not the reason for your pick. If the consensus disagrees, say so and explain why your reading differs. Never write "Racing Post backs X" or "Timeform say Y" as if that is the conclusion. The conclusion is always yours, built from the data. Tipster views are one signal among many.
 
 ---
 OUTPUT RULES:
@@ -314,11 +309,10 @@ DECIMAL PRECISION IS MANDATORY: Use one decimal place. 3 strong factors but one 
 DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
 
 ---
-WEB SEARCH — run exactly 2 searches:
-1. "Racing Post Timeform At The Races NAP [racecourse] [date]" — tipster consensus for this specific race
-2. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
+WEB SEARCH — run exactly 1 search:
+1. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
 
-DO NOT search for: market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. The second search is specifically for horse-level news and health that the racecard cannot provide.
+DO NOT search for: tipster picks, market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. This search is specifically for horse-level news and health that the racecard cannot provide.
 
 ---
 FLAT-SPECIFIC ANGLES TO LOOK FOR:
@@ -364,10 +358,6 @@ PACE:
 25. ★ Pace scenario — how many confirmed front-runners declared? Natural leader or fight for the lead?
 26. Horse's pace profile — front-runner, hold-up, or come-from-behind
 27. Pace collapse risk — multiple front-runners likely to set a suicidal pace
-
----
-TIPSTER CONSENSUS — ASSIMILATE, DON'T PARROT:
-You have searched for what Racing Post, Timeform, At The Races and private flat tipsters are saying. Now form YOUR OWN view. If the consensus agrees with your reading of the data, it is corroborating evidence — not the reason for your pick. If the consensus disagrees, explain why your reading differs. Never write "Racing Post backs X" or "Timeform say Y" as if that is your conclusion. The conclusion is always yours, built from the data. Tipster views are one signal among many — they sharpen your thinking, they don't replace it.
 
 ---
 OUTPUT RULES:
@@ -567,14 +557,14 @@ Write the race form overview.`;
 
 // ── ANALYSIS CALLS ────────────────────────────────────────────────────────────
 
-async function callClaude(systemPrompt, userMessage, tokens, noSearch) {
+async function callClaude(systemPrompt, userMessage, tokens, noSearch, maxSearches) {
   const body = {
     model: 'claude-sonnet-4-6',
     max_tokens: tokens || 6000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   };
-  if (!noSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }];
+  if (!noSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxSearches || 2 }];
   const resp = await apiPost('api.anthropic.com', '/v1/messages', {
     'x-api-key': ANTHROPIC_KEY,
     'anthropic-version': '2023-06-01',
@@ -860,7 +850,7 @@ async function analyseRace(race, NH, tipsterContext) {
     ? `\nTIPSTER CONSENSUS (from morning intelligence sweep):\n${tipsterContext}\n`
     : '';
 
-  const msg = `Analyse this ${NH ? 'National Hunt' : 'flat'} race. Full Racing API form history is provided for each runner. You MUST run your 1 web search to find tipster picks specific to THIS race — search now for "[racecourse] [date] NAP tipster". The morning intelligence below is a broad card overview only, not race-specific tipster picks.
+  const msg = `Analyse this ${NH ? 'National Hunt' : 'flat'} race. Full Racing API form history is provided for each runner. You MUST run your 1 web search for horse-level news on your leading selection only — search "[name of leading selection] [current year]" for recent news, health concerns or trainer quotes.
 
 Meeting: ${race.course}
 Date: ${date}
@@ -875,7 +865,7 @@ ${runners}
 
 Return ONLY the JSON object.`;
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, false, 1);
   return { result: parseJson(text), inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount };
 }
 
