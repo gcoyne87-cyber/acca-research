@@ -1,7 +1,7 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-module.exports.config = { schedule: '0 5 * * *', timeout: 900 };
+module.exports.config = { schedule: '0 5,7,9 * * *', timeout: 900 };
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -263,7 +263,7 @@ async function callClaude(runners) {
     'anthropic-version': '2023-06-01'
   }, {
     model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   });
@@ -492,6 +492,10 @@ exports.handler = async function(event) {
       }
       toProcess.push(Object.assign({}, runner, { formHistory: formHistory }));
     }
+
+    toProcess.sort(function(a,b){
+      return (a.date===todayStr?0:1)-(b.date===todayStr?0:1);
+    });
 
     const TIMEOUT_MS = 780 * 1000;
     let timedOut = false;
