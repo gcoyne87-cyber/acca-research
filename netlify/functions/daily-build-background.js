@@ -2211,32 +2211,6 @@ exports.handler = async function(event) {
 
         // Generate per-horse summaries sequentially — parallel batches cause Anthropic rate-limit errors
         const validHorseSummaries = [];
-        if (RUN_FULL_BUILD) {
-        for (const { runner, history } of runnerForms) {
-          try {
-            const key = `form:summary:${runner.horse_id}:${today}`;
-            const cached = await redisGet(key);
-            if (cached) {
-              validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary: cached });
-              continue;
-            }
-            const summaryData = await generateHorseFormSummary(runner, raceContext, history);
-            if (summaryData) {
-              const { _tokens, _failed, ...summary } = summaryData;
-              report.inputTokens += (_tokens?.input || 0);
-              report.outputTokens += (_tokens?.output || 0);
-              report.cacheReadTokens += (_tokens?.cacheRead || 0);
-              report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
-              report.callLog.push({ type: 'form-summary', label: runner.horse || runner.name || 'Unknown', inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
-              if (!_failed) {
-                await redisSet(key, summary);
-                formHorsesGenerated++;
-                validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary });
-              }
-            }
-          } catch(e) { report.errors.push('form:horse:' + (runner.horse || '?') + ': ' + e.message); }
-        }
-        }
 
         if (validHorseSummaries.length >= 1) {
           // Build per-horse form fit grid data
@@ -2311,42 +2285,41 @@ exports.handler = async function(event) {
     report.formRacesGenerated = formRacesGenerated;
     console.log(`[daily-build] Form summaries complete: ${formHorsesGenerated} horses, ${formRacesGenerated} races`);
 
-    // 5.5 Cross-reference intelligence items against race analyses
-    // Drop any intelligence card whose horse conflicts with the race analysis pick for that race.
-    // A card survives only if: (a) it has no specific race/time, (b) no analysis exists for that race,
-    // or (c) its horse matches the strongestSelection. This prevents two different horses being
-    // recommended for the same race across the two layers.
-    if (report.intelligence && report.intelligence.length && report.analyses && report.analyses.length) {
-      const _normH = s => (s || '').toLowerCase()
-        .replace(/\s*\((ire|gb|fr|usa|ger|aus|nz|ity|spa|bel|den|swe|nor|cze|pol|hun|por|tur|chi|arg|bra|jap|hkg|uae|can|saf|ind)\)/g, '')
-        .replace(/[^a-z0-9]/g, '');
-
-      // Build lookup: "TIME|courseFirstWord" → normalised strongest selection horse
-      const _aLookup = {};
-      for (const a of report.analyses) {
-        if (!a.strongestSelection || !a.strongestSelection.horseName) continue;
-        const parts = (a.race || '').split(' ');
-        const time = parts[parts.length - 1] || '';
-        const courseFirst = (parts[0] || '').toLowerCase();
-        if (time && courseFirst) _aLookup[time + '|' + courseFirst] = _normH(a.strongestSelection.horseName);
-      }
-
-      const _before = report.intelligence.length;
-      report.intelligence = report.intelligence.filter(item => {
-        // Extract time and course from meta e.g. "14:30 Ascot · Queen Mary Stakes"
-        const m = (item.meta || '').match(/^(\d{1,2}:\d{2})\s+([A-Za-z]+)/);
-        if (!m) return true; // no time pattern → hot yard / info card → keep
-        const key = m[1] + '|' + m[2].toLowerCase();
-        const selHorse = _aLookup[key];
-        if (!selHorse) return true; // no analysis for this race → keep
-        const intelHorse = _normH(item.horseName || '');
-        if (!intelHorse) return true; // no specific horse (info card) → keep
-        return intelHorse === selHorse; // keep only if signal confirms the analysis pick
-      });
-
-      const _dropped = _before - report.intelligence.length;
-      if (_dropped > 0) console.log(`[daily-build] Intelligence cross-ref: dropped ${_dropped} item(s) conflicting with race analysis picks`);
-    }
+    // 5.5 Cross-reference intelligence items against race analyses — DISABLED.
+    // This filter dropped any intelligence card whose horse conflicted with the race
+    // analysis pick for that race. Disabled so Intelligence cards always survive
+    // regardless of RUN_FULL_BUILD state — the two layers are allowed to disagree.
+    // if (report.intelligence && report.intelligence.length && report.analyses && report.analyses.length) {
+    //   const _normH = s => (s || '').toLowerCase()
+    //     .replace(/\s*\((ire|gb|fr|usa|ger|aus|nz|ity|spa|bel|den|swe|nor|cze|pol|hun|por|tur|chi|arg|bra|jap|hkg|uae|can|saf|ind)\)/g, '')
+    //     .replace(/[^a-z0-9]/g, '');
+    //
+    //   // Build lookup: "TIME|courseFirstWord" → normalised strongest selection horse
+    //   const _aLookup = {};
+    //   for (const a of report.analyses) {
+    //     if (!a.strongestSelection || !a.strongestSelection.horseName) continue;
+    //     const parts = (a.race || '').split(' ');
+    //     const time = parts[parts.length - 1] || '';
+    //     const courseFirst = (parts[0] || '').toLowerCase();
+    //     if (time && courseFirst) _aLookup[time + '|' + courseFirst] = _normH(a.strongestSelection.horseName);
+    //   }
+    //
+    //   const _before = report.intelligence.length;
+    //   report.intelligence = report.intelligence.filter(item => {
+    //     // Extract time and course from meta e.g. "14:30 Ascot · Queen Mary Stakes"
+    //     const m = (item.meta || '').match(/^(\d{1,2}:\d{2})\s+([A-Za-z]+)/);
+    //     if (!m) return true; // no time pattern → hot yard / info card → keep
+    //     const key = m[1] + '|' + m[2].toLowerCase();
+    //     const selHorse = _aLookup[key];
+    //     if (!selHorse) return true; // no analysis for this race → keep
+    //     const intelHorse = _normH(item.horseName || '');
+    //     if (!intelHorse) return true; // no specific horse (info card) → keep
+    //     return intelHorse === selHorse; // keep only if signal confirms the analysis pick
+    //   });
+    //
+    //   const _dropped = _before - report.intelligence.length;
+    //   if (_dropped > 0) console.log(`[daily-build] Intelligence cross-ref: dropped ${_dropped} item(s) conflicting with race analysis picks`);
+    // }
 
     // 6. Calculate cost and store final report
     // AUDIT-DAILY-INTELLIGENCE.md, finding S4: report.costUSD used to silently

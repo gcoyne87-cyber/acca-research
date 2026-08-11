@@ -52,7 +52,6 @@ exports.handler = async function(event) {
       confidenceScore: a.confidenceScore,
       pullQuote: a.strongestSelection && a.strongestSelection.pullQuote,
       factors: a.strongestSelection && a.strongestSelection.factors,
-      aiRaceVerdict: a.aiRaceVerdict,
       raceIntelligence: a.raceIntelligence,
       horsesToWatch: a.horsesToWatch || []
     }));
