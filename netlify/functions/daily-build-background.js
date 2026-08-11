@@ -2211,32 +2211,6 @@ exports.handler = async function(event) {
 
         // Generate per-horse summaries sequentially — parallel batches cause Anthropic rate-limit errors
         const validHorseSummaries = [];
-        if (RUN_FULL_BUILD) {
-        for (const { runner, history } of runnerForms) {
-          try {
-            const key = `form:summary:${runner.horse_id}:${today}`;
-            const cached = await redisGet(key);
-            if (cached) {
-              validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary: cached });
-              continue;
-            }
-            const summaryData = await generateHorseFormSummary(runner, raceContext, history);
-            if (summaryData) {
-              const { _tokens, _failed, ...summary } = summaryData;
-              report.inputTokens += (_tokens?.input || 0);
-              report.outputTokens += (_tokens?.output || 0);
-              report.cacheReadTokens += (_tokens?.cacheRead || 0);
-              report.cacheWriteTokens += (_tokens?.cacheWrite || 0);
-              report.callLog.push({ type: 'form-summary', label: runner.horse || runner.name || 'Unknown', inputTokens: _tokens?.input || 0, outputTokens: _tokens?.output || 0, cacheReadTokens: _tokens?.cacheRead || 0, cacheWriteTokens: _tokens?.cacheWrite || 0, webSearch: false, webSearchCount: 0 });
-              if (!_failed) {
-                await redisSet(key, summary);
-                formHorsesGenerated++;
-                validHorseSummaries.push({ horseName: runner.horse || runner.name || 'Unknown', summary });
-              }
-            }
-          } catch(e) { report.errors.push('form:horse:' + (runner.horse || '?') + ': ' + e.message); }
-        }
-        }
 
         if (validHorseSummaries.length >= 1) {
           // Build per-horse form fit grid data
