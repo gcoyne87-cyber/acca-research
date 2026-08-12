@@ -460,6 +460,13 @@ exports.handler = async function(event) {
 
     const dates = Array.from(new Set(runners.map(function(r) { return r.date; }))).sort();
 
+    // Today's runners first — same today-first rule as the toProcess sort below,
+    // applied here so the pre-filter's time budget is spent on today's horses
+    // before any future date's.
+    runners.sort(function(a,b){
+      return (a.date===todayStr?0:1)-(b.date===todayStr?0:1);
+    });
+
     let horsesSkipped = 0;
     let horsesFailed = 0;
     let horsesGenerated = 0;
@@ -467,11 +474,24 @@ exports.handler = async function(event) {
     let totalOutputTokens = 0;
     const errors = [];
 
+    // Declared before the pre-filter (not the batch loop) so both loops share
+    // the same clock — the pre-filter's per-runner Redis reads and live-API
+    // history fetches are the run's dominant cost and must respect the same
+    // budget, or the function gets hard-killed at 900s with no email and no
+    // completion evidence (exactly what has happened since 2026-08-07).
+    const TIMEOUT_MS = 780 * 1000;
+    let timedOut = false;
+
     // Pre-filter: skip any horse that already has a stored summary (no expiry —
     // see storeResults), and drop any horse getFormHistory couldn't produce
     // history for, before anything reaches Claude.
     const toProcess = [];
     for (const runner of runners) {
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        timedOut = true;
+        console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) during pre-filter — stopping early; next scheduled run will pick up the rest');
+        break;
+      }
       const existingSummary = await redisGet('form-summary:' + runner.horse_id);
       if (existingSummary) {
         horsesSkipped++;
@@ -496,9 +516,6 @@ exports.handler = async function(event) {
     toProcess.sort(function(a,b){
       return (a.date===todayStr?0:1)-(b.date===todayStr?0:1);
     });
-
-    const TIMEOUT_MS = 780 * 1000;
-    let timedOut = false;
 
     const BATCH = 10;
     for (let i = 0; i < toProcess.length; i += BATCH) {
