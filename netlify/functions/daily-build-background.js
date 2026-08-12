@@ -2402,7 +2402,28 @@ exports.handler = async function(event) {
         ? 'Daily Intelligence FAILED - ' + today
         : 'Daily Intelligence Complete - ' + today;
 
-      const emailBody = signalLines.concat([
+      // Top 10 selections by confidenceScore — ranks 1-2 are NAP/NB, 3-5 INTEL,
+      // 6-10 unlabelled. report.analyses entries carry the analysis fields spread
+      // at the top level ({ race, confidenceScore, strongestSelection, ... } —
+      // see the push in step 4), NOT nested under .result. Horses with no
+      // strongestSelection/horseName are filtered out before ranking so the top
+      // 10 never contains blank rows.
+      const rankedSelections = (report.analyses || [])
+        .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName; })
+        .sort(function(a, b) { return (b.confidenceScore || 0) - (a.confidenceScore || 0); })
+        .slice(0, 10);
+      const selectionLines = rankedSelections.map(function(a, i) {
+        const label = i === 0 ? 'NAP — ' : i === 1 ? 'NB — ' : i <= 4 ? 'INTEL — ' : '';
+        return (i + 1) + '. ' + label + a.strongestSelection.horseName
+          + ' | ' + (a.race || '')
+          + ' | ' + (a.strongestSelection.odds || 'SP')
+          + ' | Confidence: ' + (a.confidenceScore != null ? a.confidenceScore : '-');
+      });
+      const selectionsSection = selectionLines.length
+        ? ['🏇 Horse Selections For The Day'].concat(selectionLines, [''])
+        : [];
+
+      const emailBody = selectionsSection.concat(signalLines).concat([
         tomorrowLine,
         '',
         'Total Cost: $' + report.costUSD,
