@@ -2667,7 +2667,8 @@ window.addEventListener('load',function(){
         'Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9',
         'Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981',
         'Trainer':'#d4af37','Jockey Booking':'#8b5cf6',
-        'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#8b5cf6'};
+        'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#8b5cf6',
+        'Intel 3':'#8b5cf6','Intel 4':'#8b5cf6','Intel 5':'#8b5cf6'};
       return m[t]||'#6b7280';
     }
 
@@ -2699,7 +2700,7 @@ window.addEventListener('load',function(){
       if(news.length){
         var todayDate=news[0].date;
         var MAIN_TYPES=['NAP','NB','Strongest'];
-        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert'];
+        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert','Intel 3','Intel 4','Intel 5'];
         recs=recs.filter(function(r){
           if(r.date!==todayDate) return true;
           if(r.result&&r.result!=='') return true;
@@ -2745,12 +2746,12 @@ window.addEventListener('load',function(){
         .then(function(data){
           var news=[];
           // The 6 real Daily Intelligence signal types daily-build-background.js
-          // produces. NB/NAP/Strongest are deliberately absent — those 3 (plus the
-          // frozen "Tipster" row) never get new entries again. Every matching card
-          // becomes one resultable pick in the same list NAP/NB picks already use;
-          // ptRenderTypeRows separates these from the frozen rows purely by date
-          // (FREEZE_DATE), even though 'Tipster Consensus' shares its type string
-          // with the frozen "Tipster" row.
+          // produces. Every matching card becomes one resultable pick in the same
+          // list; ptRenderTypeRows separates these from the frozen rows purely by
+          // date (FREEZE_DATE), even though 'Tipster Consensus' shares its type
+          // string with the frozen "Tipster" row. NAP/NB live entries resumed with
+          // Phase 3 (pushPhase3 below) — their post-FREEZE_DATE recs feed the
+          // Phase 3 rows, never the frozen Phase 1 rows.
           var SIGNAL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence'];
           (data.intelligence||[]).forEach(function(sig){
             if(SIGNAL_TYPES.indexOf(sig.signalType)<0) return;
@@ -2763,6 +2764,25 @@ window.addEventListener('load',function(){
             // signalType is deliberately not part of identity either.
             news.push({id:signalPickId(sig.horseName,date),date:date,course:course,time:time,horse:sig.horseName,type:sig.signalType,price:price,angle:angle,sp:'',pos:'',result:''});
           });
+          // Phase 3 — the top 5 horses by confidence from the NAP/NB build:
+          // picks[0]/[1] are NAP and NB, intelPicks[0..2] are ranks 3-5. Pushed
+          // AFTER the intelligence loop so on a horse+date collision the Phase 3
+          // rank identity wins in mergeRecs. picks[2] (3rd pick) is deliberately
+          // not ingested — it is the same horse as intelPicks[0] ('Intel 3').
+          // Race strings are "Course HH:MM"; split into the course/time fields
+          // the dated cards render.
+          function pushPhase3(p,type){
+            if(!p||!p.horseName) return;
+            var rp=(p.race||'').split(' ');
+            var rt=rp[rp.length-1]||'';
+            var rc=rp.slice(0,rp.length-1).join(' ')||'';
+            news.push({id:signalPickId(p.horseName,date),date:date,course:rc,time:rt,horse:p.horseName,type:type,price:(p.odds&&p.odds!=='-')?p.odds:'SP',angle:cleanAngle(p.pullQuote||''),sp:'',pos:'',result:''});
+          }
+          pushPhase3((data.picks||[])[0],'NAP');
+          pushPhase3((data.picks||[])[1],'NB');
+          pushPhase3((data.intelPicks||[])[0],'Intel 3');
+          pushPhase3((data.intelPicks||[])[1],'Intel 4');
+          pushPhase3((data.intelPicks||[])[2],'Intel 5');
           cb(mergeRecs(news));
         })
         .catch(function(){ cb(getRecs()); });
@@ -2914,7 +2934,21 @@ window.addEventListener('load',function(){
       LIVE_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,true)}; })
         .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
         .forEach(function(x){ liveHtml+=rowHtml(x.t,x.d); });
-      // Two labelled boxes — subtle border, small gap; row markup above is
+      // Phase 3 — the daily top-5 by confidence from the NAP/NB build. Live-era
+      // (post-FREEZE_DATE) recs only, same computeRow the other rows use — the
+      // frozen Phase 1 NAP/NB rows are pre-FREEZE_DATE and can never overlap.
+      // Rendered in rank order (NAP first), not strike-rate order — the rank IS
+      // the row's identity here.
+      var PHASE3_TYPES=[
+        {key:'NAP',label:'NAP',color:'#d4af37'},
+        {key:'NB',label:'NB',color:'#3b82f6'},
+        {key:'Intel 3',label:'Intel 3',color:'#8b5cf6'},
+        {key:'Intel 4',label:'Intel 4',color:'#8b5cf6'},
+        {key:'Intel 5',label:'Intel 5',color:'#8b5cf6'}
+      ];
+      var phase3Html='';
+      PHASE3_TYPES.forEach(function(t){ phase3Html+=rowHtml(t,computeRow(t.key,true)); });
+      // Labelled boxes — subtle border, small gap; row markup above is
       // untouched, only wrapped.
       var boxStyle='border:1px solid #e4e8f0;border-radius:8px;padding:2px 8px 4px';
       var labelStyle='font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 3px 2px';
@@ -2922,7 +2956,9 @@ window.addEventListener('load',function(){
         '<div style="'+labelStyle+'">Phase 1</div>'
         +'<div style="'+boxStyle+'">'+frozenHtml+'</div>'
         +'<div style="'+labelStyle+';margin-top:8px">Phase 2</div>'
-        +'<div style="'+boxStyle+'">'+liveHtml+'</div>';
+        +'<div style="'+boxStyle+'">'+liveHtml+'</div>'
+        +'<div style="'+labelStyle+';margin-top:8px">Phase 3</div>'
+        +'<div style="'+boxStyle+'">'+phase3Html+'</div>';
     }
 
     function ptRender(recs){
