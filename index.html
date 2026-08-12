@@ -2737,13 +2737,16 @@ window.addEventListener('load',function(){
         return (a.time||'').localeCompare(b.time||'');
       });
       saveRecs(recs);
+      console.log('[pt-trace] mergeRecs: merged '+news.length+' news rec(s); ptRecs2 total now',recs.length); // TEMP TRACE — remove after verification
       return recs;
     }
 
     function fetchToday(date,cb){
+      console.log('[pt-trace] fetchToday →',date); // TEMP TRACE — remove after verification
       fetch('/.netlify/functions/get-daily-build?date='+date)
         .then(function(r){ return r.json(); })
         .then(function(data){
+          console.log('[pt-trace] fetchToday ←',date,'status:',data&&data.status,'| intelligence:',((data&&data.intelligence)||[]).length,'| picks:',((data&&data.picks)||[]).length,'| intelPicks:',((data&&data.intelPicks)||[]).length); // TEMP TRACE
           var news=[];
           // The 6 real Daily Intelligence signal types daily-build-background.js
           // produces. Every matching card becomes one resultable pick in the same
@@ -2783,9 +2786,16 @@ window.addEventListener('load',function(){
           pushPhase3((data.intelPicks||[])[0],'Intel 3');
           pushPhase3((data.intelPicks||[])[1],'Intel 4');
           pushPhase3((data.intelPicks||[])[2],'Intel 5');
+          console.log('[pt-trace] fetchToday built',news.length,'rec(s) for',date); // TEMP TRACE — remove after verification
           cb(mergeRecs(news));
         })
-        .catch(function(){ cb(getRecs()); });
+        .catch(function(e){
+          // Previously swallowed silently — a throw inside mergeRecs (e.g. a
+          // localStorage QuotaExceededError from saveRecs) looked identical to
+          // "no data". Surface it while tracing.
+          console.log('[pt-trace] fetchToday FAILED for',date,'—',e&&e.message); // TEMP TRACE — remove after verification
+          cb(getRecs());
+        });
     }
 
     window.ptSetResult=function(id,res){
@@ -3120,7 +3130,11 @@ window.addEventListener('load',function(){
       });
       saveRecs(cleaned);
       var today=new Date().toISOString().slice(0,10);
-      fetchToday(today,function(recs){ ptRender(recs); syncResults(); ptBackfillMissedDates(); });
+      console.log('[pt-trace] ptShow: unlock — today(UTC)='+today); // TEMP TRACE — remove after verification
+      fetchToday(today,function(recs){
+        console.log('[pt-trace] ptShow: today fetch merged — rec dates present:',Array.from(new Set(recs.map(function(r){return r.date;}))).sort().reverse().slice(0,10).join(', ')); // TEMP TRACE — remove after verification
+        ptRender(recs); syncResults(); ptBackfillMissedDates();
+      });
     }
 
     // Backfill: each of the last 7 days (today-1 back to today-7) is fetched
@@ -3149,11 +3163,13 @@ window.addEventListener('load',function(){
         var d=new Date(Date.now()-i*86400000).toISOString().slice(0,10);
         if(!(haveIntel[d]&&havePhase3[d])) missing.push(d);
       }
+      console.log('[pt-trace] backfill: incomplete dates →',missing.join(', ')||'(none)'); // TEMP TRACE — remove after verification
       if(!missing.length) return;
       (function next(){
         if(!missing.length){
           // One re-render + results sync once the whole chain lands, so
           // backfilled picks appear and their W/L/2nd results get pulled in.
+          console.log('[pt-trace] backfill: chain complete — re-rendering + syncing results'); // TEMP TRACE — remove after verification
           ptRender(getRecs());
           syncResults();
           return;
@@ -13795,7 +13811,14 @@ function loadDailyBuild(){
       var data=results[0];
       var tomorrowData=results[1];
       if(!tomorrowData||tomorrowData.status!=='done') tomorrowData=null;
-      if(!data||data.status==='loading'||data.status==='error') return;
+      if(!data||data.status==='loading'||data.status==='error'){
+        // Today's report legitimately doesn't exist between midnight UTC and
+        // the ~10:30 build — but the historical All Selections sections (and
+        // their cached results) must still load, or the whole section
+        // vanishes on every page load in that window.
+        loadHistoricalSelections();
+        return;
+      }
 
       // Store all analyses in lookup — store under both 12h and 24h time variants
       function _to24h(t){var m=(t||'').match(/^(\d{1,2}):(\d{2})$/);if(!m)return t;var h=parseInt(m[1],10);return(h<13?String(h+12):String(h))+':'+m[2];}
@@ -14444,20 +14467,27 @@ window._ptRQNext=function(){
   window._ptRQ.busy=true;
   window._ptRQ.busyAt=Date.now();
   var item=window._ptRQ.queue.shift();
+  console.log('[pt-trace] get-results →',item.d); // TEMP TRACE — remove after verification
   fetch('/.netlify/functions/get-results?date='+encodeURIComponent(item.d))
     .then(function(r){return r.json();})
     .then(function(data){
       window._ptRQ.busy=false;
       var lk=data&&data.lookup;
+      console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
       if(lk&&Object.keys(lk).length){
-        try{localStorage.setItem('results:'+item.d,JSON.stringify(lk));}catch(e){}
+        try{
+          localStorage.setItem('results:'+item.d,JSON.stringify(lk));
+          console.log('[pt-trace] results stored → localStorage["results:'+item.d+'"]'); // TEMP TRACE — remove after verification
+        }catch(e){
+          console.log('[pt-trace] results STORE FAILED for',item.d,'—',e&&e.message); // TEMP TRACE — remove after verification
+        }
         if(window._ptInjectAllSel) window._ptInjectAllSel();
       } else {
         delete window._ptRQ.seen[item.d]; // empty or missing lookup — allow retry
       }
       window._ptRQNext();
     })
-    .catch(function(){window._ptRQ.busy=false;delete window._ptRQ.seen[item.d];window._ptRQNext();});
+    .catch(function(e){console.log('[pt-trace] get-results FAILED for',item.d,'—',e&&e.message);window._ptRQ.busy=false;delete window._ptRQ.seen[item.d];window._ptRQNext();}); // TEMP TRACE in catch — remove after verification
 };
 window._ptRQAdd=function(d){
   if(window._ptRQ.seen[d]) return;
@@ -14507,6 +14537,7 @@ window._ptInjectAllSel=function(){
       if(cachedLookup){
         existingList.innerHTML=_buildSelRows(analyses,cachedLookup,picks,date,dateRecArr);
       } else {
+        console.log('[pt-trace] inject: no results cache yet for',date,'— queueing fetch'); // TEMP TRACE — remove after verification
         window._ptRQAdd(date);
       }
       return;
