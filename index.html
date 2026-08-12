@@ -14434,8 +14434,15 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs){
 // Serialised results-fetch queue — one at a time, no concurrent overload
 if(!window._ptRQ) window._ptRQ={queue:[],busy:false,seen:{}};
 window._ptRQNext=function(){
-  if(window._ptRQ.busy||!window._ptRQ.queue.length) return;
+  // A fetch that never settles (dropped connection — fetch has no timeout)
+  // used to leave busy=true forever, wedging the queue for the whole session
+  // while the 60s timer kept queueing. Treat an in-flight fetch as stalled
+  // after 30s and move on; if the stalled one ever does settle, its handler
+  // just clears busy and re-runs the queue — harmless.
+  if(window._ptRQ.busy&&(Date.now()-(window._ptRQ.busyAt||0))<30000) return;
+  if(!window._ptRQ.queue.length){ window._ptRQ.busy=false; return; }
   window._ptRQ.busy=true;
+  window._ptRQ.busyAt=Date.now();
   var item=window._ptRQ.queue.shift();
   fetch('/.netlify/functions/get-results?date='+encodeURIComponent(item.d))
     .then(function(r){return r.json();})
@@ -14527,10 +14534,14 @@ window._ptInjectAllSel=function(){
   }
 };
 
-// Re-fetch today's results every 60s so the All Selections list updates as races finish
+// Re-fetch today's results every 60s so the All Selections list updates as
+// races finish. Stale-while-revalidate: the cached lookup is deliberately NOT
+// removed up front — rows keep rendering from the last known results until the
+// fresh fetch lands and overwrites the cache in _ptRQNext. The old
+// remove-then-refetch pattern blanked every result for the whole fetch window,
+// and permanently whenever a fetch stalled.
 setInterval(function(){
   var _td=new Date().toISOString().slice(0,10);
-  try{localStorage.removeItem('results:'+_td);}catch(e){}
   delete window._ptRQ.seen[_td];
   if(window._ptRQAdd) window._ptRQAdd(_td);
 },60000);
