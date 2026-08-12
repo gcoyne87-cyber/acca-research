@@ -2787,6 +2787,17 @@ window.addEventListener('load',function(){
     }
 
     function ptRenderTotals(recs){
+      // Totals count every rec blindly and never referenced LIVE_TYPES, so the
+      // signal types retired from the rows must be excluded here explicitly.
+      // Tipster Consensus is excluded only from FREEZE_DATE onward (same
+      // '2026-08-03' constant as ptRenderTypeRows) — the frozen Tipster row's
+      // pre-freeze era stays displayed and keeps its stats contribution.
+      var REMOVED_LIVE=['Intelligence','Ground Edge','Hot Yard'];
+      recs=recs.filter(function(r){
+        if(REMOVED_LIVE.indexOf(r.type)!==-1) return false;
+        if(r.type==='Tipster Consensus'&&(r.date||'')>='2026-08-03') return false;
+        return true;
+      });
       var wins=0,losses=0,placed=0,pend=0;
       var winPrices=[];
       recs.forEach(function(r){
@@ -2842,11 +2853,8 @@ window.addEventListener('load',function(){
       // Live — auto-populated by fetchToday() going forward, restricted to
       // FREEZE_DATE onward so historical data above is never touched.
       var LIVE_TYPES=[
-        {key:'Tipster Consensus',label:'Tipster Consensus',color:'#f97316'},
-        {key:'Ground Edge',label:'Ground Edge',color:'#0ea5e9'},
         {key:'Course and Distance',label:'Course & Dist',color:'#6366f1'},
-        {key:'Class Drop',label:'Class Drop',color:'#f59e0b'},
-        {key:'Intelligence',label:'Intelligence',color:'#8b5cf6'}
+        {key:'Class Drop',label:'Class Drop',color:'#f59e0b'}
       ];
       function parseDec(pr){
         if(!pr||pr==='SP'||pr==='—') return 0;
@@ -2898,15 +2906,23 @@ window.addEventListener('load',function(){
         html+='</div>';
         return html;
       }
-      var html='';
+      var frozenHtml='';
       FROZEN_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,false)}; })
         .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
-        .forEach(function(x){ html+=rowHtml(x.t,x.d); });
-      html+='<div style="margin:6px 0 2px;border-top:2px solid #e4e8f0"></div>';
+        .forEach(function(x){ frozenHtml+=rowHtml(x.t,x.d); });
+      var liveHtml='';
       LIVE_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,true)}; })
         .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
-        .forEach(function(x){ html+=rowHtml(x.t,x.d); });
-      el.innerHTML=html;
+        .forEach(function(x){ liveHtml+=rowHtml(x.t,x.d); });
+      // Two labelled boxes — subtle border, small gap; row markup above is
+      // untouched, only wrapped.
+      var boxStyle='border:1px solid #e4e8f0;border-radius:8px;padding:2px 8px 4px';
+      var labelStyle='font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 3px 2px';
+      el.innerHTML=
+        '<div style="'+labelStyle+'">Phase 1</div>'
+        +'<div style="'+boxStyle+'">'+frozenHtml+'</div>'
+        +'<div style="'+labelStyle+';margin-top:8px">Phase 2</div>'
+        +'<div style="'+boxStyle+'">'+liveHtml+'</div>';
     }
 
     function ptRender(recs){
@@ -2914,6 +2930,9 @@ window.addEventListener('load',function(){
       ptRenderTypeRows(recs);
       var groups={}, order=[];
       recs.forEach(function(r){
+        // Hot Yard is retired from the dated results cards only — skipped here,
+        // before grouping, so a Hot-Yard-only date never renders an empty box.
+        if(r.type==='Hot Yard') return;
         if(!groups[r.date]){ groups[r.date]=[]; order.push(r.date); }
         groups[r.date].push(r);
       });
@@ -3068,7 +3087,36 @@ window.addEventListener('load',function(){
       });
       saveRecs(cleaned);
       var today=new Date().toISOString().slice(0,10);
-      fetchToday(today,function(recs){ ptRender(recs); syncResults(); });
+      fetchToday(today,function(recs){ ptRender(recs); syncResults(); ptBackfillMissedDates(); });
+    }
+
+    // Backfill: any of the last 7 days (today-1 back to today-7) with zero recs
+    // in ptRecs2 — the tracker wasn't opened that day, so fetchToday(today)
+    // never ingested it — is fetched here via the same fetchToday/mergeRecs
+    // path (it already accepts an arbitrary date and merges safely). Dates run
+    // sequentially, not in parallel: mergeRecs is a read-modify-write on
+    // localStorage, so overlapping fetches could clobber each other's saves.
+    // A date whose report has no intelligence merges nothing and is simply
+    // re-checked on the next unlock; a date with any recs at all is skipped.
+    function ptBackfillMissedDates(){
+      var have={};
+      getRecs().forEach(function(r){ if(r.date) have[r.date]=true; });
+      var missing=[];
+      for(var i=1;i<=7;i++){
+        var d=new Date(Date.now()-i*86400000).toISOString().slice(0,10);
+        if(!have[d]) missing.push(d);
+      }
+      if(!missing.length) return;
+      (function next(){
+        if(!missing.length){
+          // One re-render + results sync once the whole chain lands, so
+          // backfilled picks appear and their W/L/2nd results get pulled in.
+          ptRender(getRecs());
+          syncResults();
+          return;
+        }
+        fetchToday(missing.shift(),function(){ next(); });
+      })();
     }
 
     if(isAuth()){
