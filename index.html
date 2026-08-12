@@ -13806,6 +13806,28 @@ function loadDailyBuild(){
         // Intelligence paused (empty) but intelPicks present — render the
         // carousel from those; renderAIIntelligence prefers INTEL_PICKS itself.
         renderAIIntelligence();
+        // Mid-session expiry: the signal-card timer above is only created when
+        // real intelligence cards exist, so intelPicks need their own. Mirrors
+        // that timer's pattern — guarded against duplicates, and re-renders
+        // only when a pick has newly expired so the carousel's scroll position
+        // isn't reset every 5 minutes for no reason. The 'race:x:' placeholder
+        // slug only satisfies _ctaRaceTimePassed's parser; the time is what's
+        // checked, same as the render-time filter.
+        if(!window._intelPicksRefreshTimer){
+          window._intelPicksLiveCount=INTEL_PICKS.length;
+          window._intelPicksRefreshTimer=setInterval(function(){
+            if(!INTEL_PICKS.length) return;
+            var _live=INTEL_PICKS.filter(function(p){
+              var _rp=(p.race||'').split(' ');
+              var _rt=_rp[_rp.length-1]||'';
+              return typeof window._ctaRaceTimePassed==='function'?!window._ctaRaceTimePassed('race:x:'+_rt):true;
+            }).length;
+            if(_live!==window._intelPicksLiveCount){
+              window._intelPicksLiveCount=_live;
+              renderAIIntelligence();
+            }
+          },5*60*1000);
+        }
       }
       // Render all AI selections list
       if(data.analyses&&data.analyses.length) renderAllSelections(data.analyses, data.date||'');

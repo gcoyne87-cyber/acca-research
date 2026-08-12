@@ -38,8 +38,16 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading' }) };
     }
 
-    // Pull top picks by confidence score — top 3 become picks, rest are noted
-    const analyses = (report.analyses || []).sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0));
+    // Pull top picks by confidence score — top 3 become picks, rest are noted.
+    // Sort runs in place first (report.analyses passthrough keeps its order as
+    // before), then filter drops unusable entries — no selection, no horse
+    // name, or an explicit Pass — so a Pass race can never occupy a NAP/NB/
+    // intel slot with a blank card. picks and intelPicks both slice this same
+    // filtered ranking, keeping their indexes aligned (no NB/intel duplicates).
+    const analyses = (report.analyses || [])
+      .sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0))
+      .filter(a => a && a.strongestSelection && a.strongestSelection.horseName
+        && a.strongestSelection.confidenceLevel !== 'Pass');
 
     const picks = analyses.slice(0, 3).map(a => ({
       race: a.race,
