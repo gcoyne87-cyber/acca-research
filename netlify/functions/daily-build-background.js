@@ -1389,7 +1389,7 @@ exports.handler = async function(event) {
       }).catch(function() {});
     }
   } catch (hbErr) {}
-  const RUN_FULL_BUILD = false;
+  const RUN_FULL_BUILD = true;
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
   const isScheduled = !event.httpMethod;
@@ -1562,523 +1562,523 @@ exports.handler = async function(event) {
     console.log('[daily-build] Generating daily intelligence...');
     let tipsterConsensusText = '';
     let tomorrowInputTokens = 0, tomorrowOutputTokens = 0, tomorrowCacheReadTokens = 0, tomorrowCacheWriteTokens = 0, tomorrowWebSearchCount = 0;
-    try {
-      let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
-      const cachedIntel = await redisGet('intelligence:' + today);
-      // A cached value under intelligence:{today} might actually be yesterday's tomorrow
-      // preview (4 signals, no Tipster Consensus, every item flagged isTomorrow:true) —
-      // that is not a valid stand-in for today's real build, so treat it as no cache at all.
-      const cachedIsTomorrowPreview = !!(cachedIntel && cachedIntel.items && cachedIntel.items.some(function(item) { return item.isTomorrow === true; }));
-      if (cachedIntel && cachedIntel.items && cachedIntel.items.length && !cachedIsTomorrowPreview) {
-        console.log('[daily-build] Intelligence already cached today — reusing');
-        items = cachedIntel.items;
-        report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence [CACHED]', inputTokens: 0, outputTokens: 0, webSearch: false, webSearchCount: 0 });
-      } else {
-        const r = await generateIntelligence(racecards);
-        items = r.items; intIT = r.inputTokens; intOT = r.outputTokens;
-        intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
-        if (r.parseError) report.errors.push('Intelligence parse failed: ' + r.parseError);
-        if (r.groundEdgeSkippedCount > 5) {
-          report.warnings.push('Ground Edge: ' + r.groundEdgeSkippedCount + ' horses had no cached form history');
-        }
-        if (r.classDropSkippedCount > 5) {
-          report.warnings.push('Class Drop: ' + r.classDropSkippedCount + ' horses had runs but no valid class data');
-        }
-        if (r.hotYardBaselineErrors && r.hotYardBaselineErrors.length) {
-          r.hotYardBaselineErrors.forEach(function(msg) { report.warnings.push(msg); });
-        }
-        if (r.duplicateRaceDrops && r.duplicateRaceDrops.length) {
-          r.duplicateRaceDrops.forEach(function(msg) { report.warnings.push(msg); });
-        }
-        if (r.ctaValidationDrops && r.ctaValidationDrops.length) {
-          r.ctaValidationDrops.forEach(function(msg) { report.warnings.push(msg); });
-        }
-        if (items && items.length) {
-          items.forEach(function(item) { item.date = today; });
-          try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) { report.errors.push('redis-write intelligence:' + today + ': ' + re.message); }
-        }
-
-        if (allRacecards.length) {
-        const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        const tomorrowCards = await redisGet('racecards:' + tomorrowDate);
-        if (tomorrowCards && Array.isArray(tomorrowCards.meetings) && tomorrowCards.meetings.length > 0) {
-          console.log(`[daily-build] Tomorrow (${tomorrowDate}): ${tomorrowCards.meetings.length} meeting(s) found`);
-
-          const tomorrowRaceTime = function(race) {
-            if (!race.off_dt) return race.off_time || '';
-            const m = race.off_dt.match(/T(\d{2}):(\d{2})/);
-            return m ? m[1] + ':' + m[2] : race.off_time || '';
-          };
-
-          const tomorrowExtractPrice = function(r) {
-            const oddsArr = Array.isArray(r.odds) ? r.odds : [];
-            return (oddsArr.find(function(o) { return o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP';
-          };
-
-          const tomorrowMilesFurlongs = function(distStr) {
-            const s = String(distStr || '');
-            const miles = (s.match(/(\d+)m/) || [])[1];
-            const furlongs = (s.match(/(\d+)f/) || [])[1];
-            return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
-          };
-
-          // Flatten tomorrowCards.meetings (meeting objects with a nested races array) into a
-          // flat array of race objects shaped like today's racecards, so the precompute loops
-          // below — written to expect flat race objects — actually get the fields they read.
-          const tomorrowRacecards = [];
-          tomorrowCards.meetings.forEach(function(m) {
-            (m.races || []).forEach(function(race) {
-              tomorrowRacecards.push({
-                course: m.name,
-                going: race.going || m.going || '',
-                race_name: race.name || '',
-                distance: race.dist || '',
-                race_class: race.class || '',
-                runners: race.runners || [],
-                off_time: race.t || ''
-              });
-            });
-          });
-
-          // TODO(S1, AUDIT-DAILY-INTELLIGENCE.md): everything from here to the tomorrow
-          // message assembly below is a near-complete line-for-line duplicate of the
-          // "today" pre-computation block above (Ground Edge / Course & Distance / Class
-          // Drop / OR Gap / Hot Yard), independently maintained with tomorrow-prefixed
-          // names instead of a shared, day-parameterized function. This duplication is
-          // the root cause of at least 3 confirmed bugs (Unknown horse names, the
-          // tomorrow-CTA render bug, Intelligence leaking into tomorrow) — a fix applied
-          // to one side has to be remembered and reapplied to the other by hand. Flagged
-          // per the audit; deliberately NOT restructured in this pass so the fixes above
-          // stay easy to review — collapsing today/tomorrow into one shared code path is
-          // the next real piece of work here, ideally before any more signals are added.
-
-          // Pre-compute ground edge candidates for tomorrow: Heavy/Yielding jumps meetings only, grouped by venue
-          const tomorrowGroundRe = /heavy|yield/i;
-          const tomorrowGroundEdgeByVenue = {};
-          const tomorrowHeavyMeetings = tomorrowRacecards.filter(function(race) {
-            return tomorrowGroundRe.test(race.going || '') && isJumps(race.race_name, race.type);
-          });
-
-          let tomorrowGroundEdgeSkippedCount = 0;
-          for (let mi = 0; mi < Math.min(tomorrowHeavyMeetings.length, 12); mi++) {
-            const race = tomorrowHeavyMeetings[mi];
-            const venue = race.course || 'Unknown';
-            const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
-            for (let ri = 0; ri < Math.min(runners.length, 15); ri++) {
-              const runner = runners[ri];
-              const history = await fetchHorseHistory(runner.horse_id);
-              if (!history.length) { tomorrowGroundEdgeSkippedCount++; continue; }
-
-              const groundRuns = history.filter(function(h) { return tomorrowGroundRe.test(h.going || ''); });
-              const goodRuns = history.filter(function(h) { return !tomorrowGroundRe.test(h.going || '') && (h.going || '').trim(); });
-              const groundWins = groundRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
-              const goodWins = goodRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
-
-              // Quality bar: must have won on heavy/yielding, and either 2+ wins or 33%+ SR
-              if (groundRuns.length >= 2 && groundWins >= 1) {
-                const groundSR = Math.round(groundWins / groundRuns.length * 100);
-                const goodSR = goodRuns.length ? Math.round(goodWins / goodRuns.length * 100) : 0;
-                if (groundWins >= 2 || groundSR >= 33) {
-                  if (!tomorrowGroundEdgeByVenue[venue]) tomorrowGroundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
-                  tomorrowGroundEdgeByVenue[venue].horses.push({
-                    horse: runner.horse || runner.name || 'Unknown',
-                    price: tomorrowExtractPrice(runner),
-                    time: tomorrowRaceTime(race),
-                    raceName: race.race_name || '',
-                    groundSR: groundSR,
-                    groundWins: groundWins,
-                    groundRuns: groundRuns.length,
-                    groundRecord: groundWins + ' wins from ' + groundRuns.length + ' on heavy/yielding (' + groundSR + '% SR)',
-                    goodRecord: goodRuns.length ? (goodWins + ' wins from ' + goodRuns.length + ' on good/firm (' + goodSR + '% SR)') : 'No runs on good/firm'
-                  });
-                }
-              }
-            }
-          }
-          if (tomorrowGroundEdgeSkippedCount > 5) {
-            report.warnings.push('Tomorrow Ground Edge: ' + tomorrowGroundEdgeSkippedCount + ' horses had no cached form history');
-          }
-
-          // Ground Edge for tomorrow: top 3 horses across all venues (ranked by groundWins, then groundSR)
-          const _tomorrowGroundEdgeAll = [];
-          Object.values(tomorrowGroundEdgeByVenue).forEach(function(v) {
-            v.horses.forEach(function(h) {
-              _tomorrowGroundEdgeAll.push(Object.assign({}, h, { venue: v.venue, going: v.going }));
-            });
-          });
-          _tomorrowGroundEdgeAll.sort(function(a, b) {
-            if (b.groundWins !== a.groundWins) return b.groundWins - a.groundWins;
-            return b.groundSR - a.groundSR;
-          });
-          const tomorrowGroundEdgeCandidates = _tomorrowGroundEdgeAll.slice(0, 3);
-
-          // Pre-compute course & distance candidates for tomorrow: 2+ wins at tomorrow's specific course, 33%+ course win rate
-          const tomorrowCourseDistanceCandidates = [];
-          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
-            const race = tomorrowRacecards[mi];
-            const course = race.course || '';
-            const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
-            for (let ri = 0; ri < runners.length; ri++) {
-              const runner = runners[ri];
-              const history = await fetchHorseHistory(runner.horse_id);
-              if (!history.length) continue;
-
-              const courseRuns = history.filter(function(h) { return (h.course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim() === (course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim(); });
-              const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
-              const courseTopTwoRate = courseRuns.length ? Math.round(courseTopTwo.length / courseRuns.length * 100) : 0;
-              const meetsTopTwoRule = courseTopTwo.length >= 2 && courseTopTwoRate >= 33;
-
-              const courseWins = courseRuns.filter(function(h) { return String(h.pos) === '1'; });
-              const meetsAnyWinRule = courseWins.length >= 1;
-
-              if (!meetsTopTwoRule && !meetsAnyWinRule) continue;
-
-              const winAtTodaysDistance = courseTopTwo.some(function(h) { return tomorrowMilesFurlongs(h.dist) === tomorrowMilesFurlongs(race.distance); });
-              const topTwoGoings = courseTopTwo.reduce(function(acc, h) {
-                if (h.going && acc.indexOf(h.going) === -1) acc.push(h.going);
-                return acc;
-              }, []);
-
-              tomorrowCourseDistanceCandidates.push({
-                horse: runner.horse || runner.name || 'Unknown',
-                price: tomorrowExtractPrice(runner),
-                time: tomorrowRaceTime(race),
-                course: course,
-                courseTopTwo: courseTopTwo.length,
-                courseRuns: courseRuns.length,
-                courseTopTwoRate: courseTopTwoRate,
-                topTwoDates: courseTopTwo.map(function(h) { return h.date; }).join(', '),
-                winAtTodaysDistance: winAtTodaysDistance,
-                topTwoGoings: topTwoGoings
-              });
-            }
-          }
-          tomorrowCourseDistanceCandidates.sort(function(a, b) {
-            if (b.courseTopTwo !== a.courseTopTwo) return b.courseTopTwo - a.courseTopTwo;
-            return b.courseTopTwoRate - a.courseTopTwoRate;
-          });
-
-          // Pre-compute class drop candidates for tomorrow: horse racing tomorrow at least 1 class lower
-          // (numerically higher class number) than their most recent class-recorded run, last classed run Class 1-3
-          const tomorrowClassDropCandidates = [];
-          let tomorrowClassDropSkippedCount = 0;
-          function tomorrowParseClassNum(classStr) {
-            if (!classStr || !String(classStr).startsWith('Class')) return null;
-            const n = parseInt(String(classStr).slice(-1), 10);
-            return isNaN(n) ? null : n;
-          }
-          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
-            const race = tomorrowRacecards[mi];
-            const todayClassNum = tomorrowParseClassNum(race.race_class);
-            if (todayClassNum === null) continue;
-
-            const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
-            for (let ri = 0; ri < runners.length; ri++) {
-              const runner = runners[ri];
-              const history = await fetchHorseHistory(runner.horse_id);
-              const validClassRuns = history.filter(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
-              if (validClassRuns.length === 0 && history.length > 0) {
-                tomorrowClassDropSkippedCount++;
-              }
-              if (validClassRuns.length < 2) continue;
-
-              const lastClassRun = history.find(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
-              if (!lastClassRun) continue;
-
-              const lastRunClassNum = tomorrowParseClassNum(lastClassRun.race_class);
-              if (lastRunClassNum === null) continue;
-              if (lastRunClassNum > 3) continue;
-
-              const classDrop = todayClassNum - lastRunClassNum;
-              if (classDrop < 1) continue;
-
-              tomorrowClassDropCandidates.push({
-                horse: runner.horse || runner.name || 'Unknown',
-                trainer: runner.trainer || '',
-                price: tomorrowExtractPrice(runner),
-                time: tomorrowRaceTime(race),
-                course: race.course || '',
-                todayClass: String(race.race_class),
-                lastRunClass: String(lastClassRun.race_class),
-                classDrop: classDrop
-              });
-            }
-          }
-          tomorrowClassDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
-          if (tomorrowClassDropSkippedCount > 5) {
-            report.warnings.push('Tomorrow Class Drop: ' + tomorrowClassDropSkippedCount + ' horses had runs but no valid class data');
-          }
-
-          // Pre-compute OR gap candidates for tomorrow: top-rated horse with a significant official rating advantage over the second-best in the race
-          const tomorrowOrGapCandidates = [];
-          for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
-            const race = tomorrowRacecards[mi];
-            const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
-
-            const ratedRunners = runners.map(function(r) {
-              return { runner: r, orValue: parseFloat(r.ofr || r.official_rating || 0) };
-            }).filter(function(x) { return x.orValue > 0; });
-
-            if (ratedRunners.length < 2) continue;
-
-            ratedRunners.sort(function(a, b) { return b.orValue - a.orValue; });
-
-            const firstOR = ratedRunners[0].orValue;
-            const secondOR = ratedRunners[1].orValue;
-            const orGap = firstOR - secondOR;
-
-            if (orGap >= 8) {
-              const runner = ratedRunners[0].runner;
-              tomorrowOrGapCandidates.push({
-                horse: runner.horse || runner.name || 'Unknown',
-                trainer: runner.trainer || '',
-                price: tomorrowExtractPrice(runner),
-                time: tomorrowRaceTime(race),
-                course: race.course || '',
-                or: firstOR,
-                secondOr: secondOR,
-                orGap: orGap
-              });
-            }
-          }
-          tomorrowOrGapCandidates.sort(function(a, b) { return b.orGap - a.orGap; });
-          tomorrowOrGapCandidates.splice(5);
-
-          // Pre-compute in-form trainer candidates for tomorrow (25%+ SR, min 5 runs last 14 days)
-          const tomorrowTrainerFormMap = {};
-          tomorrowRacecards.forEach(function(race) {
-            const t = tomorrowRaceTime(race);
-            (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-              const t14 = r.trainer14 || {};
-              const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
-              if (runs >= 5 && pct >= 25 && r.trainer) {
-                if (!tomorrowTrainerFormMap[r.trainer]) tomorrowTrainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
-                tomorrowTrainerFormMap[r.trainer].horses.push((r.horse || r.name || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + tomorrowExtractPrice(r));
-              }
-            });
-          });
-          const tomorrowSixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const tomorrowTrainersToRemove = [];
-          for (const trainerName of Object.keys(tomorrowTrainerFormMap)) {
-            const entry = tomorrowTrainerFormMap[trainerName];
-            if (!entry.trainer_id) {
-              delete tomorrowTrainerFormMap[trainerName];
-              continue;
-            }
-            try {
-              const data = await apiGet('api.theracingapi.com',
-                '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + tomorrowSixtyDaysAgo + '&end_date=' + today,
-                { 'Authorization': 'Basic ' + RACING_AUTH }
-              );
-              await new Promise(resolve => setTimeout(resolve, 200));
-              const results = data.results || [];
-              const baselineRuns = results.length;
-              const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
-              const baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
-              entry.baseline60 = baseline60;
-
-              if (!baselineRuns || !baseline60) {
-                tomorrowTrainersToRemove.push(trainerName);
-                continue;
-              }
-
-              const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
-              if (!isHot) tomorrowTrainersToRemove.push(trainerName);
-            } catch (e) {
-              console.log('[daily-build] Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
-              report.warnings.push('Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
-              tomorrowTrainersToRemove.push(trainerName);
-            }
-          }
-          tomorrowTrainersToRemove.forEach(function(trainerName) { delete tomorrowTrainerFormMap[trainerName]; });
-
-          const tomorrowTrainerFormCandidates = Object.values(tomorrowTrainerFormMap).sort(function(a, b) {
-            const ratioA = a.baseline60 ? a.pct / a.baseline60 : 0;
-            const ratioB = b.baseline60 ? b.pct / b.baseline60 : 0;
-            return ratioB - ratioA;
-          }).slice(0, 5);
-
-          // Build tomorrow's structured message
-          const tomorrowMeetingsSummary = tomorrowCards.meetings.reduce(function(acc, m) {
-            (m.races || []).forEach(function(race) {
-              acc.push(m.name + ' ' + race.t + ' — ' + (race.name || '') + ' (' + (race.dist || '') + ') Going: ' + (race.going || m.going || 'Good'));
-            });
-            return acc;
-          }, []).join('\n');
-
-          // TEMPORARY DIAGNOSTIC — captures full candidate pools before AI selection, to audit
-          // why a recent run produced Goodwood-only cards despite 6 meetings racing tomorrow.
-          try {
-            const _courseCounts = {};
-            tomorrowRacecards.forEach(function(r){ _courseCounts[r.course] = (_courseCounts[r.course]||0) + 1; });
-            await redisSet('debug:tomorrow-candidates:' + tomorrowDate, {
-              generatedAt: new Date().toISOString(),
-              meetingsInput: tomorrowCards.meetings.map(function(m){ return { course: m.name, raceCount: (m.races||[]).length }; }),
-              racesByCourseFlattened: _courseCounts,
-              meetingsSummaryTotalRaces: tomorrowRacecards.length,
-              meetingsSummaryLinesShown: tomorrowMeetingsSummary.split('\n').length,
-              groundEdgeCandidates_ALL: _tomorrowGroundEdgeAll,
-              courseDistanceCandidates_ALL: tomorrowCourseDistanceCandidates,
-              classDropCandidates_ALL: tomorrowClassDropCandidates,
-              orGapCandidates_ALL: tomorrowOrGapCandidates,
-              trainerFormCandidates_ALL: Object.values(tomorrowTrainerFormMap)
-            });
-          } catch(e) {}
-
-          let tomorrowMsg = 'These are TOMORROW\'s race cards for ' + tomorrowDate + '. Apply the same signal logic but these races are for tomorrow not today.'
-            + '\n\nTOMORROW\'S RACES:\n' + tomorrowMeetingsSummary + '\n\n';
-
-          if (tomorrowGroundEdgeCandidates.length) {
-            tomorrowMsg += 'GROUND EDGE CANDIDATES (high conviction individual ground specialists):\n';
-            tomorrowGroundEdgeCandidates.forEach(function(h) {
-              tomorrowMsg += '\n• ' + h.horse + ' | ' + h.venue + ' ' + h.time + ' | Going: ' + h.going + ' | Price: ' + h.price + '\n';
-              tomorrowMsg += '  Ground record: ' + h.groundRecord + '\n';
-              tomorrowMsg += '  Good/firm record: ' + h.goodRecord + '\n';
-            });
-            tomorrowMsg += '\n';
-          } else {
-            tomorrowMsg += 'GROUND EDGE: No qualifying ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
-          }
-
-          if (tomorrowCourseDistanceCandidates.length) {
-            tomorrowMsg += 'COURSE AND DISTANCE CANDIDATES (2+ top 2 finishes at today\'s course, 33%+ course win rate):\n';
-            tomorrowCourseDistanceCandidates.slice(0, 5).forEach(function(c) {
-              tomorrowMsg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
-              tomorrowMsg += '  Course record: ' + c.courseTopTwo + ' top 2 finishes from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseTopTwoRate + '% SR) | Top 2 dates: ' + c.topTwoDates + '\n';
-              tomorrowMsg += '  Top 2 finish at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
-              tomorrowMsg += '  Going on course form: ' + (c.topTwoGoings.length ? c.topTwoGoings.join(', ') : 'Unknown') + '\n';
-            });
-            tomorrowMsg += '\n';
-          } else {
-            tomorrowMsg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
-          }
-
-          if (tomorrowClassDropCandidates.length) {
-            tomorrowMsg += 'CLASS DROP CANDIDATES (horses from Class 1, 2 or 3 dropping at least 1 class today):\n';
-            tomorrowClassDropCandidates.slice(0, 5).forEach(function(c) {
-              tomorrowMsg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
-              tomorrowMsg += '  Last run: ' + c.lastRunClass + ' → Today: ' + c.todayClass + ' (drop of ' + c.classDrop + ' classes)\n';
-            });
-            tomorrowMsg += '\n';
-          } else {
-            tomorrowMsg += 'CLASS DROP: No horses dropping from Class 1, 2 or 3 today. Do NOT produce a Class Drop signal.\n\n';
-          }
-
-          if (tomorrowOrGapCandidates.length) {
-            tomorrowMsg += 'OR GAP CANDIDATES (horses rated 8+ points above second highest rated horse in their race):\n';
-            tomorrowOrGapCandidates.forEach(function(c) {
-              tomorrowMsg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
-              tomorrowMsg += '  OR: ' + c.or + ' | Second highest OR: ' + c.secondOr + ' | Gap: ' + c.orGap + ' points\n';
-            });
-            tomorrowMsg += '\n';
-          } else {
-            tomorrowMsg += 'OR GAP: No horses rated 8+ points above second highest rated in their race today.\n\n';
-          }
-
-          if (tomorrowTrainerFormCandidates.length) {
-            tomorrowMsg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 5 runs, running at least 50% above their 60 day baseline):\n';
-            tomorrowTrainerFormCandidates.forEach(function(c) {
-              tomorrowMsg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR) vs ' + c.baseline60 + '% SR over the trailing 60 days\n';
-              c.horses.forEach(function(h) { tomorrowMsg += '  - ' + h + '\n'; });
-            });
-            tomorrowMsg += '\n';
-          }
-
-          tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Do not produce Intelligence cards for tomorrow either — there is no FREE REIN INTELLIGENCE section in this message, so any Intelligence-type card would not be grounded in real data. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
-
-          const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 12000);
-          tomorrowInputTokens = tomorrowResult.inputTokens || 0;
-          tomorrowOutputTokens = tomorrowResult.outputTokens || 0;
-          tomorrowCacheReadTokens = tomorrowResult.cacheReadTokens || 0;
-          tomorrowCacheWriteTokens = tomorrowResult.cacheWriteTokens || 0;
-          tomorrowWebSearchCount = tomorrowResult.webSearchCount || 0;
-          report.callLog.push({ type: 'intelligence-tomorrow', label: 'Daily Intelligence (Tomorrow)', inputTokens: tomorrowInputTokens, outputTokens: tomorrowOutputTokens, cacheReadTokens: tomorrowCacheReadTokens, cacheWriteTokens: tomorrowCacheWriteTokens, webSearch: tomorrowWebSearchCount > 0, webSearchCount: tomorrowWebSearchCount });
-
-          let tomorrowItems = null;
-          let tomorrowParseError = null;
-          if (!tomorrowResult.text) {
-            tomorrowParseError = 'Tomorrow intelligence call returned no result';
-          } else {
-          try {
-            tomorrowItems = extractJsonArray(tomorrowResult.text);
-          } catch(e) {
-            console.error('[daily-build] Tomorrow intelligence JSON parse failed:', e.message, '| Raw text:', (tomorrowResult.text || '').slice(0, 500));
-            tomorrowParseError = e.message;
-          }
-          }
-
-          if (tomorrowParseError) {
-            report.errors.push('Tomorrow intelligence parse failed: ' + tomorrowParseError);
-          } else if (!tomorrowItems) {
-            report.errors.push('Tomorrow intelligence parse failed: no JSON array found in response');
-          } else if (!tomorrowItems.length) {
-            report.warnings.push('Tomorrow intelligence returned zero cards');
-          }
-
-          if (tomorrowItems && tomorrowItems.length) {
-            // Code-level backstop for the prompt instruction above (AUDIT-DAILY-INTELLIGENCE.md,
-            // finding S5): Intelligence is a today-only signal — tomorrow's message never
-            // includes the FREE REIN INTELLIGENCE data section it's meant to draw from, but
-            // a real run still produced an Intelligence-type card for tomorrow once. Drop any
-            // that slip through regardless of whether the prompt instruction was followed.
-            const _preIntelDropCount = tomorrowItems.length;
-            tomorrowItems = tomorrowItems.filter(function(item) { return item.signalType !== 'Intelligence'; });
-            if (tomorrowItems.length < _preIntelDropCount) {
-              report.warnings.push('Dropped ' + (_preIntelDropCount - tomorrowItems.length) + ' Intelligence-type card(s) from tomorrow output — Intelligence is today-only');
-            }
-            tomorrowItems = validateAndRepairCtaDestinations(tomorrowItems, tomorrowRacecards, report.warnings);
-            tomorrowItems = dedupeRaceCollisionsAndCapPerMeeting(tomorrowItems, report.warnings);
-            tomorrowItems.forEach(function(item) { item.isTomorrow = true; item.date = tomorrowDate; });
-            try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
-            try {
-              await new Promise((resolve, reject) => {
-                const url = new URL(UPSTASH_URL);
-                const req = https.request({
-                  hostname: url.hostname,
-                  path: '/expire/' + encodeURIComponent('intelligence:' + tomorrowDate) + '/172800',
-                  method: 'POST',
-                  headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
-                }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
-                req.on('error', reject); req.end();
-              });
-            } catch(re) {}
-            try { await safeWriteReport(tomorrowDate, { intelligence: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
-            try {
-              await new Promise((resolve, reject) => {
-                const url = new URL(UPSTASH_URL);
-                const req = https.request({
-                  hostname: url.hostname,
-                  path: '/expire/' + encodeURIComponent('daily:report:' + tomorrowDate) + '/172800',
-                  method: 'POST',
-                  headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
-                }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
-                req.on('error', reject); req.end();
-              });
-            } catch(re) {}
-          }
-        } else {
-          console.log(`[daily-build] No race cards found for tomorrow (${tomorrowDate}) — tomorrow intelligence will be skipped`);
-        }
-        } else {
-          report.errors.push('Tomorrow intelligence skipped — today\'s race cards were empty');
-        }
-
-        report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence', inputTokens: intIT, outputTokens: intOT, cacheReadTokens: intCR, cacheWriteTokens: intCW, webSearch: intWS > 0, webSearchCount: intWS });
-      }
-      if (items && items.length) {
-        report.intelligenceItems = items.length;
-        report.intelligence = items;
-        const tipsterItem = items.find(i => i.signalType === 'Tipster Consensus');
-        if (tipsterItem) tipsterConsensusText = tipsterItem.intelligenceText || '';
-      }
-      report.inputTokens += intIT;
-      report.outputTokens += intOT;
-      report.cacheReadTokens += intCR;
-      report.cacheWriteTokens += intCW;
-      report.webSearchCount += intWS;
-    } catch(e) {
-      report.errors.push('intelligence: ' + e.message);
-    }
+//     try {
+//       let items = null, intIT = 0, intOT = 0, intCR = 0, intCW = 0, intWS = 0;
+//       const cachedIntel = await redisGet('intelligence:' + today);
+//       // A cached value under intelligence:{today} might actually be yesterday's tomorrow
+//       // preview (4 signals, no Tipster Consensus, every item flagged isTomorrow:true) —
+//       // that is not a valid stand-in for today's real build, so treat it as no cache at all.
+//       const cachedIsTomorrowPreview = !!(cachedIntel && cachedIntel.items && cachedIntel.items.some(function(item) { return item.isTomorrow === true; }));
+//       if (cachedIntel && cachedIntel.items && cachedIntel.items.length && !cachedIsTomorrowPreview) {
+//         console.log('[daily-build] Intelligence already cached today — reusing');
+//         items = cachedIntel.items;
+//         report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence [CACHED]', inputTokens: 0, outputTokens: 0, webSearch: false, webSearchCount: 0 });
+//       } else {
+//         const r = await generateIntelligence(racecards);
+//         items = r.items; intIT = r.inputTokens; intOT = r.outputTokens;
+//         intCR = r.cacheReadTokens || 0; intCW = r.cacheWriteTokens || 0; intWS = r.webSearchCount || 0;
+//         if (r.parseError) report.errors.push('Intelligence parse failed: ' + r.parseError);
+//         if (r.groundEdgeSkippedCount > 5) {
+//           report.warnings.push('Ground Edge: ' + r.groundEdgeSkippedCount + ' horses had no cached form history');
+//         }
+//         if (r.classDropSkippedCount > 5) {
+//           report.warnings.push('Class Drop: ' + r.classDropSkippedCount + ' horses had runs but no valid class data');
+//         }
+//         if (r.hotYardBaselineErrors && r.hotYardBaselineErrors.length) {
+//           r.hotYardBaselineErrors.forEach(function(msg) { report.warnings.push(msg); });
+//         }
+//         if (r.duplicateRaceDrops && r.duplicateRaceDrops.length) {
+//           r.duplicateRaceDrops.forEach(function(msg) { report.warnings.push(msg); });
+//         }
+//         if (r.ctaValidationDrops && r.ctaValidationDrops.length) {
+//           r.ctaValidationDrops.forEach(function(msg) { report.warnings.push(msg); });
+//         }
+//         if (items && items.length) {
+//           items.forEach(function(item) { item.date = today; });
+//           try { await redisSet('intelligence:' + today, { items, generatedAt: new Date().toISOString() }); } catch(re) { report.errors.push('redis-write intelligence:' + today + ': ' + re.message); }
+//         }
+// 
+//         if (allRacecards.length) {
+//         const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+//         const tomorrowCards = await redisGet('racecards:' + tomorrowDate);
+//         if (tomorrowCards && Array.isArray(tomorrowCards.meetings) && tomorrowCards.meetings.length > 0) {
+//           console.log(`[daily-build] Tomorrow (${tomorrowDate}): ${tomorrowCards.meetings.length} meeting(s) found`);
+// 
+//           const tomorrowRaceTime = function(race) {
+//             if (!race.off_dt) return race.off_time || '';
+//             const m = race.off_dt.match(/T(\d{2}):(\d{2})/);
+//             return m ? m[1] + ':' + m[2] : race.off_time || '';
+//           };
+// 
+//           const tomorrowExtractPrice = function(r) {
+//             const oddsArr = Array.isArray(r.odds) ? r.odds : [];
+//             return (oddsArr.find(function(o) { return o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP';
+//           };
+// 
+//           const tomorrowMilesFurlongs = function(distStr) {
+//             const s = String(distStr || '');
+//             const miles = (s.match(/(\d+)m/) || [])[1];
+//             const furlongs = (s.match(/(\d+)f/) || [])[1];
+//             return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
+//           };
+// 
+//           // Flatten tomorrowCards.meetings (meeting objects with a nested races array) into a
+//           // flat array of race objects shaped like today's racecards, so the precompute loops
+//           // below — written to expect flat race objects — actually get the fields they read.
+//           const tomorrowRacecards = [];
+//           tomorrowCards.meetings.forEach(function(m) {
+//             (m.races || []).forEach(function(race) {
+//               tomorrowRacecards.push({
+//                 course: m.name,
+//                 going: race.going || m.going || '',
+//                 race_name: race.name || '',
+//                 distance: race.dist || '',
+//                 race_class: race.class || '',
+//                 runners: race.runners || [],
+//                 off_time: race.t || ''
+//               });
+//             });
+//           });
+// 
+//           // TODO(S1, AUDIT-DAILY-INTELLIGENCE.md): everything from here to the tomorrow
+//           // message assembly below is a near-complete line-for-line duplicate of the
+//           // "today" pre-computation block above (Ground Edge / Course & Distance / Class
+//           // Drop / OR Gap / Hot Yard), independently maintained with tomorrow-prefixed
+//           // names instead of a shared, day-parameterized function. This duplication is
+//           // the root cause of at least 3 confirmed bugs (Unknown horse names, the
+//           // tomorrow-CTA render bug, Intelligence leaking into tomorrow) — a fix applied
+//           // to one side has to be remembered and reapplied to the other by hand. Flagged
+//           // per the audit; deliberately NOT restructured in this pass so the fixes above
+//           // stay easy to review — collapsing today/tomorrow into one shared code path is
+//           // the next real piece of work here, ideally before any more signals are added.
+// 
+//           // Pre-compute ground edge candidates for tomorrow: Heavy/Yielding jumps meetings only, grouped by venue
+//           const tomorrowGroundRe = /heavy|yield/i;
+//           const tomorrowGroundEdgeByVenue = {};
+//           const tomorrowHeavyMeetings = tomorrowRacecards.filter(function(race) {
+//             return tomorrowGroundRe.test(race.going || '') && isJumps(race.race_name, race.type);
+//           });
+// 
+//           let tomorrowGroundEdgeSkippedCount = 0;
+//           for (let mi = 0; mi < Math.min(tomorrowHeavyMeetings.length, 12); mi++) {
+//             const race = tomorrowHeavyMeetings[mi];
+//             const venue = race.course || 'Unknown';
+//             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+//             for (let ri = 0; ri < Math.min(runners.length, 15); ri++) {
+//               const runner = runners[ri];
+//               const history = await fetchHorseHistory(runner.horse_id);
+//               if (!history.length) { tomorrowGroundEdgeSkippedCount++; continue; }
+// 
+//               const groundRuns = history.filter(function(h) { return tomorrowGroundRe.test(h.going || ''); });
+//               const goodRuns = history.filter(function(h) { return !tomorrowGroundRe.test(h.going || '') && (h.going || '').trim(); });
+//               const groundWins = groundRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+//               const goodWins = goodRuns.filter(function(h) { return String(h.pos) === '1'; }).length;
+// 
+//               // Quality bar: must have won on heavy/yielding, and either 2+ wins or 33%+ SR
+//               if (groundRuns.length >= 2 && groundWins >= 1) {
+//                 const groundSR = Math.round(groundWins / groundRuns.length * 100);
+//                 const goodSR = goodRuns.length ? Math.round(goodWins / goodRuns.length * 100) : 0;
+//                 if (groundWins >= 2 || groundSR >= 33) {
+//                   if (!tomorrowGroundEdgeByVenue[venue]) tomorrowGroundEdgeByVenue[venue] = { venue: venue, going: race.going, horses: [] };
+//                   tomorrowGroundEdgeByVenue[venue].horses.push({
+//                     horse: runner.horse || runner.name || 'Unknown',
+//                     price: tomorrowExtractPrice(runner),
+//                     time: tomorrowRaceTime(race),
+//                     raceName: race.race_name || '',
+//                     groundSR: groundSR,
+//                     groundWins: groundWins,
+//                     groundRuns: groundRuns.length,
+//                     groundRecord: groundWins + ' wins from ' + groundRuns.length + ' on heavy/yielding (' + groundSR + '% SR)',
+//                     goodRecord: goodRuns.length ? (goodWins + ' wins from ' + goodRuns.length + ' on good/firm (' + goodSR + '% SR)') : 'No runs on good/firm'
+//                   });
+//                 }
+//               }
+//             }
+//           }
+//           if (tomorrowGroundEdgeSkippedCount > 5) {
+//             report.warnings.push('Tomorrow Ground Edge: ' + tomorrowGroundEdgeSkippedCount + ' horses had no cached form history');
+//           }
+// 
+//           // Ground Edge for tomorrow: top 3 horses across all venues (ranked by groundWins, then groundSR)
+//           const _tomorrowGroundEdgeAll = [];
+//           Object.values(tomorrowGroundEdgeByVenue).forEach(function(v) {
+//             v.horses.forEach(function(h) {
+//               _tomorrowGroundEdgeAll.push(Object.assign({}, h, { venue: v.venue, going: v.going }));
+//             });
+//           });
+//           _tomorrowGroundEdgeAll.sort(function(a, b) {
+//             if (b.groundWins !== a.groundWins) return b.groundWins - a.groundWins;
+//             return b.groundSR - a.groundSR;
+//           });
+//           const tomorrowGroundEdgeCandidates = _tomorrowGroundEdgeAll.slice(0, 3);
+// 
+//           // Pre-compute course & distance candidates for tomorrow: 2+ wins at tomorrow's specific course, 33%+ course win rate
+//           const tomorrowCourseDistanceCandidates = [];
+//           for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+//             const race = tomorrowRacecards[mi];
+//             const course = race.course || '';
+//             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+//             for (let ri = 0; ri < runners.length; ri++) {
+//               const runner = runners[ri];
+//               const history = await fetchHorseHistory(runner.horse_id);
+//               if (!history.length) continue;
+// 
+//               const courseRuns = history.filter(function(h) { return (h.course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim() === (course || '').toLowerCase().trim().replace(/\s*\([^)]*\)/g, '').trim(); });
+//               const courseTopTwo = courseRuns.filter(function(h) { return String(h.pos) === '1' || String(h.pos) === '2'; });
+//               const courseTopTwoRate = courseRuns.length ? Math.round(courseTopTwo.length / courseRuns.length * 100) : 0;
+//               const meetsTopTwoRule = courseTopTwo.length >= 2 && courseTopTwoRate >= 33;
+// 
+//               const courseWins = courseRuns.filter(function(h) { return String(h.pos) === '1'; });
+//               const meetsAnyWinRule = courseWins.length >= 1;
+// 
+//               if (!meetsTopTwoRule && !meetsAnyWinRule) continue;
+// 
+//               const winAtTodaysDistance = courseTopTwo.some(function(h) { return tomorrowMilesFurlongs(h.dist) === tomorrowMilesFurlongs(race.distance); });
+//               const topTwoGoings = courseTopTwo.reduce(function(acc, h) {
+//                 if (h.going && acc.indexOf(h.going) === -1) acc.push(h.going);
+//                 return acc;
+//               }, []);
+// 
+//               tomorrowCourseDistanceCandidates.push({
+//                 horse: runner.horse || runner.name || 'Unknown',
+//                 price: tomorrowExtractPrice(runner),
+//                 time: tomorrowRaceTime(race),
+//                 course: course,
+//                 courseTopTwo: courseTopTwo.length,
+//                 courseRuns: courseRuns.length,
+//                 courseTopTwoRate: courseTopTwoRate,
+//                 topTwoDates: courseTopTwo.map(function(h) { return h.date; }).join(', '),
+//                 winAtTodaysDistance: winAtTodaysDistance,
+//                 topTwoGoings: topTwoGoings
+//               });
+//             }
+//           }
+//           tomorrowCourseDistanceCandidates.sort(function(a, b) {
+//             if (b.courseTopTwo !== a.courseTopTwo) return b.courseTopTwo - a.courseTopTwo;
+//             return b.courseTopTwoRate - a.courseTopTwoRate;
+//           });
+// 
+//           // Pre-compute class drop candidates for tomorrow: horse racing tomorrow at least 1 class lower
+//           // (numerically higher class number) than their most recent class-recorded run, last classed run Class 1-3
+//           const tomorrowClassDropCandidates = [];
+//           let tomorrowClassDropSkippedCount = 0;
+//           function tomorrowParseClassNum(classStr) {
+//             if (!classStr || !String(classStr).startsWith('Class')) return null;
+//             const n = parseInt(String(classStr).slice(-1), 10);
+//             return isNaN(n) ? null : n;
+//           }
+//           for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+//             const race = tomorrowRacecards[mi];
+//             const todayClassNum = tomorrowParseClassNum(race.race_class);
+//             if (todayClassNum === null) continue;
+// 
+//             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+//             for (let ri = 0; ri < runners.length; ri++) {
+//               const runner = runners[ri];
+//               const history = await fetchHorseHistory(runner.horse_id);
+//               const validClassRuns = history.filter(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
+//               if (validClassRuns.length === 0 && history.length > 0) {
+//                 tomorrowClassDropSkippedCount++;
+//               }
+//               if (validClassRuns.length < 2) continue;
+// 
+//               const lastClassRun = history.find(function(h) { return tomorrowParseClassNum(h.race_class) !== null; });
+//               if (!lastClassRun) continue;
+// 
+//               const lastRunClassNum = tomorrowParseClassNum(lastClassRun.race_class);
+//               if (lastRunClassNum === null) continue;
+//               if (lastRunClassNum > 3) continue;
+// 
+//               const classDrop = todayClassNum - lastRunClassNum;
+//               if (classDrop < 1) continue;
+// 
+//               tomorrowClassDropCandidates.push({
+//                 horse: runner.horse || runner.name || 'Unknown',
+//                 trainer: runner.trainer || '',
+//                 price: tomorrowExtractPrice(runner),
+//                 time: tomorrowRaceTime(race),
+//                 course: race.course || '',
+//                 todayClass: String(race.race_class),
+//                 lastRunClass: String(lastClassRun.race_class),
+//                 classDrop: classDrop
+//               });
+//             }
+//           }
+//           tomorrowClassDropCandidates.sort(function(a, b) { return b.classDrop - a.classDrop; });
+//           if (tomorrowClassDropSkippedCount > 5) {
+//             report.warnings.push('Tomorrow Class Drop: ' + tomorrowClassDropSkippedCount + ' horses had runs but no valid class data');
+//           }
+// 
+//           // Pre-compute OR gap candidates for tomorrow: top-rated horse with a significant official rating advantage over the second-best in the race
+//           const tomorrowOrGapCandidates = [];
+//           for (let mi = 0; mi < tomorrowRacecards.length; mi++) {
+//             const race = tomorrowRacecards[mi];
+//             const runners = (race.runners || []).filter(function(r) { return !r.is_non_runner && r.horse_id; });
+// 
+//             const ratedRunners = runners.map(function(r) {
+//               return { runner: r, orValue: parseFloat(r.ofr || r.official_rating || 0) };
+//             }).filter(function(x) { return x.orValue > 0; });
+// 
+//             if (ratedRunners.length < 2) continue;
+// 
+//             ratedRunners.sort(function(a, b) { return b.orValue - a.orValue; });
+// 
+//             const firstOR = ratedRunners[0].orValue;
+//             const secondOR = ratedRunners[1].orValue;
+//             const orGap = firstOR - secondOR;
+// 
+//             if (orGap >= 8) {
+//               const runner = ratedRunners[0].runner;
+//               tomorrowOrGapCandidates.push({
+//                 horse: runner.horse || runner.name || 'Unknown',
+//                 trainer: runner.trainer || '',
+//                 price: tomorrowExtractPrice(runner),
+//                 time: tomorrowRaceTime(race),
+//                 course: race.course || '',
+//                 or: firstOR,
+//                 secondOr: secondOR,
+//                 orGap: orGap
+//               });
+//             }
+//           }
+//           tomorrowOrGapCandidates.sort(function(a, b) { return b.orGap - a.orGap; });
+//           tomorrowOrGapCandidates.splice(5);
+// 
+//           // Pre-compute in-form trainer candidates for tomorrow (25%+ SR, min 5 runs last 14 days)
+//           const tomorrowTrainerFormMap = {};
+//           tomorrowRacecards.forEach(function(race) {
+//             const t = tomorrowRaceTime(race);
+//             (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+//               const t14 = r.trainer14 || {};
+//               const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.pct) || 0;
+//               if (runs >= 5 && pct >= 25 && r.trainer) {
+//                 if (!tomorrowTrainerFormMap[r.trainer]) tomorrowTrainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
+//                 tomorrowTrainerFormMap[r.trainer].horses.push((r.horse || r.name || 'Unknown') + ' | ' + race.course + ' ' + t + ' | Jockey: ' + (r.jockey || '?') + ' | Price: ' + tomorrowExtractPrice(r));
+//               }
+//             });
+//           });
+//           const tomorrowSixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+//           const tomorrowTrainersToRemove = [];
+//           for (const trainerName of Object.keys(tomorrowTrainerFormMap)) {
+//             const entry = tomorrowTrainerFormMap[trainerName];
+//             if (!entry.trainer_id) {
+//               delete tomorrowTrainerFormMap[trainerName];
+//               continue;
+//             }
+//             try {
+//               const data = await apiGet('api.theracingapi.com',
+//                 '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + tomorrowSixtyDaysAgo + '&end_date=' + today,
+//                 { 'Authorization': 'Basic ' + RACING_AUTH }
+//               );
+//               await new Promise(resolve => setTimeout(resolve, 200));
+//               const results = data.results || [];
+//               const baselineRuns = results.length;
+//               const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
+//               const baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
+//               entry.baseline60 = baseline60;
+// 
+//               if (!baselineRuns || !baseline60) {
+//                 tomorrowTrainersToRemove.push(trainerName);
+//                 continue;
+//               }
+// 
+//               const isHot = entry.pct >= 25 && entry.pct >= baseline60 * 1.5;
+//               if (!isHot) tomorrowTrainersToRemove.push(trainerName);
+//             } catch (e) {
+//               console.log('[daily-build] Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
+//               report.warnings.push('Tomorrow Hot Yard baseline fetch failed for trainer ' + trainerName + ': ' + e.message);
+//               tomorrowTrainersToRemove.push(trainerName);
+//             }
+//           }
+//           tomorrowTrainersToRemove.forEach(function(trainerName) { delete tomorrowTrainerFormMap[trainerName]; });
+// 
+//           const tomorrowTrainerFormCandidates = Object.values(tomorrowTrainerFormMap).sort(function(a, b) {
+//             const ratioA = a.baseline60 ? a.pct / a.baseline60 : 0;
+//             const ratioB = b.baseline60 ? b.pct / b.baseline60 : 0;
+//             return ratioB - ratioA;
+//           }).slice(0, 5);
+// 
+//           // Build tomorrow's structured message
+//           const tomorrowMeetingsSummary = tomorrowCards.meetings.reduce(function(acc, m) {
+//             (m.races || []).forEach(function(race) {
+//               acc.push(m.name + ' ' + race.t + ' — ' + (race.name || '') + ' (' + (race.dist || '') + ') Going: ' + (race.going || m.going || 'Good'));
+//             });
+//             return acc;
+//           }, []).join('\n');
+// 
+//           // TEMPORARY DIAGNOSTIC — captures full candidate pools before AI selection, to audit
+//           // why a recent run produced Goodwood-only cards despite 6 meetings racing tomorrow.
+//           try {
+//             const _courseCounts = {};
+//             tomorrowRacecards.forEach(function(r){ _courseCounts[r.course] = (_courseCounts[r.course]||0) + 1; });
+//             await redisSet('debug:tomorrow-candidates:' + tomorrowDate, {
+//               generatedAt: new Date().toISOString(),
+//               meetingsInput: tomorrowCards.meetings.map(function(m){ return { course: m.name, raceCount: (m.races||[]).length }; }),
+//               racesByCourseFlattened: _courseCounts,
+//               meetingsSummaryTotalRaces: tomorrowRacecards.length,
+//               meetingsSummaryLinesShown: tomorrowMeetingsSummary.split('\n').length,
+//               groundEdgeCandidates_ALL: _tomorrowGroundEdgeAll,
+//               courseDistanceCandidates_ALL: tomorrowCourseDistanceCandidates,
+//               classDropCandidates_ALL: tomorrowClassDropCandidates,
+//               orGapCandidates_ALL: tomorrowOrGapCandidates,
+//               trainerFormCandidates_ALL: Object.values(tomorrowTrainerFormMap)
+//             });
+//           } catch(e) {}
+// 
+//           let tomorrowMsg = 'These are TOMORROW\'s race cards for ' + tomorrowDate + '. Apply the same signal logic but these races are for tomorrow not today.'
+//             + '\n\nTOMORROW\'S RACES:\n' + tomorrowMeetingsSummary + '\n\n';
+// 
+//           if (tomorrowGroundEdgeCandidates.length) {
+//             tomorrowMsg += 'GROUND EDGE CANDIDATES (high conviction individual ground specialists):\n';
+//             tomorrowGroundEdgeCandidates.forEach(function(h) {
+//               tomorrowMsg += '\n• ' + h.horse + ' | ' + h.venue + ' ' + h.time + ' | Going: ' + h.going + ' | Price: ' + h.price + '\n';
+//               tomorrowMsg += '  Ground record: ' + h.groundRecord + '\n';
+//               tomorrowMsg += '  Good/firm record: ' + h.goodRecord + '\n';
+//             });
+//             tomorrowMsg += '\n';
+//           } else {
+//             tomorrowMsg += 'GROUND EDGE: No qualifying ground specialists today. Do NOT produce a Ground Edge signal.\n\n';
+//           }
+// 
+//           if (tomorrowCourseDistanceCandidates.length) {
+//             tomorrowMsg += 'COURSE AND DISTANCE CANDIDATES (2+ top 2 finishes at today\'s course, 33%+ course win rate):\n';
+//             tomorrowCourseDistanceCandidates.slice(0, 5).forEach(function(c) {
+//               tomorrowMsg += '\n• ' + c.horse + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+//               tomorrowMsg += '  Course record: ' + c.courseTopTwo + ' top 2 finishes from ' + c.courseRuns + ' at ' + c.course + ' (' + c.courseTopTwoRate + '% SR) | Top 2 dates: ' + c.topTwoDates + '\n';
+//               tomorrowMsg += '  Top 2 finish at today\'s exact distance: ' + (c.winAtTodaysDistance ? 'Yes' : 'No') + '\n';
+//               tomorrowMsg += '  Going on course form: ' + (c.topTwoGoings.length ? c.topTwoGoings.join(', ') : 'Unknown') + '\n';
+//             });
+//             tomorrowMsg += '\n';
+//           } else {
+//             tomorrowMsg += 'COURSE AND DISTANCE: No qualifying horses today. Do NOT produce this signal.\n\n';
+//           }
+// 
+//           if (tomorrowClassDropCandidates.length) {
+//             tomorrowMsg += 'CLASS DROP CANDIDATES (horses from Class 1, 2 or 3 dropping at least 1 class today):\n';
+//             tomorrowClassDropCandidates.slice(0, 5).forEach(function(c) {
+//               tomorrowMsg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+//               tomorrowMsg += '  Last run: ' + c.lastRunClass + ' → Today: ' + c.todayClass + ' (drop of ' + c.classDrop + ' classes)\n';
+//             });
+//             tomorrowMsg += '\n';
+//           } else {
+//             tomorrowMsg += 'CLASS DROP: No horses dropping from Class 1, 2 or 3 today. Do NOT produce a Class Drop signal.\n\n';
+//           }
+// 
+//           if (tomorrowOrGapCandidates.length) {
+//             tomorrowMsg += 'OR GAP CANDIDATES (horses rated 8+ points above second highest rated horse in their race):\n';
+//             tomorrowOrGapCandidates.forEach(function(c) {
+//               tomorrowMsg += '\n• ' + c.horse + ' | ' + c.trainer + ' | ' + c.course + ' ' + c.time + ' | Price: ' + c.price + '\n';
+//               tomorrowMsg += '  OR: ' + c.or + ' | Second highest OR: ' + c.secondOr + ' | Gap: ' + c.orGap + ' points\n';
+//             });
+//             tomorrowMsg += '\n';
+//           } else {
+//             tomorrowMsg += 'OR GAP: No horses rated 8+ points above second highest rated in their race today.\n\n';
+//           }
+// 
+//           if (tomorrowTrainerFormCandidates.length) {
+//             tomorrowMsg += 'IN-FORM TRAINER CANDIDATES (25%+ strike rate last 14 days, min 5 runs, running at least 50% above their 60 day baseline):\n';
+//             tomorrowTrainerFormCandidates.forEach(function(c) {
+//               tomorrowMsg += '\n• ' + c.trainer + ' — ' + c.wins + '/' + c.runs + ' last 14 days (' + c.pct + '% SR) vs ' + c.baseline60 + '% SR over the trailing 60 days\n';
+//               c.horses.forEach(function(h) { tomorrowMsg += '  - ' + h + '\n'; });
+//             });
+//             tomorrowMsg += '\n';
+//           }
+// 
+//           tomorrowMsg += 'Do not produce Tipster Consensus cards for tomorrow. Do not produce Intelligence cards for tomorrow either — there is no FREE REIN INTELLIGENCE section in this message, so any Intelligence-type card would not be grounded in real data. Ground Edge, Course and Distance, Class Drop and Hot Yard cards may be produced if qualifying candidates exist. Return ONLY a valid JSON array.';
+// 
+//           const tomorrowResult = await callClaude(INTELLIGENCE_PROMPT, tomorrowMsg, 12000);
+//           tomorrowInputTokens = tomorrowResult.inputTokens || 0;
+//           tomorrowOutputTokens = tomorrowResult.outputTokens || 0;
+//           tomorrowCacheReadTokens = tomorrowResult.cacheReadTokens || 0;
+//           tomorrowCacheWriteTokens = tomorrowResult.cacheWriteTokens || 0;
+//           tomorrowWebSearchCount = tomorrowResult.webSearchCount || 0;
+//           report.callLog.push({ type: 'intelligence-tomorrow', label: 'Daily Intelligence (Tomorrow)', inputTokens: tomorrowInputTokens, outputTokens: tomorrowOutputTokens, cacheReadTokens: tomorrowCacheReadTokens, cacheWriteTokens: tomorrowCacheWriteTokens, webSearch: tomorrowWebSearchCount > 0, webSearchCount: tomorrowWebSearchCount });
+// 
+//           let tomorrowItems = null;
+//           let tomorrowParseError = null;
+//           if (!tomorrowResult.text) {
+//             tomorrowParseError = 'Tomorrow intelligence call returned no result';
+//           } else {
+//           try {
+//             tomorrowItems = extractJsonArray(tomorrowResult.text);
+//           } catch(e) {
+//             console.error('[daily-build] Tomorrow intelligence JSON parse failed:', e.message, '| Raw text:', (tomorrowResult.text || '').slice(0, 500));
+//             tomorrowParseError = e.message;
+//           }
+//           }
+// 
+//           if (tomorrowParseError) {
+//             report.errors.push('Tomorrow intelligence parse failed: ' + tomorrowParseError);
+//           } else if (!tomorrowItems) {
+//             report.errors.push('Tomorrow intelligence parse failed: no JSON array found in response');
+//           } else if (!tomorrowItems.length) {
+//             report.warnings.push('Tomorrow intelligence returned zero cards');
+//           }
+// 
+//           if (tomorrowItems && tomorrowItems.length) {
+//             // Code-level backstop for the prompt instruction above (AUDIT-DAILY-INTELLIGENCE.md,
+//             // finding S5): Intelligence is a today-only signal — tomorrow's message never
+//             // includes the FREE REIN INTELLIGENCE data section it's meant to draw from, but
+//             // a real run still produced an Intelligence-type card for tomorrow once. Drop any
+//             // that slip through regardless of whether the prompt instruction was followed.
+//             const _preIntelDropCount = tomorrowItems.length;
+//             tomorrowItems = tomorrowItems.filter(function(item) { return item.signalType !== 'Intelligence'; });
+//             if (tomorrowItems.length < _preIntelDropCount) {
+//               report.warnings.push('Dropped ' + (_preIntelDropCount - tomorrowItems.length) + ' Intelligence-type card(s) from tomorrow output — Intelligence is today-only');
+//             }
+//             tomorrowItems = validateAndRepairCtaDestinations(tomorrowItems, tomorrowRacecards, report.warnings);
+//             tomorrowItems = dedupeRaceCollisionsAndCapPerMeeting(tomorrowItems, report.warnings);
+//             tomorrowItems.forEach(function(item) { item.isTomorrow = true; item.date = tomorrowDate; });
+//             try { await redisSet('intelligence:' + tomorrowDate, { items: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
+//             try {
+//               await new Promise((resolve, reject) => {
+//                 const url = new URL(UPSTASH_URL);
+//                 const req = https.request({
+//                   hostname: url.hostname,
+//                   path: '/expire/' + encodeURIComponent('intelligence:' + tomorrowDate) + '/172800',
+//                   method: 'POST',
+//                   headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+//                 }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+//                 req.on('error', reject); req.end();
+//               });
+//             } catch(re) {}
+//             try { await safeWriteReport(tomorrowDate, { intelligence: tomorrowItems, generatedAt: new Date().toISOString() }); } catch(re) {}
+//             try {
+//               await new Promise((resolve, reject) => {
+//                 const url = new URL(UPSTASH_URL);
+//                 const req = https.request({
+//                   hostname: url.hostname,
+//                   path: '/expire/' + encodeURIComponent('daily:report:' + tomorrowDate) + '/172800',
+//                   method: 'POST',
+//                   headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+//                 }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+//                 req.on('error', reject); req.end();
+//               });
+//             } catch(re) {}
+//           }
+//         } else {
+//           console.log(`[daily-build] No race cards found for tomorrow (${tomorrowDate}) — tomorrow intelligence will be skipped`);
+//         }
+//         } else {
+//           report.errors.push('Tomorrow intelligence skipped — today\'s race cards were empty');
+//         }
+// 
+//         report.callLog.push({ type: 'intelligence', label: 'Daily Intelligence', inputTokens: intIT, outputTokens: intOT, cacheReadTokens: intCR, cacheWriteTokens: intCW, webSearch: intWS > 0, webSearchCount: intWS });
+//       }
+//       if (items && items.length) {
+//         report.intelligenceItems = items.length;
+//         report.intelligence = items;
+//         const tipsterItem = items.find(i => i.signalType === 'Tipster Consensus');
+//         if (tipsterItem) tipsterConsensusText = tipsterItem.intelligenceText || '';
+//       }
+//       report.inputTokens += intIT;
+//       report.outputTokens += intOT;
+//       report.cacheReadTokens += intCR;
+//       report.cacheWriteTokens += intCW;
+//       report.webSearchCount += intWS;
+//     } catch(e) {
+//       report.errors.push('intelligence: ' + e.message);
+//     }
     try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
 
     // 3.5 Trainer form table — a full leaderboard of today's trainers by 14-day strike
