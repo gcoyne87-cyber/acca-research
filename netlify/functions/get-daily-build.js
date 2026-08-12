@@ -56,6 +56,26 @@ exports.handler = async function(event) {
       horsesToWatch: a.horsesToWatch || []
     }));
 
+    // Daily Intelligence horses — ranks 3-5 (sorted indexes 2, 3, 4) of the same
+    // confidence-sorted array picks is built from. Index 2 is intentionally both
+    // the 3rd pick and the first intel horse. Entries with no usable selection
+    // are dropped rather than sent as blank cards; fewer than 5 analyses simply
+    // yields a shorter (possibly empty) array.
+    const intelPicks = analyses.slice(2, 5)
+      .filter(a => a && a.strongestSelection && a.strongestSelection.horseName)
+      .map(a => ({
+        horseName: a.strongestSelection.horseName,
+        odds: a.strongestSelection.odds || 'SP',
+        jockey: a.strongestSelection.jockey,
+        trainer: a.strongestSelection.trainer,
+        formFigures: a.strongestSelection.formFigures,
+        confidenceScore: a.confidenceScore,
+        pullQuote: a.strongestSelection.pullQuote,
+        factors: a.strongestSelection.factors,
+        raceIntelligence: a.raceIntelligence,
+        race: a.race
+      }));
+
     return {
       statusCode: 200,
       headers,
@@ -63,6 +83,7 @@ exports.handler = async function(event) {
         status: 'done',
         date: reportDate,
         picks,
+        intelPicks,
         intelligence: report.intelligence || [],
         analyses: report.analyses || [],
         cost: report.costUSD,
