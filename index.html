@@ -2930,9 +2930,6 @@ window.addEventListener('load',function(){
       ptRenderTypeRows(recs);
       var groups={}, order=[];
       recs.forEach(function(r){
-        // Hot Yard is retired from the dated results cards only — skipped here,
-        // before grouping, so a Hot-Yard-only date never renders an empty box.
-        if(r.type==='Hot Yard') return;
         if(!groups[r.date]){ groups[r.date]=[]; order.push(r.date); }
         groups[r.date].push(r);
       });
