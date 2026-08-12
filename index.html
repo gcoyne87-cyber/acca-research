@@ -13637,6 +13637,7 @@ function renderAiEdgeCarousel(){
 }
 
 var AI_INTELLIGENCE=[];
+var INTEL_PICKS=[];
 var _horseEdgeFlags={};  // { "horse name lower": { draw:true, class:true, jockey:true, trainer:true } }
 
 function _buildEdgeFlags(horseName, factors){
@@ -13692,6 +13693,9 @@ function loadDailyBuild(){
     var raceTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(m[1],10), parseInt(m[2],10), 0);
     return now>raceTime;
   }
+  // Exposed so renderAIIntelligence (top-level scope) can expire INTEL_PICKS
+  // cards with the same rules — this helper is otherwise local to loadDailyBuild.
+  window._ctaRaceTimePassed=_ctaRaceTimePassed;
 
   Promise.all([
     fetch('/.netlify/functions/get-daily-build').then(function(r){return r.json();}).catch(function(){return null;}),
@@ -13760,6 +13764,11 @@ function loadDailyBuild(){
         renderRacingPicks();
       }
 
+      // Daily Intelligence horses (ranks 3-5 by confidence) from get-daily-build's
+      // intelPicks — renderAIIntelligence uses these while Daily Intelligence
+      // generation is paused and data.intelligence is empty.
+      INTEL_PICKS=Array.isArray(data.intelPicks)?data.intelPicks:[];
+
       // Map analyses to intelligence cards — today's cards (with passed race times filtered out) first, tomorrow's cards after
       var todayItems=((data.intelligence&&data.intelligence.length)?data.intelligence:[]).filter(function(item){
         return !_ctaRaceTimePassed(item.ctaDestination,item.date);
@@ -13793,6 +13802,10 @@ function loadDailyBuild(){
             if(AI_INTELLIGENCE.length!==_beforeLen || _justAfterMidnight) renderAIIntelligence();
           },300000);
         }
+      } else if(INTEL_PICKS.length){
+        // Intelligence paused (empty) but intelPicks present — render the
+        // carousel from those; renderAIIntelligence prefers INTEL_PICKS itself.
+        renderAIIntelligence();
       }
       // Render all AI selections list
       if(data.analyses&&data.analyses.length) renderAllSelections(data.analyses, data.date||'');
@@ -13936,7 +13949,36 @@ function renderAIIntelligence(){
   var el=document.getElementById('ai-intelligence-list');
   if(!el) return;
 
-  el.innerHTML=AI_INTELLIGENCE.map(function(item){
+  // While Daily Intelligence generation is paused, INTEL_PICKS (ranks 3-5 by
+  // confidence from get-daily-build's intelPicks) takes the carousel's place.
+  // Each pick is mapped into the exact item shape the card template below
+  // already consumes — the template itself is unchanged. ctaDestination uses
+  // the same race:{course-slug}:{time} format the build's cards carry, so the
+  // existing CTA navigation and live price/runner lookups work unmodified.
+  var _items=INTEL_PICKS.length?INTEL_PICKS.map(function(p){
+    var _rp=(p.race||'').split(' ');
+    var _rt=_rp[_rp.length-1]||'';
+    var _rc=_rp.slice(0,_rp.length-1).join(' ')||'';
+    var _slug=_rc.toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    return {
+      signalType:'INTELLIGENCE',
+      sigColor:'#8b5cf6',
+      horseName:p.horseName||'',
+      price:p.odds||'',
+      meta:escHtml(_rt+' '+_rc),
+      intelligenceText:escHtml(p.pullQuote||p.raceIntelligence||''),
+      ctaLabel:'Analyse '+escHtml(_rc)+' '+escHtml(_rt),
+      ctaDestination:'race:'+_slug+':'+_rt
+    };
+  }).filter(function(item){
+    // Same expiry rule as the real intelligence cards: drop a pick once its
+    // race time has passed (these are today-only, so no date argument). The
+    // helper lives inside loadDailyBuild and is exposed on window; the typeof
+    // guard covers any render that fires before loadDailyBuild has run.
+    return typeof window._ctaRaceTimePassed==='function'?!window._ctaRaceTimePassed(item.ctaDestination):true;
+  }):AI_INTELLIGENCE;
+
+  el.innerHTML=_items.map(function(item){
     var imgEl=document.getElementById(item.imgId);
     var imgSrc=imgEl&&imgEl.src?imgEl.src:'';
     // Prefer the live racecard price (refreshed hourly) over the price baked
@@ -13987,12 +14029,12 @@ function renderAIIntelligence(){
 
   var dotsEl=document.getElementById('ai-dots');
   if(dotsEl){
-    dotsEl.innerHTML=AI_INTELLIGENCE.map(function(item,i){
+    dotsEl.innerHTML=_items.map(function(item,i){
       return '<div class="ai-dot" style="height:4px;border-radius:99px;transition:width .2s,background .2s;width:'+(i===0?'20px':'6px')+';background:'+(i===0?'#0D1B3E':'#d0d5e0')+'"></div>';
     }).join('');
     el.addEventListener('scroll',function(){
       var cardW=el.querySelector('div')?el.querySelector('div').offsetWidth+8:el.offsetWidth*0.88+8;
-      var idx=Math.min(Math.round(el.scrollLeft/cardW),AI_INTELLIGENCE.length-1);
+      var idx=Math.min(Math.round(el.scrollLeft/cardW),_items.length-1);
       document.querySelectorAll('.ai-dot').forEach(function(d,i){
         d.style.width=i===idx?'20px':'6px';
         d.style.background=i===idx?'#0D1B3E':'#d0d5e0';
