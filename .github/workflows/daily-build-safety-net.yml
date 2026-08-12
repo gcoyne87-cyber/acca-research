@@ -49,12 +49,15 @@ jobs:
           INTEL_RESPONSE=$(fetch_redis "intelligence%3A$TODAY")
           LOCK_RESPONSE=$(fetch_redis "build%3Alock%3A$TODAY")
 
-          # report.generatedAt does not exist on a real build's report object — the
-          # real report skeleton (daily-build-background.js:1303-1325) only ever sets
-          # date/startedAt/completedAt. Only the minimal tomorrow-preview shape has
-          # generatedAt, so the old check could never pass for a genuinely fresh
-          # same-day report. Use startedAt instead — every real build sets that as
-          # literally its first field.
+          # Success signal from daily:report:{today}: a build proves it ran via
+          # report.analyses (NAP/NB race analyses, checkpointed batch by batch) or
+          # report.completedAt (set at the very end of every finished build). The
+          # old check counted report.intelligence items — permanently 0 since Daily
+          # Intelligence generation was paused (commit 569e15d), which left the
+          # 30-minute lock as the only stand-down signal and would fire a duplicate
+          # build + duplicate email any day the real build finished in under 10
+          # minutes. startedAt must still be today so the minimal tomorrow-preview
+          # shape (no startedAt/analyses/completedAt) can never stand the net down.
           ITEMS=$(TODAY="$TODAY" node -e '
             let data = "";
             process.stdin.on("data", c => data += c);
@@ -65,9 +68,9 @@ jobs:
                 const report = JSON.parse(raw.result);
                 const startDate = (report.startedAt || "").slice(0, 10);
                 if (startDate !== process.env.TODAY) { console.log(0); return; }
-                const items = Array.isArray(report.intelligence) ? report.intelligence : [];
-                const n = items.filter(function(it) { return it && it.isTomorrow !== true; }).length;
-                console.log(n);
+                const analyses = Array.isArray(report.analyses) ? report.analyses.length : 0;
+                if (analyses > 0 || report.completedAt) { console.log(Math.max(analyses, 1)); return; }
+                console.log(0);
               } catch (e) { console.log(0); }
             });
           ' <<< "$REPORT_RESPONSE")
@@ -123,7 +126,7 @@ jobs:
         if: steps.check.outputs.standDown == 'true'
         run: |
           if [ "${{ steps.check.outputs.items }}" -gt 0 ]; then
-            echo "daily:report:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.items }} card(s). Netlify's scheduled build ran — nothing to do."
+            echo "daily:report:${{ steps.check.outputs.today }} shows a completed/in-progress build (${{ steps.check.outputs.items }} race analysis/analyses). Netlify's scheduled build ran — nothing to do."
           elif [ "${{ steps.check.outputs.intelItems }}" -gt 0 ]; then
             echo "intelligence:${{ steps.check.outputs.today }} already has ${{ steps.check.outputs.intelItems }} card(s). Netlify's scheduled build ran — nothing to do."
           else
