@@ -3123,21 +3123,31 @@ window.addEventListener('load',function(){
       fetchToday(today,function(recs){ ptRender(recs); syncResults(); ptBackfillMissedDates(); });
     }
 
-    // Backfill: any of the last 7 days (today-1 back to today-7) with zero recs
-    // in ptRecs2 — the tracker wasn't opened that day, so fetchToday(today)
-    // never ingested it — is fetched here via the same fetchToday/mergeRecs
-    // path (it already accepts an arbitrary date and merges safely). Dates run
-    // sequentially, not in parallel: mergeRecs is a read-modify-write on
-    // localStorage, so overlapping fetches could clobber each other's saves.
-    // A date whose report has no intelligence merges nothing and is simply
-    // re-checked on the next unlock; a date with any recs at all is skipped.
+    // Backfill: each of the last 7 days (today-1 back to today-7) is fetched
+    // via the same fetchToday/mergeRecs path (it accepts an arbitrary date and
+    // merges safely) unless BOTH ingestion streams already exist for it:
+    // intelligence signal recs AND Phase 3 recs (NAP/NB/Intel 3-5). A date
+    // holding only one stream is re-fetched to pick up the other — e.g. a date
+    // backfilled before Phase 3 ingestion existed has intelligence recs but no
+    // Phase 3 picks. Deliberate cost: a date that can only ever have one stream
+    // (no analyses that day, or intelligence paused) re-fetches on every
+    // unlock — the fetch merges nothing new and resulted recs are never
+    // touched, so it is waste, not risk. Dates run sequentially, not in
+    // parallel: mergeRecs is a read-modify-write on localStorage, so
+    // overlapping fetches could clobber each other's saves.
     function ptBackfillMissedDates(){
-      var have={};
-      getRecs().forEach(function(r){ if(r.date) have[r.date]=true; });
+      var INTEL_SET=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence'];
+      var PHASE3_SET=['NAP','NB','Intel 3','Intel 4','Intel 5'];
+      var haveIntel={}, havePhase3={};
+      getRecs().forEach(function(r){
+        if(!r.date) return;
+        if(INTEL_SET.indexOf(r.type)!==-1) haveIntel[r.date]=true;
+        if(PHASE3_SET.indexOf(r.type)!==-1) havePhase3[r.date]=true;
+      });
       var missing=[];
       for(var i=1;i<=7;i++){
         var d=new Date(Date.now()-i*86400000).toISOString().slice(0,10);
-        if(!have[d]) missing.push(d);
+        if(!(haveIntel[d]&&havePhase3[d])) missing.push(d);
       }
       if(!missing.length) return;
       (function next(){
