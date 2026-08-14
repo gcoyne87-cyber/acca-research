@@ -312,6 +312,21 @@ function redisSet(key, value) {
   });
 }
 
+// Same as redisSet but with an expiry — Upstash REST takes TTL as ?EX={seconds}
+// on the /set/ path. Used only for the nohistory negative markers below, which
+// must age out (a debutant eventually gets a first run on the books).
+function redisSetEx(key, value, ttlSeconds) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key) + '?EX=' + ttlSeconds, method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
 // Accepts callClaude()'s summaries array ({ horse_id, horseName, summary }).
 // No expiry on form-summary:{horse_id} — form analysis doesn't depend on
 // today's going/course, so it stays valid until the horse runs again and a
@@ -497,6 +512,15 @@ exports.handler = async function(event) {
         console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) during pre-filter — stopping early; next scheduled run will pick up the rest');
         break;
       }
+      // Negative marker: this horse recently proved to have no fetchable form
+      // history (typically a debutant) — skip it instantly instead of burning
+      // ~4s of retry budget on it every single run. The marker self-expires
+      // after 7 days so a horse that has since raced gets re-checked.
+      const noHistoryMarker = await redisGet('form-summary:nohistory:' + runner.horse_id);
+      if (noHistoryMarker) {
+        horsesSkipped++;
+        continue;
+      }
       const existingSummary = await redisGet('form-summary:' + runner.horse_id);
       if (existingSummary) {
         horsesSkipped++;
@@ -513,6 +537,7 @@ exports.handler = async function(event) {
       if (!formHistory) {
         horsesFailed++;
         console.log('[form-summary] no form history for ' + runner.horseName + ' (' + runner.horse_id + ') — failed after retry');
+        try { await redisSetEx('form-summary:nohistory:' + runner.horse_id, 1, 604800); } catch (nhErr) {}
         continue;
       }
       toProcess.push(Object.assign({}, runner, { formHistory: formHistory }));
