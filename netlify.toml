@@ -22,7 +22,7 @@
 [functions."fetch-horse-history-2-background"]
   schedule = "50 23 * * *"
 
-[functions."form-summary-background"]
+[functions."form-summary-trigger"]
   schedule = "0 5,7,9 * * *"
 
 [functions."refresh-prices-background"]

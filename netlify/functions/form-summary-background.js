@@ -1,7 +1,12 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-module.exports.config = { schedule: '0 5,7,9 * * *', timeout: 900 };
+// No schedule here — deliberately. A schedule paired directly onto a
+// -background function never actually fires (see form-summary-trigger.js,
+// which now carries the '0 5,7,9 * * *' cron and POSTs here), and a function
+// that IS scheduled rejects external HTTP triggers with a 403 at Netlify's
+// edge — so the schedule must live on the trigger, not here.
+module.exports.config = { timeout: 900 };
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
