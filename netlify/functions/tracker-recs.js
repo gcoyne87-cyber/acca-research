@@ -52,9 +52,13 @@ async function getStoredRecords() {
 function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
 
 // SET NX EX — only one concurrent POST may run the read-merge-write cycle.
+// Options go as path segments (/set/key/value/EX/15/NX), NOT query params:
+// Upstash expands each query param as an ARGUMENT PAIR, so ?NX=true became
+// "SET key value NX true" — ERR syntax error on every call, which read as
+// lock-never-acquired and made every POST 409 (bug found 2026-08-16).
 async function acquireLock() {
   for (let i = 0; i < 4; i++) {
-    const r = await redisRaw('/set/' + LOCK_KEY + '?NX=true&EX=15', 'POST', 1);
+    const r = await redisRaw('/set/' + LOCK_KEY + '/1/EX/15/NX', 'POST');
     if (r && r.result === 'OK') return true;
     await sleep(400);
   }
