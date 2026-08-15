@@ -11578,7 +11578,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     var _tfTabKey=selMeeting.id+'-'+sr.t;
     if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
       var runnersForRace=_sortByPrice((sr.runners&&sr.runners.length)?sr.runners:[]);
-      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf');}).join('')+'</div>';
+      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_inlineHorseAnalysisHtml(selMeeting.id,sr.t,selMeeting.name,r.name));}).join('')+'</div>';
     }
     out+='</div>';
   }
@@ -12158,7 +12158,7 @@ function rcRaceDetailSingleHtml(m,selRace){
   var out='<div id="rcs-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var race=m.races[selRace];
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'rc');}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
   out+='</div>';
   return out;
 }
@@ -12249,6 +12249,38 @@ function rcTabSelect(mid,time,mname,tab){
   var _fe=document.getElementById('racing-future-content');
   if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
   if(typeof nrRenderCard==='function') nrRenderCard();
+}
+// Inline per-horse analysis toggle — keyed mid+'-'+time like _rcTabState.
+// Tapping Analysis no longer swaps in a separate view; it toggles the
+// per-horse analysis text under each runner row on the racecard itself.
+var _rcHorseAnalysisOpen={};
+function rcToggleHorseAnalysis(mid,time,mname){
+  var now=Date.now();
+  if(now-_rcTabLastMs<350) return;
+  _rcTabLastMs=now;
+  var key=mid+'-'+time;
+  if(_rcHorseAnalysisOpen[key]){
+    _rcHorseAnalysisOpen[key]=false;
+  } else {
+    _rcHorseAnalysisOpen[key]=true;
+    // The runner rows must be visible for the inline text to show — close any
+    // open tab view (Tips), matching how tapping Analysis always closed Tips.
+    if(_rcTabState[key]) _rcTabState[key]=null;
+  }
+  _renderCurrentHomeList();
+  if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
+  var _fe=document.getElementById('racing-future-content');
+  if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
+  if(typeof nrRenderCard==='function') nrRenderCard();
+}
+function _inlineHorseAnalysisHtml(mid,time,mname,horseName){
+  if(!_rcHorseAnalysisOpen[mid+'-'+time]) return '';
+  var a=_cachedRaceAnalyses[((mname||'')+' '+(time||'')).toLowerCase().trim()];
+  if(!a||!(a.runnerAnalysis||[]).length) return '';
+  var target=(horseName||'').toLowerCase().trim();
+  var hit=(a.runnerAnalysis||[]).filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0];
+  if(!hit||!hit.analysis) return '';
+  return '<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(hit.analysis)+'</div>';
 }
 function _buildAnalysisTabHtml(a){
   if(!a) return '<div style="padding:16px 14px;text-align:center;color:#9aa3b5;font-size:13px">No analysis yet — run the daily build first.</div>';
@@ -12462,7 +12494,7 @@ function _raceTabsHtml(mid,time,mname){
   var btnOn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#0D1B3E;border:1.5px solid #0D1B3E;border-radius:99px;font-size:12px;font-weight:700;color:#d4af37;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var me=mid.replace(/'/g,"\\'"); var te=time.replace(/'/g,"\\'"); var ne=(mname||'').replace(/'/g,"\\'");
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
-    +'<button style="'+(active==='analysis'?btnOn:btn)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'analysis\')">'+chart+' <span>Analysis</span>'+down+'</button>'
+    +'<button style="'+(_rcHorseAnalysisOpen[key]?btnOn:btn)+'" onclick="rcToggleHorseAnalysis(\''+me+'\',\''+te+'\',\''+ne+'\')">'+chart+' <span>Analysis</span>'+down+'</button>'
     +'<button style="'+(active==='tips'?btnOn:btn)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
     +'</div>';
   if(active==='analysis'){
@@ -12561,7 +12593,7 @@ function rcRaceDetailHtml(m){
   var out='<div id="rc-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
 
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'rc');}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
 
   out+='</div>';
 
@@ -13139,7 +13171,7 @@ function _sortByPrice(runners){
     return _priceToDecimal(a.price)-_priceToDecimal(b.price);
   });
 }
-function runnerRow(ru,ctx){
+function runnerRow(ru,ctx,extraHtml){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var silk=ru.silk?nrSilk(ru.silk):'';
   var jockey=ru.jockey||ru.jt||'';
@@ -13278,6 +13310,7 @@ function runnerRow(ru,ctx){
         +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
       +'</button>'
     +'</div>'
+    +(extraHtml||'')
     +(function(){var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");var ps='display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 14px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';var down='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';return '<div style="display:flex;justify-content:center;gap:8px;padding:8px 12px"><button id="nrh-btn-fe-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" style="'+ps+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Form Focus</span>'+down+'</button></div>';})()
     +histCarousel
   +'</div>';
@@ -13541,7 +13574,7 @@ function nrRenderCard(){
   var secs=nrSecsLeft(nrSelected);
   function buildNrCard(runnerCtx){
     var raceRunners=_sortByPrice((r._runners&&r._runners.length)?r._runners:NR_RUNNERS);
-    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx);}).join('');
+    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_inlineHorseAnalysisHtml(r.venue,r.t,r.venue,ru.name));}).join('');
     var cdId=runnerCtx==='nrhome'?'nr-hdr-cd-home':'nr-hdr-cd';
     return '<div>'
       +'<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">'
@@ -15756,7 +15789,7 @@ function tmRaceDetailHtml(m){
   var race=m.races[selRace];
   var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:TM_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'tm');}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'tm',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
   out+='</div>';
   return out;
 }
