@@ -2787,6 +2787,7 @@ window.addEventListener('load',function(){
     // these same records are re-sent on every unlock/fetch/sync, so a failed
     // or 409'd push self-heals on the next one.
     function ptPushToRedis(records){
+      if(window._ptMigrating) return; // migration owns the lock — auto-pushes pause, records re-send on the next fetch/sync
       if(!Array.isArray(records)||!records.length) return;
       fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:records})})
         .then(function(r){ return r.json(); })
@@ -2802,22 +2803,36 @@ window.addEventListener('load',function(){
       var all=getRecs();
       if(!all.length){ console.log('[pt-migrate] nothing in localStorage to migrate'); return; }
       console.log('[pt-migrate] migrating '+all.length+' record(s) to Redis in batches of 200…');
+      // Pause every automatic ptPushToRedis while migrating — the unlock/60s
+      // auto-syncs were grabbing the tracker-recs lock and 409ing the migration.
+      window._ptMigrating=true;
       var i=0, sent=0;
-      (function next(){
-        if(i>=all.length){ console.log('[pt-migrate] ✅ DONE — '+sent+'/'+all.length+' record(s) sent to Redis'); return; }
+      (function next(attempt){
+        attempt=attempt||0;
+        if(i>=all.length){
+          window._ptMigrating=false;
+          console.log('[pt-migrate] ✅ DONE — '+sent+'/'+all.length+' record(s) sent to Redis');
+          return;
+        }
         var batch=all.slice(i,i+200);
         fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:batch})})
           .then(function(r){ return r.json().then(function(j){ return {status:r.status,json:j}; }); })
           .then(function(res){
+            if(res.status===409&&attempt<3){
+              console.log('[pt-migrate] batch at '+i+' got 409 (another sync holds the lock) — retry '+(attempt+1)+'/3 in 5s…');
+              setTimeout(function(){ next(attempt+1); },5000);
+              return;
+            }
             if(res.status!==200){ throw new Error('HTTP '+res.status+' — '+((res.json&&res.json.error)||'unknown')); }
             i+=200; sent+=batch.length;
             console.log('[pt-migrate] batch ok — '+Math.min(i,all.length)+'/'+all.length+' sent (appended '+(res.json.appended||0)+', updated '+(res.json.updated||0)+', total in Redis '+(res.json.total!=null?res.json.total:'?')+')');
-            next();
+            next(0);
           })
           .catch(function(e){
+            window._ptMigrating=false;
             console.log('[pt-migrate] ❌ batch FAILED at record '+i+' — '+(e&&e.message)+'. localStorage is untouched; re-run ptMigrateToRedis() to resume (merge is idempotent).');
           });
-      })();
+      })(0);
     };
 
     function fetchToday(date,cb){
@@ -14599,6 +14614,20 @@ window._ptRQNext=function(){
       console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
       if(lk&&Object.keys(lk).length){
         try{
+          // Quota guard: results:{date} caches are only needed while a date's
+          // records are still being resulted — anything older than 3 days has
+          // its outcomes written into ptRecs2 already. Prune before storing so
+          // old caches can't accumulate and fill localStorage ("exceeded the
+          // quota" seen on desktop 2026-08-16).
+          var _cutoff=new Date(Date.now()-3*86400000).toISOString().slice(0,10);
+          var _stale=[];
+          for(var _ri=0;_ri<localStorage.length;_ri++){
+            var _rk=localStorage.key(_ri);
+            var _rm=_rk&&_rk.match(/^results:(\d{4}-\d{2}-\d{2})$/);
+            if(_rm&&_rm[1]<_cutoff) _stale.push(_rk);
+          }
+          _stale.forEach(function(_sk){ localStorage.removeItem(_sk); });
+          if(_stale.length) console.log('[pt-trace] pruned '+_stale.length+' stale results cache(s):',_stale.join(', ')); // TEMP TRACE — remove after verification
           localStorage.setItem('results:'+item.d,JSON.stringify(lk));
           console.log('[pt-trace] results stored → localStorage["results:'+item.d+'"]'); // TEMP TRACE — remove after verification
         }catch(e){
