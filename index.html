@@ -2741,6 +2741,85 @@ window.addEventListener('load',function(){
       return recs;
     }
 
+    // ---- Redis sync: tracker:recs via tracker-recs.js is the master copy; ----
+    // ---- localStorage stays as the per-device working cache.               ----
+
+    // Merge remote records into the local cache. dedupeRecs already implements
+    // the exact rule required (the kept record only ever loses to a later one
+    // that has a result when it doesn't), so local-first + remote-appended
+    // means: local kept, remote fills empty results and adds unknown picks.
+    // Nothing in localStorage is ever cleared or overwritten destructively.
+    function ptMergeFromRemote(remote){
+      if(!Array.isArray(remote)||!remote.length) return getRecs();
+      var local=getRecs();
+      // Narrow L→P upgrade (2nd-place recheck), mirroring ptShow's own migration
+      var byKey={};
+      local.forEach(function(r){ byKey[(r.date||'')+'|'+(r.horse||'').toLowerCase().trim()]=r; });
+      remote.forEach(function(n){
+        var ex=byKey[(n.date||'')+'|'+(n.horse||'').toLowerCase().trim()];
+        if(ex&&ex.result==='L'&&n.result==='P'){ ex.result='P'; if(n.pos) ex.pos=n.pos; if(n.sp) ex.sp=n.sp; }
+      });
+      var merged=dedupeRecs(local.concat(remote));
+      merged.sort(function(a,b){
+        if(b.date>a.date) return 1;
+        if(b.date<a.date) return -1;
+        return (a.time||'').localeCompare(b.time||'');
+      });
+      saveRecs(merged);
+      return merged;
+    }
+
+    function ptPullFromRedis(cb){
+      fetch('/.netlify/functions/tracker-recs')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          var remote=(data&&Array.isArray(data.records))?data.records:[];
+          console.log('[pt-redis] pulled '+remote.length+' record(s) from Redis');
+          cb(ptMergeFromRemote(remote));
+        })
+        .catch(function(e){
+          console.log('[pt-redis] pull failed — '+(e&&e.message)+'; rendering from local cache only');
+          cb(getRecs());
+        });
+    }
+
+    // Fire-and-forget: the endpoint's merge is idempotent and additive, and
+    // these same records are re-sent on every unlock/fetch/sync, so a failed
+    // or 409'd push self-heals on the next one.
+    function ptPushToRedis(records){
+      if(!Array.isArray(records)||!records.length) return;
+      fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:records})})
+        .then(function(r){ return r.json(); })
+        .then(function(res){ console.log('[pt-redis] pushed '+records.length+' record(s) — appended '+(res.appended||0)+', updated '+(res.updated||0)+', total in Redis '+(res.total!=null?res.total:'?')); })
+        .catch(function(e){ console.log('[pt-redis] push failed — '+(e&&e.message)+' (records retry on next fetch/sync)'); });
+    }
+
+    // ONE-TIME migration — run window.ptMigrateToRedis() from the browser
+    // console on the DESKTOP that holds the full historical ptRecs2 data.
+    // Read-only against localStorage; batches of 200; idempotent, so re-run
+    // freely if a batch fails mid-way. Remove once migration is confirmed.
+    window.ptMigrateToRedis=function(){
+      var all=getRecs();
+      if(!all.length){ console.log('[pt-migrate] nothing in localStorage to migrate'); return; }
+      console.log('[pt-migrate] migrating '+all.length+' record(s) to Redis in batches of 200…');
+      var i=0, sent=0;
+      (function next(){
+        if(i>=all.length){ console.log('[pt-migrate] ✅ DONE — '+sent+'/'+all.length+' record(s) sent to Redis'); return; }
+        var batch=all.slice(i,i+200);
+        fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:batch})})
+          .then(function(r){ return r.json().then(function(j){ return {status:r.status,json:j}; }); })
+          .then(function(res){
+            if(res.status!==200){ throw new Error('HTTP '+res.status+' — '+((res.json&&res.json.error)||'unknown')); }
+            i+=200; sent+=batch.length;
+            console.log('[pt-migrate] batch ok — '+Math.min(i,all.length)+'/'+all.length+' sent (appended '+(res.json.appended||0)+', updated '+(res.json.updated||0)+', total in Redis '+(res.json.total!=null?res.json.total:'?')+')');
+            next();
+          })
+          .catch(function(e){
+            console.log('[pt-migrate] ❌ batch FAILED at record '+i+' — '+(e&&e.message)+'. localStorage is untouched; re-run ptMigrateToRedis() to resume (merge is idempotent).');
+          });
+      })();
+    };
+
     function fetchToday(date,cb){
       console.log('[pt-trace] fetchToday →',date); // TEMP TRACE — remove after verification
       fetch('/.netlify/functions/get-daily-build?date='+date)
@@ -2787,7 +2866,11 @@ window.addEventListener('load',function(){
           pushPhase3((data.intelPicks||[])[1],'Intel 4');
           pushPhase3((data.intelPicks||[])[2],'Intel 5');
           console.log('[pt-trace] fetchToday built',news.length,'rec(s) for',date); // TEMP TRACE — remove after verification
-          cb(mergeRecs(news));
+          var merged=mergeRecs(news);
+          // Share this date's post-merge records (including any results they
+          // already carry) so every other device rebuilds them from Redis.
+          if(news.length) ptPushToRedis(merged.filter(function(r){ return r.date===date; }));
+          cb(merged);
         })
         .catch(function(e){
           // Previously swallowed silently — a throw inside mergeRecs (e.g. a
@@ -3069,6 +3152,7 @@ window.addEventListener('load',function(){
       function applyAll(){
         var recs=getRecs();
         var changed=false;
+        var changedRecs=[];
         recs.forEach(function(r){
           if(!allLookups[r.date]) return;
           var match=allLookups[r.date][normName(r.horse)];
@@ -3095,8 +3179,9 @@ window.addEventListener('load',function(){
             r.result='L';
           }
           changed=true;
+          changedRecs.push(r);
         });
-        if(changed){ saveRecs(recs); ptRender(recs); }
+        if(changed){ saveRecs(recs); ptRender(recs); ptPushToRedis(changedRecs); }
         if(status){
           status.textContent=changed?'Results updated ✓':'Up to date';
           setTimeout(function(){ status.style.display='none'; },2500);
@@ -3131,9 +3216,14 @@ window.addEventListener('load',function(){
       saveRecs(cleaned);
       var today=new Date().toISOString().slice(0,10);
       console.log('[pt-trace] ptShow: unlock — today(UTC)='+today); // TEMP TRACE — remove after verification
-      fetchToday(today,function(recs){
-        console.log('[pt-trace] ptShow: today fetch merged — rec dates present:',Array.from(new Set(recs.map(function(r){return r.date;}))).sort().reverse().slice(0,10).join(', ')); // TEMP TRACE — remove after verification
-        ptRender(recs); syncResults(); ptBackfillMissedDates();
+      // Redis first: merge the shared master record set into the local cache
+      // before anything renders, so every device starts from identical data.
+      // A failed pull falls back to local-only — exactly the old behaviour.
+      ptPullFromRedis(function(){
+        fetchToday(today,function(recs){
+          console.log('[pt-trace] ptShow: today fetch merged — rec dates present:',Array.from(new Set(recs.map(function(r){return r.date;}))).sort().reverse().slice(0,10).join(', ')); // TEMP TRACE — remove after verification
+          ptRender(recs); syncResults(); ptBackfillMissedDates();
+        });
       });
     }
 
