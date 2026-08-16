@@ -2962,6 +2962,24 @@ window.addEventListener('load',function(){
       el.innerHTML=stat(raced,'Raced','#0D1B3E')+stat(wins,'Wins','#10b981')+stat(placed,'2nd','#3b82f6')+stat(losses+placed,'Total Lost','#ef4444')+stat(raced?sr+'%':'—','Strike','#d4af37')+stat(avgStr,'Avg Price','#f59e0b');
     }
 
+    // Phase 1/2/3 box collapse state — Phase 1 & 2 (frozen) start collapsed,
+    // Phase 3 (active tracking) starts expanded. Persisted so the choice
+    // survives a reload; unrelated to any stats calculation.
+    var PT_PHASE_STATE_KEY='ptPhaseOpen';
+    function ptGetPhaseOpenState(){
+      try{
+        var s=JSON.parse(localStorage.getItem(PT_PHASE_STATE_KEY));
+        if(s&&typeof s==='object') return {p1:!!s.p1,p2:!!s.p2,p3:s.p3!==undefined?!!s.p3:true};
+      }catch(e){}
+      return {p1:false,p2:false,p3:true};
+    }
+    window.ptTogglePhase=function(key){
+      var s=ptGetPhaseOpenState();
+      s[key]=!s[key];
+      try{ localStorage.setItem(PT_PHASE_STATE_KEY,JSON.stringify(s)); }catch(e){}
+      ptRenderTypeRows(getRecs());
+    };
+
     function ptRenderTypeRows(recs){
       var el=document.getElementById('pt-type-rows');
       if(!el) return;
@@ -3059,14 +3077,20 @@ window.addEventListener('load',function(){
       // Labelled boxes — subtle border, small gap; row markup above is
       // untouched, only wrapped.
       var boxStyle='border:1px solid #e4e8f0;border-radius:8px;padding:2px 8px 4px';
-      var labelStyle='font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 3px 2px';
+      var labelStyle='font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 3px 2px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:4px';
+      var phaseOpen=ptGetPhaseOpenState();
+      function phaseLabelHtml(text,key,extraMargin){
+        var isOpen=phaseOpen[key];
+        var chev='<span style="font-size:8px;flex-shrink:0">'+(isOpen?'▲':'▼')+'</span>';
+        return '<div style="'+labelStyle+(extraMargin?';margin-top:8px':'')+'" onclick="ptTogglePhase(\''+key+'\')">'+chev+'<span>'+text+'</span></div>';
+      }
       el.innerHTML=
-        '<div style="'+labelStyle+'">Phase 1</div>'
-        +'<div style="'+boxStyle+'">'+frozenHtml+'</div>'
-        +'<div style="'+labelStyle+';margin-top:8px">Phase 2</div>'
-        +'<div style="'+boxStyle+'">'+liveHtml+'</div>'
-        +'<div style="'+labelStyle+';margin-top:8px">Phase 3</div>'
-        +'<div style="'+boxStyle+'">'+phase3Html+'</div>';
+        phaseLabelHtml('Phase 1','p1',false)
+        +(phaseOpen.p1?'<div style="'+boxStyle+'">'+frozenHtml+'</div>':'')
+        +phaseLabelHtml('Phase 2','p2',true)
+        +(phaseOpen.p2?'<div style="'+boxStyle+'">'+liveHtml+'</div>':'')
+        +phaseLabelHtml('Phase 3','p3',true)
+        +(phaseOpen.p3?'<div style="'+boxStyle+'">'+phase3Html+'</div>':'');
     }
 
     function ptRender(recs){
