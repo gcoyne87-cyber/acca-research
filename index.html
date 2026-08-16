@@ -3103,7 +3103,11 @@ window.addEventListener('load',function(){
         +phaseLabelHtml('Phase 2','p2',true)
         +(phaseOpen.p2?'<div style="'+boxStyle+'">'+liveHtml+'</div>':'')
         +phaseLabelHtml('Phase 3','p3',true)
-        +(phaseOpen.p3?'<div style="'+boxStyle+'">'+phase3Html+'</div>':'');
+        +(phaseOpen.p3?'<div style="'+boxStyle+'">'+phase3Html+'</div>':'')
+        // Quick jump to the All Selections section — targets the stable
+        // #pt-all-sel-outer container (its top edge is the first heading);
+        // the per-date heading ids inside it only exist after data loads.
+        +'<div style="text-align:center;margin-top:8px"><a href="#" onclick="var _as=document.getElementById(\'pt-all-sel-outer\');if(_as)_as.scrollIntoView({behavior:\'smooth\'});return false;" style="font-size:10px;color:#9aa3b5;text-decoration:none;font-weight:600">&darr; All Selections</a></div>';
     }
 
     function ptRender(recs){
