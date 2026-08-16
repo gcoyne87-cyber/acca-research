@@ -2668,7 +2668,8 @@ window.addEventListener('load',function(){
         'Course and Distance':'#6366f1','Class Drop':'#f59e0b','Hot Yard':'#10b981',
         'Trainer':'#d4af37','Jockey Booking':'#8b5cf6',
         'Trainer Form':'#d4af37','Trainer Quote':'#d4af37','Intelligence':'#8b5cf6',
-        'Intel 3':'#8b5cf6','Intel 4':'#8b5cf6','Intel 5':'#8b5cf6'};
+        'Intel 3':'#8b5cf6','Intel 4':'#8b5cf6','Intel 5':'#8b5cf6',
+        'Intel 6':'#8b5cf6','Intel 7':'#8b5cf6','Intel 8':'#8b5cf6','Intel 9':'#8b5cf6','Intel 10':'#8b5cf6'};
       return m[t]||'#6b7280';
     }
 
@@ -2700,7 +2701,7 @@ window.addEventListener('load',function(){
       if(news.length){
         var todayDate=news[0].date;
         var MAIN_TYPES=['NAP','NB','Strongest'];
-        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert','Intel 3','Intel 4','Intel 5'];
+        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert','Intel 3','Intel 4','Intel 5','Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'];
         recs=recs.filter(function(r){
           if(r.date!==todayDate) return true;
           if(r.result&&r.result!=='') return true;
@@ -2880,6 +2881,13 @@ window.addEventListener('load',function(){
           pushPhase3((data.intelPicks||[])[0],'Intel 3');
           pushPhase3((data.intelPicks||[])[1],'Intel 4');
           pushPhase3((data.intelPicks||[])[2],'Intel 5');
+          // Value picks — ranks 6-10 by confidence (valuePicks[0..4] from
+          // get-daily-build). Same record format and pushPhase3 path as Intel 3-5.
+          pushPhase3((data.valuePicks||[])[0],'Intel 6');
+          pushPhase3((data.valuePicks||[])[1],'Intel 7');
+          pushPhase3((data.valuePicks||[])[2],'Intel 8');
+          pushPhase3((data.valuePicks||[])[3],'Intel 9');
+          pushPhase3((data.valuePicks||[])[4],'Intel 10');
           console.log('[pt-trace] fetchToday built',news.length,'rec(s) for',date); // TEMP TRACE — remove after verification
           var merged=mergeRecs(news);
           // Share this date's post-merge records (including any results they
@@ -3070,7 +3078,12 @@ window.addEventListener('load',function(){
         {key:'NB',label:'NB',color:'#3b82f6'},
         {key:'Intel 3',label:'Intel 3',color:'#8b5cf6'},
         {key:'Intel 4',label:'Intel 4',color:'#8b5cf6'},
-        {key:'Intel 5',label:'Intel 5',color:'#8b5cf6'}
+        {key:'Intel 5',label:'Intel 5',color:'#8b5cf6'},
+        {key:'Intel 6',label:'Intel 6',color:'#8b5cf6'},
+        {key:'Intel 7',label:'Intel 7',color:'#8b5cf6'},
+        {key:'Intel 8',label:'Intel 8',color:'#8b5cf6'},
+        {key:'Intel 9',label:'Intel 9',color:'#8b5cf6'},
+        {key:'Intel 10',label:'Intel 10',color:'#8b5cf6'}
       ];
       var phase3Html='';
       PHASE3_TYPES.forEach(function(t){ phase3Html+=rowHtml(t,computeRow(t.key,true)); });

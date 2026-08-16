@@ -84,6 +84,22 @@ exports.handler = async function(event) {
         race: a.race
       }));
 
+    // Value picks — ranks 6-10 (sorted indexes 5-9) of the same confidence-
+    // sorted array. Feeds the tracker's Intel 6-10 rows; same filter rule as
+    // intelPicks so a missing selection can never produce a blank entry.
+    const valuePicks = analyses.slice(5, 10)
+      .filter(a => a && a.strongestSelection && a.strongestSelection.horseName)
+      .map(a => ({
+        horseName: a.strongestSelection.horseName,
+        odds: a.strongestSelection.odds || 'SP',
+        jockey: a.strongestSelection.jockey,
+        trainer: a.strongestSelection.trainer,
+        formFigures: a.strongestSelection.formFigures,
+        confidenceScore: a.confidenceScore,
+        pullQuote: a.strongestSelection.pullQuote,
+        race: a.race
+      }));
+
     return {
       statusCode: 200,
       headers,
@@ -92,6 +108,7 @@ exports.handler = async function(event) {
         date: reportDate,
         picks,
         intelPicks,
+        valuePicks,
         intelligence: report.intelligence || [],
         analyses: report.analyses || [],
         cost: report.costUSD,
