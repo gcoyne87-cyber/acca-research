@@ -3120,6 +3120,20 @@ window.addEventListener('load',function(){
       });
       order=order.filter(function(v,i){ return order.indexOf(v)===i; });
 
+      // Within each date: Phase 3 rank hierarchy first (NAP → Intel 10), then
+      // every other type after them, keeping its existing (race time) order.
+      // Explicit original-index tie-break makes the sort stable regardless of
+      // engine, so unranked picks provably never reshuffle among themselves.
+      var PICK_ORDER=['NAP','NB','Intel 3','Intel 4','Intel 5','Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'];
+      order.forEach(function(date){
+        var ranked=groups[date].map(function(r,i){
+          var ri=PICK_ORDER.indexOf(r.type||'');
+          return {r:r,rank:ri===-1?PICK_ORDER.length:ri,idx:i};
+        });
+        ranked.sort(function(a,b){ return (a.rank-b.rank)||(a.idx-b.idx); });
+        groups[date]=ranked.map(function(x){ return x.r; });
+      });
+
       var html='';
       order.forEach(function(date){
         var day=groups[date];
