@@ -2104,12 +2104,41 @@ exports.handler = async function(event) {
         return b.pct - a.pct;
       }).slice(0, 30);
 
+      // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
+      // window comes from the trainers results endpoint (same endpoint and
+      // pattern as the Hot Yard 60-day baseline): one date-ranged call per
+      // stored trainer, runs/wins counted from the flat results list. A failed
+      // call leaves that trainer's 7d fields at zero — the table write must
+      // never fail because one trainer lookup did.
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      for (const entry of trainerTableTop30) {
+        entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
+        if (!entry.trainer_id) continue;
+        try {
+          const data7 = await apiGet('api.theracingapi.com',
+            '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sevenDaysAgo + '&end_date=' + today,
+            { 'Authorization': 'Basic ' + RACING_AUTH }
+          );
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const results7 = data7.results || [];
+          entry.runs7 = results7.length;
+          entry.wins7 = results7.filter(function(result) { return String(result.position) === '1'; }).length;
+          entry.pct7 = entry.runs7 > 0 ? Math.round(entry.wins7 / entry.runs7 * 100) : 0;
+        } catch (e7) {
+          console.log('[daily-build] trainer-form 7d fetch failed for ' + entry.trainer + ': ' + e7.message);
+        }
+      }
+
       const trainerFormTable = trainerTableTop30.map(function(entry) {
         return {
           trainerName: entry.trainer,
           runners14d: entry.runs,
           winners14d: entry.wins,
-          strikeRate: entry.pct
+          strikeRate: entry.pct, // kept under its original name so cached frontends still read it
+          strikeRate14d: entry.pct,
+          runners7d: entry.runs7,
+          winners7d: entry.wins7,
+          strikeRate7d: entry.pct7
         };
       });
 
