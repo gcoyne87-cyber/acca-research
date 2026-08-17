@@ -928,11 +928,21 @@ async function generateIntelligence(racecards) {
         { 'Authorization': 'Basic ' + RACING_AUTH }
       );
       await new Promise(resolve => setTimeout(resolve, 200));
-      // Trainer results endpoint returns a flat list — one entry per race result,
-      // position at the top level (not race objects with a nested runners array).
+      // Trainer results endpoint returns race objects with runners nested in
+      // race.runners[] — NOT a flat list with top-level position, as this
+      // comment previously claimed. That wrong assumption made baselineWins 0
+      // for every trainer since this shipped (confirmed 2026-08-17: the same
+      // pattern zeroed the 7-day table wins). Count this trainer's runners by
+      // trainer_id, wins by runner position.
       const results = data.results || [];
-      const baselineRuns = results.length;
-      const baselineWins = results.filter(function(result) { return String(result.position) === '1'; }).length;
+      let baselineRuns = 0, baselineWins = 0;
+      results.forEach(function(race) {
+        (race.runners || []).forEach(function(runner) {
+          if ((runner.trainer_id || '') !== entry.trainer_id) return;
+          baselineRuns++;
+          if (String(runner.position) === '1') baselineWins++;
+        });
+      });
       const baseline60 = baselineRuns > 0 ? Math.round(baselineWins / baselineRuns * 100) : 0;
       entry.baseline60 = baseline60;
 
@@ -2120,9 +2130,23 @@ exports.handler = async function(event) {
             { 'Authorization': 'Basic ' + RACING_AUTH }
           );
           await new Promise(resolve => setTimeout(resolve, 200));
+          // Race objects with runners nested inside race.runners[] — the same
+          // shape fetchHorseHistory handles. Match this trainer's runners by
+          // trainer_id; position lives on the runner, never at the race's top
+          // level (the old top-level read counted 0 wins for every trainer,
+          // found 2026-08-17). Per-runner counting also fixes runs7 when a
+          // yard fields two horses in one race.
           const results7 = data7.results || [];
-          entry.runs7 = results7.length;
-          entry.wins7 = results7.filter(function(result) { return String(result.position) === '1'; }).length;
+          let runs7 = 0, wins7 = 0;
+          results7.forEach(function(race) {
+            (race.runners || []).forEach(function(runner) {
+              if ((runner.trainer_id || '') !== entry.trainer_id) return;
+              runs7++;
+              if (String(runner.position) === '1') wins7++;
+            });
+          });
+          entry.runs7 = runs7;
+          entry.wins7 = wins7;
           entry.pct7 = entry.runs7 > 0 ? Math.round(entry.wins7 / entry.runs7 * 100) : 0;
         } catch (e7) {
           console.log('[daily-build] trainer-form 7d fetch failed for ' + entry.trainer + ': ' + e7.message);
