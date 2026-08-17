@@ -65,7 +65,13 @@ exports.handler = async function(event) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'date param required (YYYY-MM-DD)' }) };
     }
 
-    const resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date);
+    // Paginated fetch — /v1/results caps each response at one page (~50 races
+    // worldwide; top-level total/limit/skip fields), and foreign races count
+    // against the cap before the GB/IRE filter below runs. The old single
+    // un-paginated call silently dropped every race beyond page 1, which
+    // surfaced as ran-horses wrongly showing NR in the tracker (2026-08-14/15).
+    const PAGE_LIMIT = 50;
+    const resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
 
     // Raw debug mode — call with ?raw=1 to see exactly what the API returns
     if (qs.raw === '1') {
@@ -92,6 +98,24 @@ exports.handler = async function(event) {
     const data = resp.body;
     // Try all known field names the API might use
     const results = data.results || data.races || data.data || (Array.isArray(data) ? data : []);
+
+    // Remaining pages — keep fetching until every result is held. A failed or
+    // empty page stops the loop with what was collected so far (partial
+    // coverage still beats page-1-only); the page cap is a runaway guard.
+    const total = typeof data.total === 'number' ? data.total : results.length;
+    let skip = PAGE_LIMIT;
+    let pagesFetched = 0;
+    while (results.length < total && pagesFetched < 20) {
+      try {
+        const pageResp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + skip);
+        if (pageResp.status !== 200 || pageResp.body.detail) break;
+        const pageResults = pageResp.body.results || [];
+        if (!pageResults.length) break;
+        results.push.apply(results, pageResults);
+      } catch (pageErr) { break; }
+      skip += PAGE_LIMIT;
+      pagesFetched++;
+    }
 
     // Filter to GB / IRE only
     const filtered = results.filter(function(race) {
