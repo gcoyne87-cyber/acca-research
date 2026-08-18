@@ -11868,25 +11868,22 @@ function renderTrainerFormTable(trainers){
     +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
     +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
   +'</div>'
-  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">In-form yards ranked by strike rate — tap a trainer to instantly see all their runners across today\'s meetings</div>';
+  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">In-form yards — tap any trainer to see their runners today</div>';
   if(!trainers||!trainers.length){
     el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
     return;
   }
-  // Old cached tables (pre-7d schema) carry no runners7d — fall back to the
-  // 14-day ranking with blank 7d columns rather than filtering everything out;
-  // the first build after deploy writes the full schema and the real ranking
-  // takes over automatically.
-  var has7d=trainers.some(function(t){ return t.runners7d!=null; });
-  var allRows;
-  if(has7d){
-    allRows=trainers.filter(function(t){ return (t.runners7d||0)>=3; })
-      .sort(function(a,b){ return (b.strikeRate7d||0)-(a.strikeRate7d||0); }).slice(0,15);
-  } else {
-    allRows=trainers.slice().sort(function(a,b){ return (b.strikeRate||0)-(a.strikeRate||0); }).slice(0,15);
-  }
+  // Ranked by 14-day strike rate, min. 3 runners in the last 14 days.
+  // strikeRate14d falls back to the original strikeRate field name for any
+  // pre-7d-schema cached table (that field has always been present).
+  var allRows=trainers.filter(function(t){ return (Number(t.runners14d)||0)>=3; })
+    .sort(function(a,b){
+      var srA=a.strikeRate14d!=null?a.strikeRate14d:(a.strikeRate||0);
+      var srB=b.strikeRate14d!=null?b.strikeRate14d:(b.strikeRate||0);
+      return srB-srA;
+    }).slice(0,15);
   if(!allRows.length){
-    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 3+ runners in the last 7 days today</div>';
+    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 3+ runners in the last 14 days today</div>';
     return;
   }
   var hasMore=allRows.length>5;
@@ -11896,19 +11893,18 @@ function renderTrainerFormTable(trainers){
   var out=header+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
   out+='<div style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">';
   out+='<div style="flex:1;min-width:0;text-align:left;'+colHeadStyle+'">Trainer</div>';
-  out+='<div style="flex-shrink:0;width:42px;text-align:center;'+colHeadStyle+'">14d Runs</div>';
-  out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">14d %</div>';
-  out+='<div style="flex-shrink:0;width:42px;text-align:center;'+colHeadStyle+'">7d Runs</div>';
-  out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">7d %</div>';
+  out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">Runs</div>';
+  out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">Wins</div>';
+  out+='<div style="flex-shrink:0;width:44px;text-align:center;'+colHeadStyle+'">Strike %</div>';
   out+='<div style="flex-shrink:0;width:26px;text-align:center;'+colHeadStyle+'">Trend</div>';
   out+='</div>';
   rows.forEach(function(t,i){
     var name=t.trainerName||'';
     var nameEsc=name.replace(/'/g,"\\'");
     var runs14=t.runners14d!=null?t.runners14d:'-';
+    var wins14=t.winners14d!=null?t.winners14d:'-';
     var sr14=Math.round(t.strikeRate14d!=null?t.strikeRate14d:(t.strikeRate||0));
     var t7=t.runners7d!=null;
-    var runs7=t7?t.runners7d:'–';
     var sr7=t7?Math.round(t.strikeRate7d||0):null;
     var trendHtml='';
     if(t7&&sr7!==null){
@@ -11919,10 +11915,9 @@ function renderTrainerFormTable(trainers){
     var isLastVisible=(i===rows.length-1)&&!hasMore;
     out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:9px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
     out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
-    out+='<div style="flex-shrink:0;width:42px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runs14))+'</div>';
-    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:700;color:#5a6478">'+sr14+'%</div>';
-    out+='<div style="flex-shrink:0;width:42px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runs7))+'</div>';
-    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:13px;font-weight:800;color:'+(sr7!==null?_trainerFormSrColor(sr7):'#9aa3b5')+'">'+(sr7!==null?sr7+'%':'–')+'</div>';
+    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runs14))+'</div>';
+    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(wins14))+'</div>';
+    out+='<div style="flex-shrink:0;width:44px;text-align:center;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr14)+'">'+sr14+'%</div>';
     out+='<div style="flex-shrink:0;width:26px;text-align:center;font-size:13px">'+trendHtml+'</div>';
     out+='</div>';
   });
@@ -11930,7 +11925,6 @@ function renderTrainerFormTable(trainers){
     out+='<div onclick="_toggleTrainerFormExpand()" style="text-align:center;padding:10px 12px;font-size:12px;font-weight:700;color:#10b981;cursor:pointer;background:#fafbfc">'+(_trainerFormExpanded?'Show less ↑':'Show more ↓')+'</div>';
   }
   out+='</div>';
-  out+='<div style="font-size:11px;color:#9aa3b5;margin:6px 0 0;padding-left:13px">Showing top 15 qualifying trainers</div>';
   el.innerHTML=out;
 }
 
