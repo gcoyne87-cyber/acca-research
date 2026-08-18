@@ -2506,7 +2506,7 @@ window.addEventListener('load',function(){
         <span style="font-size:10px;font-weight:700;color:#ef4444;letter-spacing:0.06em;animation:livepulse 1.5s ease-in-out infinite">LIVE</span>
       </div>
     </div>
-     <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding:0 14px 0 27px">AI-powered insights and key angles for today's racing</div>
+     <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding:0 14px 0 27px">Today's key angles and intelligence across the card</div>
     <!-- Intelligence carousel -->
     <div id="ai-intelligence-list" style="display:flex;align-items:stretch;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px"></div>
     <!-- Dot indicators -->
@@ -5572,7 +5572,7 @@ function unlockCorkAnalysis(){
         <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
         <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
       </div>
-      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Full card and single race AI analysis</div>
+      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Race analysis and form guide for today's meetings</div>
     </div>
     <div id="home-date-strip-bar" style="display:none;background:#f5f7fb;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center">
       <div id="home-date-strip" style="display:flex"></div>
@@ -5816,7 +5816,7 @@ function unlockCorkAnalysis(){
         <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
         <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Next Race</div>
       </div>
-      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">Live countdown to the next race off</div>
+      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">Live countdown to the next race — with full card analysis</div>
     </div>
     <div id="section-nextrace-panel" style="display:none;padding:0 0 10px">
 
@@ -11804,7 +11804,7 @@ function _renderPopularTrainers(){
   out+='</div>';
   out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
-  out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Tap a trainer to see all their runners today</div>';
+  out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners today</div>';
   out+='<div style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
@@ -11841,7 +11841,7 @@ function renderTrainerFormTable(trainers){
     +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
     +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
   +'</div>'
-  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">Ranked by 7-day strike rate &middot; Min. 3 runners last 7 days &middot; Updated daily at 10:30</div>';
+  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">In-form yards ranked by strike rate — tap a trainer to instantly see all their runners across today\'s meetings</div>';
   if(!trainers||!trainers.length){
     el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
     return;
@@ -14930,7 +14930,7 @@ function renderHomeSelections(el){
       +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
       +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today\'s Selections</div>'
     +'</div>'
-    +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 4px;padding-left:13px">AI picks for today\'s racing</div>'
+    +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 4px;padding-left:13px">Our top selections for today\'s racing</div>'
   +'</div>';
   var items=[0,1].filter(function(i){return !!picks[i];}).map(function(i){var p=picks[i];
     var gi=_gi(p);
