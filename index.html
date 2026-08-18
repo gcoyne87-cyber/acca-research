@@ -11289,7 +11289,22 @@ function loadRacecards(){
       if(titleEl) titleEl.style.display='';
       var homeStripBar=document.getElementById('home-date-strip-bar');
       if(homeStripBar){homeStripBar.style.display='';homeStripBar.style.display='flex';}
-      renderTodayMeetingsList();
+      // Check today's actual last race off time now that real data has
+      // arrived — never if the user already picked a tab themselves.
+      // Re-paints the strip so the correct pill is active, then routes the
+      // initial render to match (renderTodayMeetingsList() would otherwise
+      // show "Tomorrow's race cards are not available yet" instead of real
+      // tomorrow data whenever _homeRcDay is 'tomorrow').
+      if(!_rcDayUserChosen){
+        var _lastRaceT24=0;
+        data.meetings.forEach(function(m){ (m.races||[]).forEach(function(r){ if((r.t24||0)>_lastRaceT24) _lastRaceT24=r.t24; }); });
+        var _nowT24parts=_irishNowHHMM().split(':');
+        var _nowT24=parseInt(_nowT24parts[0],10)*60+parseInt(_nowT24parts[1],10);
+        _homeRcDay=(_lastRaceT24>0 && _nowT24>_lastRaceT24)?'tomorrow':'today';
+      }
+      buildDateStrip();
+      if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+      else{ renderTodayMeetingsList(); }
       _renderPopularTrainers();
       var inline=document.getElementById('racing-inline-meeting');
       if(inline&&inline.style.maxHeight&&inline.style.maxHeight!=='0px') renderInlineMeeting();
@@ -11509,7 +11524,19 @@ function todaySelectRace(mid,ri){
   },60);
 }
 
+// Irish local "HH:MM" — used only to auto-default the racecards Today/Tomorrow
+// tab once evening racing is over; does not touch any UTC-based date logic
+// elsewhere in the file.
+function _irishNowHHMM(){
+  var parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+  function g(t){var p=parts.filter(function(x){return x.type===t;})[0];return (p&&p.value)||'';}
+  return g('hour')+':'+g('minute');
+}
+// No hardcoded time threshold — Today is the default until loadRacecards()
+// resolves with real race data and can check the actual last race off time
+// (below). Never overrides a manual tab click — see _rcDayUserChosen.
 var _homeRcDay='today';
+var _rcDayUserChosen=false;
 var _cardsDay='today';
 var _trainerFilter=null;
 var _trainerFilterSelected=null;
@@ -11978,6 +12005,7 @@ function _clearTrainerSearchInput(){
 
 function selectHomeRcDay(d){
   _homeRcDay=d;
+  _rcDayUserChosen=true;
   _trainerFilterSelected=null;
   var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
@@ -12001,9 +12029,13 @@ function buildDateStrip(){
     var ds=y+'-'+mo+'-'+dy;
     var dateVal=i===0?'today':i===1?'tomorrow':ds;
     var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()];
-    var style=i===0?activeStyle:inactiveStyle;
-    homeHtml+='<button data-date="'+dateVal+'" onclick="selectHomeRcDay(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
-    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+style+'">'+label+'</button>';
+    // Home strip highlights the actual current _homeRcDay (may now default to
+    // Tomorrow after evening racing); cards strip is untouched — still i===0,
+    // matching _cardsDay's own separate, unchanged default.
+    var homeStyle=dateVal===_homeRcDay?activeStyle:inactiveStyle;
+    var cardsStyle=i===0?activeStyle:inactiveStyle;
+    homeHtml+='<button data-date="'+dateVal+'" onclick="selectHomeRcDay(\''+dateVal+'\')" style="'+homeStyle+'">'+label+'</button>';
+    cardsHtml+='<button data-date="'+dateVal+'" onclick="selectCardsDateBtn(\''+dateVal+'\')" style="'+cardsStyle+'">'+label+'</button>';
   }
   var hs=document.getElementById('home-date-strip');
   var cs=document.getElementById('cards-date-strip');
