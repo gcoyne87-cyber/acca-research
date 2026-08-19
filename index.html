@@ -12130,6 +12130,27 @@ function buildDateStrip(){
   if(cs) cs.innerHTML=cardsHtml;
 }
 
+// Compact meeting info line — replaces the old per-meeting "Race Card
+// Analysis" CTA buttons in the meeting headers. Muted subtitle styling.
+// Discipline mirrors the backend isJumps() test on race name/type.
+function _meetingInfoLine(m){
+  var races=(m&&m.races)||[];
+  if(!races.length) return '';
+  var minR=races[0],maxR=races[0];
+  races.forEach(function(r){
+    if((r.t24||0)<(minR.t24||0)) minR=r;
+    if((r.t24||0)>(maxR.t24||0)) maxR=r;
+  });
+  var jumpsRe=/hurdle|chase|bumper|steeplechase|national hunt|hrd/i;
+  var jumps=0;
+  races.forEach(function(r){ if(jumpsRe.test((r.name||'')+' '+(r.type||''))) jumps++; });
+  var disc=jumps===0?'Flat':(jumps===races.length?'Jumps':'Mixed');
+  var parts=[races.length+(races.length===1?' race':' races'),escHtml(minR.t||'')+' - '+escHtml(maxR.t||'')];
+  if(m.going) parts.push(escHtml(m.going));
+  parts.push(disc);
+  return '<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+parts.join(' &middot; ')+'</div>';
+}
+
 var futureDateOpenRace={};
 function futureSelectRace(meetingId,raceIndex,dateStr){
   futureDateOpenRace[meetingId]=futureDateOpenRace[meetingId]===raceIndex?null:raceIndex;
@@ -12191,9 +12212,9 @@ function renderFutureDateContent(dateStr,targetEl){
       out+='<div style="display:flex;align-items:center;padding:6px 12px">';
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-      out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> '+m.races.length+' Race Card Analysis &rarr;</button>';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
       out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
@@ -12373,21 +12394,19 @@ function renderTodayMeetingsList(isInitial){
       out+='<div style="display:flex;align-items:center;padding:10px 12px 4px">';
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
       out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
       out+='</div>';
-      out+='<div style="padding:0 12px 10px">';
-            out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" class="ai-cta-dark" style="display:flex;align-items:center;justify-content:center;gap:5px"><span>&#x2756;</span> View '+m.races.length+' Race Card Analysis &rarr;</button>';
-      out+='</div>';
     }else{
       out+='<div style="display:flex;align-items:center;padding:6px 12px">';
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-      out+='<button onclick="rcViewInlineFullCard(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> '+m.races.length+' Race Card Analysis &rarr;</button>';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
       out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
@@ -16280,9 +16299,9 @@ function renderTomorrowMeetingsList(targetEl){
       out+='<div style="display:flex;align-items:center;padding:6px 12px">';
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
-      out+='<button onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #c9a84c;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;min-width:150px;justify-content:center"><span style="color:#c9a84c">&#x2756;</span> '+m.races.length+' Race Card Analysis &rarr;</button>';
       out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
       out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
