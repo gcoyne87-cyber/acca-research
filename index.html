@@ -11303,7 +11303,10 @@ function loadRacecards(){
         _homeRcDay=(_lastRaceT24>0 && _nowT24>_lastRaceT24)?'tomorrow':'today';
       }
       buildDateStrip();
-      if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
+      // An active trainer filter must never be overwritten by the auto-switch
+      // render — renderTodayMeetingsList routes to the filter view itself.
+      if(_trainerFilter){ renderTodayMeetingsList(); }
+      else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
       else{ renderTodayMeetingsList(); }
       _renderPopularTrainers();
       var inline=document.getElementById('racing-inline-meeting');
@@ -11604,6 +11607,20 @@ function trainerFilterSelectRace(meetingId,raceTime){
     _trainerFilterSelected={meetingId:meetingId,raceTime:raceTime};
   }
   renderTodayMeetingsList();
+}
+
+// State-only reset used by the navigation paths — unlike clearTrainerFilter()
+// it does not itself pick a render target; each caller renders (or the list
+// is off-screen and re-renders naturally on return).
+function _resetTrainerFilterState(){
+  _trainerFilter=null;
+  _trainerFilterSelected=null;
+  _tfSelectedDay=null;
+  _tfRaceSel={};
+  var inp=document.getElementById('trainer-search-input');
+  if(inp) inp.value='';
+  var clr=document.getElementById('trainer-search-clear');
+  if(clr) clr.style.display='none';
 }
 
 function clearTrainerFilter(){
@@ -12071,6 +12088,9 @@ function _clearTrainerSearchInput(){
 }
 
 function selectHomeRcDay(d){
+  // Switching date resets the trainer filter — the renders at the bottom of
+  // this function then show the chosen day's normal (unfiltered) list.
+  if(_trainerFilter) _resetTrainerFilterState();
   _homeRcDay=d;
   _rcDayUserChosen=true;
   _trainerFilterSelected=null;
@@ -12519,6 +12539,11 @@ function toggleRcSingleMeeting(id){
 var _rcTabState={};
 var _rcTabLastMs=0;
 function _renderCurrentHomeList(){
+  // Active trainer filter always wins — renderTodayMeetingsList delegates to
+  // the multi-day filter view. Without this, the _homeRcDay==='tomorrow'
+  // branch (reachable automatically since the evening auto-switch) rendered
+  // tomorrow content over the filter view on every 60s tick / tab tap.
+  if(_trainerFilter){ renderTodayMeetingsList(); return; }
   var _el=document.getElementById('today-meetings-list');
   if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
   else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(_el); }
@@ -15749,6 +15774,15 @@ function selectPicksSubTab(sub){
 var _ctaSuppressDateStrip=false;
 
 function selectRacingSection(s){
+  // Navigating to a non-racecards section resets the trainer filter — a stale
+  // filter otherwise hijacks the meetings list when the user returns. Plain
+  // section names only: the CTA string forms below are untouched ('trainer:'
+  // deliberately SETS a filter; 'race:' navigates within racecards). 'home'
+  // and 'racecards' keep the filter — the filter view lives on those screens.
+  if(_trainerFilter&&(s==='nextrace'||s==='pickofday'||s==='winners'||s==='myresearch'||s==='results')){
+    _resetTrainerFilterState();
+    renderTodayMeetingsList();
+  }
   if(typeof s==='string'&&s.indexOf('tomorrowtrainer:')===0){
     _trainerFilterSelected = null;
     var _tmTrainerName=s.substring('tomorrowtrainer:'.length);
