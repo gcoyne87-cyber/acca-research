@@ -11900,6 +11900,17 @@ function _toggleTrainerFormExpand(){
   renderTrainerFormTable(_trainerFormData);
 }
 
+// 14 Days / 7 Days window toggle for the Trainer Form table — display-only,
+// no data or calculation is touched. Persisted so the choice survives reload.
+function _trainerFormWindow(){
+  try{ var w=localStorage.getItem('ptTrainerFormWindow'); if(w==='7'||w==='14') return w; }catch(e){}
+  return '14';
+}
+window._trainerFormSetWindow=function(w){
+  try{ localStorage.setItem('ptTrainerFormWindow',w); }catch(e){}
+  renderTrainerFormTable(_trainerFormData);
+};
+
 function renderTrainerFormTable(trainers){
   var el=document.getElementById('trainer-form-section');
   if(!el) return;
@@ -11913,24 +11924,36 @@ function renderTrainerFormTable(trainers){
     el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
     return;
   }
-  // Ranked by 14-day strike rate, min. 3 runners in the last 14 days.
-  // strikeRate14d falls back to the original strikeRate field name for any
-  // pre-7d-schema cached table (that field has always been present).
-  var allRows=trainers.filter(function(t){ return (Number(t.runners14d)||0)>=3; })
-    .sort(function(a,b){
-      var srA=a.strikeRate14d!=null?a.strikeRate14d:(a.strikeRate||0);
-      var srB=b.strikeRate14d!=null?b.strikeRate14d:(b.strikeRate||0);
-      return srB-srA;
-    }).slice(0,15);
+  // Window toggle pills — selected: dark/white, unselected: light/muted,
+  // matching the Today/Tomorrow picks pills elsewhere on the page.
+  var win=_trainerFormWindow();
+  var pillOn='background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
+  var pillOff='background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit';
+  var toggleHtml='<div style="display:flex;gap:6px;margin:0 0 8px;padding-left:13px">'
+    +'<button onclick="_trainerFormSetWindow(\'14\')" style="'+(win==='14'?pillOn:pillOff)+'">14 Days</button>'
+    +'<button onclick="_trainerFormSetWindow(\'7\')" style="'+(win==='7'?pillOn:pillOff)+'">7 Days</button>'
+    +'</div>';
+  // Ranked by the selected window's strike rate, min. 3 runners in that
+  // window to qualify. strikeRate14d falls back to the original strikeRate
+  // field name for any pre-7d-schema cached table (always present).
+  function _sr14(t){ return t.strikeRate14d!=null?t.strikeRate14d:(t.strikeRate||0); }
+  var allRows;
+  if(win==='7'){
+    allRows=trainers.filter(function(t){ return (Number(t.runners7d)||0)>=3; })
+      .sort(function(a,b){ return (b.strikeRate7d||0)-(a.strikeRate7d||0); }).slice(0,15);
+  } else {
+    allRows=trainers.filter(function(t){ return (Number(t.runners14d)||0)>=3; })
+      .sort(function(a,b){ return _sr14(b)-_sr14(a); }).slice(0,15);
+  }
   if(!allRows.length){
-    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 3+ runners in the last 14 days today</div>';
+    el.innerHTML=header+toggleHtml+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 3+ runners in the last '+win+' days today</div>';
     return;
   }
   var hasMore=allRows.length>5;
   var visibleCount=_trainerFormExpanded?allRows.length:Math.min(5,allRows.length);
   var rows=allRows.slice(0,visibleCount);
   var colHeadStyle='font-size:9px;font-weight:700;color:#9aa3b5;text-transform:uppercase;letter-spacing:.03em';
-  var out=header+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
+  var out=header+toggleHtml+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
   out+='<div style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">';
   out+='<div style="flex:1;min-width:0;text-align:left;'+colHeadStyle+'">Trainer</div>';
   out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">Runs</div>';
@@ -11941,11 +11964,21 @@ function renderTrainerFormTable(trainers){
   rows.forEach(function(t,i){
     var name=t.trainerName||'';
     var nameEsc=name.replace(/'/g,"\\'");
-    var runs14=t.runners14d!=null?t.runners14d:'-';
-    var wins14=t.winners14d!=null?t.winners14d:'-';
-    var sr14=Math.round(t.strikeRate14d!=null?t.strikeRate14d:(t.strikeRate||0));
+    var sr14=Math.round(_sr14(t));
     var t7=t.runners7d!=null;
     var sr7=t7?Math.round(t.strikeRate7d||0):null;
+    // Displayed Runs/Wins/Strike % come from the selected window; the trend
+    // arrow always compares 7d vs 14d regardless of window.
+    var runsVal, winsVal, srMain;
+    if(win==='7'){
+      runsVal=t.runners7d!=null?t.runners7d:'-';
+      winsVal=t.winners7d!=null?t.winners7d:'-';
+      srMain=sr7!==null?sr7:0;
+    } else {
+      runsVal=t.runners14d!=null?t.runners14d:'-';
+      winsVal=t.winners14d!=null?t.winners14d:'-';
+      srMain=sr14;
+    }
     var trendHtml='';
     if(t7&&sr7!==null){
       var diff=sr7-sr14;
@@ -11955,9 +11988,9 @@ function renderTrainerFormTable(trainers){
     var isLastVisible=(i===rows.length-1)&&!hasMore;
     out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:9px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
     out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
-    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runs14))+'</div>';
-    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(wins14))+'</div>';
-    out+='<div style="flex-shrink:0;width:44px;text-align:center;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr14)+'">'+sr14+'%</div>';
+    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runsVal))+'</div>';
+    out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(winsVal))+'</div>';
+    out+='<div style="flex-shrink:0;width:44px;text-align:center;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(srMain)+'">'+srMain+'%</div>';
     out+='<div style="flex-shrink:0;width:26px;text-align:center;font-size:13px">'+trendHtml+'</div>';
     out+='</div>';
   });
