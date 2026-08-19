@@ -289,7 +289,7 @@ function milesFurlongs(distStr) {
   return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
 }
 
-function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag) {
+function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
@@ -316,6 +316,18 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag) 
        meetingFlag==='IE'){
       runner.isGBRaider = true;
     }
+  }
+
+  // Ground Lover — horse has won on Heavy or
+  // Yielding ground in last 6 runs AND today's
+  // going is Heavy or Yielding
+  var GROUND_RE = /heavy|yield/i;
+  if(GROUND_RE.test(meetingGoing)){
+    var hasGroundWin = runs.some(function(h){
+      return String(h.pos) === '1' &&
+             GROUND_RE.test(h.going || '');
+    });
+    if(hasGroundWin) runner.isGroundLover = true;
   }
 }
 
@@ -358,7 +370,7 @@ async function enrichRunnerTags(meetings, date) {
         if (!raw) return;
         const history = JSON.parse(raw);
         if (!Array.isArray(history)) return;
-        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag);
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
   } catch (e) { /* enrichment is best-effort by design */ }

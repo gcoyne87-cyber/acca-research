@@ -13530,6 +13530,7 @@ function runnerRow(ru,ctx,extraHtml){
   if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
   if(ru.isIrishRaider) _tags.push('Irish Raider');
   if(ru.isGBRaider) _tags.push('GB Raider');
+  if(ru.isGroundLover) _tags.push('Ground Lover');
   var tagsHtml=_tags.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+_tags.map(function(t){return '<span style="'+_tagPill+'">'+t+'</span>';}).join('')+'</div>':'';
 
   var badgeHtml='';
