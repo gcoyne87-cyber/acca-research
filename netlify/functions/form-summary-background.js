@@ -502,14 +502,72 @@ exports.handler = async function(event) {
     const TIMEOUT_MS = 780 * 1000;
     let timedOut = false;
 
-    // Pre-filter: skip any horse that already has a stored summary (no expiry —
-    // see storeResults), and drop any horse getFormHistory couldn't produce
-    // history for, before anything reaches Claude.
-    const toProcess = [];
+    // Interleaved scan + generate — the 2026-08-19 root-cause fix. The old
+    // two-phase flow scanned ALL ~5 days of runners (sequential Redis checks
+    // plus a live history fetch for every unsummarised horse) before making a
+    // single Claude call. That scan consumed most of the 780s budget every
+    // run, generation got the scraps (50/run, timedOut daily), and coverage
+    // fell further behind every day — the York 13:50 feature race had 18/22
+    // runners with no summary. Now each batch fires to Claude the moment it
+    // fills: generation starts seconds into the run, history fetches are only
+    // paid for horses actually generated this run, and the today-first runner
+    // order means today's card completes before future days are touched.
+    const BATCH = 10;
+    let pending = [];
+    let batchNum = 0;
+
+    async function generateBatch() {
+      if (!pending.length) return;
+      const batch = pending;
+      pending = [];
+      batchNum++;
+
+      let result;
+      try {
+        result = await callClaude(batch);
+      } catch (e) {
+        if (e.message && e.message.indexOf('429') !== -1) {
+          console.log('[form-summary] batch ' + batchNum + ': 429 from Claude — waiting 5s and retrying once');
+          await sleep(5000);
+          try {
+            result = await callClaude(batch);
+          } catch (e2) {
+            console.log('[form-summary] batch ' + batchNum + ': retry failed — ' + e2.message);
+            errors.push('batch ' + batchNum + ': ' + e2.message);
+            horsesFailed += batch.length;
+            return;
+          }
+        } else {
+          console.log('[form-summary] batch ' + batchNum + ': ' + e.message);
+          errors.push('batch ' + batchNum + ': ' + e.message);
+          horsesFailed += batch.length;
+          return;
+        }
+      }
+
+      totalInputTokens += result.inputTokens || 0;
+      totalOutputTokens += result.outputTokens || 0;
+
+      const summarisedIds = new Set(result.summaries.map(function(s) { return s.horse_id; }));
+      batch.forEach(function(r) {
+        if (!summarisedIds.has(r.horse_id)) {
+          horsesFailed++;
+          console.log('[form-summary] ' + r.horseName + ' sent to Claude but no summary came back — failed');
+        }
+      });
+
+      const storeResult = await storeResults(result.summaries);
+      horsesGenerated += storeResult.stored;
+      horsesFailed += storeResult.failed;
+      if (storeResult.errors.length) errors.push.apply(errors, storeResult.errors);
+
+      await sleep(1000);
+    }
+
     for (const runner of runners) {
       if (Date.now() - startTime > TIMEOUT_MS) {
         timedOut = true;
-        console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) during pre-filter — stopping early; next scheduled run will pick up the rest');
+        console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — stopping with ' + horsesGenerated + ' generated so far; next scheduled run continues from here');
         break;
       }
       // Negative marker: this horse recently proved to have no fetchable form
@@ -540,63 +598,14 @@ exports.handler = async function(event) {
         try { await redisSetEx('form-summary:nohistory:' + runner.horse_id, 1, 604800); } catch (nhErr) {}
         continue;
       }
-      toProcess.push(Object.assign({}, runner, { formHistory: formHistory }));
+      pending.push(Object.assign({}, runner, { formHistory: formHistory }));
+      if (pending.length >= BATCH) await generateBatch();
     }
 
-    toProcess.sort(function(a,b){
-      return (a.date===todayStr?0:1)-(b.date===todayStr?0:1);
-    });
-
-    const BATCH = 10;
-    for (let i = 0; i < toProcess.length; i += BATCH) {
-      if (Date.now() - startTime > TIMEOUT_MS) {
-        timedOut = true;
-        console.log('[form-summary] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — stopping with ' + (toProcess.length - i) + ' horse(s) still unprocessed; next scheduled run will pick them up');
-        break;
-      }
-      const batch = toProcess.slice(i, i + BATCH);
-      const batchNum = Math.floor(i / BATCH) + 1;
-
-      let result;
-      try {
-        result = await callClaude(batch);
-      } catch (e) {
-        if (e.message && e.message.indexOf('429') !== -1) {
-          console.log('[form-summary] batch ' + batchNum + ': 429 from Claude — waiting 5s and retrying once');
-          await sleep(5000);
-          try {
-            result = await callClaude(batch);
-          } catch (e2) {
-            console.log('[form-summary] batch ' + batchNum + ': retry failed — ' + e2.message);
-            errors.push('batch ' + batchNum + ': ' + e2.message);
-            horsesFailed += batch.length;
-            continue;
-          }
-        } else {
-          console.log('[form-summary] batch ' + batchNum + ': ' + e.message);
-          errors.push('batch ' + batchNum + ': ' + e.message);
-          horsesFailed += batch.length;
-          continue;
-        }
-      }
-
-      totalInputTokens += result.inputTokens || 0;
-      totalOutputTokens += result.outputTokens || 0;
-
-      const summarisedIds = new Set(result.summaries.map(function(s) { return s.horse_id; }));
-      batch.forEach(function(r) {
-        if (!summarisedIds.has(r.horse_id)) {
-          horsesFailed++;
-          console.log('[form-summary] ' + r.horseName + ' sent to Claude but no summary came back — failed');
-        }
-      });
-
-      const storeResult = await storeResults(result.summaries);
-      horsesGenerated += storeResult.stored;
-      horsesFailed += storeResult.failed;
-      if (storeResult.errors.length) errors.push.apply(errors, storeResult.errors);
-
-      if (i + BATCH < toProcess.length) await sleep(1000);
+    // Flush the final partial batch if budget remains — a sub-10 group at the
+    // end of the scan must not be silently dropped.
+    if (!timedOut && pending.length && Date.now() - startTime <= TIMEOUT_MS) {
+      await generateBatch();
     }
 
     const summary = {
