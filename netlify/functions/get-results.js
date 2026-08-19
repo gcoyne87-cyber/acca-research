@@ -102,12 +102,22 @@ exports.handler = async function(event) {
     // Remaining pages — keep fetching until every result is held. A failed or
     // empty page stops the loop with what was collected so far (partial
     // coverage still beats page-1-only); the page cap is a runaway guard.
+    // The Racing API enforces 5 requests/second — a 250ms gap between page
+    // fetches caps us at 4/second, and a 429 gets one retry (after a 1s
+    // backoff) instead of silently truncating results (found 2026-08-19:
+    // rate-limit hits mid-pagination were quietly returning partial result
+    // sets, which the tracker read as genuine NRs for horses that had run).
     const total = typeof data.total === 'number' ? data.total : results.length;
     let skip = PAGE_LIMIT;
     let pagesFetched = 0;
     while (results.length < total && pagesFetched < 20) {
       try {
-        const pageResp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + skip);
+        await new Promise(function(r) { setTimeout(r, 250); });
+        let pageResp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + skip);
+        if (pageResp.status === 429) {
+          await new Promise(function(r) { setTimeout(r, 1000); });
+          pageResp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + skip);
+        }
         if (pageResp.status !== 200 || pageResp.body.detail) break;
         const pageResults = pageResp.body.results || [];
         if (!pageResults.length) break;
