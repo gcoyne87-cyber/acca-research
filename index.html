@@ -13916,6 +13916,7 @@ function nrRenderCard(){
         +((r.class||r.prize)?'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((r.class||'')+(r.class&&r.prize?' · ':'')+(r.prize||''))+'</div>':'')
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(r.going||'') +' · '+ r.runners +' runners</div>'
         +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceHook?'<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_a.raceHook)+'</div>':''}())
+        +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceIntelligence?'<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_a.raceIntelligence)+'</div>':''}())
         +_raceTabsHtml(r.venue,r.t,r.venue)
       +'</div>'
       +(_rcTabState[r.venue+'-'+r.t]&&_rcTabState[r.venue+'-'+r.t]!=='form'?'':runners)
@@ -14311,6 +14312,10 @@ function loadDailyBuild(){
 
       // Re-render race cards so tabs reflect loaded analysis data
       if(typeof _renderCurrentHomeList==='function') _renderCurrentHomeList();
+      // Re-render the Next Race card too — it shows the race summary from
+      // _cachedRaceAnalyses, and without this it stays blank until the user
+      // swipes or re-selects a race.
+      if(typeof nrRenderCard==='function') nrRenderCard();
       // Backfill historical selections after today's load
       loadHistoricalSelections();
   })
