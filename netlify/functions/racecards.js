@@ -1,4 +1,5 @@
 const https = require('https');
+const TRAINER_LOCATIONS = require('./data/trainer-locations.json');
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -288,7 +289,7 @@ function milesFurlongs(distStr) {
   return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
 }
 
-function computeRunnerTags(runner, history, meetingName, raceDist) {
+function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
@@ -298,6 +299,24 @@ function computeRunnerTags(runner, history, meetingName, raceDist) {
       && milesFurlongs(h.dist) === distKey;
   });
   if (isCandDWinner) runner.isCandDWinner = true;
+
+  // Irish Raider — Irish or NI trainer running
+  // at a GB meeting
+  // GB Raider — GB trainer running at Irish meeting
+  var trainerLoc = TRAINER_LOCATIONS.find(function(t){
+    return t.name === runner.trainer;
+  });
+  if(trainerLoc){
+    if((trainerLoc.country==='Ireland'||
+        trainerLoc.country==='Northern Ireland')
+        && meetingFlag==='GB'){
+      runner.isIrishRaider = true;
+    }
+    if(trainerLoc.country==='GB' &&
+       meetingFlag==='IE'){
+      runner.isGBRaider = true;
+    }
+  }
 }
 
 // One pipelined Redis round-trip covering every runner's
@@ -339,7 +358,7 @@ async function enrichRunnerTags(meetings, date) {
         if (!raw) return;
         const history = JSON.parse(raw);
         if (!Array.isArray(history)) return;
-        computeRunnerTags(e.r, history, e.m.name, e.race.dist);
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
   } catch (e) { /* enrichment is best-effort by design */ }

@@ -13528,6 +13528,8 @@ function runnerRow(ru,ctx,extraHtml){
   var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#5a6478;border-radius:99px;padding:2px 7px;white-space:nowrap';
   var _tags=[];
   if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
+  if(ru.isIrishRaider) _tags.push('Irish Raider');
+  if(ru.isGBRaider) _tags.push('GB Raider');
   var tagsHtml=_tags.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+_tags.map(function(t){return '<span style="'+_tagPill+'">'+t+'</span>';}).join('')+'</div>':'';
 
   var badgeHtml='';
