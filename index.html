@@ -13522,6 +13522,14 @@ function runnerRow(ru,ctx,extraHtml){
   var wtOrLine=wtOrParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+wtOrParts.join(' &middot; ')+'</div>':'';
   var ageLine=ru.age?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(ru.age)+'</div>':'';
 
+  // Runner tag badges — flags computed server-side in racecards.js
+  // (enrichRunnerTags). To add a new tag: add its flag there, then one
+  // _tags.push(...) line here. Renders nothing at all when no tags apply.
+  var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#5a6478;border-radius:99px;padding:2px 7px;white-space:nowrap';
+  var _tags=[];
+  if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
+  var tagsHtml=_tags.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+_tags.map(function(t){return '<span style="'+_tagPill+'">'+t+'</span>';}).join('')+'</div>':'';
+
   var badgeHtml='';
 
   var cards='';
@@ -13635,6 +13643,7 @@ function runnerRow(ru,ctx,extraHtml){
         +trainerLine
         // Weight · OR
         +wtOrLine+ageLine
+        +tagsHtml
       +'</div>'
       +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
         +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'

@@ -269,6 +269,83 @@ function redisGet(key) {
   });
 }
 
+// ── RUNNER TAG FLAGS ─────────────────────────────────────────────────────────
+// Server-computed tag flags embedded on each runner — form history is not
+// available client-side at render time, so tags must be decided here. First
+// tag: isCandDWinner. To add the next tag: add its rule in computeRunnerTags()
+// below and a badge check in index.html's runnerRow — nothing else changes.
+
+function stripParens(s) {
+  return (s || '').replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
+}
+
+// "2m1f111y" -> miles*8 + furlongs as an integer, yards ignored — history and
+// racecard yardages differ freely for the same trip, so yards must not count.
+function milesFurlongs(distStr) {
+  const s = String(distStr || '');
+  const miles = (s.match(/(\d+)m/) || [])[1];
+  const furlongs = (s.match(/(\d+)f/) || [])[1];
+  return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
+}
+
+function computeRunnerTags(runner, history, meetingName, raceDist) {
+  const runs = (history || []).slice(0, 6);
+  const courseKey = stripParens(meetingName);
+  const distKey = milesFurlongs(raceDist);
+  const isCandDWinner = runs.some(function(h) {
+    return String(h.pos) === '1'
+      && stripParens(h.course) === courseKey
+      && milesFurlongs(h.dist) === distKey;
+  });
+  if (isCandDWinner) runner.isCandDWinner = true;
+}
+
+// One pipelined Redis round-trip covering every runner's
+// form:history:{horse_id}:{date} — per-runner GETs would be hundreds of
+// sequential round trips on the request path. Entirely best-effort: a missing
+// key, a parse failure, or the whole pipeline failing just leaves runners
+// untagged; the racecard response is never blocked or errored by tagging.
+async function enrichRunnerTags(meetings, date) {
+  try {
+    const entries = [];
+    (meetings || []).forEach(function(m) {
+      (m.races || []).forEach(function(race) {
+        (race.runners || []).forEach(function(r) {
+          if (r.horse_id) entries.push({ r: r, m: m, race: race });
+        });
+      });
+    });
+    if (!entries.length) return meetings;
+    const url = new URL(UPSTASH_URL);
+    const cmds = entries.map(function(e) { return ['GET', 'form:history:' + e.r.horse_id + ':' + date]; });
+    const body = JSON.stringify(cmds);
+    const results = await new Promise(function(resolve) {
+      const req = https.request({
+        hostname: url.hostname, path: '/pipeline', method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, function(res) {
+        let d = '';
+        res.on('data', function(c) { d += c; });
+        res.on('end', function() { try { resolve(JSON.parse(d)); } catch (e) { resolve(null); } });
+      });
+      req.on('error', function() { resolve(null); });
+      req.write(body);
+      req.end();
+    });
+    if (!Array.isArray(results)) return meetings;
+    entries.forEach(function(e, i) {
+      try {
+        const raw = results[i] && results[i].result;
+        if (!raw) return;
+        const history = JSON.parse(raw);
+        if (!Array.isArray(history)) return;
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist);
+      } catch (err) { /* per-horse failure never blocks the card */ }
+    });
+  } catch (e) { /* enrichment is best-effort by design */ }
+  return meetings;
+}
+
 exports.handler = async function(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -311,6 +388,7 @@ exports.handler = async function(event) {
     // no longer leaves the page empty when good data is sitting right there.
     const cached = await redisGet('racecards:' + targetDate);
     if (cached && cached.meetings && cached.meetings.length) {
+      await enrichRunnerTags(cached.meetings, targetDate);
       return {
         statusCode: 200,
         headers,
@@ -338,6 +416,7 @@ exports.handler = async function(event) {
     }
 
     const meetings = mapRacecards(data);
+    await enrichRunnerTags(meetings, targetDate);
 
     return {
       statusCode: 200,
