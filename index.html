@@ -14862,7 +14862,8 @@ window._ptRQNext=function(){
     .then(function(data){
       window._ptRQ.busy=false;
       var lk=data&&data.lookup;
-      console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
+      var _isPartial=!!(data&&data.partial);
+      console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,'partial:',_isPartial,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
       if(lk&&Object.keys(lk).length){
         try{
           // Quota guard: results:{date} caches are only needed while a date's
@@ -14879,8 +14880,20 @@ window._ptRQNext=function(){
           }
           _stale.forEach(function(_sk){ localStorage.removeItem(_sk); });
           if(_stale.length) console.log('[pt-trace] pruned '+_stale.length+' stale results cache(s):',_stale.join(', ')); // TEMP TRACE — remove after verification
-          localStorage.setItem('results:'+item.d,JSON.stringify(lk));
-          console.log('[pt-trace] results stored → localStorage["results:'+item.d+'"]'); // TEMP TRACE — remove after verification
+          // Never overwrite a fuller existing cache with a partial response.
+          // Cache format is {partial, lookup}; a bare-map value is the old
+          // pre-flag format, handled here and by the reader in _ptInjectAllSel.
+          var _existingCount=0;
+          try{
+            var _exRaw=localStorage.getItem('results:'+item.d);
+            if(_exRaw){ var _ex=JSON.parse(_exRaw); var _exLk=(_ex&&_ex.lookup)?_ex.lookup:_ex; _existingCount=Object.keys(_exLk||{}).length; }
+          }catch(_e){}
+          if(_isPartial&&_existingCount>Object.keys(lk).length){
+            console.log('[pt-trace] results for',item.d,'PARTIAL ('+Object.keys(lk).length+' < cached '+_existingCount+') — keeping existing cache'); // TEMP TRACE — remove after verification
+          } else {
+            localStorage.setItem('results:'+item.d,JSON.stringify({partial:_isPartial,lookup:lk}));
+            console.log('[pt-trace] results stored → localStorage["results:'+item.d+'"]'+(_isPartial?' (flagged partial)':'')); // TEMP TRACE — remove after verification
+          }
         }catch(e){
           console.log('[pt-trace] results STORE FAILED for',item.d,'—',e&&e.message); // TEMP TRACE — remove after verification
         }
@@ -14929,9 +14942,27 @@ window._ptInjectAllSel=function(){
     var title='All Selections '+_fmtSelDate(date);
 
     // All dates: read from localStorage for rendering
-    // Today's localStorage entry is overwritten every 60s by the periodic re-fetch timer
-    var cachedLookup=null;
-    try{var _cr=localStorage.getItem('results:'+date);if(_cr){var _cp=JSON.parse(_cr);if(_cp&&Object.keys(_cp).length) cachedLookup=_cp;}}catch(e){}
+    // Today's localStorage entry is overwritten every 60s by the periodic re-fetch timer.
+    // Cache format is {partial, lookup}; a bare-map value is the old pre-flag
+    // format, treated as suspect (could be a stale partial from before the
+    // rate-limit fixes) — both suspect kinds trigger one refresh per session
+    // for past dates, and the writer keeps whichever response has more entries.
+    var cachedLookup=null, cachedSuspect=false;
+    try{
+      var _cr=localStorage.getItem('results:'+date);
+      if(_cr){
+        var _cp=JSON.parse(_cr);
+        if(_cp&&_cp.lookup){
+          if(Object.keys(_cp.lookup).length){ cachedLookup=_cp.lookup; cachedSuspect=!!_cp.partial; }
+        } else if(_cp&&Object.keys(_cp).length){
+          cachedLookup=_cp; cachedSuspect=true; // old format — no flag, assume suspect
+        }
+      }
+    }catch(e){}
+    if(cachedLookup&&cachedSuspect&&date!==today){
+      console.log('[pt-trace] inject: cache for',date,'is partial/old-format — queueing one refresh'); // TEMP TRACE — remove after verification
+      window._ptRQAdd(date);
+    }
 
     // Section already in DOM — update from cache, or queue fetch
     var dateRecArr=allRecs[date]||[];

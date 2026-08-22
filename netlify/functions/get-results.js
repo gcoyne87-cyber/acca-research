@@ -71,7 +71,15 @@ exports.handler = async function(event) {
     // un-paginated call silently dropped every race beyond page 1, which
     // surfaced as ran-horses wrongly showing NR in the tracker (2026-08-14/15).
     const PAGE_LIMIT = 50;
-    const resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
+    // First page gets the same 429 treatment as the pagination pages — a
+    // rate-limit hit here previously emptied the ENTIRE date's response
+    // (reproduced live 2026-08-23: first call 0 entries "API status 429",
+    // immediate retry 436 entries, all meetings).
+    let resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
+    if (resp.status === 429) {
+      await new Promise(function(r) { setTimeout(r, 1000); });
+      resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
+    }
 
     // Raw debug mode — call with ?raw=1 to see exactly what the API returns
     if (qs.raw === '1') {
@@ -91,7 +99,7 @@ exports.handler = async function(event) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ date, error: resp.body.detail || ('API status ' + resp.status), venues: [], lookup: {} })
+        body: JSON.stringify({ date, error: resp.body.detail || ('API status ' + resp.status), venues: [], lookup: {}, partial: true, fetched: 0 })
       };
     }
 
@@ -110,6 +118,11 @@ exports.handler = async function(event) {
     const total = typeof data.total === 'number' ? data.total : results.length;
     let skip = PAGE_LIMIT;
     let pagesFetched = 0;
+    // Set when the loop breaks on a FAILURE (429 that failed its retry, any
+    // non-200, or a thrown error) — the response is then flagged partial:true
+    // so clients can refuse to overwrite a fuller cache with it. An empty
+    // page (API's own end-of-data) is a normal completion, not a failure.
+    let partial = false;
     while (results.length < total && pagesFetched < 20) {
       try {
         await new Promise(function(r) { setTimeout(r, 250); });
@@ -118,11 +131,11 @@ exports.handler = async function(event) {
           await new Promise(function(r) { setTimeout(r, 1000); });
           pageResp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + skip);
         }
-        if (pageResp.status !== 200 || pageResp.body.detail) break;
+        if (pageResp.status !== 200 || pageResp.body.detail) { partial = true; break; }
         const pageResults = pageResp.body.results || [];
         if (!pageResults.length) break;
         results.push.apply(results, pageResults);
-      } catch (pageErr) { break; }
+      } catch (pageErr) { partial = true; break; }
       skip += PAGE_LIMIT;
       pagesFetched++;
     }
@@ -214,7 +227,7 @@ exports.handler = async function(event) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ date, venues: venueOrder.map(function(id) { return venueMap[id]; }) })
+        body: JSON.stringify({ date, venues: venueOrder.map(function(id) { return venueMap[id]; }), partial: partial, fetched: results.length })
       };
     }
 
@@ -235,7 +248,7 @@ exports.handler = async function(event) {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ date, lookup })
+      body: JSON.stringify({ date, lookup, partial: partial, fetched: results.length })
     };
 
   } catch(e) {
