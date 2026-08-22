@@ -142,6 +142,28 @@ exports.handler = async function(event) {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
+  // Permanent removal blocklist — these records were deleted from Redis but
+  // devices still hold them in localStorage, and the backfill push loop
+  // re-sends whole dates on every unlock, resurrecting them (seen 2026-08-22:
+  // 33 deleted records re-created within hours). The merge below both refuses
+  // them from incoming pushes AND scrubs them from the stored array, so the
+  // system converges to deleted no matter what any device pushes.
+  const BLOCKED_IDS = [
+    'ladylena20260816sig',
+    'badri20260816sig',
+    'sotempting20260817sig',
+    'southshore20260817sig'
+  ];
+  const BLOCKED_TYPES_BEFORE = {
+    types: ['Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'],
+    before: '2026-08-20'
+  };
+  function isBlocked(r) {
+    if (BLOCKED_IDS.indexOf(r.id) !== -1) return true;
+    if (BLOCKED_TYPES_BEFORE.types.indexOf(r.type) !== -1 && (r.date || '') < BLOCKED_TYPES_BEFORE.before) return true;
+    return false;
+  }
+
   if (event.body && event.body.length > MAX_BODY) {
     return { statusCode: 413, headers, body: JSON.stringify({ error: 'Payload too large' }) };
   }
@@ -173,6 +195,15 @@ exports.handler = async function(event) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'No valid records in payload' }) };
   }
 
+  // Blocklisted records are silently dropped from the push — never written.
+  const allowed = clean.filter(function(r) { return !isBlocked(r); });
+  const blockedCount = clean.length - allowed.length;
+  if (!allowed.length) {
+    // Everything in this push was blocklisted — succeed without writing so
+    // clients don't log errors and retry.
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, received: 0, blocked: blockedCount, appended: 0, updated: 0 }) };
+  }
+
   const locked = await acquireLock();
   if (!locked) {
     // Another device is mid-write. Safe to refuse: the client re-sends its
@@ -182,17 +213,23 @@ exports.handler = async function(event) {
 
   try {
     const stored = await getStoredRecords();
-    const result = mergeInto(stored, clean);
+    // Stored-side scrub: if blocklisted records were resurrected before this
+    // blocklist deployed, remove them here so the store self-heals on the
+    // next successful push rather than needing another manual deletion.
+    const beforeScrub = stored.length;
+    const scrubbed = stored.filter(function(r) { return !isBlocked(r); });
+    const scrubbedCount = beforeScrub - scrubbed.length;
+    const result = mergeInto(scrubbed, allowed);
     if (result.records.length > MAX_STORED) {
       return { statusCode: 413, headers, body: JSON.stringify({ error: 'Stored record cap reached' }) };
     }
-    if (result.appended || result.updated) {
+    if (result.appended || result.updated || scrubbedCount > 0) {
       await redisRaw('/set/' + RECS_KEY, 'POST', result.records);
     }
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ ok: true, received: clean.length, appended: result.appended, updated: result.updated, total: result.records.length })
+      body: JSON.stringify({ ok: true, received: allowed.length, blocked: blockedCount, scrubbed: scrubbedCount, appended: result.appended, updated: result.updated, total: result.records.length })
     };
   } catch (e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
