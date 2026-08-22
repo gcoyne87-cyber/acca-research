@@ -2869,8 +2869,24 @@ window.addEventListener('load',function(){
           // not ingested — it is the same horse as intelPicks[0] ('Intel 3').
           // Race strings are "Course HH:MM"; split into the course/time fields
           // the dated cards render.
+          // Client-side blocklist — mirrors the server blocklist in
+          // tracker-recs.js. These horse+date pairs are dead rank-reshuffle
+          // duplicates that get-daily-build's read-time tie sort keeps
+          // reassigning; without this gate the backfill re-creates them in
+          // localStorage on every unlock even though Redis stays clean.
+          var CLIENT_BLOCKED = [
+            {horse:'lady lena', date:'2026-08-16'},
+            {horse:'badri', date:'2026-08-16'},
+            {horse:'south shore', date:'2026-08-17'},
+            {horse:'romotoso', date:'2026-08-18'},
+            {horse:'foinix', date:'2026-08-18'},
+            {horse:'my old mate', date:'2026-08-18'}
+          ];
           function pushPhase3(p,type){
             if(!p||!p.horseName) return;
+            var _hn=(p.horseName||'').toLowerCase().trim();
+            var _blocked=CLIENT_BLOCKED.some(function(b){ return b.horse===_hn&&b.date===date; });
+            if(_blocked) return;
             var rp=(p.race||'').split(' ');
             var rt=rp[rp.length-1]||'';
             var rc=rp.slice(0,rp.length-1).join(' ')||'';
