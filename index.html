@@ -2921,7 +2921,7 @@ window.addEventListener('load',function(){
       // Tipster Consensus is excluded only from FREEZE_DATE onward (same
       // '2026-08-03' constant as ptRenderTypeRows) — the frozen Tipster row's
       // pre-freeze era stays displayed and keeps its stats contribution.
-      var REMOVED_LIVE=['Intelligence','Ground Edge','Hot Yard'];
+      var REMOVED_LIVE=['Intelligence','Ground Edge','Hot Yard','Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'];
       recs=recs.filter(function(r){
         if(REMOVED_LIVE.indexOf(r.type)!==-1) return false;
         if(r.type==='Tipster Consensus'&&(r.date||'')>='2026-08-03') return false;
