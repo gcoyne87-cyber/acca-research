@@ -2881,13 +2881,6 @@ window.addEventListener('load',function(){
           pushPhase3((data.intelPicks||[])[0],'Intel 3');
           pushPhase3((data.intelPicks||[])[1],'Intel 4');
           pushPhase3((data.intelPicks||[])[2],'Intel 5');
-          // Value picks — ranks 6-10 by confidence (valuePicks[0..4] from
-          // get-daily-build). Same record format and pushPhase3 path as Intel 3-5.
-          pushPhase3((data.valuePicks||[])[0],'Intel 6');
-          pushPhase3((data.valuePicks||[])[1],'Intel 7');
-          pushPhase3((data.valuePicks||[])[2],'Intel 8');
-          pushPhase3((data.valuePicks||[])[3],'Intel 9');
-          pushPhase3((data.valuePicks||[])[4],'Intel 10');
           console.log('[pt-trace] fetchToday built',news.length,'rec(s) for',date); // TEMP TRACE — remove after verification
           var merged=mergeRecs(news);
           // Share this date's post-merge records (including any results they
@@ -3108,8 +3101,13 @@ window.addEventListener('load',function(){
     function ptRender(recs){
       ptRenderTotals(recs);
       ptRenderTypeRows(recs);
+      // Intel 6-10 are excluded from the dated results cards entirely —
+      // ingestion for those ranks was retired 2026-08-22; any residual
+      // records (e.g. still cached in a device's localStorage) stay hidden.
+      var HIDDEN_TYPES=['Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'];
       var groups={}, order=[];
       recs.forEach(function(r){
+        if(HIDDEN_TYPES.indexOf(r.type)!==-1) return;
         if(!groups[r.date]){ groups[r.date]=[]; order.push(r.date); }
         groups[r.date].push(r);
       });
