@@ -156,7 +156,9 @@ exports.handler = async function(event) {
     'nightshining20260817sig',
     'romotoso20260818sig',
     'foinix20260818sig',
-    'myoldmate20260818sig'
+    'myoldmate20260818sig',
+    'matins20260814sig',
+    'hoperising20260818sig'
   ];
   const BLOCKED_TYPES_BEFORE = {
     types: ['Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'],
