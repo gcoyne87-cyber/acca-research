@@ -15083,7 +15083,7 @@ function renderRacingPicks(){
             +'<div id="tips-ee-'+i+'" style="display:none"></div>'
           +'</div>'
           +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
-          +(courseName?'<button onclick="nrViewMeetingCard(\''+courseId+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
+          +(courseName?'<button onclick="highlightHorse(\''+p.horse.replace(/'/g,"\\'")+'\');selectRacingSection(\'race:'+courseName+':'+fullPickTime+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
         +'</div>'
       +'</div>'
     +'</div>'
@@ -15149,7 +15149,7 @@ function renderHomeSelections(el){
             +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+metaLine+'</div>'
             +(p.summary?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 14px">'+escHtml(p.summary)+'</p>':'<div style="margin-bottom:14px"></div>')
             +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds||'')+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
-            +(gi.course?'<button onclick="nrViewMeetingCard(\''+gi.courseId+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+escHtml(gi.course)+' '+escHtml(gi.time)+' &rarr;</button>':'')
+            +(gi.course?'<button onclick="highlightHorse(\''+p.horse.replace(/'/g,"\\'")+'\');selectRacingSection(\'race:'+gi.course+':'+gi.time+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+escHtml(gi.course)+' '+escHtml(gi.time)+' &rarr;</button>':'')
           +'</div>'
         +'</div>'
       +'</div>'
