@@ -38,14 +38,23 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading' }) };
     }
 
-    // Pull top picks by confidence score — top 3 become picks, rest are noted.
-    // Sort runs in place first (report.analyses passthrough keeps its order as
-    // before), then filter drops unusable entries — no selection, no horse
-    // name, or an explicit Pass — so a Pass race can never occupy a NAP/NB/
-    // intel slot with a blank card. picks and intelPicks both slice this same
-    // filtered ranking, keeping their indexes aligned (no NB/intel duplicates).
+    // Pull top picks — top 3 become picks, rest are noted. Ranking rule: the
+    // build's stored pickRank (stamped by the NB reorder step as the final
+    // pick order — rank 1 is always the highest-confidence NAP) wins when
+    // present; the confidence-score sort is the fallback for reports built
+    // before pickRank existed and for days the reorder call failed. Sort runs
+    // in place first (report.analyses passthrough keeps its order as before),
+    // then filter drops unusable entries — no selection, no horse name, or an
+    // explicit Pass — so a Pass race can never occupy a NAP/NB/intel slot with
+    // a blank card. picks and intelPicks both slice this same filtered
+    // ranking, keeping their indexes aligned (no NB/intel duplicates).
     const analyses = (report.analyses || [])
-      .sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0))
+      .sort((a, b) => {
+        if (a.pickRank != null && b.pickRank != null) return a.pickRank - b.pickRank;
+        if (a.pickRank != null) return -1;
+        if (b.pickRank != null) return 1;
+        return (b.confidenceScore || 0) - (a.confidenceScore || 0);
+      })
       .filter(a => a && a.strongestSelection && a.strongestSelection.horseName
         && a.strongestSelection.confidenceLevel !== 'Pass');
 

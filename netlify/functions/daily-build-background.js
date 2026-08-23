@@ -637,6 +637,41 @@ function extractJsonArray(text) {
   return extractBalancedJson(text, '[', ']');
 }
 
+// ── NB REORDER ────────────────────────────────────────────────────────────────
+// Prompt for the cross-race ordering call that assigns NB and the Intel 3-6
+// slots (step 5.7 in the handler). The NAP is selected before this call and is
+// never part of it.
+const NB_REORDER_PROMPT = `You are a professional horse racing analyst. Today's NAP has already been selected and is not part of this task. Below are the next five strongest candidates on today's card, each with its race details.
+
+Order these five horses by genuine probability of winning their race today.
+
+The horse you place first becomes the NB — the second-most important pick of the day. Give that decision particular care.
+
+Base your ordering on: how many runners the horse must beat, how clearly it stands out from its rivals, course and distance form, and going suitability. The confidence scores shown come from each race analysed in isolation — you are ordering across races, so your order may match the scores or differ from them. Order purely on win probability.
+
+Respond with ONLY a JSON array of the five horse names, most likely winner first. No other text.`;
+
+// Validates the reorder response. Anything other than exactly the five expected
+// horse names, each appearing once (in any order), is a hard fail — returns
+// null and the day keeps its original confidence-score order. Name matching is
+// case/punctuation-insensitive via normaliseHorseName so a cosmetic difference
+// ("St. Mark's" vs "St Marks") never fails a genuinely correct answer.
+function validateNbReorderResponse(returned, candidates) {
+  if (!Array.isArray(returned) || returned.length !== 5) return null;
+  const byNorm = {};
+  candidates.forEach(function(c) { byNorm[normaliseHorseName(c.strongestSelection.horseName)] = c; });
+  const ordered = [];
+  const used = new Set();
+  for (const name of returned) {
+    if (typeof name !== 'string') return null;
+    const key = normaliseHorseName(name);
+    if (!byNorm[key] || used.has(key)) return null;
+    used.add(key);
+    ordered.push(byNorm[key]);
+  }
+  return ordered;
+}
+
 // Data-verified signals (concrete computed evidence) outrank the free-rein
 // Intelligence catch-all when two cards collide on the same race or meeting.
 const SIGNAL_STRENGTH_PRIORITY = { 'Tipster Consensus': 1, 'Course and Distance': 2, 'Class Drop': 3, 'Ground Edge': 4, 'Hot Yard': 5, 'Intelligence': 6 };
@@ -2374,6 +2409,74 @@ exports.handler = async function(event) {
     //   if (_dropped > 0) console.log(`[daily-build] Intelligence cross-ref: dropped ${_dropped} item(s) conflicting with race analysis picks`);
     // }
 
+    // 5.7 NB reorder — the LAST step of pick selection. Every race is analysed
+    // and every confidence score is final by this point; nothing after this
+    // block changes a pick or a score. Position 1 of the confidence ranking
+    // (the NAP) is never touched. Positions 2-6 are re-ordered by one Claude
+    // call judging genuine cross-race win probability — each confidence score
+    // was produced with its race analysed in isolation, so ordering ACROSS
+    // races is a question the scores alone can't answer. Confidence scores are
+    // NOT modified: the call sets order only, stamped on each analysis as
+    // pickRank (1..N) and persisted in the final report so every consumer
+    // (site, email, tracker) reads the same stored ranking instead of
+    // re-deriving it from scores. On ANY failure — call error, timeout,
+    // malformed response, wrong or missing horse names — the day keeps the
+    // original confidence-score order (no pickRank written, consumers fall
+    // back to their score sort) and the failure is recorded in the build log
+    // AND the completion email, never silently.
+    let nbReorderStatusLine = 'NB Reorder: not run';
+    try {
+      // Same filter + ranking get-daily-build.js applies at read time, so the
+      // horse at rank 1 here is exactly the NAP the site already shows.
+      const rankedAll = (report.analyses || [])
+        .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName && a.strongestSelection.confidenceLevel !== 'Pass'; })
+        .sort(function(a, b) { return (b.confidenceScore || 0) - (a.confidenceScore || 0); });
+      if (rankedAll.length >= 6) {
+        const nbCandidates = rankedAll.slice(1, 6);
+        const runnersByRace = {};
+        (report.raceBreakdown || []).forEach(function(rb) { runnersByRace[rb.race] = rb.runners; });
+        const candidateBlock = nbCandidates.map(function(a, i) {
+          const runnerCount = runnersByRace[a.race] || (a.runnerAnalysis || []).length || 'unknown';
+          return 'Candidate ' + (i + 1) + ': ' + a.strongestSelection.horseName
+            + '\nCourse and race time: ' + (a.race || 'unknown')
+            + '\nConfidence score: ' + (a.confidenceScore != null ? a.confidenceScore : 'unknown')
+            + '\nRunners in race: ' + runnerCount
+            + '\nCase: ' + (a.strongestSelection.pullQuote || 'none');
+        }).join('\n\n');
+        const nbResp = await callClaude(NB_REORDER_PROMPT, candidateBlock, 400, true);
+        report.inputTokens += nbResp.inputTokens || 0;
+        report.outputTokens += nbResp.outputTokens || 0;
+        report.cacheReadTokens += nbResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += nbResp.cacheWriteTokens || 0;
+        report.callLog.push({ type: 'nb-reorder', label: 'NB Reorder', inputTokens: nbResp.inputTokens || 0, outputTokens: nbResp.outputTokens || 0, cacheReadTokens: nbResp.cacheReadTokens || 0, cacheWriteTokens: nbResp.cacheWriteTokens || 0, webSearch: false, webSearchCount: 0 });
+        const returnedNames = extractJsonArray(nbResp.text || '');
+        const orderedCandidates = validateNbReorderResponse(returnedNames, nbCandidates);
+        if (!orderedCandidates) {
+          throw new Error('response was not exactly the five expected horse names: ' + JSON.stringify(returnedNames).slice(0, 200));
+        }
+        // Returned position 1 → NB (rank 2), positions 2-4 → Intel 3-5 (ranks
+        // 3-5), position 5 → the Intel 6 slot (rank 6). Everything below rank 6
+        // keeps its confidence order.
+        const finalRanked = [rankedAll[0]].concat(orderedCandidates).concat(rankedAll.slice(6));
+        finalRanked.forEach(function(a, i) { a.pickRank = i + 1; });
+        // Persist the analyses array itself in final rank order too; entries
+        // with no usable selection (filtered out of rankedAll) follow the
+        // ranked block with their relative order unchanged.
+        const unrankedRest = (report.analyses || []).filter(function(a) { return finalRanked.indexOf(a) === -1; });
+        report.analyses = finalRanked.concat(unrankedRest);
+        nbReorderStatusLine = 'NB Reorder: applied — NB is ' + orderedCandidates[0].strongestSelection.horseName;
+        console.log('[daily-build] ' + nbReorderStatusLine + ' | order: ' + returnedNames.join(', '));
+      } else {
+        nbReorderStatusLine = 'NB Reorder: skipped — only ' + rankedAll.length + ' scored picks today (needs 6); confidence score order used';
+        report.warnings.push(nbReorderStatusLine);
+        console.log('[daily-build] ' + nbReorderStatusLine);
+      }
+    } catch (nbErr) {
+      nbReorderStatusLine = 'NB Reorder: FAILED — using original confidence score order for today (' + nbErr.message + ')';
+      report.warnings.push(nbReorderStatusLine);
+      console.error('[daily-build] ' + nbReorderStatusLine);
+    }
+
     // 6. Calculate cost and store final report
     // AUDIT-DAILY-INTELLIGENCE.md, finding S4: report.costUSD used to silently
     // omit the tomorrow call's entire cost — its tokens were tracked in separate
@@ -2455,15 +2558,23 @@ exports.handler = async function(event) {
         ? 'Daily Intelligence FAILED - ' + today
         : 'Daily Intelligence Complete - ' + today;
 
-      // Top 10 selections by confidenceScore — ranks 1-2 are NAP/NB, 3-5 INTEL,
-      // 6-10 unlabelled. report.analyses entries carry the analysis fields spread
-      // at the top level ({ race, confidenceScore, strongestSelection, ... } —
-      // see the push in step 4), NOT nested under .result. Horses with no
-      // strongestSelection/horseName are filtered out before ranking so the top
-      // 10 never contains blank rows.
+      // Top 10 selections — ranks 1-2 are NAP/NB, 3-5 INTEL, 6-10 unlabelled.
+      // Ordered by the stored pickRank (the NB reorder step's final order) when
+      // present, falling back to confidenceScore for fallback days and reports
+      // built before pickRank existed — the same rule get-daily-build.js uses,
+      // so the email always shows exactly what the site shows. report.analyses
+      // entries carry the analysis fields spread at the top level ({ race,
+      // confidenceScore, strongestSelection, ... } — see the push in step 4),
+      // NOT nested under .result. Horses with no strongestSelection/horseName
+      // are filtered out before ranking so the top 10 never contains blank rows.
       const rankedSelections = (report.analyses || [])
         .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName; })
-        .sort(function(a, b) { return (b.confidenceScore || 0) - (a.confidenceScore || 0); })
+        .sort(function(a, b) {
+          if (a.pickRank != null && b.pickRank != null) return a.pickRank - b.pickRank;
+          if (a.pickRank != null) return -1;
+          if (b.pickRank != null) return 1;
+          return (b.confidenceScore || 0) - (a.confidenceScore || 0);
+        })
         .slice(0, 10);
       const selectionLines = rankedSelections.map(function(a, i) {
         const label = i === 0 ? 'NAP — ' : i === 1 ? 'NB — ' : i <= 4 ? 'INTEL — ' : '';
@@ -2478,6 +2589,7 @@ exports.handler = async function(event) {
 
       const emailBody = selectionsSection.concat(signalLines).concat([
         tomorrowLine,
+        nbReorderStatusLine,
         '',
         'Total Cost: $' + report.costUSD,
         '  Input: $' + (cb.inputTokenCost || '0.0000') + ' | Output: $' + (cb.outputTokenCost || '0.0000') + ' | Cache write: $' + (cb.cacheWriteCost || '0.0000') + ' | Cache read: $' + (cb.cacheReadCost || '0.0000') + ' | Web search: $' + (cb.webSearchCost || '0.0000') + ' (' + (cb.webSearchCount || 0) + ' searches)',
