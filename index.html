@@ -11961,20 +11961,20 @@ function renderTrainerFormTable(trainers){
     +'<button onclick="_trainerFormSetWindow(\'14\')" style="'+(win==='14'?pillOn:pillOff)+'">14 Days</button>'
     +'<button onclick="_trainerFormSetWindow(\'7\')" style="'+(win==='7'?pillOn:pillOff)+'">7 Days</button>'
     +'</div>';
-  // Ranked by the selected window's strike rate, min. 3 runners in that
+  // Ranked by the selected window's strike rate, min. 5 runners in that
   // window to qualify. strikeRate14d falls back to the original strikeRate
   // field name for any pre-7d-schema cached table (always present).
   function _sr14(t){ return t.strikeRate14d!=null?t.strikeRate14d:(t.strikeRate||0); }
   var allRows;
   if(win==='7'){
-    allRows=trainers.filter(function(t){ return (Number(t.runners7d)||0)>=3; })
+    allRows=trainers.filter(function(t){ return (Number(t.runners7d)||0)>=5; })
       .sort(function(a,b){ return (b.strikeRate7d||0)-(a.strikeRate7d||0); }).slice(0,15);
   } else {
-    allRows=trainers.filter(function(t){ return (Number(t.runners14d)||0)>=3; })
+    allRows=trainers.filter(function(t){ return (Number(t.runners14d)||0)>=5; })
       .sort(function(a,b){ return _sr14(b)-_sr14(a); }).slice(0,15);
   }
   if(!allRows.length){
-    el.innerHTML=header+toggleHtml+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 3+ runners in the last '+win+' days today</div>';
+    el.innerHTML=header+toggleHtml+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 5+ runners in the last '+win+' days today</div>';
     return;
   }
   var hasMore=allRows.length>5;
