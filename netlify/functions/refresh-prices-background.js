@@ -90,6 +90,60 @@ function redisDel(key) {
   });
 }
 
+function redisExpire(key, seconds) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/expire/' + encodeURIComponent(key) + '/' + seconds, method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.end();
+  });
+}
+
+function fracToDec(s) {
+  if (!s || s === 'SP') return 0;
+  const p = String(s).trim();
+  if (/^evs$|^evens$/i.test(p)) return 2;
+  const q = p.split('/');
+  if (q.length === 2) {
+    const n = parseFloat(q[0]), d = parseFloat(q[1]);
+    if (!isNaN(n) && !isNaN(d) && d > 0) return n / d + 1;
+  }
+  const f = parseFloat(p);
+  return (!isNaN(f) && f > 1) ? f : 0;
+}
+
+// Price-movement flags vs the day's anchor price. The anchor is the FIRST
+// price seen for the horse that day, held in one per-date map key
+// (price:anchors:{date} = { horse_id: { anchor, drift, short } }) rather than
+// one Redis key per horse — a single GET+SET per refresh instead of hundreds.
+// Thresholds in decimal-odds terms: current >= anchor x 1.25 -> isDrifting;
+// current <= anchor x 0.70 -> isShortening. Flags are STICKY for the day —
+// once recorded in the anchor entry they never clear, even if the price moves
+// back — so a cache rebuild can't lose them (they re-apply from the map every
+// refresh). A horse with no readable current price (SP / suspended market /
+// non-runner) is skipped entirely: no anchor created, no flag set, and any
+// flags already written onto the cached runner are left untouched.
+function applyPriceMovement(ru, currentPrice, anchors) {
+  const curDec = fracToDec(currentPrice);
+  if (!curDec) return false;
+  let changed = false;
+  let a = anchors[ru.horse_id];
+  if (!a || !a.anchor) {
+    a = anchors[ru.horse_id] = { anchor: currentPrice };
+    changed = true;
+  }
+  const anchorDec = fracToDec(a.anchor);
+  if (anchorDec) {
+    if (!a.drift && curDec >= anchorDec * 1.25) { a.drift = true; changed = true; }
+    if (!a.short && curDec <= anchorDec * 0.70) { a.short = true; changed = true; }
+  }
+  if (a.drift) { ru.isDrifting = true; ru.anchorPrice = a.anchor; ru.currentPrice = currentPrice; }
+  if (a.short) { ru.isShortening = true; ru.anchorPrice = a.anchor; ru.currentPrice = currentPrice; }
+  return changed;
+}
+
 // Best-effort email notification — must never affect the function's own result.
 async function sendNotification(subject, bodyText) {
   try {
@@ -165,12 +219,19 @@ exports.handler = async function(event) {
         });
       });
 
-      // Walk the existing cached (mapped) meetings structure and update only the price field
+      // Day's anchor prices — first price seen per horse, plus sticky
+      // drift/shorten flags (see applyPriceMovement above).
+      const anchors = (await redisGet('price:anchors:' + today)) || {};
+      let anchorsDirty = false;
+
+      // Walk the existing cached (mapped) meetings structure and update the
+      // price field plus the price-movement flags
       (cached.meetings || []).forEach(function(m) {
         (m.races || []).forEach(function(race) {
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshPriceMap.hasOwnProperty(ru.horse_id)) {
               ru.price = freshPriceMap[ru.horse_id];
+              if (applyPriceMovement(ru, freshPriceMap[ru.horse_id], anchors)) anchorsDirty = true;
               todayUpdated++;
             }
           });
@@ -185,6 +246,10 @@ exports.handler = async function(event) {
       }
 
       await redisSet('racecards:' + today, cached);
+      if (anchorsDirty) {
+        await redisSet('price:anchors:' + today, anchors);
+        await redisExpire('price:anchors:' + today, 172800);
+      }
     }
   } catch (e) {
     console.log('[refresh-prices-background] today error:', e.message);
@@ -219,12 +284,20 @@ exports.handler = async function(event) {
         });
       });
 
-      // Walk the existing cached (mapped) meetings structure and update only the price field
+      // Tomorrow gets its own anchor map under its own date key — "the day"
+      // for anchoring purposes is the racing date, not the calendar day the
+      // refresh happens to run on.
+      const anchorsTomorrow = (await redisGet('price:anchors:' + tomorrow)) || {};
+      let anchorsTomorrowDirty = false;
+
+      // Walk the existing cached (mapped) meetings structure and update the
+      // price field plus the price-movement flags
       (cachedTomorrow.meetings || []).forEach(function(m) {
         (m.races || []).forEach(function(race) {
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshPriceMapTomorrow.hasOwnProperty(ru.horse_id)) {
               ru.price = freshPriceMapTomorrow[ru.horse_id];
+              if (applyPriceMovement(ru, freshPriceMapTomorrow[ru.horse_id], anchorsTomorrow)) anchorsTomorrowDirty = true;
               tomorrowUpdated++;
             }
           });
@@ -232,6 +305,10 @@ exports.handler = async function(event) {
       });
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
+      if (anchorsTomorrowDirty) {
+        await redisSet('price:anchors:' + tomorrow, anchorsTomorrow);
+        await redisExpire('price:anchors:' + tomorrow, 172800);
+      }
     }
   } catch (e) {
     console.log('[refresh-prices-background] tomorrow error:', e.message);

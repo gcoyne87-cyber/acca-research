@@ -13512,6 +13512,62 @@ function _sortByPrice(runners){
     return _priceToDecimal(a.price)-_priceToDecimal(b.price);
   });
 }
+// ── Price-movement pill ─────────────────────────────────────────────────────
+// Flags are computed server-side by refresh-prices-background.js against the
+// day's anchor price (the first price seen for the horse that day, sticky for
+// the day) and carried on the cached racecard runner objects — so every view
+// reads the same truth. Sizing matches the runner tag badges (_tagPill). The
+// rare both-flags case (a market volatile enough to cross both thresholds in
+// one day): whichever side of the anchor the current price sits on wins.
+var _pmPillBase='display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap';
+function _pmDec(s){
+  if(!s||s==='SP') return 0;
+  var p=String(s).trim();
+  if(/^evs$|^evens$/i.test(p)) return 2;
+  var q=p.split('/');
+  if(q.length===2){var n=parseFloat(q[0]),d=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(d)&&d>0)return n/d+1;}
+  var f=parseFloat(p);
+  return (!isNaN(f)&&f>1)?f:0;
+}
+function _priceMovePillHtml(ru){
+  if(!ru||(!ru.isDrifting&&!ru.isShortening)) return '';
+  var showShort=!!ru.isShortening;
+  if(ru.isDrifting&&ru.isShortening){
+    var _c=_pmDec(ru.currentPrice),_a=_pmDec(ru.anchorPrice);
+    showShort=!!(_c&&_a&&_c<_a);
+  }
+  if(showShort){
+    return '<div style="margin-top:2px"><span style="'+_pmPillBase+';background:#e8f7f0;border:1px solid #b8e0cc;color:#1e9e6b">'
+      +'<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
+      +'Shortening</span></div>';
+  }
+  return '<div style="margin-top:2px"><span style="'+_pmPillBase+';background:#fdecea;border:1px solid #f5c6c0;color:#e74c3c">'
+    +'<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>'
+    +'Drifting</span></div>';
+}
+// By-name lookup for cards that only carry a horse name (NAP/NB picks, Daily
+// Intelligence) — finds the live racecard runner so those cards read the same
+// server-computed flags as the racecard rows. A horse runs once per day, so
+// a name match is unambiguous.
+function _priceMoveRunnerByName(name){
+  var norm=(name||'').toLowerCase().trim();
+  if(!norm) return null;
+  var lists=[typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null,typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null];
+  for(var li=0;li<lists.length;li++){
+    var ms=lists[li]||[];
+    for(var mi=0;mi<ms.length;mi++){
+      var rs=ms[mi].races||[];
+      for(var ri=0;ri<rs.length;ri++){
+        var runs=rs[ri].runners||[];
+        for(var i=0;i<runs.length;i++){
+          if((runs[i].name||'').toLowerCase().trim()===norm) return runs[i];
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function runnerRow(ru,ctx,extraHtml){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var silk=ru.silk?nrSilk(ru.silk):'';
@@ -13661,6 +13717,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'</div>'
       +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
         +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
+        +_priceMovePillHtml(ru)
       +'</button>'
     +'</div>'
     +(extraHtml||'')
@@ -14540,7 +14597,7 @@ function renderAIIntelligence(){
             +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
             +((item.date && item.date > _todayStr)?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
           +'</div>'
-          +(_displayPrice?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+_displayPrice+'</div>':'')
+          +(_displayPrice?'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0"><div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E">'+_displayPrice+'</div>'+_priceMovePillHtml(_liveRunner)+'</div>':'')
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
         +_jtfLine
@@ -15068,6 +15125,7 @@ function renderRacingPicks(){
         +'<div style="padding:20px 14px 14px">'
           +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(courseName)+' &middot; '+escHtml(fullPickTime)+'</div>'
           +'<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml(p.odds)+'</span></div>'
+          +_priceMovePillHtml(_priceMoveRunnerByName(p.horse))
           +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(fullMetaParts.length?fullMetaParts.join(' &middot; '):'')+'</div>'
           +(inlinePara?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 12px">'+inlinePara+'</p>':'')
           +'<div style="display:flex;gap:0;margin-bottom:10px">'
@@ -15148,6 +15206,7 @@ function renderHomeSelections(el){
           +'<div style="padding:20px 14px 14px">'
             +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(gi.course)+' &middot; '+escHtml(gi.time)+'</div>'
             +'<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml(p.odds||'')+'</span></div>'
+            +_priceMovePillHtml(_priceMoveRunnerByName(p.horse))
             +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+metaLine+'</div>'
             +(p.summary?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 14px">'+escHtml(p.summary)+'</p>':'<div style="margin-bottom:14px"></div>')
             +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds||'')+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
