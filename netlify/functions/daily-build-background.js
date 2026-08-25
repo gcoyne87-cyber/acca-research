@@ -40,7 +40,10 @@ function apiPost(hostname, path, headers, body) {
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(b), ...headers }
     }, res => {
       let d = ''; res.on('data', c => d += c);
-      res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse')); } });
+      // Non-200 responses get the HTTP status attached so callers can report
+      // WHY a call failed (rate limit, credit balance, overloaded) instead of
+      // only ever seeing an empty content array. 200s are left untouched.
+      res.on('end', () => { try { const parsed = JSON.parse(d); if (parsed && typeof parsed === 'object' && res.statusCode !== 200) parsed.__httpStatus = res.statusCode; resolve(parsed); } catch(e) { reject(new Error('Parse')); } });
     });
     req.on('error', reject); req.setTimeout(290000); req.write(b); req.end();
   });
@@ -593,7 +596,14 @@ async function callClaude(systemPrompt, userMessage, tokens, noSearch, maxSearch
     cacheReadTokens: usage.cache_read_input_tokens || 0,
     cacheWriteTokens: usage.cache_creation_input_tokens || 0,
     webSearchCount,
-    searchQueries
+    searchQueries,
+    // Anthropic error responses are {type:'error', error:{type, message}} with
+    // the HTTP status attached by apiPost — folded into one human-readable
+    // string ("API 429: rate limit exceeded") so callers can surface the real
+    // failure reason. null on every successful call.
+    apiError: resp && resp.type === 'error'
+      ? 'API ' + (resp.__httpStatus || '?') + ': ' + ((resp.error && (resp.error.message || resp.error.type)) || 'unknown error')
+      : null
   };
 }
 
@@ -1453,7 +1463,13 @@ exports.handler = async function(event) {
   // while a slow scheduled run is still mid-flight — this stops a second, fully
   // redundant build from running concurrently with the first (which would otherwise
   // double the Anthropic spend and send two separate emails for the same day).
-  const LOCK_WINDOW_MS = 30 * 60 * 1000;
+  // 16 minutes, NOT longer: the platform hard-kills background functions at 15
+  // minutes, so a lock older than that can only belong to a dead build. Netlify
+  // auto-retries a killed invocation ~1 minute later — a 16-minute window lets
+  // that retry through to self-heal from the cached analyses instead of standing
+  // down (2026-08-25: a 30-minute window made a timed-out 26-race build lose the
+  // whole day — the 09:46 retry was blocked by the 09:30 lock).
+  const LOCK_WINDOW_MS = 16 * 60 * 1000;
   try {
     const existingLock = await redisGet('build:lock:' + today);
     if (existingLock && existingLock.startedAt) {
@@ -2145,9 +2161,16 @@ exports.handler = async function(event) {
         });
       });
 
-      const trainerTableTop30 = Object.values(trainerTableMap).sort(function(a, b) {
+      // Top 15, not 30: each stored trainer costs one paced Racing API call in
+      // the 7-day loop below (~500-800ms each), all spent BEFORE race analysis
+      // starts — trimming 30 -> 15 reclaims ~2 minutes of the 15-minute build
+      // budget (2026-08-25: a 26-race cold-cache day timed out). The display
+      // caps at 15 rows and now requires 5+ runners in-window, so the trimmed
+      // tail is invisible in the 14-day view; only edge case is a yard ranked
+      // 16-30 by 14-day SR that would have made the 7-day toggle's top 15.
+      const trainerTableTop15 = Object.values(trainerTableMap).sort(function(a, b) {
         return b.pct - a.pct;
-      }).slice(0, 30);
+      }).slice(0, 15);
 
       // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
       // window comes from the trainers results endpoint (same endpoint and
@@ -2156,7 +2179,7 @@ exports.handler = async function(event) {
       // call leaves that trainer's 7d fields at zero — the table write must
       // never fail because one trainer lookup did.
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      for (const entry of trainerTableTop30) {
+      for (const entry of trainerTableTop15) {
         entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
         if (!entry.trainer_id) continue;
         try {
@@ -2188,7 +2211,7 @@ exports.handler = async function(event) {
         }
       }
 
-      const trainerFormTable = trainerTableTop30.map(function(entry) {
+      const trainerFormTable = trainerTableTop15.map(function(entry) {
         return {
           trainerName: entry.trainer,
           runners14d: entry.runs,
@@ -2449,6 +2472,12 @@ exports.handler = async function(event) {
         report.cacheReadTokens += nbResp.cacheReadTokens || 0;
         report.cacheWriteTokens += nbResp.cacheWriteTokens || 0;
         report.callLog.push({ type: 'nb-reorder', label: 'NB Reorder', inputTokens: nbResp.inputTokens || 0, outputTokens: nbResp.outputTokens || 0, cacheReadTokens: nbResp.cacheReadTokens || 0, cacheWriteTokens: nbResp.cacheWriteTokens || 0, webSearch: false, webSearchCount: 0 });
+        // An API-level failure (rate limit, credit balance, overloaded) beats
+        // "response was: null" as a diagnosis — report the real status and
+        // message, truncated so a huge error body can't flood the email.
+        if (nbResp.apiError) {
+          throw new Error(String(nbResp.apiError).slice(0, 200));
+        }
         const returnedNames = extractJsonArray(nbResp.text || '');
         const orderedCandidates = validateNbReorderResponse(returnedNames, nbCandidates);
         if (!orderedCandidates) {

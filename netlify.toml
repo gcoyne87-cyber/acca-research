@@ -13,6 +13,9 @@
 [functions."daily-build-trigger"]
   schedule = "30 9 * * *"
 
+[functions."build-watchdog"]
+  schedule = "0 10 * * *"
+
 [functions."fetch-future-cards-background"]
   schedule = "0 23 * * *"
 
