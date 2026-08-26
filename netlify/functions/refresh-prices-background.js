@@ -118,7 +118,7 @@ function fracToDec(s) {
 // price seen for the horse that day, held in one per-date map key
 // (price:anchors:{date} = { horse_id: { anchor, drift, short } }) rather than
 // one Redis key per horse — a single GET+SET per refresh instead of hundreds.
-// Thresholds in decimal-odds terms: current >= anchor x 1.25 -> isDrifting;
+// Thresholds in decimal-odds terms: current >= anchor x 1.40 -> isDrifting;
 // current <= anchor x 0.70 -> isShortening. Flags are STICKY for the day —
 // once recorded in the anchor entry they never clear, even if the price moves
 // back — so a cache rebuild can't lose them (they re-apply from the map every
@@ -136,7 +136,7 @@ function applyPriceMovement(ru, currentPrice, anchors) {
   }
   const anchorDec = fracToDec(a.anchor);
   if (anchorDec) {
-    if (!a.drift && curDec >= anchorDec * 1.25) { a.drift = true; changed = true; }
+    if (!a.drift && curDec >= anchorDec * 1.40) { a.drift = true; changed = true; }
     if (!a.short && curDec <= anchorDec * 0.70) { a.short = true; changed = true; }
   }
   if (a.drift) { ru.isDrifting = true; ru.anchorPrice = a.anchor; ru.currentPrice = currentPrice; }
