@@ -13715,10 +13715,18 @@ function runnerRow(ru,ctx,extraHtml){
         +wtOrLine+ageLine
         +tagsHtml
       +'</div>'
-      +'<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
-        +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
-        +_priceMovePillHtml(ru)
-      +'</button>'
+      +(function(){
+        // The grey price box must be byte-identical to its pre-pill markup —
+        // the pill NEVER renders inside it. No pill: the bare button, exactly
+        // as it always was. Pill: the untouched button plus the pill stacked
+        // below it in a wrapper that adds no padding, margin or border of its
+        // own, so the box's size, shape and position are unchanged either way.
+        var _btn='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0">'
+          +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
+        +'</button>';
+        var _pm=_priceMovePillHtml(ru);
+        return _pm?'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end">'+_btn+_pm+'</div>':_btn;
+      })()
     +'</div>'
     +(extraHtml||'')
     +(function(){var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");var ps='display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 14px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';var down='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';return '<div style="display:flex;justify-content:center;gap:8px;padding:8px 12px"><button id="nrh-btn-fe-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" style="'+ps+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Form Focus</span>'+down+'</button></div>';})()
@@ -14597,7 +14605,16 @@ function renderAIIntelligence(){
             +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
             +((item.date && item.date > _todayStr)?'<div style="background:#10b981;color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;flex-shrink:0">Tomorrow</div>':'')
           +'</div>'
-          +(_displayPrice?'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0"><div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E">'+_displayPrice+'</div>'+_priceMovePillHtml(_liveRunner)+'</div>':'')
+          +(function(){
+            // The white price box must render byte-identical to its pre-pill
+            // markup (including its own flex-shrink:0) whenever no pill shows.
+            // With a pill, the untouched box gets the pill stacked directly
+            // below it in a zero-padding wrapper — box dimensions unchanged.
+            if(!_displayPrice) return '';
+            var _box='<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+_displayPrice+'</div>';
+            var _pm=_priceMovePillHtml(_liveRunner);
+            return _pm?'<div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">'+_box+_pm+'</div>':_box;
+          })()
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
         +_jtfLine
