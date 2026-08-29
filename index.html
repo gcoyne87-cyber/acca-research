@@ -2513,6 +2513,19 @@ window.addEventListener('load',function(){
     <div id="ai-dots" style="display:flex;justify-content:center;gap:6px;padding:6px 0 0"></div>
   </div>
 
+  <!-- HOME LATEST RESULTS STRIP -->
+  <div id="home-res-strip" style="background:#f5f7fb;padding:0 0 8px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;padding:0 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Latest Results</div>
+        <span id="home-res-yday-pill" style="display:none;background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;font-family:inherit;line-height:1">Yesterday</span>
+      </div>
+      <span onclick="selectRacingSection('results')" style="font-size:12px;font-weight:700;color:#1e9e6b;cursor:pointer;white-space:nowrap">Full Results &rarr;</span>
+    </div>
+    <div id="home-res-strip-feed" style="display:flex;overflow-x:auto;gap:10px;padding:6px 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+  </div>
+
     <!-- SECTION NAV — replaced by topnav tabs -->
     <div style="display:none">
       <button id="secnav-arrow-l" onclick="document.getElementById('racing-section-nav').scrollBy({left:-160,behavior:'smooth'})" style="position:absolute;left:0;top:0;bottom:0;background:linear-gradient(to left,transparent,#fff 40%);border:none;padding:0 24px 0 10px;cursor:pointer;display:none;align-items:center;font-size:20px;color:#5a6478;z-index:2;pointer-events:auto">&#8249;</button>
@@ -11329,6 +11342,10 @@ function loadRacecards(){
         NR_RUNNERS=nr.races[nr.nextIdx]._runners;
       }
       renderNextRaceSection();
+      // Racecards are confirmed populated and rendered — start (or restart)
+      // the homepage Latest Results polling loop, which needs RC_MEETINGS for
+      // its racing-day window. Idempotent: re-entry clears its own timers.
+      _startHomeResultsPolling();
       // Auto-refresh every 60s to drop past races; also detect the calendar date
       // rolling over (e.g. crossing midnight) and re-fetch fresh cards for the
       // new "today" instead of just re-filtering yesterday's stale data.
@@ -15701,6 +15718,173 @@ function renderResultsFeed(){
   wrap.style.display=html?'block':'none';
 }
 
+// ── Homepage Latest Results strip ───────────────────────────────────────────
+// Fully independent data layer + polling loop. Never touches the Results
+// page's _resData, _resApiCache, polling or render state — the strip owns its
+// own copy of everything so neither view can corrupt the other.
+var _homeRes={
+  data:null,        // the strip's own results array (venues), independent of _resData
+  loadedDate:null,  // 'today' | 'yesterday' — which racing date data holds
+  interval:null,    // the strip's 90s polling interval reference
+  startTimer:null,  // one-shot delay until the first race's off time
+  retryTimer:null   // retry while RC_MEETINGS isn't loaded yet
+};
+
+// Fetches the strip's data: today first; if today has no finished runners yet
+// (early morning), falls back to yesterday's card so the strip always has
+// something real to show. Both empty or both failing hides the strip silently.
+async function _fetchHomeResults(){
+  function hasFinished(venues){
+    return (venues||[]).some(function(v){
+      return (v.races||[]).some(function(r){
+        return (r.runners||[]).some(function(ru){ return parseInt(ru.pos)>=1; });
+      });
+    });
+  }
+  function getDay(dateStr){
+    return fetch('/.netlify/functions/get-results?date='+dateStr+'&view=page')
+      .then(function(r){ return r.json(); })
+      .then(function(data){ return (data&&!data.error&&data.venues)||[]; })
+      .catch(function(){ return []; });
+  }
+  var today=new Date().toISOString().slice(0,10);
+  var todayVenues=await getDay(today);
+  if(hasFinished(todayVenues)){
+    _homeRes.data=todayVenues;
+    _homeRes.loadedDate='today';
+    renderHomeResultsStrip();
+    return;
+  }
+  var yday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  var ydayVenues=await getDay(yday);
+  if(hasFinished(ydayVenues)){
+    _homeRes.data=ydayVenues;
+    _homeRes.loadedDate='yesterday';
+    renderHomeResultsStrip();
+    return;
+  }
+  // Both days empty or failed — hide silently.
+  window._homeResHasData=false;
+  var wrap=document.getElementById('home-res-strip');
+  if(wrap) wrap.style.display='none';
+}
+
+// Renders the 4 most recently finished races from _homeRes.data, using the
+// exact card markup of the Results page feed above (renderResultsFeed).
+// Visibility: shown only on the home section AND only when at least one
+// result exists — _homeResHasData is what selectRacingSection consults when
+// switching back to home, so an empty morning never shows a bare header.
+function renderHomeResultsStrip(){
+  var wrap=document.getElementById('home-res-strip');
+  var feed=document.getElementById('home-res-strip-feed');
+  if(!wrap||!feed) return;
+  // "Yesterday" pill beside the heading — only when the strip is showing
+  // yesterday's card (same navy pill style as the Trainer Form window pills).
+  var _ydayPill=document.getElementById('home-res-yday-pill');
+  if(_ydayPill) _ydayPill.style.display=(_homeRes.loadedDate==='yesterday')?'':'none';
+  function renderFrom(venues){
+    var racesWithResults=[];
+    (venues||[]).forEach(function(venue){
+      (venue.races||[]).forEach(function(race){
+        if(race.runners&&race.runners.length){
+          racesWithResults.push({venue:venue.course, flag:venue.flag||'🇬🇧', race:race});
+        }
+      });
+    });
+    if(!racesWithResults.length){ window._homeResHasData=false; wrap.style.display='none'; return; }
+    // Same sort as renderResultsFeed — most recently finished first
+    racesWithResults.sort(function(a,b){
+      return (b.race.time||'').localeCompare(a.race.time||'');
+    });
+    racesWithResults=racesWithResults.slice(0,4);
+    var ordinals=['1st','2nd','3rd','4th'];
+    var html='';
+    racesWithResults.forEach(function(item){
+      var race=item.race;
+      var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
+      if(!top4.length) return;
+      var winner=top4[0];
+
+      html+='<div style="flex-shrink:0;width:240px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+      // Header: time · venue
+      html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
+      html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
+      // Divider
+      html+='<div style="height:1px;background:#f0f2f7;margin-bottom:9px"></div>';
+      // Top 4 rows
+      top4.forEach(function(r){
+        var p=parseInt(r.pos);
+        var isW=p===1;
+        var ord=ordinals[p-1]||r.pos;
+        html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
+        html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
+        html+='<div style="flex:1;min-width:0">';
+        html+='<div style="font-size:13px;font-weight:'+(isW?'700':'500')+';color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
+        if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
+        html+='</div>';
+        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+'</span>';
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+
+    feed.innerHTML=html;
+    window._homeResHasData=!!html;
+    // Only reveal in place if the user is still on the home section — the
+    // datepills bar is home-only, so its visibility is the section signal.
+    // selectRacingSection re-applies visibility on every later section change.
+    var _dpb=document.getElementById('racing-datepills-bar');
+    var _onHome=_dpb&&_dpb.style.display!=='none';
+    wrap.style.display=(html&&_onHome)?'block':'none';
+  }
+  renderFrom(_homeRes.data);
+}
+
+// Independent polling loop for the homepage strip — same 90s cadence and the
+// same first-race-to-last-race+45min window guard as the Results page's own
+// polling (_getResWindow), but entirely separate timers so neither loop can
+// stop or double the other. Called from loadRacecards' success handler once
+// RC_MEETINGS is confirmed populated (never at DOMContentLoaded); if the
+// window can't be computed yet it retries every 10 seconds until it can.
+function _startHomeResultsPolling(){
+  if(_homeRes.interval){ clearInterval(_homeRes.interval); _homeRes.interval=null; }
+  if(_homeRes.startTimer){ clearTimeout(_homeRes.startTimer); _homeRes.startTimer=null; }
+  if(_homeRes.retryTimer){ clearTimeout(_homeRes.retryTimer); _homeRes.retryTimer=null; }
+  var win=_getResWindow();
+  if(!win){
+    _homeRes.retryTimer=setTimeout(_startHomeResultsPolling,10000);
+    return;
+  }
+  var now=new Date();
+  if(now>win.end){
+    // Racing day is over — one final fetch so the last results show, no interval.
+    _fetchHomeResults();
+    return;
+  }
+  function tick(){
+    var w=_getResWindow();
+    var n=new Date();
+    if(!w||n>w.end){
+      if(_homeRes.interval){ clearInterval(_homeRes.interval); _homeRes.interval=null; }
+      return;
+    }
+    _fetchHomeResults();
+  }
+  if(now<win.start){
+    // Before the first race: fetch once now (surfaces yesterday's card via the
+    // fallback for morning visitors), then start the interval at the off.
+    _fetchHomeResults();
+    _homeRes.startTimer=setTimeout(function(){
+      _homeRes.startTimer=null;
+      _fetchHomeResults();
+      _homeRes.interval=setInterval(tick,90*1000);
+    },win.start.getTime()-now.getTime());
+  } else {
+    _fetchHomeResults();
+    _homeRes.interval=setInterval(tick,90*1000);
+  }
+}
+
 function renderResultsPage(){
   var body=document.getElementById('res-body');
   if(!body) return;
@@ -16103,6 +16287,8 @@ function selectRacingSection(s){
   if(homeNRL) homeNRL.style.display='none';
   var carouselSec=document.getElementById("home-carousel-section");
   if(carouselSec) carouselSec.style.display=(s==="home"||_horseHighlight)?"":"none";
+  var homeResStrip=document.getElementById("home-res-strip");
+  if(homeResStrip) homeResStrip.style.display=(s==="home"&&window._homeResHasData)?"":"none";
   var hws=document.getElementById("home-winners-strip");
   if(hws) hws.style.display="none";
   var dpb=document.getElementById("racing-datepills-bar");
