@@ -5594,7 +5594,7 @@ function unlockCorkAnalysis(){
          both lead to the same runner view. Sits above the Racecards section. -->
     <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
     <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
-    <div id="trainer-search-wrap" style="padding:12px 16px;background:#fff">
+    <div id="trainer-search-wrap" style="padding:12px 16px;background:#f5f6f8">
       <div style="background:#fff;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <div style="font-size:15px;font-weight:700;color:#0D1B3E">Filter by Trainer</div>
@@ -13868,7 +13868,38 @@ function nrTogglePanel(pfx,panel){
 }
 var _nrEdgeCache={};
 var _nrFormCache={};
+// True only when the daily build has produced a genuine per-horse analysis
+// for this runner (runnerAnalysis entry with real text in the cached race
+// analyses). Analyses are cached under several key variants per race, so
+// dedupe by the race label while scanning.
+function _hasRealHorseAnalysis(horseName){
+  var target=(horseName||'').toLowerCase().trim();
+  if(!target||typeof _cachedRaceAnalyses==='undefined') return false;
+  var seen={};
+  for(var k in _cachedRaceAnalyses){
+    var a=_cachedRaceAnalyses[k];
+    if(!a||seen[a.race]) continue;
+    seen[a.race]=1;
+    var hit=(a.runnerAnalysis||[]).some(function(h){return (h.horseName||'').toLowerCase().trim()===target&&h.analysis;});
+    if(hit) return true;
+  }
+  return false;
+}
 function nrLoadEdge(pfx,horseId){
+  // No real analysis for this horse yet (build not run — future cards, early
+  // morning, or a failed build day) → the click does nothing: no panel, no
+  // placeholder, no templated jockey/trainer text. The panel only ever opens
+  // with genuine analysis data behind it.
+  var _gateName='';
+  var _gla=[];
+  if(typeof RC_RUNNERS!=='undefined') _gla.push(RC_RUNNERS);
+  if(typeof NR_RUNNERS!=='undefined') _gla.push(NR_RUNNERS);
+  for(var _gli=0;_gli<_gla.length&&!_gateName;_gli++){
+    for(var _gei=0;_gei<_gla[_gli].length;_gei++){
+      if(String(_gla[_gli][_gei].horse_id)===String(horseId)){_gateName=_gla[_gli][_gei].name;break;}
+    }
+  }
+  if(!_hasRealHorseAnalysis(_gateName)) return;
   if(!horseId){nrTogglePanel(pfx,'se');return;}
   var _cached=_nrEdgeCache[horseId];
   if(_cached&&typeof _cached==='object'){
