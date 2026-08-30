@@ -5595,7 +5595,7 @@ function unlockCorkAnalysis(){
     <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
     <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
     <div id="trainer-search-wrap" style="padding:12px 16px;background:#fff">
-      <div style="background:#f7f8fb;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
+      <div style="background:#fff;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <div style="font-size:15px;font-weight:700;color:#0D1B3E">Filter by Trainer</div>
           <div style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:0.02em">NEW</div>
@@ -14760,12 +14760,16 @@ function renderAIIntelligence(){
           +(function(){
             // The white price box must render byte-identical to its pre-pill
             // markup (including its own flex-shrink:0) whenever no pill shows.
-            // With a pill, the untouched box gets the pill stacked directly
-            // below it in a zero-padding wrapper — box dimensions unchanged.
+            // With a pill, the pill hangs BELOW the box out of normal flow
+            // (absolutely positioned, right-aligned) — the previous flex-column
+            // wrapper grew the header row and pushed the horse name, jockey
+            // and race details down whenever a badge appeared. The relative
+            // wrapper is exactly the box's own size, so the card's layout is
+            // identical whether the badge is present or absent.
             if(!_displayPrice) return '';
             var _box='<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+_displayPrice+'</div>';
             var _pm=_priceMovePillHtml(_liveRunner);
-            return _pm?'<div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">'+_box+_pm+'</div>':_box;
+            return _pm?'<div style="position:relative;flex-shrink:0">'+_box+'<div style="position:absolute;top:100%;right:0;white-space:nowrap;z-index:2">'+_pm+'</div></div>':_box;
           })()
         +'</div>'
         +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">'+item.horseName+'</div>'
