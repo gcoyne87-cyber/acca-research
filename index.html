@@ -15769,7 +15769,7 @@ async function _fetchHomeResults(){
   if(wrap) wrap.style.display='none';
 }
 
-// Renders the 4 most recently finished races from _homeRes.data, using the
+// Renders all finished races from _homeRes.data, most recent first, using the
 // exact card markup of the Results page feed above (renderResultsFeed).
 // Visibility: shown only on the home section AND only when at least one
 // result exists — _homeResHasData is what selectRacingSection consults when
@@ -15796,7 +15796,6 @@ function renderHomeResultsStrip(){
     racesWithResults.sort(function(a,b){
       return (b.race.time||'').localeCompare(a.race.time||'');
     });
-    racesWithResults=racesWithResults.slice(0,4);
     var ordinals=['1st','2nd','3rd','4th'];
     var html='';
     racesWithResults.forEach(function(item){
