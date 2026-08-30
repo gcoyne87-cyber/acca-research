@@ -3506,7 +3506,7 @@ function _populateFullCardAnalysis(m){
   var nameEl=ma.querySelector('#ma-full-hdr > div > div:first-child');
   if(nameEl) nameEl.textContent=(m.name||'')+' · Full Card';
   var sub=document.getElementById('ma-full-sub');
-  if(sub) sub.textContent='Today · '+(m.going||'')+' · '+(m.races||[]).length+' races';
+  if(sub) sub.textContent='Today · '+_cleanGoing(m.going)+' · '+(m.races||[]).length+' races';
   var found=0;
   (m.races||[]).forEach(function(race){
     var ck=(m.name+' '+race.t).toLowerCase().trim();
@@ -8057,6 +8057,20 @@ function buildCardHTML(c){
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Display-side going cleaner — the going field now carries the clerk's
+// going_detailed string, which can include a GoingStick reading, e.g.
+// "GOOD TO SOFT (GoingStick: 6.8)". Strips everything from "(GoingStick"
+// onwards (plus any trailing comma/space) for display only; storage and
+// fetching are untouched.
+function _cleanGoing(s){
+  var g=String(s||'');
+  var i=g.indexOf('(GoingStick');
+  if(i>-1) g=g.substring(0,i);
+  g=g.replace(/[\s,]+$/,'');
+  // Title-case the whole string so the clerk's ALL-CAPS segments never
+  // display shouty ("GOOD TO SOFT" -> "Good To Soft").
+  return g.toLowerCase().replace(/\b[a-z]/g,function(c){return c.toUpperCase();});
+}
 
 function toggleSlip(){slipOpen=!slipOpen;var s=document.getElementById('slip-panel');var o=document.getElementById('slip-overlay');if(s)s.classList.toggle('open',slipOpen);if(o)o.classList.toggle('open',slipOpen);}
 function slipAdjStake(d){stake=Math.max(5,Math.min(500,stake+d));var el=document.getElementById('slip-stake-amt');if(el)el.textContent='£'+stake;renderSlip();}
@@ -12257,7 +12271,7 @@ function _meetingInfoLine(m){
   races.forEach(function(r){ if(jumpsRe.test((r.name||'')+' '+(r.type||''))) jumps++; });
   var disc=jumps===0?'Flat':(jumps===races.length?'Jumps':'Mixed');
   var parts=[races.length+(races.length===1?' race':' races'),escHtml(minR.t||'')+' - '+escHtml(maxR.t||'')];
-  if(m.going) parts.push(escHtml(m.going));
+  if(m.going) parts.push(escHtml(_cleanGoing(m.going)));
   parts.push(disc);
   return '<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+parts.join(' &middot; ')+'</div>';
 }
@@ -12350,7 +12364,7 @@ function renderFutureDateContent(dateStr,targetEl){
           out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
           var _hn=new Date(),_ht=_hn.getFullYear()+'-'+String(_hn.getMonth()+1).padStart(2,'0')+'-'+String(_hn.getDate()).padStart(2,'0'),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=_hm.getFullYear()+'-'+String(_hm.getMonth()+1).padStart(2,'0')+'-'+String(_hm.getDate()).padStart(2,'0'),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
           if(_ha && _ha.raceIntelligence && dateStr===_ht){
             out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
@@ -12543,7 +12557,7 @@ function renderTodayMeetingsList(isInitial){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence){
           out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
@@ -12636,7 +12650,7 @@ function renderRcSingleList(){
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+        out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence && _homeRcDay==='today'){
           out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
@@ -12960,7 +12974,7 @@ function rcPillsHtml(m){
 
   var p='<div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #f0f2f7;flex-wrap:wrap">';
 
-  p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(m.going)+'</span>';
+  p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff8e6;color:#a07010;border:1px solid #f0d87a">'+escHtml(_cleanGoing(m.going))+'</span>';
 
   p+='<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#eef4ff;color:#1a4fa0;border:1px solid #c0d4f8">Next in '+(m.nextMins>=60?Math.floor(m.nextMins/60)+'h'+(m.nextMins%60>0?' '+m.nextMins%60+'m':''):m.nextMins+'m')+'</span>';
 
@@ -14165,7 +14179,7 @@ function nrRenderCard(){
         +'</div>'
         +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(r.dist) +'</div>'
         +((r.class||r.prize)?'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((r.class||'')+(r.class&&r.prize?' · ':'')+(r.prize||''))+'</div>':'')
-        +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(r.going||'') +' · '+ r.runners +' runners</div>'
+        +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(_cleanGoing(r.going)) +' · '+ r.runners +' runners</div>'
         +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceHook?'<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_a.raceHook)+'</div>':''}())
         +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceIntelligence?'<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_a.raceIntelligence)+'</div>':''}())
         +_raceTabsHtml(r.venue,r.t,r.venue)
@@ -14282,7 +14296,7 @@ function nrAnalyse(){
   var panel=document.getElementById('ai-panel');
   panel.style.pointerEvents='all';
   panel.style.transform='translateY(0)';
-  _aiSetCount(r.t+' — '+r.venue,r.type+' · '+r.dist,(r.going?r.going+' · ':'')+r.runners+' runners');
+  _aiSetCount(r.t+' — '+r.venue,r.type+' · '+r.dist,(r.going?_cleanGoing(r.going)+' · ':'')+r.runners+' runners');
   var steps=['Scanning race intelligence database…','Analysing the runners…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…'];
   var TOTAL=90000;
   var perStep=TOTAL/steps.length;
@@ -16117,7 +16131,7 @@ function renderResultsPage(){
         if(race.cls) meta.push(escHtml(race.cls));
         if(race.prize) meta.push(escHtml(race.prize));
         if(meta.length) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+meta.join(' · ')+'</div>';
-        if(race.going) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:10px">Going: '+escHtml(race.going)+'</div>';
+        if(race.going) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:10px">Going: '+escHtml(_cleanGoing(race.going))+'</div>';
 
         var runners=race.runners||[];
         var ordinals=['1st','2nd','3rd','4th'];
@@ -16886,7 +16900,7 @@ function renderTomorrowMeetingsList(targetEl){
           out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(m.going)+' &middot; '+sr.r+' runners</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
           out+=_raceTabsHtml(m.id,sr.t,m.name);
           out+='</div>';
         }
@@ -17517,7 +17531,7 @@ function _rcAnalyseRun(mid,type){
   var TOTAL=isFull?2000:45000;
 
   if(isFull){
-    _aiSetCount(m.name+' — Full Card',m.races.length+' races',(m.going||'')+(m.going&&m.flag?' · ':'')+m.flag);
+    _aiSetCount(m.name+' — Full Card',m.races.length+' races',_cleanGoing(m.going)+(m.going&&m.flag?' · ':'')+m.flag);
     var fullSteps=['Scanning race intelligence database…','Analysing all runners across the full card…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race card intelligence report…'];
     var perStep=TOTAL/fullSteps.length;
     _aiSetStep(fullSteps[0]);
@@ -17743,14 +17757,14 @@ function _populateRaceAnalysis() {
     if (hdrSub) hdrSub.textContent = raceLbl + (rc.dist?' · '+rc.dist:'') + (m.going?' · '+m.going:'') + (rc.r?' · '+rc.r+' runners':'');
     if (rcTitle) rcTitle.textContent = (m.name||'') + ' · ' + raceTime;
     if (rcSub1) rcSub1.textContent = raceLbl + (rc.dist?' · '+rc.dist:'');
-    if (rcSub2) rcSub2.textContent = (m.going||'') + (rc.r?' · '+rc.r+' runners':'');
+    if (rcSub2) rcSub2.textContent = _cleanGoing(m.going) + (rc.r?' · '+rc.r+' runners':'');
   } else if (_aiRacePayload) {
     var p = _aiRacePayload;
     if (hdrTitle) hdrTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
     if (hdrSub) hdrSub.textContent = (p.raceName||'') + (p.going?' · '+p.going:'') + (p.runners?' · '+p.runners.length+' runners':'');
     if (rcTitle) rcTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
     if (rcSub1) rcSub1.textContent = (p.raceName||'');
-    if (rcSub2) rcSub2.textContent = (p.going||'') + (p.runners?' · '+p.runners.length+' runners':'');
+    if (rcSub2) rcSub2.textContent = _cleanGoing(p.going) + (p.runners?' · '+p.runners.length+' runners':'');
   }
 
   var intel = document.getElementById('ra-intelligence-text');
@@ -18236,7 +18250,7 @@ function _aiMockResults(ctx){
     var ri=(m.races||[]).findIndex(function(r){return r.t===type;});
     var race=ri>=0?m.races[ri]:{t:type,name:type,dist:'',r:'?'};
     html+='<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">'+escHtml(race.name||type)+'</div>'
-      +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:16px">'+escHtml(m.name||'')+' · '+escHtml(race.dist||'')+' · '+race.r+' runners · '+escHtml(m.going||'')+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:16px">'+escHtml(m.name||'')+' · '+escHtml(race.dist||'')+' · '+race.r+' runners · '+escHtml(_cleanGoing(m.going))+'</div>'
       +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:.08em;margin-bottom:12px">KEY FINDINGS</div>'
       +'<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">'
       +_aiRow('Unexposed field — 7 of 13 runners with fewer than 3 starts over hurdles')
