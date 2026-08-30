@@ -184,7 +184,12 @@ exports.handler = async function(event) {
               jockey: r.jockey || r.jockey_name || '',
               trainer: r.trainer || r.trainer_name || '',
               sp: sp,
-              btn: r.btn !== undefined ? String(r.btn) : ''
+              btn: r.btn !== undefined ? String(r.btn) : '',
+              // sp_dec kept so the client can derive the favourite exactly
+              // (lowest decimal SP), prize kept because prize money is
+              // per-RUNNER in this API — there is no race-level prize field.
+              sp_dec: (r.sp_dec !== undefined && r.sp_dec !== null && !isNaN(parseFloat(r.sp_dec))) ? parseFloat(r.sp_dec) : null,
+              prize: r.prize || ''
             };
           })
           .filter(function(r) { return r.horse; })
@@ -203,12 +208,15 @@ exports.handler = async function(event) {
         const totalSp = race.total_sp_pct ? Math.round(race.total_sp_pct) + '%'
           : (race.total_sp ? String(race.total_sp) : '');
 
+        const winnerRunner = runners.find(function(r) { return r.pos === '1'; });
+
         venueMap[courseId].races.push({
           time: time,
           name: race.race_name || race.name || race.title || '',
           dist: race.distance || race.dist || '',
           cls: cls ? 'Class ' + cls : '',
           prize: prize,
+          winner_prize: (winnerRunner && winnerRunner.prize) || '',
           going: race.going || race.ground || '',
           ran: (race.runners || []).length,
           winning_time: winningTime,

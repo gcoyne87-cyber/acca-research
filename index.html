@@ -16098,7 +16098,7 @@ function renderResultsPage(){
       var race=races[openIdx]||null;
 
       // Time pills — matches homepage racecard pill style
-      html+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px solid #f0f2f7">';
+      html+='<div id="res-pills-'+escHtml(cid)+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px solid #f0f2f7">';
       races.forEach(function(r,ri){
         var act=ri===openIdx;
         var hasResult=r.runners&&r.runners.length;
@@ -16152,6 +16152,38 @@ function renderResultsPage(){
           if(race.total_sp) html+='Total SP: <span style="color:#0D1B3E">'+escHtml(race.total_sp)+'</span>';
           if(winner&&winner.jockey) html+='<br>Winning jockey: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.jockey)+'</span>';
           if(winner&&winner.trainer) html+='<br>Winning trainer: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.trainer)+'</span>';
+          // Off time / winner's prize / favourite. The favourite is derived —
+          // the results API has no fav flag — as the runner(s) with the lowest
+          // decimal SP: sp_dec straight from the server when present, falling
+          // back to parsing the fractional sp string for cached pre-sp_dec
+          // responses. Joint favourites (same lowest price) all listed.
+          if(race.time) html+='<br>Off: <span style="color:#0D1B3E">'+escHtml(race.time)+'</span>';
+          if(race.winner_prize) html+='<br>Prize: <span style="color:#0D1B3E">'+escHtml(race.winner_prize)+'</span>';
+          (function(){
+            function spDec(r){
+              if(typeof r.sp_dec==='number'&&isFinite(r.sp_dec)&&r.sp_dec>1) return r.sp_dec;
+              var s=String(r.sp||'').trim();
+              if(!s||s==='SP') return null;
+              if(/^evs$|^evens$/i.test(s)) return 2;
+              var q=s.split('/');
+              if(q.length===2){var n=parseFloat(q[0]),dd=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(dd)&&dd>0)return n/dd+1;}
+              var f=parseFloat(s);
+              return (!isNaN(f)&&f>1)?f:null;
+            }
+            function ordP(p){var n=parseInt(p,10);if(!n)return p||'-';return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');}
+            var best=null;
+            runners.forEach(function(r){
+              var d=spDec(r);
+              if(d===null) return;
+              if(!best||d<best.dec-1e-9){best={dec:d,list:[r]};}
+              else if(Math.abs(d-best.dec)<1e-9){best.list.push(r);}
+            });
+            if(!best) return;
+            var favTxt=best.list.map(function(r){
+              return escHtml(r.horse)+(r.sp?' '+escHtml(r.sp):'')+' ('+escHtml(ordP(r.pos))+')';
+            }).join(', ');
+            html+='<br>Fav: <span style="color:#0D1B3E;font-weight:600">'+favTxt+'</span>';
+          })();
           html+='</div>';
         }
         html+='</div>';
@@ -16163,6 +16195,19 @@ function renderResultsPage(){
   html+='</div>';
   body.innerHTML=html;
   renderResultsFeed();
+  // The innerHTML rebuild above resets every pill row's horizontal scroll to
+  // 0. Restore the open venue's active pill into view after EVERY re-render —
+  // this single hook covers a pill tap (selectResRace), a venue toggle
+  // (toggleResVenue), and the 90-second results poll, all of which route
+  // through this function. Instant (auto) so the row snaps back rather than
+  // visibly animating; block:nearest so the page never jumps vertically.
+  if(_resOpenVenue){
+    var _resPillRow=document.getElementById('res-pills-'+_resOpenVenue);
+    if(_resPillRow){
+      var _resActPill=_resPillRow.children[_resOpenRace[_resOpenVenue]||0];
+      if(_resActPill&&_resActPill.scrollIntoView) _resActPill.scrollIntoView({behavior:'auto',inline:'nearest',block:'nearest'});
+    }
+  }
 }
 
 function toggleResVenue(courseId){
