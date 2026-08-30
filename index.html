@@ -15158,8 +15158,15 @@ function renderRacingPicks(){
       +'<div style="position:relative;z-index:2">'
         +'<div style="padding:20px 14px 14px">'
           +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(courseName)+' &middot; '+escHtml(fullPickTime)+'</div>'
-          +'<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml(p.odds)+'</span></div>'
-          +_priceMovePillHtml(_priceMoveRunnerByName(p.horse))
+          +(function(){
+            // Live price first — read from the same RC_MEETINGS runner the
+            // movement pill uses (one shared lookup), falling back to the
+            // build-time odds when no live match exists. Mirrors what the DI
+            // card already does via _reLiveCardPrice.
+            var _lr=_priceMoveRunnerByName(p.horse);
+            return '<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml((_lr&&_lr.price)||p.odds)+'</span></div>'
+              +_priceMovePillHtml(_lr);
+          })()
           +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+(fullMetaParts.length?fullMetaParts.join(' &middot; '):'')+'</div>'
           +(inlinePara?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 12px">'+inlinePara+'</p>':'')
           +'<div style="display:flex;gap:0;margin-bottom:10px">'
@@ -15239,8 +15246,15 @@ function renderHomeSelections(el){
         +'<div style="position:relative;z-index:2">'
           +'<div style="padding:20px 14px 14px">'
             +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(gi.course)+' &middot; '+escHtml(gi.time)+'</div>'
-            +'<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml(p.odds||'')+'</span></div>'
-            +_priceMovePillHtml(_priceMoveRunnerByName(p.horse))
+            +(function(){
+              // Live price first — read from the same RC_MEETINGS runner the
+              // movement pill uses (one shared lookup), falling back to the
+              // build-time odds when no live match exists. Mirrors what the DI
+              // card already does via _reLiveCardPrice.
+              var _lr=_priceMoveRunnerByName(p.horse);
+              return '<div style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-.4px;line-height:1;margin-bottom:3px">'+escHtml(p.horse)+'<span style="font-size:18px;font-weight:700;color:#d4af37;margin-left:8px">'+escHtml((_lr&&_lr.price)||p.odds||'')+'</span></div>'
+                +_priceMovePillHtml(_lr);
+            })()
             +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+metaLine+'</div>'
             +(p.summary?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 14px">'+escHtml(p.summary)+'</p>':'<div style="margin-bottom:14px"></div>')
             +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds||'')+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
