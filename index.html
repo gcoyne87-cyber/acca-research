@@ -5588,20 +5588,12 @@ function unlockCorkAnalysis(){
       <div style="font-size:12px;color:#9aa3b5;margin-top:4px;padding-left:13px">Select a venue to analyse all races with AI</div>
     </div>
 
-    <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
+    <!-- Trainer block: Trainer Form, then Popular Trainers, then the trainer
+         filter directly below (moved from below the date strip) — one
+         complementary unit: tap a popular trainer or search for any trainer,
+         both lead to the same runner view. Sits above the Racecards section. -->
     <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
-
-    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
-        <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
-      </div>
-      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Race analysis and form guide for today's meetings</div>
-    </div>
-    <div id="home-date-strip-bar" style="display:none;background:#f5f7fb;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center">
-      <div id="home-date-strip" style="display:flex"></div>
-      <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
-    </div>
+    <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
     <div id="trainer-search-wrap" style="padding:12px 16px;background:#fff">
       <div style="background:#f7f8fb;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -5620,6 +5612,18 @@ function unlockCorkAnalysis(){
           <div id="trainer-search-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08);z-index:30;overflow:hidden"></div>
         </div>
       </div>
+    </div>
+
+    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
+        <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
+        <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
+      </div>
+      <div id="today-racecards-subheading" style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Race analysis and form guide for today's meetings</div>
+    </div>
+    <div id="home-date-strip-bar" style="display:none;background:#f5f7fb;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center">
+      <div id="home-date-strip" style="display:flex"></div>
+      <div id="today-meetings-count" style="padding:0 12px;font-size:12px;font-weight:600;color:#5a6478;white-space:nowrap;flex-shrink:0"></div>
     </div>
     <div id="today-meetings-list" style="background:#fff;padding:0 0 6px"></div>
     <div id="rc-title-single" style="display:none;padding:16px 14px 8px;background:#f5f6f8">
@@ -5838,7 +5842,7 @@ function unlockCorkAnalysis(){
     <div id="home-nextrace-label" style="display:none;padding:10px 14px 4px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
         <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Next Race</div>
+        <div id="nr-section-title" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Next Race</div>
       </div>
       <div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">Live countdown to the next race — with full card analysis</div>
     </div>
@@ -11232,7 +11236,7 @@ var RC_RUNNERS=[
 
 ];
 
-function _buildNrFromMeetings(meetings){
+function _buildNrFromMeetings(meetings,isTomorrow){
   var now=new Date();
   var nowMins=now.getHours()*60+now.getMinutes();
   var allRaces=[];
@@ -11245,16 +11249,22 @@ function _buildNrFromMeetings(meetings){
         if(parts.length<2) return;
         raceMins=parseInt(parts[0],10)*60+parseInt(parts[1],10);
       }
-      var diff=raceMins-nowMins;
-      if(diff<-30) return; // skip races finished more than 30 mins ago
-      allRaces.push({t:race.t,venue:m.name,hand:m.hand,mins:Math.max(0,diff),dist:race.dist,type:race.name,going:m.going,runners:race.r,class:race.class||'',prize:race.prize||'',next:false,_runners:race.runners||[],_t24:raceMins});
+      // Tomorrow's races are a full day ahead — their countdown target is
+      // race time PLUS 24h, and none of them are ever "finished", so the
+      // 30-minutes-past filter only applies to today.
+      var diff=isTomorrow?(raceMins+1440-nowMins):(raceMins-nowMins);
+      if(!isTomorrow&&diff<-30) return; // skip races finished more than 30 mins ago
+      allRaces.push({t:race.t,venue:m.name,hand:m.hand,mins:Math.max(0,diff),dist:race.dist,type:race.name,going:m.going,runners:race.r,class:race.class||'',prize:race.prize||'',next:false,_runners:race.runners||[],_t24:raceMins,_tm:!!isTomorrow});
     });
   });
   allRaces.sort(function(a,b){return a._t24-b._t24;});
-  // Mark first race that hasn't started yet
+  // Mark first race that hasn't started yet (tomorrow: simply the first race
+  // of the day — the sort already put it at index 0)
   var nextIdx=0;
-  for(var i=0;i<allRaces.length;i++){
-    if(allRaces[i]._t24>=nowMins){nextIdx=i;break;}
+  if(!isTomorrow){
+    for(var i=0;i<allRaces.length;i++){
+      if(allRaces[i]._t24>=nowMins){nextIdx=i;break;}
+    }
   }
   if(allRaces.length) allRaces[nextIdx].next=true;
   return {races:allRaces.slice(nextIdx,nextIdx+8),nextIdx:0};
@@ -11325,6 +11335,10 @@ function loadRacecards(){
         var _nowT24parts=_irishNowHHMM().split(':');
         var _nowT24=parseInt(_nowT24parts[0],10)*60+parseInt(_nowT24parts[1],10);
         _homeRcDay=(_lastRaceT24>0 && _nowT24>_lastRaceT24)?'tomorrow':'today';
+        // Keep the section heading in lockstep with the auto-chosen day —
+        // this is also what reverts "Tomorrow's Racecards" back to "Today's
+        // Racecards" when the midnight date-rollover refetch lands here.
+        _rcSetRacecardsHeading();
       }
       buildDateStrip();
       // An active trainer filter must never be overwritten by the auto-switch
@@ -11356,6 +11370,20 @@ function loadRacecards(){
         if(_nStr!==window._rcLoadedDateStr && !window._rcFetchInFlight){
           loadRacecards();
           return;
+        }
+        // Mid-session evening auto-switch: a page left open through the last
+        // race used to degrade to "0 meetings" over a blank list — the on-load
+        // auto-switch only runs when loadRacecards resolves. When today's live
+        // meetings empty out (and there WAS racing today), the user hasn't
+        // manually picked a day, no trainer filter is active, and tomorrow's
+        // real data is in memory: flip to tomorrow exactly like the on-load
+        // switch — heading, date strip highlight, then the render below.
+        if(_homeRcDay==='today'&&!_rcDayUserChosen&&!_trainerFilter
+           &&window._tmRealDataLoaded&&typeof TM_MEETINGS!=='undefined'&&TM_MEETINGS.length
+           &&RC_MEETINGS.length&&!_getLiveMeetings().length){
+          _homeRcDay='tomorrow';
+          _rcSetRacecardsHeading();
+          buildDateStrip();
         }
         _renderCurrentHomeList();
         var inl=document.getElementById('racing-inline-meeting');
@@ -11540,7 +11568,19 @@ function todaySelectRace(mid,ri){
     var _race=_m&&_m.races[rcOpenRace[mid]];
     if(_race&&_race.runners&&_race.runners.length){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
-      _fetchFormSummaries(_ids,_render);
+      // The summaries callback re-renders the whole list, which rebuilds the
+      // pill bar at scroll position 0 — AFTER the 60ms restore below has
+      // already run. Restore the selected pill again after that re-render
+      // (instant, not smooth, so the bar doesn't visibly animate twice).
+      _fetchFormSummaries(_ids,function(){
+        _render();
+        setTimeout(function(){
+          var el2=document.getElementById("tdpills-"+mid);
+          var pills2=el2?el2.querySelectorAll(".time-tab"):null;
+          var pill2=pills2?pills2[ri]:null;
+          if(pill2) pill2.scrollIntoView({behavior:"auto",inline:"nearest",block:"nearest"});
+        },0);
+      });
     }
   }
   setTimeout(function(){
@@ -11883,17 +11923,26 @@ function _buildPopularTrainers(){
   var venues={};
   var _now=new Date();
   var _nowMins=_now.getHours()*60+_now.getMinutes();
-  RC_TODAY_MEETINGS.forEach(function(m){
-    (m.races||[]).filter(function(race){ return !race.t24||race.t24>=_nowMins; }).forEach(function(race){
-      (race.runners||[]).forEach(function(ru){
-        var t=(ru.trainer||'').trim();
-        if(!t) return;
-        counts[t]=(counts[t]||0)+1;
-        if(!venues[t]) venues[t]=[];
-        if(venues[t].indexOf(m.name)===-1) venues[t].push(m.name);
+  function _tally(includePast){
+    RC_TODAY_MEETINGS.forEach(function(m){
+      (m.races||[]).filter(function(race){ return includePast||!race.t24||race.t24>=_nowMins; }).forEach(function(race){
+        (race.runners||[]).forEach(function(ru){
+          var t=(ru.trainer||'').trim();
+          if(!t) return;
+          counts[t]=(counts[t]||0)+1;
+          if(!venues[t]) venues[t]=[];
+          if(venues[t].indexOf(m.name)===-1) venues[t].push(m.name);
+        });
       });
     });
-  });
+  }
+  _tally(false);
+  // Evening fix: once every race has run, the upcoming-only tally is empty and
+  // the whole section silently vanished from the homepage for the rest of the
+  // day (confirmed: 27 trainers at midday, 0 after the last race). Fall back
+  // to counting ALL of today's entries — "X Entries Today" stays truthful and
+  // the tap-through to the trainer filter view is unchanged.
+  if(!Object.keys(counts).length) _tally(true);
   var countKeys=Object.keys(counts);
   var matched=[];
   eliteTrainers.forEach(function(elite){
@@ -12130,6 +12179,20 @@ function selectHomeRcDay(d){
   if(d==='today'){ renderTodayMeetingsList(); }
   else if(d==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
   else{ renderFutureDateContent(d,document.getElementById('today-meetings-list')); }
+}
+
+// Racecards section heading — flips to "Tomorrow's Racecards" while the
+// section is auto-showing tomorrow (evening auto-switch, either the on-load
+// one or the mid-session one in the 60s interval), and back to "Today's
+// Racecards" when the midnight refetch reverts _homeRcDay. Derived from
+// _homeRcDay so the revert needs no special-case logic. Only called on the
+// AUTO paths — a manual pill choice leaves the heading alone, as before.
+function _rcSetRacecardsHeading(){
+  var h=document.getElementById('today-racecards-heading');
+  var s=document.getElementById('today-racecards-subheading');
+  var tm=_homeRcDay==='tomorrow';
+  if(h) h.textContent=tm?"Tomorrow's Racecards":"Today's Racecards";
+  if(s) s.textContent='Race analysis and form guide for '+(tm?"tomorrow's":"today's")+' meetings';
 }
 
 function buildDateStrip(){
@@ -12852,7 +12915,6 @@ function _raceTabsHtml(mid,time,mname){
   var btnOn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#0D1B3E;border:1.5px solid #0D1B3E;border-radius:99px;font-size:12px;font-weight:700;color:#d4af37;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var me=mid.replace(/'/g,"\\'"); var te=time.replace(/'/g,"\\'"); var ne=(mname||'').replace(/'/g,"\\'");
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
-    +'<button style="'+(_rcHorseAnalysisOpen[key]?btnOn:btn)+'" onclick="rcToggleHorseAnalysis(\''+me+'\',\''+te+'\',\''+ne+'\')">'+chart+' <span>Analysis</span>'+down+'</button>'
     +'<button style="'+(active==='tips'?btnOn:btn)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
     +'</div>';
   if(active==='analysis'){
@@ -13995,12 +14057,40 @@ function tipsPanelToggle(i,panel,horse){
     }
   }
 }
+// Tomorrow mode is derived from the race data itself (_tm flag stamped by
+// _buildNrFromMeetings) — never from separate state — so the midnight
+// date-rollover rebuild from today's meetings reverts heading and behaviour
+// with no special-case logic at all.
+function _nrIsTomorrowMode(){ return !!(NR_RACES.length&&NR_RACES[0]._tm); }
+function _nrSetHeading(){
+  var el=document.getElementById('nr-section-title');
+  if(el) el.textContent=_nrIsTomorrowMode()?"Tomorrow's Next Race":'Next Race';
+}
 function nrRenderCard(){
   var card=document.getElementById("nr-card");
   var cardHome=document.getElementById("nr-card-home");
   if(!card&&!cardHome) return;
   var r=NR_RACES[nrSelected];
   if(!r){
+    // Today's card is empty or exhausted — bridge to tomorrow's first races,
+    // already in memory in TM_MEETINGS from the page-load fetch. Guarded on
+    // NOT already being in tomorrow mode so an empty tomorrow list still
+    // falls through to the message and the rebuild can never recurse.
+    if(!_nrIsTomorrowMode()&&typeof TM_MEETINGS!=='undefined'&&TM_MEETINGS&&TM_MEETINGS.length){
+      var nrT=_buildNrFromMeetings(TM_MEETINGS,true);
+      if(nrT.races.length){
+        NR_RACES=nrT.races;
+        if(nrT.races[0]._runners&&nrT.races[0]._runners.length) NR_RUNNERS=nrT.races[0]._runners;
+        nrSelected=0;nrAnchor=0;nrAnchorHome=0;nrMoreOpen=false;
+        // mins were computed against NOW — reset the countdown epoch to match,
+        // otherwise nrSecsLeft subtracts elapsed-since-page-load.
+        nrStartTime=Date.now();
+        _nrSetHeading();
+        nrRenderStrip();
+        nrRenderCard();
+        return;
+      }
+    }
     var noMoreMsg='<div style="padding:20px 14px;text-align:center;color:#9aa3b5;font-size:13px">No more races today</div>';
     if(card) card.innerHTML=noMoreMsg;
     if(cardHome) cardHome.innerHTML=noMoreMsg;
@@ -14151,6 +14241,7 @@ function renderNextRaceSection(){
   NR_RACES.forEach(function(r,i){if(r.next) nextIdx=i;});
   nrSelected=nextIdx;
   nrMoreOpen=false;
+  _nrSetHeading();
   nrRenderStrip();
   nrRenderCard();
   nrTick();
@@ -16566,7 +16657,18 @@ function tomorrowSelectRace(mid,ri){
     var _race=_m&&_m.races[tmOpenRace[mid]];
     if(_race&&_race.runners&&_race.runners.length){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
-      _fetchFormSummaries(_ids,_render);
+      // Same fix as todaySelectRace: the summaries callback re-renders the
+      // list and rebuilds the pill bar at scroll 0 after the 60ms restore
+      // below already ran — restore the selected pill again afterwards.
+      _fetchFormSummaries(_ids,function(){
+        _render();
+        setTimeout(function(){
+          var el2=document.getElementById("tmpills-"+mid);
+          var pills2=el2?el2.querySelectorAll(".time-tab"):null;
+          var pill2=pills2?pills2[ri]:null;
+          if(pill2) pill2.scrollIntoView({behavior:"auto",inline:"nearest",block:"nearest"});
+        },0);
+      });
     }
   }
   setTimeout(function(){
