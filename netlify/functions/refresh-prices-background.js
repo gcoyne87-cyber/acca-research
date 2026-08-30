@@ -219,15 +219,39 @@ exports.handler = async function(event) {
         });
       });
 
+      // Fresh going lookups — the clerk revises going through the morning
+      // (rain, watering, inspections) but racecards:{date} is built at 23:00
+      // the night before and nothing else ever updated it, so the site showed
+      // stale going all day. going_detailed is preferred as the display value
+      // (GoingStick readings, "in places" qualifiers), falling back to plain
+      // going when it's empty. Meeting id matches the cache's own rawId rule
+      // (course_id, else slugged course name); races match on HH:MM off time,
+      // derived from off_dt exactly as the cache builder derives race.t.
+      const freshGoingByMeeting = {};
+      const freshGoingByRace = {};
+      freshData.racecards.forEach(function(race) {
+        const mid = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        if (!mid) return;
+        const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
+        const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
+        const display = race.going_detailed || race.going || '';
+        if (display && !freshGoingByMeeting[mid]) freshGoingByMeeting[mid] = display;
+        if (display) freshGoingByRace[mid + '|' + t] = { going: display, going_detailed: race.going_detailed || '' };
+      });
+
       // Day's anchor prices — first price seen per horse, plus sticky
       // drift/shorten flags (see applyPriceMovement above).
       const anchors = (await redisGet('price:anchors:' + today)) || {};
       let anchorsDirty = false;
 
       // Walk the existing cached (mapped) meetings structure and update the
-      // price field plus the price-movement flags
+      // price field, the price-movement flags, and the going fields — all in
+      // the same single Redis write below.
       (cached.meetings || []).forEach(function(m) {
+        if (freshGoingByMeeting[m.id]) m.going = freshGoingByMeeting[m.id];
         (m.races || []).forEach(function(race) {
+          const fg = freshGoingByRace[m.id + '|' + (race.t || '')];
+          if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshPriceMap.hasOwnProperty(ru.horse_id)) {
               ru.price = freshPriceMap[ru.horse_id];
@@ -284,6 +308,19 @@ exports.handler = async function(event) {
         });
       });
 
+      // Fresh going lookups for tomorrow — same rules as today's block above.
+      const freshGoingByMeetingTomorrow = {};
+      const freshGoingByRaceTomorrow = {};
+      freshDataTomorrow.racecards.forEach(function(race) {
+        const mid = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        if (!mid) return;
+        const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
+        const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
+        const display = race.going_detailed || race.going || '';
+        if (display && !freshGoingByMeetingTomorrow[mid]) freshGoingByMeetingTomorrow[mid] = display;
+        if (display) freshGoingByRaceTomorrow[mid + '|' + t] = { going: display, going_detailed: race.going_detailed || '' };
+      });
+
       // Tomorrow gets its own anchor map under its own date key — "the day"
       // for anchoring purposes is the racing date, not the calendar day the
       // refresh happens to run on.
@@ -291,9 +328,13 @@ exports.handler = async function(event) {
       let anchorsTomorrowDirty = false;
 
       // Walk the existing cached (mapped) meetings structure and update the
-      // price field plus the price-movement flags
+      // price field, the price-movement flags, and the going fields — all in
+      // the same single Redis write below.
       (cachedTomorrow.meetings || []).forEach(function(m) {
+        if (freshGoingByMeetingTomorrow[m.id]) m.going = freshGoingByMeetingTomorrow[m.id];
         (m.races || []).forEach(function(race) {
+          const fg = freshGoingByRaceTomorrow[m.id + '|' + (race.t || '')];
+          if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshPriceMapTomorrow.hasOwnProperty(ru.horse_id)) {
               ru.price = freshPriceMapTomorrow[ru.horse_id];
