@@ -5876,7 +5876,7 @@ function unlockCorkAnalysis(){
            above always shows the most recent results regardless. -->
       <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 6px">
         <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Results</div>
+        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Full Results</div>
       </div>
       <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
       <div id="res-body"></div>
@@ -8086,6 +8086,35 @@ function _fmtPrize(p,flag){
   var n=parseFloat(s.replace(/[^0-9.]/g,''));
   if(isNaN(n)||n<=0) return '';
   return sym+Math.round(n).toLocaleString('en-GB');
+}
+// Silk for a results finisher row. Racecard silks are palette colours
+// assigned server-side (racecards.js SILK_PALETTE) — for today's results the
+// live racecard runner is looked up by name so the result row shows the SAME
+// silk the racecard showed. Past dates (no racecard in memory) fall back to
+// the identical palette keyed deterministically by draw/row, so rows always
+// carry a silk and today's always match their racecard.
+var _RES_SILKS=[
+  {body:'#0a2a6e',sleeve:'#ffffff',cap:'#0a2a6e'},
+  {body:'#c0392b',sleeve:'#ffffff',cap:'#c0392b'},
+  {body:'#1a3a8f',sleeve:'#f0c040',cap:'#1a3a8f'},
+  {body:'#1e6b3a',sleeve:'#ffffff',cap:'#1e6b3a'},
+  {body:'#1a1a1a',sleeve:'#e07020',cap:'#1a1a1a'},
+  {body:'#6a2fa0',sleeve:'#ffffff',cap:'#6a2fa0'},
+  {body:'#1a5276',sleeve:'#f39c12',cap:'#1a5276'},
+  {body:'#76b041',sleeve:'#ffffff',cap:'#2e4b1e'},
+  {body:'#922b21',sleeve:'#f9e79f',cap:'#922b21'},
+  {body:'#1f3a93',sleeve:'#ff6b6b',cap:'#1f3a93'},
+  {body:'#117a65',sleeve:'#ffffff',cap:'#117a65'},
+  {body:'#6e2f1a',sleeve:'#f0d87a',cap:'#6e2f1a'},
+  {body:'#0d3b6e',sleeve:'#e67e22',cap:'#0d3b6e'},
+  {body:'#7d3c98',sleeve:'#f8c471',cap:'#7d3c98'},
+  {body:'#1b2631',sleeve:'#85c1e9',cap:'#1b2631'},
+  {body:'#a93226',sleeve:'#ffffff',cap:'#1a5276'}
+];
+function _resSilkFor(horseName,idx){
+  var live=typeof _priceMoveRunnerByName==='function'?_priceMoveRunnerByName(horseName):null;
+  if(live&&live.silk) return live.silk;
+  return _RES_SILKS[(idx||0)%_RES_SILKS.length];
 }
 
 function toggleSlip(){slipOpen=!slipOpen;var s=document.getElementById('slip-panel');var o=document.getElementById('slip-overlay');if(s)s.classList.toggle('open',slipOpen);if(o)o.classList.toggle('open',slipOpen);}
@@ -15631,6 +15660,21 @@ var _resApiCache={};
 // duplicate simultaneous Racing API sweeps can never fire (the 429 cause)
 // and nobody queues behind anybody (the old stagger gate's latency cost).
 // The slot clears on settle so later calls fetch fresh.
+// Latest Results strip — fully independent of the detailed Full Results
+// section: its own date, its own data, its own loader. The top
+// Today/Yesterday tabs drive ONLY this; the Full Results pills drive ONLY
+// the detailed section. The shared-promise fetch below still dedupes any
+// same-date overlap at the network layer.
+var _resFeedDate=null;
+var _resFeedData=null;
+function _loadResultsFeed(ds){
+  _resFeedDate=ds;
+  _sharedResultsFetch(ds).then(function(data){
+    if(_resFeedDate!==ds) return; // a newer tab choice superseded this load
+    _resFeedData=(data&&!data.error&&data.venues)?data.venues:[];
+    renderResultsFeed();
+  }).catch(function(){});
+}
 var _resFetchInFlight={};
 function _sharedResultsFetch(dateStr){
   if(_resFetchInFlight[dateStr]) return _resFetchInFlight[dateStr];
@@ -15709,6 +15753,9 @@ function _startResultsPolling(){
       _resApiFetching=false;
       loadResultsPage(today);
     }
+    // Keep the independent Latest Results strip live too when it's showing
+    // today — shares the same in-flight fetch as the page refresh above.
+    if(_resFeedDate===today) _loadResultsFeed(today);
   }
   if(now<win.start){
     // Not yet started — schedule to begin at first race time
@@ -15903,20 +15950,18 @@ function renderResultsFeed(){
   var wrap=document.getElementById('res-feed-section');
   var feed=document.getElementById('res-feed');
   if(!feed||!wrap) return;
-  // Latest Results always shows the MOST RECENT results — when the user is
-  // browsing a past date via the date bar, keep the existing (today's) feed
-  // content rather than rebuilding it from the past date's data. Restore
-  // visibility too: a prior today-skeleton render may have hidden the wrap,
-  // and this early return must not leave good content invisible.
-  var _fToday=new Date().toISOString().slice(0,10);
-  if(_resLoadedDate&&_resLoadedDate!==_fToday&&feed.innerHTML){
-    wrap.style.display='block';
+  // Independent data source: the strip renders _resFeedData for _resFeedDate
+  // (chosen by the top Today/Yesterday tabs) — never the detailed section's
+  // _resData. First call bootstraps to today; the async load re-enters here
+  // with data.
+  if(!_resFeedDate){
+    _loadResultsFeed(new Date().toISOString().slice(0,10));
     return;
   }
 
   // Collect all races that have results, sorted most recent first
   var racesWithResults=[];
-  (_resData||[]).forEach(function(venue){
+  (_resFeedData||[]).forEach(function(venue){
     (venue.races||[]).forEach(function(race){
       if(race.runners&&race.runners.length){
         racesWithResults.push({venue:venue.course, flag:venue.flag||'🇬🇧', race:race});
@@ -15925,10 +15970,6 @@ function renderResultsFeed(){
   });
 
   if(!racesWithResults.length){
-    // A today-skeleton render (runners not yet overlaid) must never hide a
-    // strip that already has content — keep it visible and untouched. Only
-    // hide when the feed is genuinely empty.
-    if(feed.innerHTML){ wrap.style.display='block'; return; }
     wrap.style.display='none';
     return;
   }
@@ -16224,19 +16265,25 @@ function renderResultsPage(){
             var p=parseInt(r.pos);
             var isW=p===1;
             var ord=ordN(r.pos);
-            html+='<div style="display:flex;align-items:flex-start;padding:7px 0;'+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
-            html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:2px">'+ord+'</span>';
+            // Row: position | silk column (draw small above silk, vertically
+            // centred across both text lines via the row's align-items:center)
+            // | horse + jockey·trainer | SP. The raw draw prefix inline with
+            // the horse name is gone — the silk column replaces it.
+            html+='<div style="display:flex;align-items:center;padding:7px 0;'+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
+            html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0">'+ord+'</span>';
+            html+='<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-right:9px">'
+              +(r.draw?'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+escHtml(String(r.draw))+'</span>':'')
+              +nrSilk(_resSilkFor(r.horse,ri))
+            +'</div>';
             html+='<div style="flex:1;min-width:0">';
-            html+='<div style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">';
-            if(r.draw) html+='<span style="color:#9aa3b5;font-weight:400;font-size:13px">'+escHtml(r.draw)+'. </span>';
-            html+=escHtml(r.horse)+'</div>';
+            html+='<div style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</div>';
             if(r.jockey||r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
             html+='</div>';
-            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px;padding-top:2px">'+escHtml(r.sp)+'</span>';
+            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+'</span>';
             html+='</div>';
           });
           // Footer
-          html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f0f2f7;font-size:12px;color:#9aa3b5;line-height:1.9">';
+          html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f0f2f7;font-size:12px;color:#9aa3b5;line-height:1.5">';
           if(race.ran) html+='<span style="color:#0D1B3E;font-weight:600">'+race.ran+' ran</span>';
           if(race.distances) html+=' · Distances: '+escHtml(race.distances);
           if(race.winning_time||race.total_sp) html+='<br>';
@@ -16250,8 +16297,8 @@ function renderResultsPage(){
           // decimal SP: sp_dec straight from the server when present, falling
           // back to parsing the fractional sp string for cached pre-sp_dec
           // responses. Joint favourites (same lowest price) all listed.
-          if(race.time) html+='<br>Off: <span style="color:#0D1B3E">'+escHtml(race.time)+'</span>';
-          if(race.winner_prize) html+='<br>Prize: <span style="color:#0D1B3E">'+escHtml(race.winner_prize)+'</span>';
+          var _fPrize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
+          if(_fPrize) html+='<br>Prize: <span style="color:#0D1B3E">'+escHtml(_fPrize)+'</span>';
           (function(){
             function spDec(r){
               if(typeof r.sp_dec==='number'&&isFinite(r.sp_dec)&&r.sp_dec>1) return r.sp_dec;
@@ -16411,7 +16458,9 @@ function selectResultsSubTab(sub){
   var ds=d.toISOString().slice(0,10);
   var lbl=document.getElementById('res-date-label');
   if(lbl) lbl.textContent=sub==='yesterday'?ds+' · Yesterday':'Today';
-  loadResultsPage(ds);
+  // Drives ONLY the Latest Results strip — the detailed Full Results section
+  // below has its own independent date pills (_resSelectDate).
+  _loadResultsFeed(ds);
 }
 
 function selectPicksSubTab(sub){
