@@ -13914,60 +13914,28 @@ function nrLoadEdge(pfx,horseId){
     }
   }
   if(!_hasRealHorseAnalysis(_gateName)) return;
-  if(!horseId){nrTogglePanel(pfx,'se');return;}
-  var _cached=_nrEdgeCache[horseId];
-  if(_cached&&typeof _cached==='object'){
-    nrTogglePanel(pfx,'se');
-    var sDiv0=document.getElementById('nrh-sai-'+pfx);
-    if(sDiv0&&!sDiv0.innerHTML.trim())sDiv0.innerHTML=_cached.html;
-    return;
+  // Show the AI-written contextual analysis for this horse — the same
+  // runnerAnalysis paragraph _inlineHorseAnalysisHtml rendered when the
+  // race-header Analysis button existed, in the identical style. The gate
+  // above guarantees the text exists; it is already in _cachedRaceAnalyses
+  // client-side, so no fetch. The old Edge Signals content is gone from
+  // this panel (its builders remain in use by the picks-card Edge tab).
+  var _anTarget=_gateName.toLowerCase().trim();
+  var _anTxt='';
+  var _anSeen={};
+  for(var _ak in _cachedRaceAnalyses){
+    var _aa=_cachedRaceAnalyses[_ak];
+    if(!_aa||_anSeen[_aa.race]) continue;
+    _anSeen[_aa.race]=1;
+    var _aHit=(_aa.runnerAnalysis||[]).filter(function(h){return (h.horseName||'').toLowerCase().trim()===_anTarget&&h.analysis;})[0];
+    if(_aHit){_anTxt=_aHit.analysis;break;}
   }
-  if(_cached==='err'){nrTogglePanel(pfx,'se');return;}
+  if(!_anTxt) return;
+  var _anDiv=document.getElementById('nrh-sai-'+pfx);
+  if(_anDiv) _anDiv.innerHTML='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_anTxt)+'</div>';
   nrTogglePanel(pfx,'se');
-  var sDiv=document.getElementById('nrh-sai-'+pfx);
-  if(!sDiv||_cached==='loading')return;
-  _nrEdgeCache[horseId]='loading';
-  sDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading…</div>';
-  var horseName='',_liveRunner=null;
-  var _lookupArrays=[];
-  if(typeof RC_RUNNERS!=='undefined') _lookupArrays.push(RC_RUNNERS);
-  if(typeof NR_RUNNERS!=='undefined') _lookupArrays.push(NR_RUNNERS);
-  for(var _li=0;_li<_lookupArrays.length&&!horseName;_li++){var _la=_lookupArrays[_li];for(var _ei=0;_ei<_la.length;_ei++){if(String(_la[_ei].horse_id)===String(horseId)){horseName=_la[_ei].name;_liveRunner=_la[_ei];break;}}}
-  fetch('/.netlify/functions/horse-form?horse_id='+encodeURIComponent(horseId))
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var sDiv2=document.getElementById('nrh-sai-'+pfx);
-      if(!sDiv2)return;
-      var rH=function(lbl,val){return '<p style="margin:0;padding:1px 0 5px;font-size:11px;color:#3a4259;line-height:1.6">'+escHtml(val)+'</p>';};
-      var secHead=function(t){return '<div style="font-size:10px;font-weight:800;color:#0D1B3E;letter-spacing:.08em;text-transform:uppercase;padding:8px 0 8px 8px;border-left:3px solid #d4af37;margin:10px 0 6px">'+t+'</div>';};
-      var out='';
-
-      // ── Edge Signals (form is in Form Focus panel) ──
-      var hist=data.history||[];
-      var edgeOut='';
-      var _ru2=_liveRunner;
-      if(_ru2&&hist.length)_ru2.history=hist;
-      var cR=_buildClassEdge(horseName);
-      if(cR&&cR.length){edgeOut+=secHead('Ratings & Class');cR.forEach(function(r){edgeOut+=rH(r.label,r.val);});}
-      var sR=_buildSpeedEdge(hist);
-      if(sR&&sR.length){edgeOut+=secHead('Speed');sR.forEach(function(r){edgeOut+=rH(r.label,r.val);});}
-      var jR=_buildJockeyEdge(_ru2);
-      if(jR&&jR.length){edgeOut+=secHead('Jockey');jR.forEach(function(r){edgeOut+=rH(r.label,r.val);});}
-      var tR=_buildTrainerEdge(_ru2);
-      if(tR&&tR.length){edgeOut+=secHead('Trainer');tR.forEach(function(r){edgeOut+=rH(r.label,r.val);});}
-      var gR=_buildGoingEdge(_ru2);
-      if(gR&&gR.length){edgeOut+=secHead('Going');gR.forEach(function(r){edgeOut+=rH(r.label,r.val);});}
-      if(edgeOut){out+='<div style="padding:0 12px 10px;background:#fff">'+edgeOut+'</div>';}
-      else{out='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">No edge signals available yet.</div>';}
-      _nrEdgeCache[horseId]={html:out};
-      sDiv2.innerHTML=out;
-    })
-    .catch(function(){
-      _nrEdgeCache[horseId]='err';
-      var sDiv3=document.getElementById('nrh-sai-'+pfx);
-      if(sDiv3)sDiv3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load data.</div>';
-    });
 }
+
 function nrLoadForm(pfx,horseId){
   if(!horseId){nrTogglePanel(pfx,'fe');return;}
   var _cached=_nrFormCache[horseId];
