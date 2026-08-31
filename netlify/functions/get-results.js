@@ -5,6 +5,48 @@ const PASSWORD = process.env.RACING_API_KEY;
 const BASE_URL = 'api.theracingapi.com';
 const AUTH = Buffer.from((USERNAME || '') + ':' + (PASSWORD || '')).toString('base64');
 
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+// Redis cache for PAST-date responses only. Past results are final, so a
+// cached copy is as good as a live fetch — and every uncached request costs
+// a full paginated Racing API sweep (one paced call per 50 races worldwide).
+// Today is deliberately never cached here: results are still arriving and
+// the client's own polling handles freshness. 24h TTL; ?EX= as a query param
+// is safe (EX genuinely takes an argument — unlike the NX footgun of
+// 2026-08-16, where ?NX=true expanded to an invalid extra argument).
+function redisGetJson(key) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return Promise.resolve(null);
+  const url = new URL(UPSTASH_URL);
+  return new Promise(resolve => {
+    const req = https.request({
+      hostname: url.hostname, path: '/get/' + encodeURIComponent(key), method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => { try { const r = JSON.parse(d); resolve(r.result ? JSON.parse(r.result) : null); } catch (e) { resolve(null); } });
+    });
+    req.on('error', () => resolve(null));
+    req.end();
+  });
+}
+
+function redisSetJsonEx(key, value, seconds) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return Promise.resolve(null);
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise(resolve => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key) + '?EX=' + seconds, method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', () => resolve(null));
+    req.write(body);
+    req.end();
+  });
+}
+
 function apiGet(path) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -63,6 +105,18 @@ exports.handler = async function(event) {
 
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'date param required (YYYY-MM-DD)' }) };
+    }
+
+    // Past dates: serve straight from the Redis cache when present — instant,
+    // zero Racing API calls. Debug (?raw=1) always bypasses the cache.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isPastDate = date < todayStr;
+    const cacheKey = 'results:cache:' + date + ':' + (view || 'lookup');
+    if (isPastDate && qs.raw !== '1') {
+      const cachedResp = await redisGetJson(cacheKey);
+      if (cachedResp) {
+        return { statusCode: 200, headers, body: JSON.stringify(cachedResp) };
+      }
     }
 
     // Paginated fetch — /v1/results caps each response at one page (~50 races
@@ -232,10 +286,16 @@ exports.handler = async function(event) {
         });
       });
 
+      const pagePayload = { date, venues: venueOrder.map(function(id) { return venueMap[id]; }), partial: partial, fetched: results.length };
+      // Cache complete past-date responses for 24h — never partial ones (a
+      // rate-limited sweep must not freeze a half-day of results in cache).
+      if (isPastDate && !partial) {
+        await redisSetJsonEx(cacheKey, pagePayload, 86400);
+      }
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ date, venues: venueOrder.map(function(id) { return venueMap[id]; }), partial: partial, fetched: results.length })
+        body: JSON.stringify(pagePayload)
       };
     }
 
@@ -253,10 +313,14 @@ exports.handler = async function(event) {
       });
     });
 
+    const lookupPayload = { date, lookup, partial: partial, fetched: results.length };
+    if (isPastDate && !partial) {
+      await redisSetJsonEx(cacheKey, lookupPayload, 86400);
+    }
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ date, lookup, partial: partial, fetched: results.length })
+      body: JSON.stringify(lookupPayload)
     };
 
   } catch(e) {

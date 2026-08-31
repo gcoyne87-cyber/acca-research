@@ -15776,7 +15776,16 @@ function loadResultsPage(date){
   if(!_resApiCache[d]&&!_resApiFetching){
     _resApiFetching=true;
     _setResStatus('Loading results…');
-    fetch('/.netlify/functions/get-results?date='+d+'&view=page')
+    // Stagger behind the homepage Latest Results strip fetch: firing both
+    // simultaneously doubled the server-side Racing API pagination bursts and
+    // tripped the 5 req/s limit. Wait for any in-flight strip fetch to finish
+    // (its failure must never block this one — hence the swallow).
+    var _stripGate=(typeof _homeRes!=='undefined'&&_homeRes&&_homeRes.fetchPromise)
+      ?Promise.resolve(_homeRes.fetchPromise).catch(function(){})
+      :Promise.resolve();
+    _stripGate.then(function(){
+      return fetch('/.netlify/functions/get-results?date='+d+'&view=page');
+    })
       .then(function(r){return r.json();})
       .then(function(data){
         _resApiFetching=false;
@@ -15937,7 +15946,13 @@ var _homeRes={
 // Fetches the strip's data: today first; if today has no finished runners yet
 // (early morning), falls back to yesterday's card so the strip always has
 // something real to show. Both empty or both failing hides the strip silently.
-async function _fetchHomeResults(){
+function _fetchHomeResults(){
+  // The in-flight promise is exposed on _homeRes.fetchPromise so the Results
+  // page's detailed fetch can stagger behind it — each get-results call fans
+  // out into multiple paced Racing API page fetches server-side, and two
+  // concurrent invocations were bursting past the API's 5 req/s limit
+  // (live 429s on the Latest Results strip).
+  var p=(async function(){
   function hasFinished(venues){
     return (venues||[]).some(function(v){
       return (v.races||[]).some(function(r){
@@ -15971,6 +15986,11 @@ async function _fetchHomeResults(){
   window._homeResHasData=false;
   var wrap=document.getElementById('home-res-strip');
   if(wrap) wrap.style.display='none';
+  })();
+  _homeRes.fetchPromise=p;
+  p.then(function(){ if(_homeRes.fetchPromise===p) _homeRes.fetchPromise=null; },
+         function(){ if(_homeRes.fetchPromise===p) _homeRes.fetchPromise=null; });
+  return p;
 }
 
 // Renders all finished races from _homeRes.data, most recent first, using the
