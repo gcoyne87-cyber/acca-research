@@ -8075,6 +8075,18 @@ function _cleanGoing(s){
   // display shouty ("GOOD TO SOFT" -> "Good To Soft").
   return g.toLowerCase().replace(/\b[a-z]/g,function(c){return c.toUpperCase();});
 }
+// Prize formatter — the results API carries raw numerics ("3664.00").
+// Currency from the meeting's flag ('IE' or the 🇮🇪 emoji -> €, everything
+// else -> £; an already-euro string keeps €). No decimals, thousands commas.
+// Junk or zero returns '' so callers can skip the segment entirely.
+function _fmtPrize(p,flag){
+  var s=String(p==null?'':p).trim();
+  if(!s) return '';
+  var sym=(flag==='IE'||flag==='🇮🇪'||s.indexOf('€')>-1)?'€':'£';
+  var n=parseFloat(s.replace(/[^0-9.]/g,''));
+  if(isNaN(n)||n<=0) return '';
+  return sym+Math.round(n).toLocaleString('en-GB');
+}
 
 function toggleSlip(){slipOpen=!slipOpen;var s=document.getElementById('slip-panel');var o=document.getElementById('slip-overlay');if(s)s.classList.toggle('open',slipOpen);if(o)o.classList.toggle('open',slipOpen);}
 function slipAdjStake(d){stake=Math.max(5,Math.min(500,stake+d));var el=document.getElementById('slip-stake-amt');if(el)el.textContent='£'+stake;renderSlip();}
@@ -15614,6 +15626,21 @@ var _resOpenVenue=null;
 var _resOpenRace={};
 var _resLoadedDate=null;
 var _resApiCache={};
+// One in-flight get-results page fetch per date — every caller (the Results
+// page and the homepage Latest Results strip) shares the same promise, so
+// duplicate simultaneous Racing API sweeps can never fire (the 429 cause)
+// and nobody queues behind anybody (the old stagger gate's latency cost).
+// The slot clears on settle so later calls fetch fresh.
+var _resFetchInFlight={};
+function _sharedResultsFetch(dateStr){
+  if(_resFetchInFlight[dateStr]) return _resFetchInFlight[dateStr];
+  var p=fetch('/.netlify/functions/get-results?date='+dateStr+'&view=page')
+    .then(function(r){ return r.json(); });
+  var _clear=function(){ if(_resFetchInFlight[dateStr]===p) delete _resFetchInFlight[dateStr]; };
+  p.then(_clear,_clear);
+  _resFetchInFlight[dateStr]=p;
+  return p;
+}
 var _resApiFetching=false;
 var _resApiError=null;
 var _resPollingTimer=null;
@@ -15753,9 +15780,19 @@ function loadResultsPage(date){
     _resOpenRace={};
     _resData=null;
     _resApiError=null;
-    delete _resApiCache[d]; // always refetch when date changes
+    // NOTE: the client cache for the new date is deliberately NOT deleted —
+    // pill switches reuse this session's data instantly. The 90-second poll
+    // owns today's freshness (it busts and refetches today's entry itself),
+    // and past dates are final.
   }
   _renderResDateBar();
+  // Cache hydrate: if this date was already fetched this session, paint it
+  // immediately — no fetch, no loading state. (Without this, skipping the
+  // refetch would leave the reset _resData stuck on "Loading…".)
+  if(!_resData&&_resApiCache[d]){
+    _resData=_resApiCache[d];
+    renderResultsPage();
+  }
 
   // For today: build venue/race structure instantly from already-loaded RC_MEETINGS
   if(isToday&&RC_MEETINGS&&RC_MEETINGS.length&&!_resData){
@@ -15776,17 +15813,10 @@ function loadResultsPage(date){
   if(!_resApiCache[d]&&!_resApiFetching){
     _resApiFetching=true;
     _setResStatus('Loading results…');
-    // Stagger behind the homepage Latest Results strip fetch: firing both
-    // simultaneously doubled the server-side Racing API pagination bursts and
-    // tripped the 5 req/s limit. Wait for any in-flight strip fetch to finish
-    // (its failure must never block this one — hence the swallow).
-    var _stripGate=(typeof _homeRes!=='undefined'&&_homeRes&&_homeRes.fetchPromise)
-      ?Promise.resolve(_homeRes.fetchPromise).catch(function(){})
-      :Promise.resolve();
-    _stripGate.then(function(){
-      return fetch('/.netlify/functions/get-results?date='+d+'&view=page');
-    })
-      .then(function(r){return r.json();})
+    // Shared-promise dedupe: if the homepage strip (or anything else) already
+    // has this date's fetch in flight, reuse it — no duplicate API sweep, no
+    // queuing latency.
+    _sharedResultsFetch(d)
       .then(function(data){
         _resApiFetching=false;
         if(data.error){
@@ -15875,9 +15905,14 @@ function renderResultsFeed(){
   if(!feed||!wrap) return;
   // Latest Results always shows the MOST RECENT results — when the user is
   // browsing a past date via the date bar, keep the existing (today's) feed
-  // content rather than rebuilding it from the past date's data.
+  // content rather than rebuilding it from the past date's data. Restore
+  // visibility too: a prior today-skeleton render may have hidden the wrap,
+  // and this early return must not leave good content invisible.
   var _fToday=new Date().toISOString().slice(0,10);
-  if(_resLoadedDate&&_resLoadedDate!==_fToday&&feed.innerHTML) return;
+  if(_resLoadedDate&&_resLoadedDate!==_fToday&&feed.innerHTML){
+    wrap.style.display='block';
+    return;
+  }
 
   // Collect all races that have results, sorted most recent first
   var racesWithResults=[];
@@ -15889,7 +15924,14 @@ function renderResultsFeed(){
     });
   });
 
-  if(!racesWithResults.length){ wrap.style.display='none'; return; }
+  if(!racesWithResults.length){
+    // A today-skeleton render (runners not yet overlaid) must never hide a
+    // strip that already has content — keep it visible and untouched. Only
+    // hide when the feed is genuinely empty.
+    if(feed.innerHTML){ wrap.style.display='block'; return; }
+    wrap.style.display='none';
+    return;
+  }
 
   // Sort by time descending — most recently finished first
   racesWithResults.sort(function(a,b){
@@ -15961,8 +16003,9 @@ function _fetchHomeResults(){
     });
   }
   function getDay(dateStr){
-    return fetch('/.netlify/functions/get-results?date='+dateStr+'&view=page')
-      .then(function(r){ return r.json(); })
+    // Shares any in-flight fetch for the same date with the Results page —
+    // see _sharedResultsFetch.
+    return _sharedResultsFetch(dateStr)
       .then(function(data){ return (data&&!data.error&&data.venues)||[]; })
       .catch(function(){ return []; });
   }
@@ -16150,18 +16193,20 @@ function renderResultsPage(){
       if(race){
         html+='<div style="padding:10px 14px 14px;border-top:1px solid #f0f2f7">';
 
-        // Race name + meta
-        if(race.name) html+='<div style="font-size:13px;font-weight:700;color:#0D1B3E;line-height:1.35;margin-bottom:4px">'+escHtml(race.name)+'</div>';
-        var meta=[];
-        if(race.dist) meta.push(escHtml(race.dist));
-        if(race.cls) meta.push(escHtml(race.cls));
-        if(race.prize) meta.push(escHtml(race.prize));
-        // Prize money on the dist · class line — winner_prize is the field the
-        // API actually populates (per-runner prize lifted onto the race by
-        // get-results; the race-level race.prize above never fires).
-        else if(race.winner_prize) meta.push(escHtml(race.winner_prize));
-        if(meta.length) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+meta.join(' · ')+'</div>';
-        if(race.going) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:10px">Going: '+escHtml(_cleanGoing(race.going))+'</div>';
+        // Header block — identical structure and style to the racecard race
+        // header (meeting · time bold, race name · dist, class · prize,
+        // going · N runners). winner_prize is the field the API actually
+        // populates (per-runner prize lifted onto the race by get-results;
+        // race-level race.prize never fires), formatted via _fmtPrize with
+        // the venue's currency.
+        html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
+        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+(race.name&&race.dist?' &middot; ':'')+escHtml(race.dist||'')+'</div>';
+        var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
+        var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
+        if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
+        var _rgoing=_cleanGoing(race.going);
+        var _rruns=race.ran||((race.runners||[]).length||'');
+        if(_rgoing||_rruns) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_rgoing)+(_rgoing&&_rruns?' &middot; ':'')+(_rruns?_rruns+' runners':'')+'</div>';
 
         var runners=race.runners||[];
         // Full field — every runner with a recorded position, in the server's
