@@ -5870,11 +5870,15 @@ function unlockCorkAnalysis(){
         </div>
         <div id="res-feed" style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
       </div>
-      <!-- Venue cards -->
+      <!-- Detailed results: heading + date bar (Today / Yesterday / two prior
+           day names). Pills rendered by _renderResDateBar; selection loads
+           that date's results into res-body below. The Latest Results feed
+           above always shows the most recent results regardless. -->
       <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 6px">
         <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Today's Races</div>
+        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Results</div>
       </div>
+      <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
       <div id="res-body"></div>
     </div>
 
@@ -15708,6 +15712,34 @@ function _normTime(t){
   return m?(m[1].length===1?'0'+m[1]:m[1])+':'+m[2]:'';
 }
 
+// Results page date bar — three pills: Today, Yesterday, and the day before
+// (day-name label, e.g. "Sat 30"). Active pill uses the same green-underline
+// style as the racecard date pills. Selecting a pill loads that date's
+// results into the detailed section via the existing loadResultsPage/date
+// path; re-rendered on every load so the highlight always tracks
+// _resLoadedDate.
+function _renderResDateBar(){
+  var bar=document.getElementById('res-date-bar');
+  if(!bar) return;
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var now=new Date();
+  var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var cur=_resLoadedDate||todayStr;
+  var html='';
+  for(var i=0;i<4;i++){
+    var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var label=i===0?'Today':i===1?'Yesterday':dayNames[d.getDay()];
+    html+='<button data-date="'+ds+'" onclick="_resSelectDate(\''+ds+'\')" style="'+(ds===cur?activeStyle:inactiveStyle)+'">'+label+'</button>';
+  }
+  bar.innerHTML=html;
+}
+function _resSelectDate(ds){
+  loadResultsPage(ds);
+}
+
 function loadResultsPage(date){
   var today=new Date().toISOString().slice(0,10);
   var d=date||today;
@@ -15723,6 +15755,7 @@ function loadResultsPage(date){
     _resApiError=null;
     delete _resApiCache[d]; // always refetch when date changes
   }
+  _renderResDateBar();
 
   // For today: build venue/race structure instantly from already-loaded RC_MEETINGS
   if(isToday&&RC_MEETINGS&&RC_MEETINGS.length&&!_resData){
@@ -15831,6 +15864,11 @@ function renderResultsFeed(){
   var wrap=document.getElementById('res-feed-section');
   var feed=document.getElementById('res-feed');
   if(!feed||!wrap) return;
+  // Latest Results always shows the MOST RECENT results — when the user is
+  // browsing a past date via the date bar, keep the existing (today's) feed
+  // content rather than rebuilding it from the past date's data.
+  var _fToday=new Date().toISOString().slice(0,10);
+  if(_resLoadedDate&&_resLoadedDate!==_fToday&&feed.innerHTML) return;
 
   // Collect all races that have results, sorted most recent first
   var racesWithResults=[];
@@ -16098,22 +16136,30 @@ function renderResultsPage(){
         if(race.dist) meta.push(escHtml(race.dist));
         if(race.cls) meta.push(escHtml(race.cls));
         if(race.prize) meta.push(escHtml(race.prize));
+        // Prize money on the dist · class line — winner_prize is the field the
+        // API actually populates (per-runner prize lifted onto the race by
+        // get-results; the race-level race.prize above never fires).
+        else if(race.winner_prize) meta.push(escHtml(race.winner_prize));
         if(meta.length) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+meta.join(' · ')+'</div>';
         if(race.going) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:10px">Going: '+escHtml(_cleanGoing(race.going))+'</div>';
 
         var runners=race.runners||[];
-        var ordinals=['1st','2nd','3rd','4th'];
-        var top4=runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
+        // Full field — every runner with a recorded position, in the server's
+        // order (numeric positions ascending, non-finishers like PU/F after).
+        // Proper ordinals for any field size (5th, 11th, 21st, ...); a
+        // non-numeric position shows as-is.
+        function ordN(p){var n=parseInt(p,10);if(!n)return String(p||'-');var v=n%100;var s=(v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');return n+s;}
+        var fieldRunners=runners.filter(function(r){return r.pos&&String(r.pos).trim();});
         var winner=runners.find(function(r){return r.pos==='1';});
 
-        if(!top4.length){
+        if(!fieldRunners.length){
           html+='<div style="font-size:13px;color:#9aa3b5;padding:4px 0 8px">'+(_raceIsFinished(race.time)?'Result not yet available':'Race not yet run')+'</div>';
         } else {
-          top4.forEach(function(r,ri){
+          fieldRunners.forEach(function(r,ri){
             var p=parseInt(r.pos);
             var isW=p===1;
-            var ord=ordinals[p-1]||r.pos;
-            html+='<div style="display:flex;align-items:flex-start;padding:7px 0;'+(ri<top4.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
+            var ord=ordN(r.pos);
+            html+='<div style="display:flex;align-items:flex-start;padding:7px 0;'+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
             html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:2px">'+ord+'</span>';
             html+='<div style="flex:1;min-width:0">';
             html+='<div style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">';
