@@ -5878,6 +5878,27 @@ function unlockCorkAnalysis(){
         <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
         <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Full Results</div>
       </div>
+      <!-- Results trainer filter — completely independent of the racecard
+           trainer filter (_resTrainerFilter, own input, own clear). -->
+      <div id="res-trainer-search-wrap" style="padding:0 16px 10px;background:#f5f7fb">
+        <div style="background:#fff;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="font-size:15px;font-weight:700;color:#0D1B3E">Filter by Trainer</div>
+            <div style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:0.02em">NEW</div>
+          </div>
+          <div style="font-size:12px;color:#9aa3b5;margin-bottom:12px">Find all results for a specific trainer.</div>
+          <div style="position:relative">
+            <div style="display:flex;align-items:stretch;background:#fff;border-radius:99px;overflow:hidden;box-shadow:0 1px 3px rgba(13,27,62,0.08)">
+              <div style="position:relative;flex:1">
+                <input id="res-trainer-search-input" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onResTrainerSearchInput(this.value)" onfocus="_onResTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:12px 34px 12px 18px;border:none;font-size:14px;font-family:inherit;color:#0D1B3E;background:transparent;outline:none">
+                <span id="res-trainer-search-clear" onclick="_clearResTrainerSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;width:20px;height:20px;border-radius:50%;background:#e4e8f0;color:#5a6478;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>
+              </div>
+              <button onclick="_submitResTrainerSearch()" style="flex-shrink:0;background:#0D1B3E;color:#fff;border:none;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Search</button>
+            </div>
+            <div id="res-trainer-search-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.08);z-index:30;overflow:hidden"></div>
+          </div>
+        </div>
+      </div>
       <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
       <div id="res-body"></div>
     </div>
@@ -15667,6 +15688,93 @@ var _resApiCache={};
 // same-date overlap at the network layer.
 var _resFeedDate=null;
 var _resFeedData=null;
+// ── Results-page trainer filter — completely independent of the racecard
+// filter (_trainerFilter is never read or written here). Filters the Full
+// Results section to races where the trainer had a runner; persists across
+// the date pills because loadResultsPage's date-change reset never touches it.
+var _resTrainerFilter=null;
+function _getResTrainerNames(){
+  var seen={},names=[];
+  (_resData||[]).forEach(function(v){
+    (v.races||[]).forEach(function(r){
+      (r.runners||[]).forEach(function(ru){
+        var t=(ru.trainer||'').trim();
+        if(t&&!seen[t.toLowerCase()]){ seen[t.toLowerCase()]=true; names.push(t); }
+      });
+    });
+  });
+  return names;
+}
+// Same fuzzy matching as the homepage trainer search: accent-stripped,
+// apostrophe/hyphen-insensitive, surname prefix (4) > first word (3) >
+// middle word (2), top 8 shown.
+function _onResTrainerSearchInput(val){
+  var dd=document.getElementById('res-trainer-search-dropdown');
+  if(!dd) return;
+  var _accentRe=new RegExp('['+String.fromCharCode(768)+'-'+String.fromCharCode(879)+']','g');
+  function norm(s){
+    return String(s||'').normalize('NFD').replace(_accentRe,'').toLowerCase().replace(/['-]/g,'');
+  }
+  var q=norm((val||'').trim()).replace(/\s+/g,'');
+  if(!q){ dd.style.display='none'; dd.innerHTML=''; return; }
+  var scored=_getResTrainerNames().map(function(n){
+    var words=n.trim().split(/\s+/).filter(Boolean).map(norm);
+    var score=0;
+    if(words.length){
+      var surname=words[words.length-1];
+      var firstWord=words[0];
+      if(surname.indexOf(q)===0){ score=4; }
+      else if(firstWord.indexOf(q)===0){ score=3; }
+      else{
+        for(var i=1;i<words.length-1;i++){
+          if(words[i].indexOf(q)===0){ score=2; break; }
+        }
+      }
+    }
+    return {name:n,score:score};
+  }).filter(function(x){ return x.score>0; });
+  scored.sort(function(a,b){ return b.score-a.score; });
+  var matches=scored.slice(0,8).map(function(x){ return x.name; });
+  if(!matches.length){ dd.style.display='none'; dd.innerHTML=''; return; }
+  dd.innerHTML=matches.map(function(n){
+    return '<div onclick="_selectResTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+function _setResTrainerFilter(name){
+  _resTrainerFilter=name;
+  var inp=document.getElementById('res-trainer-search-input');
+  if(inp) inp.value=name;
+  var clr=document.getElementById('res-trainer-search-clear');
+  if(clr) clr.style.display='flex';
+  renderResultsPage();
+}
+function _submitResTrainerSearch(){
+  var inp=document.getElementById('res-trainer-search-input');
+  var val=inp?inp.value.trim():'';
+  if(!val) return;
+  var dd=document.getElementById('res-trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  _setResTrainerFilter(val);
+}
+function _selectResTrainerSearchResult(name){
+  var dd=document.getElementById('res-trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  _setResTrainerFilter(name);
+}
+function _clearResTrainerSearch(){
+  _resTrainerFilter=null;
+  var inp=document.getElementById('res-trainer-search-input');
+  if(inp) inp.value='';
+  var clr=document.getElementById('res-trainer-search-clear');
+  if(clr) clr.style.display='none';
+  var dd=document.getElementById('res-trainer-search-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+  renderResultsPage();
+}
+function _resTrainerRowMatch(r){
+  return !!(_resTrainerFilter&&(r.trainer||'').toLowerCase().trim()===_resTrainerFilter.toLowerCase().trim());
+}
 function _loadResultsFeed(ds){
   _resFeedDate=ds;
   _sharedResultsFetch(ds).then(function(data){
@@ -16203,11 +16311,33 @@ function renderResultsPage(){
 
   var html='<div style="background:#fff">';
 
+  // Results trainer filter: green chip when active; venues with no matching
+  // race are skipped entirely; matched-venue count drives the empty message.
+  var _rtfMatchedVenues=0;
+  if(_resTrainerFilter){
+    html+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
+    html+='<span>Filtering: '+escHtml(_resTrainerFilter)+'</span>';
+    html+='<span onclick="_clearResTrainerSearch()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
+    html+='</div>';
+  }
+
   _resData.forEach(function(venue,vi){
     var cid=venue.courseId||_normCourse(venue.course);
     var isOpen=_resOpenVenue===cid;
     var openIdx=_resOpenRace[cid]||0;
     var races=venue.races||[];
+
+    // Filter to races where the trainer had a runner — pills keep their
+    // original indices so selectResRace stays valid; if the open race isn't
+    // a match, open the first matching one instead.
+    var _rtfIdx=null;
+    if(_resTrainerFilter){
+      _rtfIdx=[];
+      races.forEach(function(r,ri){ if((r.runners||[]).some(_resTrainerRowMatch)) _rtfIdx.push(ri); });
+      if(!_rtfIdx.length) return;
+      _rtfMatchedVenues++;
+      if(_rtfIdx.indexOf(openIdx)===-1) openIdx=_rtfIdx[0];
+    }
 
     html+='<div style="border-bottom:1px solid #f0f2f7">';
 
@@ -16224,6 +16354,7 @@ function renderResultsPage(){
       // Time pills — matches homepage racecard pill style
       html+='<div id="res-pills-'+escHtml(cid)+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px solid #f0f2f7">';
       races.forEach(function(r,ri){
+        if(_rtfIdx&&_rtfIdx.indexOf(ri)===-1) return; // filtered out
         var act=ri===openIdx;
         var hasResult=r.runners&&r.runners.length;
         html+='<button onclick="selectResRace(\''+escHtml(cid)+'\','+ri+')" style="flex-shrink:0;padding:6px 14px;border-radius:99px;border:1.5px solid '+(act?'#0D1B3E':(hasResult?'#1e9e6b':'#e8eaf0'))+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#0D1B3E':'transparent')+';color:'+(act?'#fff':(hasResult?'#1e9e6b':'#9aa3b5'))+';cursor:pointer;font-family:inherit;white-space:nowrap">'+escHtml(r.time)+'</button>';
@@ -16269,7 +16400,7 @@ function renderResultsPage(){
             // centred across both text lines via the row's align-items:center)
             // | horse + jockey·trainer | SP. The raw draw prefix inline with
             // the horse name is gone — the silk column replaces it.
-            html+='<div style="display:flex;align-items:center;padding:7px 0;'+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
+            html+='<div style="display:flex;align-items:center;padding:7px 0;'+(_resTrainerRowMatch(r)?'background:#ecfdf5;':'')+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
             html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0">'+ord+'</span>';
             html+='<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-right:9px">'
               +(r.draw?'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+escHtml(String(r.draw))+'</span>':'')
@@ -16332,6 +16463,9 @@ function renderResultsPage(){
     html+='</div>';
   });
 
+  if(_resTrainerFilter&&!_rtfMatchedVenues){
+    html+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No results for '+escHtml(_resTrainerFilter)+' on this date</div>';
+  }
   html+='</div>';
   body.innerHTML=html;
   renderResultsFeed();
