@@ -864,6 +864,32 @@ async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
 }
 
 
+function pullQuoteWordCount(s) { return String(s || '').trim().split(/\s+/).filter(Boolean).length; }
+
+// Mechanical fallback: last complete sentence at or under 125 words. Only
+// used when even the condense call overshoots the ceiling.
+function trimPullQuoteToSentence(q) {
+  const sentences = String(q || '').trim().match(/[^.!?]*[.!?]+(?:['")\]]*)?/g) || [String(q || '').trim()];
+  let out = '', words = 0;
+  for (const s of sentences) {
+    const w = pullQuoteWordCount(s);
+    if (words + w > 125) break;
+    out += (out ? ' ' : '') + s.trim();
+    words += w;
+  }
+  return out || String(q || '').trim().split(/\s+/).slice(0, 125).join(' ');
+}
+
+// Second-pass condenser: the prompts ask for 120-125 words but the model has
+// been ignoring the ceiling (every quote on 2026-08-31 came back 159-236
+// words). One extra small call — same model, no web search — rewrites an
+// overlong quote down to the band; a still-overlong result is sentence-trimmed.
+async function condensePullQuote(pullQuote) {
+  const msg = 'Condense the following racing analysis to between 120 and 125 words. Keep every key fact — the horse\'s form, jockey, trainer angle, going, and the core case for the selection. Remove only waffle, repetition, and filler phrases. Do not add anything new. Return only the condensed text, nothing else: ' + pullQuote;
+  const resp = await callClaude('', msg, 300, true);
+  return { text: (resp.text || '').trim(), inputTokens: resp.inputTokens || 0, outputTokens: resp.outputTokens || 0 };
+}
+
 async function analyseRace(race, NH, tipsterContext) {
   const raceRunners = (race.runners || []).filter(r => !r.is_non_runner);
   const date = new Date().toISOString().slice(0, 10);
@@ -911,7 +937,27 @@ ${runners}
 Return ONLY the JSON object.`;
 
   const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, false, 1);
-  return { result: parseJson(text), inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount };
+  const result = parseJson(text);
+  // Enforce the 120-125 word pullQuote ceiling: condense via a second call
+  // when over, sentence-trim if the condense itself overshoots or fails. The
+  // condensed version is what gets cached and stored — every consumer (DI
+  // cards, NAP/NB cards, All Selections, NB reorder briefs) sees it.
+  let condIn = 0, condOut = 0;
+  if (result && result.strongestSelection && result.strongestSelection.pullQuote
+      && pullQuoteWordCount(result.strongestSelection.pullQuote) > 125) {
+    try {
+      const c = await condensePullQuote(result.strongestSelection.pullQuote);
+      condIn = c.inputTokens; condOut = c.outputTokens;
+      if (c.text) {
+        result.strongestSelection.pullQuote = pullQuoteWordCount(c.text) > 125 ? trimPullQuoteToSentence(c.text) : c.text;
+      } else {
+        result.strongestSelection.pullQuote = trimPullQuoteToSentence(result.strongestSelection.pullQuote);
+      }
+    } catch (condErr) {
+      result.strongestSelection.pullQuote = trimPullQuoteToSentence(result.strongestSelection.pullQuote);
+    }
+  }
+  return { result, inputTokens: inputTokens + condIn, outputTokens: outputTokens + condOut, cacheReadTokens, cacheWriteTokens, webSearchCount };
 }
 
 async function generateIntelligence(racecards) {
