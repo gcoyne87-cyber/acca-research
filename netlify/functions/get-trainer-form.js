@@ -33,7 +33,18 @@ exports.handler = async function(event) {
   const tableDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : today;
 
   try {
-    const table = await redisGet('trainer-form:table:' + tableDate);
+    let table = await redisGet('trainer-form:table:' + tableDate);
+    // Yesterday fallback: the table is written by the ~10:30 daily build, so
+    // before it lands each morning (and on a failed-build day) today's key is
+    // empty and the section showed "Trainer form data updates daily". A
+    // trainer's 14-day/7-day form barely moves overnight — yesterday's table
+    // is honest data, so serve it rather than nothing. Applied only for the
+    // default today request; an explicit ?date= gets exactly that date.
+    if ((!Array.isArray(table) || !table.length) && tableDate === today) {
+      const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const ytable = await redisGet('trainer-form:table:' + y);
+      if (Array.isArray(ytable) && ytable.length) table = ytable;
+    }
     return {
       statusCode: 200,
       headers,
