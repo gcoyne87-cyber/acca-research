@@ -5610,11 +5610,16 @@ function unlockCorkAnalysis(){
     <div id="trainer-search-wrap" style="padding:0 16px 12px;background:#f5f6f8">
       <div style="background:#fff;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <div style="font-size:15px;font-weight:700;color:#0D1B3E">Filter by Trainer</div>
+          <div style="font-size:15px;font-weight:700;color:#0D1B3E">Edge Filter</div>
           <div style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:0.02em">NEW</div>
         </div>
-        <div style="font-size:12px;color:#9aa3b5;margin-bottom:12px">Find all horses running for a specific trainer today.</div>
-        <div style="position:relative">
+        <div style="font-size:12px;color:#9aa3b5;margin-bottom:12px">Find horses by trainer, Course &amp; Distance form, or ground preference.</div>
+        <div id="edge-filter-chips" style="display:flex;gap:8px;margin-bottom:12px">
+          <div id="edge-chip-trainer" onclick="_selectEdgeChip('trainer')" style="flex:1;text-align:center;background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Trainer</div>
+          <div id="edge-chip-cd" onclick="_selectEdgeChip('cd')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">C&amp;D</div>
+          <div id="edge-chip-ground" onclick="_selectEdgeChip('ground')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Ground</div>
+        </div>
+        <div id="edge-trainer-input-wrap" style="position:relative">
           <div style="display:flex;align-items:stretch;background:#fff;border-radius:99px;overflow:hidden;box-shadow:0 1px 3px rgba(13,27,62,0.08)">
             <div style="position:relative;flex:1">
               <input id="trainer-search-input" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value)" onfocus="_onTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:12px 34px 12px 18px;border:none;font-size:14px;font-family:inherit;color:#0D1B3E;background:transparent;outline:none">
@@ -11719,6 +11724,13 @@ var _cardsDay='today';
 var _trainerFilter=null;
 var _trainerFilterSelected=null;
 var _horseHighlight=null;
+// Edge Filter chip selection: 'trainer' | 'cd' | 'ground'. 'trainer' is the
+// default and identical to the original trainer-only behaviour (the search
+// input shows, _trainerFilter drives everything as before). 'cd'/'ground'
+// activate immediately on tap — no search step — filtering runners tagged
+// isCandDWinner/isGroundLover (racecards.js's computeRunnerTags) instead of
+// by trainer name, reusing the same multi-day pill/venue rendering.
+var _edgeChipMode='trainer';
 
 // Filter by Trainer — 5-day view (today + next 4 days)
 var _tfDayDates=[];       // ['2026-08-07','2026-08-08','2026-08-09','2026-08-10'] — tomorrow..day5
@@ -11879,10 +11891,87 @@ function _tfSelectRace(dayKey,meetingId,raceTime){
   if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
 }
 
+// ── EDGE FILTER (Course & Distance / Ground chips) ──────────────────────────
+// Additive alongside the trainer filter above — none of it is touched. When
+// _edgeChipMode is 'cd'/'ground' the same renderTrainerFilterMultiDay pill/
+// venue rendering is reused (see the day-matching branch inside it), so the
+// UI is driven by the same code path the trainer filter already uses.
+function _edgeRunnerMatches(ru){
+  if(_edgeChipMode==='cd') return !!ru.isCandDWinner;
+  if(_edgeChipMode==='ground') return !!ru.isGroundLover;
+  return false;
+}
+
+function _tfMatchesForDayEdge(meetings){
+  var out=[];
+  (meetings||[]).forEach(function(m){
+    (m.races||[]).forEach(function(race,ri){
+      var hasMatch=(race.runners||[]).some(_edgeRunnerMatches);
+      if(hasMatch){ out.push({meetingId:m.id,meetingName:m.name,meeting:m,raceIndex:ri,raceTime:race.t,race:race}); }
+    });
+  });
+  return out;
+}
+
+function _renderEdgeChips(){
+  var onStyle='flex:1;text-align:center;background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
+  var offStyle='flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
+  var t=document.getElementById('edge-chip-trainer');
+  var c=document.getElementById('edge-chip-cd');
+  var g=document.getElementById('edge-chip-ground');
+  if(t) t.style.cssText=(_edgeChipMode==='trainer'?onStyle:offStyle);
+  if(c) c.style.cssText=(_edgeChipMode==='cd'?onStyle:offStyle);
+  if(g) g.style.cssText=(_edgeChipMode==='ground'?onStyle:offStyle);
+  var inputWrap=document.getElementById('edge-trainer-input-wrap');
+  if(inputWrap) inputWrap.style.display=(_edgeChipMode==='trainer')?'':'none';
+}
+
+function _selectEdgeChip(mode){
+  if(_edgeChipMode===mode){ _renderEdgeChips(); return; }
+  if(_trainerFilter) _resetTrainerFilterState();
+  _edgeChipMode=mode;
+  _tfSelectedDay=null;
+  _tfRaceSel={};
+  _renderEdgeChips();
+  if(mode==='trainer'){
+    renderTodayMeetingsList();
+  }else{
+    _tfLoadDays();
+  }
+}
+
+function clearEdgeFilter(){
+  _edgeChipMode='trainer';
+  _tfSelectedDay=null;
+  _tfRaceSel={};
+  _renderEdgeChips();
+  renderTodayMeetingsList();
+}
+
+// DI card CTA for Course and Distance / Ground Edge signal cards — "View all
+// horses". Switches to the Racecards section, activates the matching chip,
+// and scrolls down — same scroll pattern _navToday uses in selectRacingSection.
+function _activateEdgeFilterFromCta(mode){
+  selectRacingSection('racecards');
+  _selectEdgeChip(mode);
+  setTimeout(function(){
+    var _el=document.getElementById('today-meetings-list');
+    if(_el) _el.scrollIntoView({behavior:'smooth',block:'start'});
+  },120);
+}
+
 function renderTrainerFilterMultiDay(el,isInitial){
+  // Trainer mode: byte-identical to before — _tfMatchesForDay/_trainerFilter,
+  // "Filtering: {name}", clearTrainerFilter(). Edge mode (_edgeChipMode
+  // 'cd'/'ground'): same rendering below, fed by _tfMatchesForDayEdge and an
+  // "Edge: ..." chip/clearEdgeFilter() instead — added, not substituted.
+  var _isEdge=!_trainerFilter&&_edgeChipMode!=='trainer';
+  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':'Edge: Ground');
+  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':'Ground specialists');
+  var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
   var dayKeys=['today'].concat(_tfDayDates);
   var dayMatches={};
-  dayKeys.forEach(function(k){ dayMatches[k]=_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
+  dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_tfDayMeetings[k]||[]):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
 
   if(_tfSelectedDay===null){
     var firstWithRunners=dayKeys.filter(function(k){ return dayMatches[k].length>0; })[0];
@@ -11891,13 +11980,13 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
   out+='<div style="display:inline-flex;align-items:center;gap:8px;background:#10b981;color:#fff;border-radius:99px;padding:6px 8px 6px 14px;margin:10px 12px;font-size:13px;font-weight:600">';
-  out+='<span>Filtering: '+escHtml(_trainerFilter)+'</span>';
-  out+='<span onclick="clearTrainerFilter()" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
+  out+='<span>'+(_trainerFilter?'Filtering: ':'')+escHtml(_filterLabel)+'</span>';
+  out+='<span onclick="'+_filterClearFn+'" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
   out+='</div>';
 
   var totalMatches=dayKeys.reduce(function(s,k){ return s+dayMatches[k].length; },0);
   if(!totalMatches){
-    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' in the next 5 days</div>';
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' in the next 5 days</div>';
     out+='</div>';
     el.innerHTML=out;
     if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -11921,7 +12010,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   var dayRaces=(dayMatches[_tfSelectedDay]||[]).slice().sort(function(a,b){ return (a.race.t24||0)-(b.race.t24||0); });
   if(!dayRaces.length){
-    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
     out+='</div>';
     el.innerHTML=out;
     if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -12491,7 +12580,7 @@ var _rcListForCards=false;
 function renderTodayMeetingsList(isInitial){
   var el=document.getElementById("today-meetings-list");
   if(!el) return;
-  if(_trainerFilter){
+  if(_trainerFilter||_edgeChipMode!=='trainer'){
     renderTrainerFilterMultiDay(el,isInitial);
     return;
   }
@@ -12765,8 +12854,9 @@ function _renderCurrentHomeList(){
   // Active trainer filter always wins — renderTodayMeetingsList delegates to
   // the multi-day filter view. Without this, the _homeRcDay==='tomorrow'
   // branch (reachable automatically since the evening auto-switch) rendered
-  // tomorrow content over the filter view on every 60s tick / tab tap.
-  if(_trainerFilter){ renderTodayMeetingsList(); return; }
+  // tomorrow content over the filter view on every 60s tick / tab tap. An
+  // active Edge Filter chip (C&D/Ground) wins the same way.
+  if(_trainerFilter||_edgeChipMode!=='trainer'){ renderTodayMeetingsList(); return; }
   var _el=document.getElementById('today-meetings-list');
   if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
   else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(_el); }
@@ -13886,6 +13976,8 @@ function runnerRow(ru,ctx,extraHtml){
   +'</div>';
 
   var _rowBg=(_trainerFilter&&trainer&&trainer.toLowerCase()===_trainerFilter.toLowerCase())?'#ecfdf5':'#fff';
+  if(_edgeChipMode==='cd'&&ru.isCandDWinner) _rowBg='#ecfdf5';
+  if(_edgeChipMode==='ground'&&ru.isGroundLover) _rowBg='#ecfdf5';
   var _isHorseHighlighted=!!(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim());
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
@@ -14871,6 +14963,7 @@ function renderAIIntelligence(){
         +'<div style="display:flex;flex-direction:column;gap:8px">'
           +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(_displayPrice||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
           +'<button class="ai-cta-light" onclick="highlightHorse(\''+item.horseName.replace(/'/g,"\\'")+'\');selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
+          +((item.signalType==='Course and Distance'||item.signalType==='Ground Edge')?'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\''+(item.signalType==='Course and Distance'?'cd':'ground')+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View all horses</button>':'')
         +'</div>'
       +'</div>'
     +'</div>';
