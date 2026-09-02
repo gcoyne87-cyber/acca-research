@@ -11953,11 +11953,10 @@ function clearEdgeFilter(){
 // and scrolls down — same scroll pattern _navToday uses in selectRacingSection.
 function _activateEdgeFilterFromCta(mode){
   selectRacingSection('racecards');
+  // _selectEdgeChip -> _tfLoadDays -> renderTodayMeetingsList(true) ->
+  // renderTrainerFilterMultiDay(el, true) already scrolls #edge-filter-chips
+  // into view via _scrollAfterRender() — no separate scroll needed here.
   _selectEdgeChip(mode);
-  setTimeout(function(){
-    var _el=document.getElementById('today-meetings-list');
-    if(_el) _el.scrollIntoView({behavior:'smooth',block:'start'});
-  },120);
 }
 
 function renderTrainerFilterMultiDay(el,isInitial){
@@ -11969,6 +11968,15 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':'Edge: Ground');
   var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':'Ground specialists');
   var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
+  // Trainer-search path: scroll #today-meetings-list into view, unchanged.
+  // Edge-filter path: scroll the chip row into view instead, so the filter
+  // chips (and the trainer sections above them) stay on screen rather than
+  // being pushed off the top by #today-meetings-list's own scrollIntoView.
+  var _scrollAfterRender=function(){
+    if(isInitial!==true) return;
+    var _target=_isEdge?document.getElementById('edge-filter-chips'):el;
+    if(_target) _target.scrollIntoView({behavior:'smooth',block:'start'});
+  };
   var dayKeys=['today'].concat(_tfDayDates);
   var dayMatches={};
   dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_tfDayMeetings[k]||[]):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
@@ -11989,7 +11997,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' in the next 5 days</div>';
     out+='</div>';
     el.innerHTML=out;
-    if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
+    _scrollAfterRender();
     return;
   }
 
@@ -12013,7 +12021,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
     out+='</div>';
     el.innerHTML=out;
-    if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
+    _scrollAfterRender();
     return;
   }
 
@@ -12053,7 +12061,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   out+='</div>';
   el.innerHTML=out;
-  if(isInitial===true) el.scrollIntoView({behavior:'smooth',block:'start'});
+  _scrollAfterRender();
 }
 
 function _getAllTrainerNames(){
