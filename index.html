@@ -11794,6 +11794,11 @@ function trainerFilterSelectRace(meetingId,raceTime){
     _trainerFilterSelected={meetingId:meetingId,raceTime:raceTime};
   }
   renderTodayMeetingsList();
+  // Same pill restore the other select handlers have — without it the
+  // re-render left the bar rebuilt at scrollLeft 0.
+  var el=document.getElementById('tfd-race-pills');
+  var pill=el?el.querySelector('.time-tab.active'):null;
+  if(pill) pill.scrollIntoView({behavior:'smooth',inline:'nearest'});
 }
 
 // State-only reset used by the navigation paths — unlike clearTrainerFilter()
@@ -11877,6 +11882,25 @@ function _tfLoadDays(){
     });
 }
 
+// Pill-bar scroll preservation — every innerHTML re-render rebuilds the
+// horizontal race-time pill bars at scrollLeft 0, visibly snapping them back
+// to the start (worst on the 60s auto-refresh tick, which re-renders whatever
+// list is on screen once a minute). Capture every bar's scroll position by id
+// before a re-render and put it back straight after the new markup lands.
+function _capturePillScrolls(){
+  var saved={};
+  var bars=document.querySelectorAll('[id^="tdpills-"],[id^="tmpills-"],#tf-race-pills,#tfd-race-pills,#tmf-race-pills,#fd-race-pills');
+  for(var i=0;i<bars.length;i++){ if(bars[i].scrollLeft) saved[bars[i].id]=bars[i].scrollLeft; }
+  return saved;
+}
+function _restorePillScrolls(saved){
+  if(!saved) return;
+  Object.keys(saved).forEach(function(id){
+    var b=document.getElementById(id);
+    if(b) b.scrollLeft=saved[id];
+  });
+}
+
 function _tfSelectDay(dayKey){
   _tfSelectedDay=dayKey;
   renderTodayMeetingsList(false);
@@ -11884,7 +11908,12 @@ function _tfSelectDay(dayKey){
 
 function _tfSelectRace(dayKey,meetingId,raceTime){
   var key=dayKey+'|'+meetingId;
-  _tfRaceSel[key]=(_tfRaceSel[key]===raceTime)?null:raceTime;
+  var wasSelected=_tfRaceSel[key]===raceTime;
+  // Single selection across ALL meetings — the pill bar mixes races from
+  // every meeting, so clearing only the tapped meeting's entry left other
+  // meetings' picks green alongside the new one.
+  _tfRaceSel={};
+  if(!wasSelected) _tfRaceSel[key]=raceTime;
   renderTodayMeetingsList(false);
   var el=document.getElementById("tf-race-pills");
   var pill=el?el.querySelector(".time-tab.active"):null;
@@ -11975,8 +12004,14 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var _scrollAfterRender=function(){
     if(isInitial!==true) return;
     var _target=_isEdge?document.getElementById('edge-filter-chips'):el;
-    if(_target) _target.scrollIntoView({behavior:'smooth',block:'start'});
+    if(_target){
+      // block:'start' without a scroll margin puts the target's top ~48px
+      // under the sticky .topnav — keep the header visible in both modes.
+      _target.style.scrollMarginTop='56px';
+      _target.scrollIntoView({behavior:'smooth',block:'start'});
+    }
   };
+  var _pillSave=_capturePillScrolls();
   var dayKeys=['today'].concat(_tfDayDates);
   var dayMatches={};
   dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_tfDayMeetings[k]||[]):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
@@ -12031,7 +12066,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var selectedFr=null;
   dayRaces.forEach(function(fr){
     var rk=selKeyPrefix+fr.meetingId;
-    var isSel=_tfRaceSel[rk]?_tfRaceSel[rk]===fr.raceTime:fr===dayRaces[0];
+    var isSel=_tfRaceSel[rk]===fr.raceTime;
     if(isSel) selectedFr=fr;
     out+='<div onclick="_tfSelectRace(\''+_tfSelectedDay+'\',\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab'+(isSel?' active':'')+'" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
     out+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
@@ -12061,6 +12096,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   out+='</div>';
   el.innerHTML=out;
+  _restorePillScrolls(_pillSave);
   _scrollAfterRender();
 }
 
@@ -12465,6 +12501,7 @@ function renderFutureDateContent(dateStr,targetEl){
   var el=targetEl||document.getElementById('racing-future-content');
   if(!el) return;
   function _renderMeetings(meetings){
+    var _pillSave=_capturePillScrolls();
     RC_MEETINGS=meetings;
     var filteredRaces=null;
     if(_trainerFilter){
@@ -12501,6 +12538,7 @@ function renderFutureDateContent(dateStr,targetEl){
       }
       out2+='</div>';
       el.innerHTML=out2;
+      _restorePillScrolls(_pillSave);
       return;
     }
     var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
@@ -12555,6 +12593,7 @@ function renderFutureDateContent(dateStr,targetEl){
     });
     out+='</div>';
     el.innerHTML=out;
+    _restorePillScrolls(_pillSave);
   }
   if(_futureDateCache[dateStr]){
     _renderMeetings(_futureDateCache[dateStr]);
@@ -12592,6 +12631,7 @@ function renderTodayMeetingsList(isInitial){
     renderTrainerFilterMultiDay(el,isInitial);
     return;
   }
+  var _pillSave=_capturePillScrolls();
   if(_homeRcDay==='tomorrow'){
     el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
     var cnt=document.getElementById('today-meetings-count');
@@ -12647,10 +12687,10 @@ function renderTodayMeetingsList(isInitial){
       out2+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' today</div>';
     } else {
       out2+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
-      out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+      out2+='<div id="tfd-race-pills" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
       filteredRaces.forEach(function(fr){
         var isSel=_trainerFilterSelected&&_trainerFilterSelected.meetingId===fr.meetingId&&_trainerFilterSelected.raceTime===fr.raceTime;
-        out2+='<div onclick="trainerFilterSelectRace(\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
+        out2+='<div onclick="trainerFilterSelectRace(\''+fr.meetingId+'\',\''+fr.raceTime+'\')" class="time-tab'+(isSel?' active':'')+'" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
         out2+='<div style="font-size:16px;font-weight:'+(isSel?"700":"500")+';color:'+(isSel?"#10b981":"#9aa3b5")+';white-space:nowrap">'+escHtml(fr.raceTime)+'</div>';
         out2+='<div style="font-size:11px;color:'+(isSel?"#10b981":"#b0b8c8")+';margin-top:2px;white-space:nowrap">'+escHtml(fr.meetingName)+'</div>';
         out2+='</div>';
@@ -12680,6 +12720,7 @@ function renderTodayMeetingsList(isInitial){
     }
     out2+='</div>';
     el.innerHTML=out2;
+    _restorePillScrolls(_pillSave);
     return;
   }
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
@@ -12776,6 +12817,7 @@ function renderTodayMeetingsList(isInitial){
   });
   out+='</div>';
   el.innerHTML=out;
+  _restorePillScrolls(_pillSave);
 }
 var _rcSingleOpenMeeting=null;
 var _rcSingleOpenRace={};
@@ -16803,7 +16845,12 @@ function selectRacingSection(s){
       var _scrollToRacecardsTop=function(containerId){
         setTimeout(function(){
           var _el=document.getElementById(containerId);
-          if(_el) _el.scrollIntoView({behavior:'smooth',block:'start'});
+          if(_el){
+            // Sticky .topnav covers the top ~48px of a block:'start' target
+            // without a scroll margin — keep the race header visible.
+            _el.style.scrollMarginTop='56px';
+            _el.scrollIntoView({behavior:'smooth',block:'start'});
+          }
         },120);
       };
       var _navToday=function(m){
@@ -17224,6 +17271,7 @@ function renderTomorrowMeetingsList(targetEl){
   var el=targetEl||document.getElementById("tomorrow-meetings-list");
   if(!el) return;
   function _renderMeetings(meetings){
+    var _pillSave=_capturePillScrolls();
     TM_MEETINGS=meetings;
     var filteredRaces=null;
     if(_trainerFilter){
@@ -17247,7 +17295,7 @@ function renderTomorrowMeetingsList(targetEl){
         out2+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_trainerFilter)+' today</div>';
       }else{
         out2+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
-        out2+='<div style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
+        out2+='<div id="tmf-race-pills" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
         filteredRaces.forEach(function(fr){
           var isSel=tmOpenRace[fr.meetingId]===fr.raceIndex;
           out2+='<div onclick="tomorrowSelectRace(\''+fr.meetingId+'\','+fr.raceIndex+')" class="time-tab" style="flex-shrink:0;padding:10px 16px;border-bottom:2px solid '+(isSel?"#10b981":"transparent")+'">';
@@ -17260,6 +17308,7 @@ function renderTomorrowMeetingsList(targetEl){
       }
       out2+='</div>';
       el.innerHTML=out2;
+      _restorePillScrolls(_pillSave);
       return;
     }
     var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
@@ -17310,6 +17359,7 @@ function renderTomorrowMeetingsList(targetEl){
     });
     out+='</div>';
     el.innerHTML=out;
+    _restorePillScrolls(_pillSave);
   }
   if(_tomorrowCache){
     TM_MEETINGS=_tomorrowCache;
