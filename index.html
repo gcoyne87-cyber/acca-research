@@ -11984,7 +11984,12 @@ function _selectEdgeChip(mode){
   _tfRaceSel={};
   _renderEdgeChips();
   if(mode==='trainer'){
-    renderTodayMeetingsList();
+    // Instant restore from memory — _renderCurrentHomeList picks the right
+    // renderer for the current day (RC_MEETINGS today / TM_MEETINGS after the
+    // evening switch). Calling renderTodayMeetingsList directly here showed
+    // the "Tomorrow's race cards are not available yet" placeholder in the
+    // evening instead of the loaded tomorrow cards.
+    _renderCurrentHomeList();
   }else{
     _tfLoadDays();
   }
@@ -11995,7 +12000,10 @@ function clearEdgeFilter(){
   _tfSelectedDay=null;
   _tfRaceSel={};
   _renderEdgeChips();
-  renderTodayMeetingsList();
+  // Same instant in-memory restore as _selectEdgeChip('trainer') above — no
+  // fetch, no placeholder flash; the racecards reappear from RC_MEETINGS /
+  // TM_MEETINGS immediately.
+  _renderCurrentHomeList();
 }
 
 // DI card CTA for Course and Distance / Ground Edge signal cards — "View all
@@ -12037,9 +12045,26 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var dayMatches={};
   dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_edgeDayMeetings(k)):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
 
+  // Edge-mode evening switch — same pattern as the racecards/Next Race
+  // switches: today's matches only count races that haven't gone off yet, and
+  // once the last matching race has run the Today tab disappears entirely and
+  // the view defaults to the next day that has matches. The 60s auto-refresh
+  // tick re-renders this view, so the flip happens mid-session. Trainer mode
+  // untouched — _visibleDayKeys===dayKeys there.
+  var _visibleDayKeys=dayKeys;
+  if(_isEdge){
+    var _emNow=new Date();
+    var _emNowMins=_emNow.getHours()*60+_emNow.getMinutes();
+    dayMatches.today=(dayMatches.today||[]).filter(function(fr){ return !fr.race.t24||fr.race.t24>=_emNowMins; });
+    if(!dayMatches.today.length){
+      _visibleDayKeys=dayKeys.filter(function(k){ return k!=='today'; });
+      if(_tfSelectedDay==='today') _tfSelectedDay=null;
+    }
+  }
+
   if(_tfSelectedDay===null){
-    var firstWithRunners=dayKeys.filter(function(k){ return dayMatches[k].length>0; })[0];
-    _tfSelectedDay=firstWithRunners||'today';
+    var firstWithRunners=_visibleDayKeys.filter(function(k){ return dayMatches[k].length>0; })[0];
+    _tfSelectedDay=firstWithRunners||_visibleDayKeys[0]||'today';
   }
 
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
@@ -12048,7 +12073,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   out+='<span onclick="'+_filterClearFn+'" style="cursor:pointer;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">&times;</span>';
   out+='</div>';
 
-  var totalMatches=dayKeys.reduce(function(s,k){ return s+dayMatches[k].length; },0);
+  var totalMatches=_visibleDayKeys.reduce(function(s,k){ return s+dayMatches[k].length; },0);
   if(!totalMatches){
     out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' in the next 5 days</div>';
     out+='</div>';
@@ -12062,7 +12087,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var disabledStyle='background:none;color:#ccd1dc;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:default;font-family:inherit;white-space:nowrap';
 
   out+='<div style="display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7">';
-  dayKeys.forEach(function(k){
+  _visibleDayKeys.forEach(function(k){
     var label=_tfDayLabels[k]||k;
     var count=dayMatches[k].length;
     var isActive=k===_tfSelectedDay;
@@ -12149,6 +12174,10 @@ function _popularTrainersTomorrowMode(){
     && typeof TM_MEETINGS!=='undefined' && TM_MEETINGS.length>0;
 }
 
+// One random rank per trainer per page load — see the shuffle note in
+// _buildPopularTrainers.
+var _ptRandomOrder={};
+
 function _buildPopularTrainers(){
   var eliteTrainers=[
     'A P O\'Brien',
@@ -12225,7 +12254,15 @@ function _buildPopularTrainers(){
     var found=countKeys.filter(function(k){ return k.toLowerCase()===elite.toLowerCase(); })[0];
     if(found){ matched.push({name:found,count:counts[found],venues:venues[found]||[]}); }
   });
-  matched.sort(function(a,b){ return b.count-a.count; });
+  // Random order, not runner-count order — no yard should sit first every
+  // day just for having the most entries. Each trainer draws a random rank
+  // once per page load (kept in _ptRandomOrder), so the order is a fresh
+  // shuffle on every load but stable across the 60s re-renders within a
+  // session — cards don't jump around every minute.
+  matched.forEach(function(t){
+    if(_ptRandomOrder[t.name]==null) _ptRandomOrder[t.name]=Math.random();
+  });
+  matched.sort(function(a,b){ return _ptRandomOrder[a.name]-_ptRandomOrder[b.name]; });
   return matched;
 }
 
@@ -12238,11 +12275,11 @@ function _renderPopularTrainers(){
   var out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0">';
   out+='<div style="display:flex;align-items:center;gap:10px">';
   out+='<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>';
-  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">'+(_tmMode?"Tomorrow's Trainers":"Popular Trainers")+'</div>';
+  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">'+(_tmMode?'Popular Trainers &middot; Tomorrow':'Popular Trainers')+'</div>';
   out+='</div>';
   out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
-  out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners today</div>';
+  out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners '+(_tmMode?'tomorrow':'today')+'</div>';
   out+='<div style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
