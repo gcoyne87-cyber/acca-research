@@ -19,6 +19,9 @@
 [functions."fetch-future-cards-background"]
   schedule = "0 23 * * *"
 
+[functions."future-cards-watchdog"]
+  schedule = "30 23 * * *"
+
 [functions."fetch-horse-history-1-background"]
   schedule = "30 23 * * *"
 

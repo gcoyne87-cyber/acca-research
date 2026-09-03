@@ -270,6 +270,18 @@ function redisGet(key) {
   });
 }
 
+function redisSet(key, value) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
 // ── RUNNER TAG FLAGS ─────────────────────────────────────────────────────────
 // Server-computed tag flags embedded on each runner — form history is not
 // available client-side at render time, so tags must be decided here. First
@@ -280,6 +292,24 @@ function stripParens(s) {
   return (s || '').replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
 }
 
+// Hot Yard whitelist — a server-side copy of the 39-name eliteTrainers list in
+// index.html's _buildPopularTrainers (the client list can't be read from here).
+// If a yard is added there it must be added here too. Stored lowercase for the
+// case-insensitive matches below.
+const ELITE_TRAINERS_LC = [
+  "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
+  'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
+  'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
+  'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
+  'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
+  'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
+  'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
+  'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
+  'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
+  "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
+  'Sir Mark Prescott Bt'
+].map(function(t) { return t.toLowerCase(); });
+
 // "2m1f111y" -> miles*8 + furlongs as an integer, yards ignored — history and
 // racecard yardages differ freely for the same trip, so yards must not count.
 function milesFurlongs(distStr) {
@@ -289,7 +319,7 @@ function milesFurlongs(distStr) {
   return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
 }
 
-function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing) {
+function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
@@ -318,16 +348,31 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     }
   }
 
-  // Ground Lover — horse has won on Heavy or
-  // Yielding ground in last 6 runs AND today's
-  // going is Heavy or Yielding
-  var GROUND_RE = /heavy|yield/i;
-  if(GROUND_RE.test(meetingGoing)){
+  // Ground Lover — today is GENUINELY easy ground AND the horse has
+  // won on ground with cut in its last 6 runs. The day test looks at
+  // the PRIMARY going term only, so "Good, good to soft in places"
+  // days never fire — this tag is meant to be rare. Irish and UK
+  // terms both covered: Yielding/Yielding To Soft/Soft/Soft To
+  // Heavy/Heavy days qualify; Good To Soft / Good To Yielding do not.
+  var EASY_DAY_RE = /^(yielding|soft|heavy)/i;
+  var WIN_GROUND_RE = /heavy|yield|soft/i;
+  var primaryGoing = String(meetingGoing || '')
+    .replace(/^[a-z]+\s*:\s*/i, '')   // strip AW surface prefix e.g. "TAPETA: "
+    .split(/[,(]/)[0].trim();          // primary term before any ", x in places" / "(GoingStick"
+  if(EASY_DAY_RE.test(primaryGoing)){
     var hasGroundWin = runs.some(function(h){
       return String(h.pos) === '1' &&
-             GROUND_RE.test(h.going || '');
+             WIN_GROUND_RE.test(h.going || '');
     });
     if(hasGroundWin) runner.isGroundLover = true;
+  }
+
+  // Hot Yard — trainer is one of today's top-3 in-form elite yards, computed
+  // once per enrichment pass from trainer-form:table:{date} (see
+  // enrichRunnerTags). Empty list when the table is missing — tag skipped.
+  if(hotYardTrainers && hotYardTrainers.length){
+    var _tn = (runner.trainer || '').toLowerCase().trim();
+    if(_tn && hotYardTrainers.indexOf(_tn) !== -1) runner.isHotYard = true;
   }
 }
 
@@ -348,7 +393,11 @@ async function enrichRunnerTags(meetings, date) {
     });
     if (!entries.length) return meetings;
     const url = new URL(UPSTASH_URL);
-    const cmds = entries.map(function(e) { return ['GET', 'form:history:' + e.r.horse_id + ':' + date]; });
+    // First pipeline slot: today's trainer form table, for the Hot Yard tag —
+    // one extra command on the existing round trip, no separate request.
+    const cmds = [['GET', 'trainer-form:table:' + date]].concat(
+      entries.map(function(e) { return ['GET', 'form:history:' + e.r.horse_id + ':' + date]; })
+    );
     const body = JSON.stringify(cmds);
     const results = await new Promise(function(resolve) {
       const req = https.request({
@@ -364,13 +413,34 @@ async function enrichRunnerTags(meetings, date) {
       req.end();
     });
     if (!Array.isArray(results)) return meetings;
+    // Hot Yard trainers — from today's trainer form table (pipeline slot 0):
+    // elite-whitelisted, 9+ runs and 4+ wins in 7 days, 7-day strike rate
+    // strictly above 14-day (upward trend), top 3 by 7-day rate. A missing
+    // key or bad parse leaves the list empty and the tag silently off.
+    let hotYardTrainers = [];
+    try {
+      const tfRaw = results[0] && results[0].result;
+      const tfTable = tfRaw ? JSON.parse(tfRaw) : null;
+      if (Array.isArray(tfTable)) {
+        hotYardTrainers = tfTable.filter(function(t) {
+          const name = (t.trainerName || '').toLowerCase().trim();
+          const sr14 = t.strikeRate14d != null ? Number(t.strikeRate14d) : (Number(t.strikeRate) || 0);
+          return ELITE_TRAINERS_LC.indexOf(name) !== -1
+            && Number(t.runners7d) >= 9
+            && Number(t.winners7d) >= 4
+            && Number(t.strikeRate7d) > sr14;
+        }).sort(function(a, b) { return Number(b.strikeRate7d) - Number(a.strikeRate7d); })
+          .slice(0, 3)
+          .map(function(t) { return (t.trainerName || '').toLowerCase().trim(); });
+      }
+    } catch (eHY) { hotYardTrainers = []; }
     entries.forEach(function(e, i) {
       try {
-        const raw = results[i] && results[i].result;
+        const raw = results[i + 1] && results[i + 1].result;
         if (!raw) return;
         const history = JSON.parse(raw);
         if (!Array.isArray(history)) return;
-        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going);
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
   } catch (e) { /* enrichment is best-effort by design */ }
@@ -396,6 +466,11 @@ exports.handler = async function(event) {
         try {
           const cached = await redisGet('racecards:' + d);
           const meetings = (cached && Array.isArray(cached.meetings)) ? cached.meetings : [];
+          // Tag enrichment for each date — without this the multi-day view
+          // (trainer filter / Today's Edges) had no isCandDWinner etc. flags
+          // on any future day. Best-effort like everywhere else: a failure
+          // just leaves that day untagged.
+          if (meetings.length) await enrichRunnerTags(meetings, d);
           meetings.forEach(function(m) { m.date = d; });
           return { date: d, meetings: meetings };
         } catch (e) {
@@ -447,6 +522,19 @@ exports.handler = async function(event) {
     }
 
     const meetings = mapRacecards(data);
+
+    // Write-back: this path only runs on a racecards:{date} cache miss (e.g.
+    // the nightly fetch-future-cards run was missed). Without it every request
+    // for the date re-paid the full live-API round trip all day — slow loads
+    // and blank flicker (2026-09-03). Written BEFORE tag enrichment so the
+    // stored shape matches what fetch-future-cards-background writes (tags are
+    // computed at read time, never stored). Never on empty (early-returned
+    // above) or error (thrown to the catch); its own failure is swallowed.
+    if (meetings.length) {
+      try { await redisSet('racecards:' + targetDate, { meetings: meetings, storedAt: new Date().toISOString() }); }
+      catch (eWB) { /* write-back is an optimisation — never block the response */ }
+    }
+
     await enrichRunnerTags(meetings, targetDate);
 
     return {

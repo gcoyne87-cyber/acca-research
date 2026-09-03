@@ -5618,6 +5618,7 @@ function unlockCorkAnalysis(){
           <div id="edge-chip-trainer" onclick="_selectEdgeChip('trainer')" style="flex:1;text-align:center;background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Trainer</div>
           <div id="edge-chip-cd" onclick="_selectEdgeChip('cd')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">C&amp;D</div>
           <div id="edge-chip-ground" onclick="_selectEdgeChip('ground')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Ground</div>
+          <div id="edge-chip-hotyard" onclick="_selectEdgeChip('hotyard')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Hot Yard</div>
         </div>
         <div id="edge-trainer-input-wrap" style="position:relative">
           <div style="display:flex;align-items:stretch;background:#fff;border-radius:99px;overflow:hidden;box-shadow:0 1px 3px rgba(13,27,62,0.08)">
@@ -11484,6 +11485,10 @@ function loadRacecards(){
           buildDateStrip();
         }
         _renderCurrentHomeList();
+        // Re-evaluates the Popular Trainers evening switch each tick — flips
+        // to "Tomorrow's Trainers" once today's last race is off, and back on
+        // the midnight refetch (which re-renders via loadRacecards anyway).
+        _renderPopularTrainers();
         var inl=document.getElementById('racing-inline-meeting');
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
       },60000);
@@ -11928,6 +11933,7 @@ function _tfSelectRace(dayKey,meetingId,raceTime){
 function _edgeRunnerMatches(ru){
   if(_edgeChipMode==='cd') return !!ru.isCandDWinner;
   if(_edgeChipMode==='ground') return !!ru.isGroundLover;
+  if(_edgeChipMode==='hotyard') return !!ru.isHotYard;
   return false;
 }
 
@@ -11942,15 +11948,30 @@ function _tfMatchesForDayEdge(meetings){
   return out;
 }
 
+// Edge-mode day sources — prefer the tag-enriched copies already in memory
+// over the ?dates= multi-day fetch: RC_MEETINGS (today) and TM_MEETINGS
+// (tomorrow) come from the single-date endpoint, which runs enrichRunnerTags,
+// as does _futureDateCache for any future date the user has opened. The
+// _tfDayMeetings entry from the multi-day fetch is the fallback for days with
+// no enriched copy loaded.
+function _edgeDayMeetings(k){
+  if(k==='today') return _tfDayMeetings.today||[];
+  if(_tfDayDates[0]===k&&window._tmRealDataLoaded&&typeof TM_MEETINGS!=='undefined'&&TM_MEETINGS.length) return TM_MEETINGS;
+  if(typeof _futureDateCache!=='undefined'&&_futureDateCache[k]&&_futureDateCache[k].length) return _futureDateCache[k];
+  return _tfDayMeetings[k]||[];
+}
+
 function _renderEdgeChips(){
   var onStyle='flex:1;text-align:center;background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
   var offStyle='flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
   var t=document.getElementById('edge-chip-trainer');
   var c=document.getElementById('edge-chip-cd');
   var g=document.getElementById('edge-chip-ground');
+  var hy=document.getElementById('edge-chip-hotyard');
   if(t) t.style.cssText=(_edgeChipMode==='trainer'?onStyle:offStyle);
   if(c) c.style.cssText=(_edgeChipMode==='cd'?onStyle:offStyle);
   if(g) g.style.cssText=(_edgeChipMode==='ground'?onStyle:offStyle);
+  if(hy) hy.style.cssText=(_edgeChipMode==='hotyard'?onStyle:offStyle);
   var inputWrap=document.getElementById('edge-trainer-input-wrap');
   if(inputWrap) inputWrap.style.display=(_edgeChipMode==='trainer')?'':'none';
 }
@@ -11994,8 +12015,8 @@ function renderTrainerFilterMultiDay(el,isInitial){
   // 'cd'/'ground'): same rendering below, fed by _tfMatchesForDayEdge and an
   // "Edge: ..." chip/clearEdgeFilter() instead — added, not substituted.
   var _isEdge=!_trainerFilter&&_edgeChipMode!=='trainer';
-  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':'Edge: Ground');
-  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':'Ground specialists');
+  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':'Edge: Ground'));
+  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':'Ground specialists'));
   var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
   // Trainer-search path: scroll #today-meetings-list into view, unchanged.
   // Edge-filter path: scroll the chip row into view instead, so the filter
@@ -12014,7 +12035,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   var _pillSave=_capturePillScrolls();
   var dayKeys=['today'].concat(_tfDayDates);
   var dayMatches={};
-  dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_tfDayMeetings[k]||[]):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
+  dayKeys.forEach(function(k){ dayMatches[k]=_isEdge?_tfMatchesForDayEdge(_edgeDayMeetings(k)):_tfMatchesForDay(_tfDayMeetings[k]||[],_trainerFilter); });
 
   if(_tfSelectedDay===null){
     var firstWithRunners=dayKeys.filter(function(k){ return dayMatches[k].length>0; })[0];
@@ -12117,6 +12138,17 @@ function _getAllTrainerNames(){
   return names;
 }
 
+// Evening switch — mirrors the Next Race bridge and racecards auto-switch:
+// once every one of today's races has run and tomorrow's REAL data is in
+// memory (TM_MEETINGS boots as a placeholder — _tmRealDataLoaded guards that),
+// Popular Trainers shows tomorrow's yards instead. Reverts naturally at
+// midnight when the date-rollover refetch repopulates today's meetings.
+function _popularTrainersTomorrowMode(){
+  return RC_TODAY_MEETINGS.length>0 && !_getLiveMeetings().length
+    && window._tmRealDataLoaded===true
+    && typeof TM_MEETINGS!=='undefined' && TM_MEETINGS.length>0;
+}
+
 function _buildPopularTrainers(){
   var eliteTrainers=[
     'A P O\'Brien',
@@ -12163,9 +12195,11 @@ function _buildPopularTrainers(){
   var venues={};
   var _now=new Date();
   var _nowMins=_now.getHours()*60+_now.getMinutes();
+  var _useTomorrow=_popularTrainersTomorrowMode();
   function _tally(includePast){
-    RC_TODAY_MEETINGS.forEach(function(m){
-      (m.races||[]).filter(function(race){ return includePast||!race.t24||race.t24>=_nowMins; }).forEach(function(race){
+    var _src=_useTomorrow?TM_MEETINGS:RC_TODAY_MEETINGS;
+    _src.forEach(function(m){
+      (m.races||[]).filter(function(race){ return _useTomorrow||includePast||!race.t24||race.t24>=_nowMins; }).forEach(function(race){
         (race.runners||[]).forEach(function(ru){
           var t=(ru.trainer||'').trim();
           if(!t) return;
@@ -12181,7 +12215,9 @@ function _buildPopularTrainers(){
   // the whole section silently vanished from the homepage for the rest of the
   // day (confirmed: 27 trainers at midday, 0 after the last race). Fall back
   // to counting ALL of today's entries — "X Entries Today" stays truthful and
-  // the tap-through to the trainer filter view is unchanged.
+  // the tap-through to the trainer filter view is unchanged. (Only reachable
+  // when tomorrow's data hasn't loaded — otherwise the tomorrow switch above
+  // already took over.)
   if(!Object.keys(counts).length) _tally(true);
   var countKeys=Object.keys(counts);
   var matched=[];
@@ -12196,12 +12232,13 @@ function _buildPopularTrainers(){
 function _renderPopularTrainers(){
   var el=document.getElementById('popular-trainers-section');
   if(!el) return;
+  var _tmMode=_popularTrainersTomorrowMode();
   var trainers=_buildPopularTrainers();
   if(!trainers.length){ el.style.display='none'; return; }
   var out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0">';
   out+='<div style="display:flex;align-items:center;gap:10px">';
   out+='<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>';
-  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Popular Trainers</div>';
+  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">'+(_tmMode?"Tomorrow's Trainers":"Popular Trainers")+'</div>';
   out+='</div>';
   out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
@@ -12211,7 +12248,7 @@ function _renderPopularTrainers(){
     var tEsc=t.name.replace(/'/g,"\\'");
     out+='<div onclick="setTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
     out+='<div style="font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+t.count+' Entries Today</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+t.count+' Entries '+(_tmMode?'Tomorrow':'Today')+'</div>';
     out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:6px">View Runners &rarr;</div>';
     out+='</div>';
   });
@@ -13930,6 +13967,7 @@ function runnerRow(ru,ctx,extraHtml){
   if(ru.isIrishRaider) _tags.push('Irish Raider');
   if(ru.isGBRaider) _tags.push('GB Raider');
   if(ru.isGroundLover) _tags.push('Ground Lover');
+  if(ru.isHotYard) _tags.push('Hot Yard');
   var tagsHtml=_tags.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+_tags.map(function(t){return '<span style="'+_tagPill+'">'+t+'</span>';}).join('')+'</div>':'';
 
   var badgeHtml='';
@@ -14028,6 +14066,7 @@ function runnerRow(ru,ctx,extraHtml){
   var _rowBg=(_trainerFilter&&trainer&&trainer.toLowerCase()===_trainerFilter.toLowerCase())?'#ecfdf5':'#fff';
   if(_edgeChipMode==='cd'&&ru.isCandDWinner) _rowBg='#ecfdf5';
   if(_edgeChipMode==='ground'&&ru.isGroundLover) _rowBg='#ecfdf5';
+  if(_edgeChipMode==='hotyard'&&ru.isHotYard) _rowBg='#ecfdf5';
   var _isHorseHighlighted=!!(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim());
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
