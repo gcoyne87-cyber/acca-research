@@ -12299,30 +12299,29 @@ function _renderPopularTrainers(){
   _initPtCarousel(_prevSL);
 }
 
-// ── Popular Trainers auto-scroll carousel ──────────────────────────────────
+// ── Popular Trainers conveyor carousel ─────────────────────────────────────
 // Card markup and tap behaviour untouched — this only drives scrollLeft on
-// the #pt-carousel strip. Steps one card at a time with a reading pause,
-// loops seamlessly via a duplicated card set (the instant wrap jump lands on
-// identical content, so it is invisible), and any touch / wheel / drag pauses
-// auto-scroll until 3 seconds after the last interaction.
-var _ptCarTimer=null;
+// the #pt-carousel strip. The whole strip slides continuously right-to-left
+// like a conveyor belt via a requestAnimationFrame loop, looping seamlessly
+// through a duplicated card set (the wrap jump lands on identical content, so
+// it is invisible). Touch / wheel / drag pauses the belt until 3 seconds
+// after the last interaction, then it resumes from wherever it stopped.
+// Setup is LAZY: the first render can fire while the section is still hidden
+// during boot (zero dimensions — this is what silently killed v1 on the live
+// site), so the loop waits each frame until the strip is laid out and
+// overflowing before duplicating and starting to move.
+var _ptCarRaf=null;
 var _ptCarPauseUntil=0;
 var _ptCarSetWidth=0;
 var _PT_CAR_GAP=10;           // must match the flex gap on #pt-carousel
-var _PT_CAR_STEP_MS=3500;     // dwell per card — comfortable reading time
-var _PT_CAR_RESUME_MS=3000;   // idle time before auto-scroll resumes
+var _PT_CAR_SPEED=25;         // px per second — slow, readable belt pace
+var _PT_CAR_RESUME_MS=3000;   // idle time before the belt resumes
 
 function _initPtCarousel(restoreSL){
   var sc=document.getElementById('pt-carousel');
-  if(_ptCarTimer){ clearInterval(_ptCarTimer); _ptCarTimer=null; }
+  if(_ptCarRaf){ cancelAnimationFrame(_ptCarRaf); _ptCarRaf=null; }
+  _ptCarSetWidth=0;
   if(!sc) return;
-  // Static row when everything already fits — nothing to scroll.
-  if(sc.scrollWidth<=sc.clientWidth+4) return;
-  // Duplicate the card set once for the seamless loop. The wrap point is the
-  // single-set width plus one flex gap (the gap between the two copies).
-  _ptCarSetWidth=sc.scrollWidth+_PT_CAR_GAP;
-  sc.innerHTML+=sc.innerHTML;
-  if(restoreSL) sc.scrollLeft=restoreSL;
   var _pause=function(){ _ptCarPauseUntil=Date.now()+_PT_CAR_RESUME_MS; };
   sc.addEventListener('touchstart',_pause,{passive:true});
   sc.addEventListener('touchmove',_pause,{passive:true});
@@ -12346,17 +12345,44 @@ function _initPtCarousel(restoreSL){
     document.addEventListener('mousemove',mm);
     document.addEventListener('mouseup',mu);
   });
-  _ptCarTimer=setInterval(function(){
-    if(Date.now()<_ptCarPauseUntil) return;
-    var scNow=document.getElementById('pt-carousel');
-    if(!scNow){ clearInterval(_ptCarTimer); _ptCarTimer=null; return; }
-    // Seamless wrap between steps: once past the first copy, jump back by
-    // exactly one set width — identical content, invisible.
-    if(scNow.scrollLeft>=_ptCarSetWidth) scNow.scrollLeft-=_ptCarSetWidth;
-    var card=scNow.firstElementChild;
-    var step=card?card.offsetWidth+_PT_CAR_GAP:150;
-    scNow.scrollTo({left:scNow.scrollLeft+step,behavior:'smooth'});
-  },_PT_CAR_STEP_MS);
+  var ready=false;
+  var wasPaused=false;
+  var pos=restoreSL||0;   // float position — scrollLeft reads back as an
+                          // integer, so accumulating on the element itself
+                          // would round sub-pixel movement away to nothing.
+  var last=null;
+  var frame=function(ts){
+    var el2=document.getElementById('pt-carousel');
+    if(!el2){ _ptCarRaf=null; return; }   // section re-rendered — the new render re-inits
+    if(!ready){
+      // Lazy setup — wait until the strip is visible, laid out, and actually
+      // overflowing. Duplicate once for the loop; wrap point is the single
+      // set width plus the flex gap between the two copies.
+      if(el2.clientWidth>0&&el2.scrollWidth>el2.clientWidth+4){
+        _ptCarSetWidth=el2.scrollWidth+_PT_CAR_GAP;
+        el2.innerHTML+=el2.innerHTML;
+        if(pos) el2.scrollLeft=pos;
+        ready=true;
+      }
+      last=ts;
+      _ptCarRaf=requestAnimationFrame(frame);
+      return;
+    }
+    var dt=last==null?16:Math.min(100,ts-last);
+    last=ts;
+    if(Date.now()<_ptCarPauseUntil){
+      wasPaused=true;
+    }else{
+      // Resuming after user interaction: pick up from wherever they left the
+      // strip, not from where the belt would have been.
+      if(wasPaused){ pos=el2.scrollLeft; wasPaused=false; }
+      pos+=_PT_CAR_SPEED*dt/1000;
+      if(pos>=_ptCarSetWidth) pos-=_ptCarSetWidth;
+      el2.scrollLeft=pos;
+    }
+    _ptCarRaf=requestAnimationFrame(frame);
+  };
+  _ptCarRaf=requestAnimationFrame(frame);
 }
 
 var _trainerFormData=[];
