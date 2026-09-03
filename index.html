@@ -12280,7 +12280,7 @@ function _renderPopularTrainers(){
   out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
   out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners '+(_tmMode?'tomorrow':'today')+'</div>';
-  out+='<div style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+  out+='<div id="pt-carousel" style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
     out+='<div onclick="setTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
@@ -12290,8 +12290,73 @@ function _renderPopularTrainers(){
     out+='</div>';
   });
   out+='</div>';
+  // Preserve carousel position across re-renders (the 60s tick rebuilds this
+  // section; the random order is session-stable so the content is identical).
+  var _prevCar=document.getElementById('pt-carousel');
+  var _prevSL=_prevCar?_prevCar.scrollLeft:0;
   el.innerHTML=out;
   el.style.display='';
+  _initPtCarousel(_prevSL);
+}
+
+// ── Popular Trainers auto-scroll carousel ──────────────────────────────────
+// Card markup and tap behaviour untouched — this only drives scrollLeft on
+// the #pt-carousel strip. Steps one card at a time with a reading pause,
+// loops seamlessly via a duplicated card set (the instant wrap jump lands on
+// identical content, so it is invisible), and any touch / wheel / drag pauses
+// auto-scroll until 3 seconds after the last interaction.
+var _ptCarTimer=null;
+var _ptCarPauseUntil=0;
+var _ptCarSetWidth=0;
+var _PT_CAR_GAP=10;           // must match the flex gap on #pt-carousel
+var _PT_CAR_STEP_MS=3500;     // dwell per card — comfortable reading time
+var _PT_CAR_RESUME_MS=3000;   // idle time before auto-scroll resumes
+
+function _initPtCarousel(restoreSL){
+  var sc=document.getElementById('pt-carousel');
+  if(_ptCarTimer){ clearInterval(_ptCarTimer); _ptCarTimer=null; }
+  if(!sc) return;
+  // Static row when everything already fits — nothing to scroll.
+  if(sc.scrollWidth<=sc.clientWidth+4) return;
+  // Duplicate the card set once for the seamless loop. The wrap point is the
+  // single-set width plus one flex gap (the gap between the two copies).
+  _ptCarSetWidth=sc.scrollWidth+_PT_CAR_GAP;
+  sc.innerHTML+=sc.innerHTML;
+  if(restoreSL) sc.scrollLeft=restoreSL;
+  var _pause=function(){ _ptCarPauseUntil=Date.now()+_PT_CAR_RESUME_MS; };
+  sc.addEventListener('touchstart',_pause,{passive:true});
+  sc.addEventListener('touchmove',_pause,{passive:true});
+  sc.addEventListener('wheel',_pause,{passive:true});
+  // Desktop click-drag scrolling (browsers have no native mouse drag-scroll).
+  // A real drag suppresses the click that fires on mouseup, so dragging
+  // across a card never activates its trainer filter; a plain click is
+  // untouched and works exactly as before.
+  sc.addEventListener('mousedown',function(e){
+    _pause();
+    var startX=e.pageX,startSL=sc.scrollLeft,moved=false;
+    var mm=function(ev){
+      if(Math.abs(ev.pageX-startX)>5) moved=true;
+      if(moved){ sc.scrollLeft=startSL-(ev.pageX-startX); _pause(); ev.preventDefault(); }
+    };
+    var mu=function(){
+      document.removeEventListener('mousemove',mm);
+      document.removeEventListener('mouseup',mu);
+      if(moved) sc.addEventListener('click',function(ce){ ce.stopPropagation(); ce.preventDefault(); },{capture:true,once:true});
+    };
+    document.addEventListener('mousemove',mm);
+    document.addEventListener('mouseup',mu);
+  });
+  _ptCarTimer=setInterval(function(){
+    if(Date.now()<_ptCarPauseUntil) return;
+    var scNow=document.getElementById('pt-carousel');
+    if(!scNow){ clearInterval(_ptCarTimer); _ptCarTimer=null; return; }
+    // Seamless wrap between steps: once past the first copy, jump back by
+    // exactly one set width — identical content, invisible.
+    if(scNow.scrollLeft>=_ptCarSetWidth) scNow.scrollLeft-=_ptCarSetWidth;
+    var card=scNow.firstElementChild;
+    var step=card?card.offsetWidth+_PT_CAR_GAP:150;
+    scNow.scrollTo({left:scNow.scrollLeft+step,behavior:'smooth'});
+  },_PT_CAR_STEP_MS);
 }
 
 var _trainerFormData=[];
