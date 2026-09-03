@@ -12280,7 +12280,8 @@ function _renderPopularTrainers(){
   out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
   out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners '+(_tmMode?'tomorrow':'today')+'</div>';
-  out+='<div id="pt-carousel" style="display:flex;gap:10px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+  out+='<div id="pt-carousel" style="overflow:hidden;padding:0 2px 4px">';
+  out+='<div id="pt-car-track" style="display:flex;gap:10px;will-change:transform">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
     out+='<div onclick="setTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
@@ -12289,14 +12290,13 @@ function _renderPopularTrainers(){
     out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:6px">View Runners &rarr;</div>';
     out+='</div>';
   });
-  out+='</div>';
-  // Preserve carousel position across re-renders (the 60s tick rebuilds this
-  // section; the random order is session-stable so the content is identical).
-  var _prevCar=document.getElementById('pt-carousel');
-  var _prevSL=_prevCar?_prevCar.scrollLeft:0;
+  out+='</div></div>';
+  // Belt position lives in the global _ptCarPos, so a re-render (60s tick)
+  // resumes from the same offset — the random order is session-stable, the
+  // content identical, the motion uninterrupted.
   el.innerHTML=out;
   el.style.display='';
-  _initPtCarousel(_prevSL);
+  _initPtCarousel();
 }
 
 // ── Popular Trainers conveyor carousel ─────────────────────────────────────
@@ -12313,29 +12313,59 @@ function _renderPopularTrainers(){
 var _ptCarRaf=null;
 var _ptCarPauseUntil=0;
 var _ptCarSetWidth=0;
-var _PT_CAR_GAP=10;           // must match the flex gap on #pt-carousel
+var _ptCarPos=0;              // belt offset in px — global so the 60s
+                              // re-render resumes seamlessly from the same spot
+var _PT_CAR_GAP=10;           // must match the flex gap on #pt-car-track
 var _PT_CAR_SPEED=25;         // px per second — slow, readable belt pace
 var _PT_CAR_RESUME_MS=3000;   // idle time before the belt resumes
 
-function _initPtCarousel(restoreSL){
+function _initPtCarousel(){
   var sc=document.getElementById('pt-carousel');
+  var track=document.getElementById('pt-car-track');
   if(_ptCarRaf){ cancelAnimationFrame(_ptCarRaf); _ptCarRaf=null; }
   _ptCarSetWidth=0;
-  if(!sc) return;
+  if(!sc||!track) return;
   var _pause=function(){ _ptCarPauseUntil=Date.now()+_PT_CAR_RESUME_MS; };
-  sc.addEventListener('touchstart',_pause,{passive:true});
-  sc.addEventListener('touchmove',_pause,{passive:true});
+  var _applyPos=function(tr){
+    if(_ptCarSetWidth){
+      _ptCarPos=((_ptCarPos%_ptCarSetWidth)+_ptCarSetWidth)%_ptCarSetWidth;
+      tr.style.transform='translateX(-'+_ptCarPos+'px)';
+    }
+  };
+  // Touch: any contact pauses the belt; a horizontal swipe drags the strip
+  // directly via the same transform offset (both directions, wrapping). The
+  // |dx|>|dy| guard leaves vertical page scrolling alone, and a plain tap
+  // (no movement) still fires the card's click -> trainer filter as normal.
+  sc.addEventListener('touchstart',function(e){
+    _pause();
+    var t0=e.touches[0];
+    sc._ptTouchX=t0.pageX; sc._ptTouchY=t0.pageY;
+  },{passive:true});
+  sc.addEventListener('touchmove',function(e){
+    _pause();
+    var t0=e.touches[0];
+    var dx=t0.pageX-(sc._ptTouchX||t0.pageX);
+    var dy=t0.pageY-(sc._ptTouchY||t0.pageY);
+    sc._ptTouchX=t0.pageX; sc._ptTouchY=t0.pageY;
+    if(Math.abs(dx)>Math.abs(dy)){
+      var tr2=document.getElementById('pt-car-track');
+      if(tr2){ _ptCarPos-=dx; _applyPos(tr2); }
+    }
+  },{passive:true});
   sc.addEventListener('wheel',_pause,{passive:true});
-  // Desktop click-drag scrolling (browsers have no native mouse drag-scroll).
-  // A real drag suppresses the click that fires on mouseup, so dragging
-  // across a card never activates its trainer filter; a plain click is
-  // untouched and works exactly as before.
+  // Desktop click-drag — same transform offset. A real drag suppresses the
+  // click that fires on mouseup, so dragging across a card never activates
+  // its trainer filter; a plain click is untouched.
   sc.addEventListener('mousedown',function(e){
     _pause();
-    var startX=e.pageX,startSL=sc.scrollLeft,moved=false;
+    var lastX=e.pageX,moved=false;
     var mm=function(ev){
-      if(Math.abs(ev.pageX-startX)>5) moved=true;
-      if(moved){ sc.scrollLeft=startSL-(ev.pageX-startX); _pause(); ev.preventDefault(); }
+      if(Math.abs(ev.pageX-lastX)>5) moved=true;
+      if(moved){
+        var tr2=document.getElementById('pt-car-track');
+        if(tr2){ _ptCarPos-=(ev.pageX-lastX); _applyPos(tr2); }
+        lastX=ev.pageX; _pause(); ev.preventDefault();
+      }
     };
     var mu=function(){
       document.removeEventListener('mousemove',mm);
@@ -12346,22 +12376,19 @@ function _initPtCarousel(restoreSL){
     document.addEventListener('mouseup',mu);
   });
   var ready=false;
-  var wasPaused=false;
-  var pos=restoreSL||0;   // float position — scrollLeft reads back as an
-                          // integer, so accumulating on the element itself
-                          // would round sub-pixel movement away to nothing.
   var last=null;
   var frame=function(ts){
     var el2=document.getElementById('pt-carousel');
-    if(!el2){ _ptCarRaf=null; return; }   // section re-rendered — the new render re-inits
+    var tr2=document.getElementById('pt-car-track');
+    if(!el2||!tr2){ _ptCarRaf=null; return; }   // section re-rendered — the new render re-inits
     if(!ready){
       // Lazy setup — wait until the strip is visible, laid out, and actually
       // overflowing. Duplicate once for the loop; wrap point is the single
       // set width plus the flex gap between the two copies.
-      if(el2.clientWidth>0&&el2.scrollWidth>el2.clientWidth+4){
-        _ptCarSetWidth=el2.scrollWidth+_PT_CAR_GAP;
-        el2.innerHTML+=el2.innerHTML;
-        if(pos) el2.scrollLeft=pos;
+      if(el2.clientWidth>0&&tr2.scrollWidth>el2.clientWidth+4){
+        _ptCarSetWidth=tr2.scrollWidth+_PT_CAR_GAP;
+        tr2.innerHTML+=tr2.innerHTML;
+        _applyPos(tr2);   // resume from the surviving global offset
         ready=true;
       }
       last=ts;
@@ -12370,15 +12397,12 @@ function _initPtCarousel(restoreSL){
     }
     var dt=last==null?16:Math.min(100,ts-last);
     last=ts;
-    if(Date.now()<_ptCarPauseUntil){
-      wasPaused=true;
-    }else{
-      // Resuming after user interaction: pick up from wherever they left the
-      // strip, not from where the belt would have been.
-      if(wasPaused){ pos=el2.scrollLeft; wasPaused=false; }
-      pos+=_PT_CAR_SPEED*dt/1000;
-      if(pos>=_ptCarSetWidth) pos-=_ptCarSetWidth;
-      el2.scrollLeft=pos;
+    if(Date.now()>=_ptCarPauseUntil){
+      // transform:translateX — compositor-only movement, no layout, no
+      // repaint, no scrollLeft integer rounding: genuinely smooth.
+      _ptCarPos+=_PT_CAR_SPEED*dt/1000;
+      if(_ptCarPos>=_ptCarSetWidth) _ptCarPos-=_ptCarSetWidth;
+      tr2.style.transform='translateX(-'+_ptCarPos+'px)';
     }
     _ptCarRaf=requestAnimationFrame(frame);
   };
