@@ -245,7 +245,7 @@ NH INTELLIGENCE & EDGE SIGNALS:
 ---
 OUTPUT RULES:
 - raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. How many genuine contenders? Where is the form concentrated? Key filter (going, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection. Maximum 80 words. Cover only: genuine contender count, the key filter today, one sentence on the standout pattern. Cut everything else.
-- pullQuote: minimum 120 words and no more than 125 words. Stay between 120 and 125 words — this is a hard limit, not a suggestion. In your own voice explaining the case for your selection — jockey, going, form, trainer angle. Tell the full story so the user understands the pick. Do NOT name-drop publications or attribute to other tipsters.
+- pullQuote: minimum 105 words, as close to 105 words as possible, never go below 105 — this is a hard limit. In your own voice explaining the case for your selection — jockey, going, form, trainer angle. Tell the full story so the user understands the pick. Do NOT name-drop publications or attribute to other tipsters.
 - factors: exactly 4 entries — the 4 most compelling reasons, each starting with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, WEIGHT, COURSE, MARKET, TRIP — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
 - runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
@@ -261,7 +261,7 @@ Return this exact JSON:
     "trainer": "string",
     "formFigures": "string",
     "confidenceLevel": "High | Medium | Low | Pass",
-    "pullQuote": "string — minimum 120 words and no more than 125 words, hard limit, the full case for this horse in your own voice, no publication name-drops",
+    "pullQuote": "string — minimum 105 words, as close to 105 words as possible, never go below 105, hard limit, the full case for this horse in your own voice, no publication name-drops",
     "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
   },
   "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
@@ -365,7 +365,7 @@ PACE:
 ---
 OUTPUT RULES:
 - raceIntelligence: 3-4 sentences of sharp pre-race briefing — the things a serious punter knows that a casual one doesn't. Cover: how many runners have a genuine winning chance; where the form is concentrated; any meaningful trainer or market pattern; one sentence on the key filter today (ground, class, trip). Do NOT lead with who other tipsters picked. Do NOT mention your selection. Maximum 80 words. Cover only: genuine contender count, the key filter today, one sentence on the standout pattern. Cut everything else.
-- pullQuote: minimum 120 words and no more than 125 words. Stay between 120 and 125 words — this is a hard limit, not a suggestion. In your own voice — the full case for your selection. Cover jockey booking, going, form, trainer angle. Tell the full story so the user understands the pick without needing to expand anything. Do NOT name-drop publications or attribute to other tipsters.
+- pullQuote: minimum 105 words, as close to 105 words as possible, never go below 105 — this is a hard limit. In your own voice — the full case for your selection. Cover jockey booking, going, form, trainer angle. Tell the full story so the user understands the pick without needing to expand anything. Do NOT name-drop publications or attribute to other tipsters.
 - factors: exactly 4 entries — choose the 4 most compelling reasons. Each must start with the category label: JOCKEY, GOING, FORM, TRAINER, CLASS, DISTANCE, COURSE, MARKET, WEIGHT — pick whichever 4 are most relevant
 - horsesToWatch: 0–2 entries only, never padded
 - runnerAnalysis: cover EVERY runner — 2-3 sentences for selection, 1-2 for watches, 1-2 honest sentences for the rest
@@ -381,7 +381,7 @@ Return this exact JSON:
     "trainer": "string",
     "formFigures": "string",
     "confidenceLevel": "High | Medium | Low | Pass",
-    "pullQuote": "string — minimum 120 words and no more than 125 words, hard limit, the full case for this horse in your own voice, no publication name-drops",
+    "pullQuote": "string — minimum 105 words, as close to 105 words as possible, never go below 105, hard limit, the full case for this horse in your own voice, no publication name-drops",
     "factors": ["CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation", "CATEGORY label then explanation"]
   },
   "horsesToWatch": [{"horseName":"string","odds":"string","jockey":"string","trainer":"string","formFigures":"string","excerpt":"1-2 sentences","factors":["f1","f2"]}],
@@ -866,26 +866,27 @@ async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
 
 function pullQuoteWordCount(s) { return String(s || '').trim().split(/\s+/).filter(Boolean).length; }
 
-// Mechanical fallback: last complete sentence at or under 125 words. Only
+// Mechanical fallback: last complete sentence at or under 110 words. Only
 // used when even the condense call overshoots the ceiling.
 function trimPullQuoteToSentence(q) {
   const sentences = String(q || '').trim().match(/[^.!?]*[.!?]+(?:['")\]]*)?/g) || [String(q || '').trim()];
   let out = '', words = 0;
   for (const s of sentences) {
     const w = pullQuoteWordCount(s);
-    if (words + w > 125) break;
+    if (words + w > 110) break;
     out += (out ? ' ' : '') + s.trim();
     words += w;
   }
-  return out || String(q || '').trim().split(/\s+/).slice(0, 125).join(' ');
+  return out || String(q || '').trim().split(/\s+/).slice(0, 110).join(' ');
 }
 
-// Second-pass condenser: the prompts ask for 120-125 words but the model has
-// been ignoring the ceiling (every quote on 2026-08-31 came back 159-236
-// words). One extra small call — same model, no web search — rewrites an
-// overlong quote down to the band; a still-overlong result is sentence-trimmed.
+// Second-pass condenser: the prompts ask for ~105 words but the model has a
+// history of ignoring the ceiling (every quote on 2026-08-31 came back
+// 159-236 words). One extra small call — same model, no web search — rewrites
+// an overlong quote down to the band; a still-overlong result is
+// sentence-trimmed.
 async function condensePullQuote(pullQuote) {
-  const msg = 'Condense the following racing analysis to between 120 and 125 words. Keep every key fact — the horse\'s form, jockey, trainer angle, going, and the core case for the selection. Remove only waffle, repetition, and filler phrases. Do not add anything new. Return only the condensed text, nothing else: ' + pullQuote;
+  const msg = 'Condense the following racing analysis to between 105 and 110 words. Keep every key fact — the horse\'s form, jockey, trainer angle, going, and the core case for the selection. Remove only waffle, repetition, and filler phrases. Do not add anything new. Return only the condensed text, nothing else: ' + pullQuote;
   const resp = await callClaude('', msg, 300, true);
   return { text: (resp.text || '').trim(), inputTokens: resp.inputTokens || 0, outputTokens: resp.outputTokens || 0 };
 }
@@ -944,12 +945,12 @@ Return ONLY the JSON object.`;
   // cards, NAP/NB cards, All Selections, NB reorder briefs) sees it.
   let condIn = 0, condOut = 0;
   if (result && result.strongestSelection && result.strongestSelection.pullQuote
-      && pullQuoteWordCount(result.strongestSelection.pullQuote) > 125) {
+      && pullQuoteWordCount(result.strongestSelection.pullQuote) > 110) {
     try {
       const c = await condensePullQuote(result.strongestSelection.pullQuote);
       condIn = c.inputTokens; condOut = c.outputTokens;
       if (c.text) {
-        result.strongestSelection.pullQuote = pullQuoteWordCount(c.text) > 125 ? trimPullQuoteToSentence(c.text) : c.text;
+        result.strongestSelection.pullQuote = pullQuoteWordCount(c.text) > 110 ? trimPullQuoteToSentence(c.text) : c.text;
       } else {
         result.strongestSelection.pullQuote = trimPullQuoteToSentence(result.strongestSelection.pullQuote);
       }
