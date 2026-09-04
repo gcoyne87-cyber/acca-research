@@ -2196,27 +2196,34 @@ exports.handler = async function(event) {
     // regenerated — Hot Yard's own trainerFormMap/trainerFormCandidates are local to
     // that function and never computed at all on a cache hit, so this does its own
     // independent pass over racecards instead of depending on that data.
+    // Hot Yard card inputs — filled from the stored table rows below (step
+    // 3.6) once the table write succeeds; both report fields default to null
+    // so a failed table write, no qualifier, or a failed AI call all leave
+    // the card cleanly absent rather than half-populated.
+    report.hotYard = null;
+    report.hotYardCard = null;
+    let hotYardSource = [];
+    // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
+    // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
+    // _buildPopularTrainers list). Needed here so every elite yard running
+    // today is guaranteed a slot in the stored table below, regardless of
+    // where they rank by 14-day strike rate, and reused by the Hot Yard card
+    // qualifier filter in step 3.6. Stored lowercase to match the
+    // case-insensitive comparisons used against it.
+    const ELITE_TRAINERS_LC = [
+      "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
+      'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
+      'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
+      'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
+      'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
+      'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
+      'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
+      'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
+      'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
+      "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
+      'Sir Mark Prescott Bt'
+    ].map(function(t) { return t.toLowerCase(); });
     try {
-      // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
-      // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
-      // _buildPopularTrainers list). Needed here so every elite yard running
-      // today is guaranteed a slot in the stored table below, regardless of
-      // where they rank by 14-day strike rate. Stored lowercase to match the
-      // case-insensitive comparisons used against it.
-      const ELITE_TRAINERS_LC = [
-        "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
-        'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
-        'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
-        'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
-        'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
-        'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
-        'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
-        'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
-        'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
-        "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
-        'Sir Mark Prescott Bt'
-      ].map(function(t) { return t.toLowerCase(); });
-
       const trainerTableMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
@@ -2276,6 +2283,9 @@ exports.handler = async function(event) {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       for (const entry of trainerTableToStore) {
         entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
+        // Venues each 7-day win came from — only consumed by the Hot Yard
+        // card prompt (step 3.6); not part of the stored table shape.
+        entry.winVenues7 = [];
         if (!entry.trainer_id) continue;
         try {
           const data7 = await apiGet('api.theracingapi.com',
@@ -2295,7 +2305,10 @@ exports.handler = async function(event) {
             (race.runners || []).forEach(function(runner) {
               if ((runner.trainer_id || '') !== entry.trainer_id) return;
               runs7++;
-              if (String(runner.position) === '1') wins7++;
+              if (String(runner.position) === '1') {
+                wins7++;
+                if (race.course && entry.winVenues7.indexOf(race.course) === -1) entry.winVenues7.push(race.course);
+              }
             });
           });
           entry.runs7 = runs7;
@@ -2320,8 +2333,92 @@ exports.handler = async function(event) {
       });
 
       await redisSet('trainer-form:table:' + today, trainerFormTable);
+
+      // Snapshot for the Hot Yard card (step 3.6) — same rows as the stored
+      // table plus each yard's 7-day winning venues, which the table itself
+      // doesn't carry.
+      hotYardSource = trainerTableToStore.map(function(entry) {
+        return {
+          trainerName: entry.trainer,
+          runners7d: entry.runs7,
+          winners7d: entry.wins7,
+          strikeRate7d: entry.pct7,
+          strikeRate14d: entry.pct,
+          winVenues7: entry.winVenues7 || []
+        };
+      });
     } catch (e) {
       console.log('[daily-build] trainer-form:table write failed: ' + e.message);
+    }
+
+    // 3.6 Hot Yard card — the single top qualifier by 7-day strike rate under
+    // exactly the criteria racecards.js's Hot Yard tag applies (elite
+    // whitelist, 9+ runners and 4+ winners in 7 days, 7-day rate strictly
+    // above 14-day), plus their runners on today's card. report.hotYard /
+    // report.hotYardCard stay null when nobody qualifies or the AI call
+    // fails; the AI call is only made when a qualifier exists.
+    try {
+      const hotYardQualifiers = hotYardSource.filter(function(t) {
+        const name = (t.trainerName || '').toLowerCase().trim();
+        return ELITE_TRAINERS_LC.indexOf(name) !== -1
+          && Number(t.runners7d) >= 9
+          && Number(t.winners7d) >= 4
+          && Number(t.strikeRate7d) > Number(t.strikeRate14d || 0);
+      }).sort(function(a, b) { return Number(b.strikeRate7d) - Number(a.strikeRate7d); });
+      const hotYardTop = hotYardQualifiers[0] || null;
+
+      if (hotYardTop) {
+        const hyNameLc = (hotYardTop.trainerName || '').toLowerCase().trim();
+        const runnersToday = [];
+        racecards.forEach(function(race) {
+          const t24 = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+          (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+            if ((r.trainer || '').toLowerCase().trim() !== hyNameLc) return;
+            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+            const sp = oddsArr
+              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+            runnersToday.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
+          });
+        });
+
+        report.hotYard = {
+          trainerName: hotYardTop.trainerName,
+          runners7d: hotYardTop.runners7d,
+          winners7d: hotYardTop.winners7d,
+          strikeRate7d: hotYardTop.strikeRate7d,
+          runnersToday: runnersToday
+        };
+
+        const venueLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
+          ? ' Winning venues last 7 days: ' + hotYardTop.winVenues7.join(', ') + '.'
+          : '';
+        const runnersLine = runnersToday.length
+          ? runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
+          : 'none declared';
+        const hotYardPrompt = 'Write a Daily Intelligence card for Racing Edge. Between 100 and 105 words exactly — count them. No opinions. No tipster language. No subjective statements. Pure data only. Format: Start with the trainer name, winners from runners in the last 7 days, and strike rate percentage. Then list the venues where winners came from. Then list today\'s runners with course and time. End with one neutral closing line about clicking to view their runners today. The data: Trainer: ' + hotYardTop.trainerName + '. Last 7 days: ' + hotYardTop.runners7d + ' runners, ' + hotYardTop.winners7d + ' winners, ' + hotYardTop.strikeRate7d + '% strike rate.' + venueLine + ' Today\'s runners: ' + runnersLine + '. Write it in third person. No waffle. No market references. No betting language. Data only.';
+
+        try {
+          const hyResp = await callClaude('', hotYardPrompt, 400, true);
+          if (hyResp.text && hyResp.text.trim()) report.hotYardCard = hyResp.text.trim();
+          report.inputTokens += hyResp.inputTokens || 0;
+          report.outputTokens += hyResp.outputTokens || 0;
+          report.cacheReadTokens += hyResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += hyResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'hotyard-card', label: 'Hot Yard Intel Card',
+            inputTokens: hyResp.inputTokens || 0, outputTokens: hyResp.outputTokens || 0,
+            cacheReadTokens: hyResp.cacheReadTokens || 0, cacheWriteTokens: hyResp.cacheWriteTokens || 0
+          });
+        } catch (eHYC) {
+          report.errors.push('hotYardCard: ' + eHYC.message);
+          report.hotYardCard = null;
+        }
+      }
+    } catch (eHY) {
+      report.errors.push('hotYard: ' + eHY.message);
+      report.hotYard = null;
+      report.hotYardCard = null;
     }
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race

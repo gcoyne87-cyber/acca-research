@@ -121,6 +121,8 @@ exports.handler = async function(event) {
         bigRace: report.bigRace || null,
         candgCard: report.candgCard || null,
         candgHorsesCount: (report.candgHorses || []).length,
+        hotYard: report.hotYard || null,
+        hotYardCard: report.hotYardCard || null,
         intelligence: report.intelligence || [],
         analyses: report.analyses || [],
         cost: report.costUSD,
