@@ -17193,7 +17193,12 @@ function selectRacingSection(s){
   var homeNRL=document.getElementById('home-nextrace-label');
   if(homeNRL) homeNRL.style.display='none';
   var carouselSec=document.getElementById("home-carousel-section");
-  if(carouselSec) carouselSec.style.display=(s==="home"||_horseHighlight)?"":"none";
+  // With an Edge Filter chip active, keep the DI carousel visible on
+  // 'racecards' too (e.g. after _activateEdgeFilterFromCta navigates here) —
+  // otherwise it collapses to hidden and the date strip below it becomes the
+  // first visible thing on the page, looking like it jumped to the top.
+  // No filter active: 'racecards' behaves exactly as before, unchanged.
+  if(carouselSec) carouselSec.style.display=(s==="home"||_horseHighlight||(s==="racecards"&&_edgeChipMode!=='trainer'))?"":"none";
   var homeResStrip=document.getElementById("home-res-strip");
   if(homeResStrip) homeResStrip.style.display=(s==="home"&&window._homeResHasData)?"":"none";
   var hws=document.getElementById("home-winners-strip");
