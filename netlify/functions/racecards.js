@@ -488,10 +488,17 @@ async function enrichRunnerTags(meetings, date) {
     } catch (eHY) { hotYardTrainers = []; }
     entries.forEach(function(e, i) {
       try {
+        // A missing or unparseable form:history key must NOT skip tagging
+        // outright — Hot Yard and Irish/GB Raider are trainer-based and don't
+        // need history at all. Pass an empty history instead: the form-based
+        // tags (C&D, C&D+G, Ground Lover) simply find no runs and stay off,
+        // while the trainer-based tags still fire for debutants and any horse
+        // whose history fetch was missed.
         const raw = results[i + 1] && results[i + 1].result;
-        if (!raw) return;
-        const history = JSON.parse(raw);
-        if (!Array.isArray(history)) return;
+        let history = [];
+        if (raw) {
+          try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) history = parsed; } catch (eH) { history = []; }
+        }
         computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });

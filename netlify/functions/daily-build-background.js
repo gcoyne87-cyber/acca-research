@@ -2396,10 +2396,29 @@ exports.handler = async function(event) {
         const runnersLine = runnersToday.length
           ? runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
           : 'none declared';
-        const hotYardPrompt = 'Write a Daily Intelligence card for Racing Edge. Between 100 and 105 words exactly — count them. No opinions. No tipster language. No subjective statements. Pure data only. Format: Start with the trainer name, winners from runners in the last 7 days, and strike rate percentage. Then list the venues where winners came from. Then list today\'s runners with course and time. End with one neutral closing line about clicking to view their runners today. The data: Trainer: ' + hotYardTop.trainerName + '. Last 7 days: ' + hotYardTop.runners7d + ' runners, ' + hotYardTop.winners7d + ' winners, ' + hotYardTop.strikeRate7d + '% strike rate.' + venueLine + ' Today\'s runners: ' + runnersLine + '. Write it in third person. No waffle. No market references. No betting language. Data only.';
+        // The "list the venues" format instruction is only issued when venue
+        // data is actually supplied below — otherwise the model is told to
+        // list something it was never given, which invites invented venues.
+        const venueFormatLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
+          ? ' Then list the venues where winners came from.'
+          : '';
+        const hotYardPrompt = 'Write a Daily Intelligence card for Racing Edge. Between 100 and 105 words exactly — count them. No opinions. No tipster language. No subjective statements. Pure data only. Format: Start with the trainer name, winners from runners in the last 7 days, and strike rate percentage.' + venueFormatLine + ' Then list today\'s runners with course and time. End with one neutral closing line about clicking to view their runners today. The data: Trainer: ' + hotYardTop.trainerName + '. Last 7 days: ' + hotYardTop.runners7d + ' runners, ' + hotYardTop.winners7d + ' winners, ' + hotYardTop.strikeRate7d + '% strike rate.' + venueLine + ' Today\'s runners: ' + runnersLine + '. Write it in third person. No waffle. No market references. No betting language. Data only.';
 
+        // Hard 25s ceiling on this call. It runs BEFORE race analysis, and
+        // apiPost's socket timeout only emits an event (never destroys the
+        // socket), so a hung Anthropic call here would otherwise stall the
+        // whole build. On timeout the card is skipped (hotYardCard stays
+        // null), the timeout is logged, and the build carries on — the
+        // underlying request is left to finish or fail on its own.
+        const HOT_YARD_CALL_TIMEOUT_MS = 25000;
+        let hyTimer = null;
         try {
-          const hyResp = await callClaude('', hotYardPrompt, 400, true);
+          const hyResp = await Promise.race([
+            callClaude('', hotYardPrompt, 400, true),
+            new Promise(function(_, reject) {
+              hyTimer = setTimeout(function() { reject(new Error('timed out after ' + (HOT_YARD_CALL_TIMEOUT_MS / 1000) + 's — skipped')); }, HOT_YARD_CALL_TIMEOUT_MS);
+            })
+          ]);
           if (hyResp.text && hyResp.text.trim()) report.hotYardCard = hyResp.text.trim();
           report.inputTokens += hyResp.inputTokens || 0;
           report.outputTokens += hyResp.outputTokens || 0;
@@ -2411,8 +2430,11 @@ exports.handler = async function(event) {
             cacheReadTokens: hyResp.cacheReadTokens || 0, cacheWriteTokens: hyResp.cacheWriteTokens || 0
           });
         } catch (eHYC) {
+          console.log('[daily-build] hotYardCard: ' + eHYC.message);
           report.errors.push('hotYardCard: ' + eHYC.message);
           report.hotYardCard = null;
+        } finally {
+          if (hyTimer) clearTimeout(hyTimer);
         }
       }
     } catch (eHY) {
