@@ -101,6 +101,122 @@ function redisExpire(key, seconds) {
   });
 }
 
+// ── C&D+G HOURLY RECHECK ─────────────────────────────────────────────────────
+// racecards.js computes isCandDWinner / isCandDGoing at request time only —
+// racecards:{date} in Redis never carries those flags, so there is nothing to
+// "recheck" there yet. These two helpers and recheckCandDGoing() below are a
+// self-contained copy of racecards.js's own C&D-winner match (stripParens /
+// milesFurlongs), plus a stricter going comparison for C&D+G: racecard going
+// and form-history going come from two different Racing API endpoints and are
+// shaped differently, so instead of racecards.js's regex-bucket test this
+// normalises both sides to their primary going term and requires an exact
+// string match.
+function stripParens(s) {
+  return (s || '').replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
+}
+
+// "2m1f111y" -> miles*8 + furlongs as an integer, yards ignored — same rule
+// racecards.js uses, since history and racecard yardages differ freely for
+// the same trip.
+function milesFurlongs(distStr) {
+  const s = String(distStr || '');
+  const miles = (s.match(/(\d+)m/) || [])[1];
+  const furlongs = (s.match(/(\d+)f/) || [])[1];
+  return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
+}
+
+// Normalises a going string down to its primary going term: lowercase, strip
+// an AW surface prefix ("Tapeta: "), cut at the first comma or bracket (drops
+// ", soft in places" / "(GoingStick 6.2)" qualifiers), then strip the
+// remaining "in places" / "goingstick" / "aw" noise words that can appear
+// without a comma. Two going strings are treated as the same ground only when
+// their normalised forms match exactly.
+function normaliseGoing(str) {
+  return String(str || '')
+    .toLowerCase()
+    .replace(/^[a-z]+\s*:\s*/, '')
+    .split(/[,(]/)[0]
+    .replace(/\bin places\b/g, '')
+    .replace(/\bgoingstick\b/g, '')
+    .replace(/\baw\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Rechecks C&D+G for every runner with a horse_id on the given cached
+// racecard object, mutating runners in place. Reads form:history:{horse_id}:
+// {dateStr} from Redis only — one pipelined round trip, zero Racing API
+// calls. Best-effort throughout: a missing UPSTASH config, a failed pipeline,
+// or a missing/unreadable history for one horse just leaves that runner's
+// existing flags untouched — this never throws and never blocks the price
+// refresh or its Redis write.
+async function recheckCandDGoing(cached, dateStr) {
+  try {
+    const entries = [];
+    (cached.meetings || []).forEach(function(m) {
+      (m.races || []).forEach(function(race) {
+        (race.runners || []).forEach(function(ru) {
+          if (ru.horse_id) entries.push({ ru: ru, m: m, race: race });
+        });
+      });
+    });
+    if (!entries.length) return;
+
+    const url = new URL(UPSTASH_URL);
+    const cmds = entries.map(function(e) { return ['GET', 'form:history:' + e.ru.horse_id + ':' + dateStr]; });
+    const body = JSON.stringify(cmds);
+    const results = await new Promise(function(resolve) {
+      const req = https.request({
+        hostname: url.hostname, path: '/pipeline', method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, function(res) {
+        let d = '';
+        res.on('data', function(c) { d += c; });
+        res.on('end', function() { try { resolve(JSON.parse(d)); } catch (e) { resolve(null); } });
+      });
+      req.on('error', function() { resolve(null); });
+      req.write(body);
+      req.end();
+    });
+    if (!Array.isArray(results)) return;
+
+    entries.forEach(function(e, i) {
+      try {
+        const raw = results[i] && results[i].result;
+        if (!raw) return;
+        const history = JSON.parse(raw);
+        if (!Array.isArray(history)) return;
+        const runs = history.slice(0, 6);
+        const courseKey = stripParens(e.m.name);
+        const distKey = milesFurlongs(e.race.dist);
+        const winRun = runs.find(function(h) {
+          return String(h.pos) === '1'
+            && stripParens(h.course) === courseKey
+            && milesFurlongs(h.dist) === distKey;
+        });
+        if (!winRun) return;
+        e.ru.isCandDWinner = true;
+        const todayGoing = normaliseGoing(e.race.going);
+        if (todayGoing && normaliseGoing(winRun.going) === todayGoing) {
+          e.ru.isCandDGoing = true;
+          e.ru.isCandDWinner = false;
+          // Raw (un-normalised) going and date of the matching win, so a
+          // C&D+G horse can be reported downstream without a second Redis
+          // read of this same history.
+          e.ru.cdgWinGoing = winRun.going || '';
+          e.ru.cdgWinDate = winRun.date || '';
+        } else {
+          e.ru.isCandDGoing = false;
+        }
+      } catch (eRunner) {
+        // leave this runner's flags untouched
+      }
+    });
+  } catch (eOuter) {
+    // best-effort — never blocks the price refresh
+  }
+}
+
 function fracToDec(s) {
   if (!s || s === 'SP') return 0;
   const p = String(s).trim();
@@ -269,6 +385,8 @@ exports.handler = async function(event) {
         await sendErrorEmail('today (' + today + ')', new Error(todayError));
       }
 
+      await recheckCandDGoing(cached, today);
+
       await redisSet('racecards:' + today, cached);
       if (anchorsDirty) {
         await redisSet('price:anchors:' + today, anchors);
@@ -344,6 +462,8 @@ exports.handler = async function(event) {
           });
         });
       });
+
+      await recheckCandDGoing(cachedTomorrow, tomorrow);
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
       if (anchorsTomorrowDirty) {

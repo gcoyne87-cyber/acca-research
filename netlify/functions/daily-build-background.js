@@ -2360,6 +2360,36 @@ exports.handler = async function(event) {
       report.errors.push('bigRace: ' + e.message);
     }
 
+    // 4.6 C&D+G horses — every runner flagged isCandDGoing on today's cached
+    // racecard. That flag (plus cdgWinGoing/cdgWinDate) is written directly
+    // onto racecards:{date} by refresh-prices-background.js's hourly recheck
+    // — this file has no other access to it, since racecards.js's own tag
+    // computation runs at request time only and is never persisted. A
+    // missing key, unexpected shape, or zero matches all just yield an empty
+    // array; this never blocks or errors the rest of the build.
+    report.candgHorses = [];
+    try {
+      const cdgCards = await redisGet('racecards:' + today);
+      (cdgCards && cdgCards.meetings || []).forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(ru) {
+            if (!ru.isCandDGoing) return;
+            report.candgHorses.push({
+              horseName: ru.name || '',
+              course: m.name || '',
+              time: race.t || '',
+              prize: race.prize || '',
+              todayGoing: race.going || '',
+              winningGoing: ru.cdgWinGoing || '',
+              winDate: ru.cdgWinDate || ''
+            });
+          });
+        });
+      });
+    } catch (e) {
+      report.errors.push('candgHorses: ' + e.message);
+    }
+
     // 5. Generate per-horse form summaries and race form overviews
     // Use cached racecard data (stored at step 2 from morning fetch) so runner lists
     // are intact even when re-running late in the day after the API strips completed runners
