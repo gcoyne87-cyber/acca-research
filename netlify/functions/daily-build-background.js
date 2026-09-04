@@ -2479,6 +2479,46 @@ exports.handler = async function(event) {
     //   if (_dropped > 0) console.log(`[daily-build] Intelligence cross-ref: dropped ${_dropped} item(s) conflicting with race analysis picks`);
     // }
 
+    // 5.6 Minimum price filter — a pick at 1/3 or shorter is too short to
+    // interest subscribers, so it can never be NAP, NB, or Intel 3-5. Applied
+    // BEFORE any pick is assigned by marking the selection Pass — the exact
+    // ineligibility marker the rankedAll filter below AND get-daily-build's
+    // read-time filter already respect, so the exclusion holds on pickRank
+    // days and confidence-fallback days alike. The race's analysis itself is
+    // untouched and still renders on its racecard — the race simply yields no
+    // pick (each race has one strongestSelection, so a too-short selection
+    // means that race is skipped entirely). An unparseable price (SP, blank)
+    // is never filtered — no proof it's too short. The original confidence
+    // level is preserved in prePriceFilterConfidence for transparency.
+    try {
+      const MIN_PICK_DEC = 1.34; // 1/3 = 1.3333 excluded; 4/11 = 1.3636 kept
+      const pickOddsDec = function(odds) {
+        const s = String(odds || '').trim();
+        if (!s || /^sp$/i.test(s)) return null;
+        if (/^evs$|^evens$/i.test(s)) return 2;
+        const q = s.split('/');
+        if (q.length === 2) { const n = parseFloat(q[0]), d = parseFloat(q[1]); if (!isNaN(n) && !isNaN(d) && d > 0) return n / d + 1; }
+        const f = parseFloat(s);
+        return (!isNaN(f) && f > 1) ? f : null;
+      };
+      const priceFiltered = [];
+      (report.analyses || []).forEach(function(a) {
+        if (!a || !a.strongestSelection || !a.strongestSelection.horseName) return;
+        if (a.strongestSelection.confidenceLevel === 'Pass') return;
+        const dec = pickOddsDec(a.strongestSelection.odds);
+        if (dec !== null && dec < MIN_PICK_DEC) {
+          a.strongestSelection.prePriceFilterConfidence = a.strongestSelection.confidenceLevel;
+          a.strongestSelection.confidenceLevel = 'Pass';
+          priceFiltered.push(a.strongestSelection.horseName + ' (' + (a.strongestSelection.odds || '?') + ')');
+        }
+      });
+      if (priceFiltered.length) {
+        const pfMsg = 'Price filter: excluded from picks at 1/3 or shorter: ' + priceFiltered.join(', ');
+        report.warnings.push(pfMsg);
+        console.log('[daily-build] ' + pfMsg);
+      }
+    } catch (pfErr) { report.warnings.push('Price filter failed: ' + pfErr.message); }
+
     // 5.7 NB reorder — the LAST step of pick selection. Every race is analysed
     // and every confidence score is final by this point; nothing after this
     // block changes a pick or a score. Position 1 of the confidence ranking
