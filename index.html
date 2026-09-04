@@ -16406,6 +16406,36 @@ function _raceIsFinished(timeStr){
   }catch(e){return false;}
 }
 
+// Favourite marker — the runner(s) with the lowest decimal SP in a race,
+// derived exactly as the Full Results footer "Fav:" line does it (sp_dec from
+// the server when present, fractional sp string as fallback). Returns a map
+// of horse name -> true; joint favourites (tied lowest) are all included, so
+// each shows "F" beside its price.
+function _resFavNames(runners){
+  function spDec(r){
+    if(typeof r.sp_dec==='number'&&isFinite(r.sp_dec)&&r.sp_dec>1) return r.sp_dec;
+    var s=String(r.sp||'').trim();
+    if(!s||s==='SP') return null;
+    if(/^evs$|^evens$/i.test(s)) return 2;
+    var q=s.split('/');
+    if(q.length===2){var n=parseFloat(q[0]),dd=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(dd)&&dd>0)return n/dd+1;}
+    var f=parseFloat(s);
+    return (!isNaN(f)&&f>1)?f:null;
+  }
+  var best=null;
+  (runners||[]).forEach(function(r){
+    var d=spDec(r);
+    if(d!==null&&(best===null||d<best-1e-9)) best=d;
+  });
+  var out={};
+  if(best===null) return out;
+  (runners||[]).forEach(function(r){
+    var d=spDec(r);
+    if(d!==null&&Math.abs(d-best)<1e-9) out[r.horse]=true;
+  });
+  return out;
+}
+
 function renderResultsFeed(){
   var wrap=document.getElementById('res-feed-section');
   var feed=document.getElementById('res-feed');
@@ -16446,6 +16476,7 @@ function renderResultsFeed(){
     var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
     if(!top4.length) return;
     var winner=top4[0];
+    var favNames=_resFavNames(race.runners);
 
     html+='<div style="flex-shrink:0;width:240px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
     // Header: time · venue
@@ -16464,7 +16495,7 @@ function renderResultsFeed(){
       html+='<div style="font-size:13px;font-weight:'+(isW?'700':'500')+';color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
       if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
       html+='</div>';
-      if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+'</span>';
+      if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
       html+='</div>';
     });
     html+='</div>';
@@ -16571,6 +16602,7 @@ function renderHomeResultsStrip(){
       var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
       if(!top4.length) return;
       var winner=top4[0];
+      var favNames=_resFavNames(race.runners);
 
       html+='<div style="flex-shrink:0;width:240px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
       // Header: time · venue
@@ -16589,7 +16621,7 @@ function renderHomeResultsStrip(){
         html+='<div style="font-size:13px;font-weight:'+(isW?'700':'500')+';color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
         if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
         html+='</div>';
-        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+'</span>';
+        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
         html+='</div>';
       });
       html+='</div>';
@@ -16740,6 +16772,7 @@ function renderResultsPage(){
         function ordN(p){var n=parseInt(p,10);if(!n)return String(p||'-');var v=n%100;var s=(v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');return n+s;}
         var fieldRunners=runners.filter(function(r){return r.pos&&String(r.pos).trim();});
         var winner=runners.find(function(r){return r.pos==='1';});
+        var favNames=_resFavNames(runners);
 
         if(!fieldRunners.length){
           html+='<div style="font-size:13px;color:#9aa3b5;padding:4px 0 8px">'+(_raceIsFinished(race.time)?'Result not yet available':'Race not yet run')+'</div>';
@@ -16762,7 +16795,7 @@ function renderResultsPage(){
             html+='<div style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</div>';
             if(r.jockey||r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
             html+='</div>';
-            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+'</span>';
+            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
             html+='</div>';
           });
           // Footer
