@@ -392,29 +392,27 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     }
   }
 
-  // Ground Lover — today is GENUINELY easy ground AND the horse has
-  // won on ground with cut in its last 6 runs. Both the today-going test and
-  // the historical-win test now check the PRIMARY going term only (strip AW
-  // prefix, cut at first comma/bracket, lowercase) — previously the win test
-  // was an unanchored substring match against the raw going string, so a win
-  // on "Good to Soft" (barely any cut) satisfied it via the word "soft"
-  // appearing anywhere in it, while today's own going had to be genuinely
-  // soft/heavy/yielding as its primary term. Same standard both sides now.
-  // Irish and UK terms both covered: Yielding/Yielding To Soft/Soft/Soft To
-  // Heavy/Heavy qualify as a primary term; Good To Soft / Good To Yielding do not.
+  // Ground Lover — today is GENUINELY easy ground AND the horse has won on
+  // EXACTLY today's going in its last 6 runs. Exact match, not family match:
+  // a Heavy day needs a Heavy win, a Soft day a Soft win, a Yielding day a
+  // Yielding win (2026-09-05: a stale Soft winner was tagged on a Heavy
+  // Haydock card — accurate data, not close-ish data). Both sides compare
+  // the PRIMARY going term (strip AW prefix, cut at first comma/bracket,
+  // lowercase), so "Good, good to soft in places" days never fire and a
+  // decorated history going can't dodge the comparison.
   var EASY_DAY_RE = /^(yielding|soft|heavy)/i;
-  var WIN_GROUND_RE = /^(yielding|soft|heavy)/i;
   var primaryGoing = String(meetingGoing || '')
     .replace(/^[a-z]+\s*:\s*/i, '')   // strip AW surface prefix e.g. "TAPETA: "
     .split(/[,(]/)[0].trim();          // primary term before any ", x in places" / "(GoingStick"
   if(EASY_DAY_RE.test(primaryGoing)){
+    var dayGoingKey = primaryGoing.toLowerCase();
     var hasGroundWin = runs.some(function(h){
       if (String(h.pos) !== '1') return false;
       var winPrimaryGoing = String(h.going || '')
         .toLowerCase()
         .replace(/^[a-z]+\s*:\s*/i, '')
         .split(/[,(]/)[0].trim();
-      return WIN_GROUND_RE.test(winPrimaryGoing);
+      return winPrimaryGoing === dayGoingKey;
     });
     if(hasGroundWin) runner.isGroundLover = true;
   }
