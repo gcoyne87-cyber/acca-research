@@ -2368,6 +2368,11 @@ exports.handler = async function(event) {
     // missing key, unexpected shape, or zero matches all just yield an empty
     // array; this never blocks or errors the rest of the build.
     report.candgHorses = [];
+    // Distance per horse (race.dist) isn't part of the stored candgHorses
+    // shape — Change 2/3 downstream only need the count and card text — but
+    // the card prompt below is required to name each horse's distance, so
+    // it's captured here into a local list used only for the prompt.
+    const candgHorseLines = [];
     try {
       const cdgCards = await redisGet('racecards:' + today);
       (cdgCards && cdgCards.meetings || []).forEach(function(m) {
@@ -2383,11 +2388,48 @@ exports.handler = async function(event) {
               winningGoing: ru.cdgWinGoing || '',
               winDate: ru.cdgWinDate || ''
             });
+            candgHorseLines.push(
+              (ru.name || 'Unknown') + ' — ' + (m.name || '') + ', ' + (race.dist || '') +
+              ", today's going: " + (race.going || 'n/a') +
+              ', won here on this going on ' + (ru.cdgWinDate || 'an earlier run') +
+              ' (going that day: ' + (ru.cdgWinGoing || 'n/a') + ')'
+            );
           });
         });
       });
     } catch (e) {
       report.errors.push('candgHorses: ' + e.message);
+    }
+
+    // 4.7 C&D+G intel card — one AI call turning today's candgHorses list into
+    // DI card copy. Only fires when at least one horse qualifies; stays null
+    // on an empty list or any call failure, per spec. Its tokens are folded
+    // into report's today accumulators (same convention as the race-analysis
+    // and pullQuote-condense calls above) so the daily cost total stays
+    // accurate.
+    report.candgCard = null;
+    if (report.candgHorses.length) {
+      try {
+        const candgPrompt = "You are writing a Daily Intelligence card for Racing Edge, a horse racing intelligence service. Write exactly 105 words — no more, no less. Do not go below 100 words. You are presenting data, not tips. No tipster language. No 'we recommend' or 'back this horse'. Pure factual presentation.\n\n" +
+          'Today\'s going conditions have produced ' + report.candgHorses.length + ' horses that have won at their exact course, distance and going conditions within their last 6 runs. List them naturally — for each horse include their name, course, distance, today\'s going, and when they won here on the same going. Open with how many horses qualify today and where they are running. Close with one clean summary sentence. Write it so it reads like sharp intelligence, not a list. The horses are: ' + candgHorseLines.join('; ');
+
+        const candgResp = await callClaude('', candgPrompt, 400, true);
+        if (candgResp.text && candgResp.text.trim()) {
+          report.candgCard = candgResp.text.trim();
+        }
+        report.inputTokens += candgResp.inputTokens || 0;
+        report.outputTokens += candgResp.outputTokens || 0;
+        report.cacheReadTokens += candgResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += candgResp.cacheWriteTokens || 0;
+        report.callLog.push({
+          type: 'candg-card', label: 'C&D+G Intel Card',
+          inputTokens: candgResp.inputTokens || 0, outputTokens: candgResp.outputTokens || 0,
+          cacheReadTokens: candgResp.cacheReadTokens || 0, cacheWriteTokens: candgResp.cacheWriteTokens || 0
+        });
+      } catch (e) {
+        report.errors.push('candgCard: ' + e.message);
+        report.candgCard = null;
+      }
     }
 
     // 5. Generate per-horse form summaries and race form overviews

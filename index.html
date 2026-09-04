@@ -14744,6 +14744,8 @@ function renderAiEdgeCarousel(){
 var AI_INTELLIGENCE=[];
 var INTEL_PICKS=[];
 var BIG_RACE=null;
+var CANDG_CARD=null;
+var CANDG_COUNT=0;
 var _horseEdgeFlags={};  // { "horse name lower": { draw:true, class:true, jockey:true, trainer:true } }
 
 function _buildEdgeFlags(horseName, factors){
@@ -14886,6 +14888,8 @@ function loadDailyBuild(){
       // tell "06:00 the morning after" from "pre-race on its own morning".
       window._intelPicksDate=data.date||'';
       BIG_RACE=data.bigRace||null;
+      CANDG_CARD=data.candgCard||null;
+      CANDG_COUNT=data.candgHorsesCount||0;
 
       // Map analyses to intelligence cards — today's cards (with passed race times filtered out) first, tomorrow's cards after
       var todayItems=((data.intelligence&&data.intelligence.length)?data.intelligence:[]).filter(function(item){
@@ -15155,7 +15159,40 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // C&D+G — a data-summary card like Big Race, not a horse pick, so it rides
+  // the same _items array via its own special item (isCandDG:true). Only
+  // appended when the build actually generated card copy — candgCard stays
+  // null on a horseless day or a failed AI call (see daily-build-background.js).
+  if(CANDG_CARD){
+    _items=_items.concat([{
+      isCandDG:true,
+      signalType:'C&D+G',
+      sigColor:'#14b8a6',
+      countLabel:CANDG_COUNT+' horse'+(CANDG_COUNT===1?'':'s'),
+      intelligenceText:escHtml(CANDG_CARD||'')
+    }]);
+  }
+
   el.innerHTML=_items.map(function(item){
+    if(item.isCandDG){
+      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:0px">'
+            +'<div style="display:flex;align-items:center;gap:6px">'
+              +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+            +'</div>'
+            +'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.countLabel)+'</div>'
+          +'</div>'
+          +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px">C&amp;D+G Watch</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">Course, distance &amp; going winners running today</div>'
+          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:8px">'
+            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'cdg\')" style="width:100%;padding:11px"><span>&#x2756;</span> View C&amp;D+G Runners &rarr;</button>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }
     if(item.isBigRace){
       return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
