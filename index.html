@@ -17010,6 +17010,19 @@ function selectRacingSection(s){
     _resetTrainerFilterState();
     renderTodayMeetingsList();
   }
+  // Edge Filter (C&D/Ground chips): unlike the trainer filter above, this
+  // clears on ANY navigation away from home/racecards — Daily Intelligence,
+  // NAP and NB card CTAs (which pass 'race:'/'tomorrowrace:' destinations),
+  // Next Race, and every other named section all route through here and are
+  // not literally 'home' or 'racecards', so they all clear it. The one
+  // exception is _activateEdgeFilterFromCta's own 'racecards' call, which is
+  // deliberately excluded so activating a chip from a DI card CTA isn't
+  // immediately undone by this same check. The filter only survives
+  // interactions that stay within the racecards section itself — race pill
+  // taps and the Form/Analysis/Tips tabs never call this function at all.
+  if(_edgeChipMode!=='trainer'&&s!=='home'&&s!=='racecards'){
+    clearEdgeFilter();
+  }
   if(typeof s==='string'&&s.indexOf('tomorrowtrainer:')===0){
     _trainerFilterSelected = null;
     var _tmTrainerName=s.substring('tomorrowtrainer:'.length);
@@ -17265,6 +17278,14 @@ function selectRacingSection(s){
     loadResultsPage();
     _startResultsPolling();
   }
+  // Today's Selections (NAP/NB) must never be hidden by an active Edge
+  // Filter. The 'racecards' branch above never shows picksC (only 'home' and
+  // 'pickofday' do) — that's how a DI card's C&D/Ground "View all horses"
+  // CTA (which navigates to 'racecards' via _activateEdgeFilterFromCta)
+  // ended up hiding NAP/NB. Force it visible whenever a chip is active,
+  // overriding whichever branch above ran, without changing what 'racecards'
+  // does in the no-filter case.
+  if(_edgeChipMode!=='trainer'&&picksC) picksC.style.display='';
 }
 
 // ── TOMORROW COUNTDOWN ──────────────────────────────────────────────────────
