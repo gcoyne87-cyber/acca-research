@@ -2324,6 +2324,42 @@ exports.handler = async function(event) {
     }
     }
 
+    // 4.5 Big Race of the Day — the single highest-prize race among today's
+    // successfully analysed races (report.analyses, populated by step 4
+    // above). Only races with a completed analysis are eligible, since
+    // raceIntelligence has to come from there. race.prize is whatever the
+    // Racing API returns (e.g. "£8,514") — not guaranteed numeric — so it's
+    // parsed down to digits only for comparison; a race with no parseable
+    // prize sorts as 0, never wins over one that does.
+    try {
+      const parsePrizeAmount = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+      let bigRaceCandidate = null;
+      let bigRaceTop = -1;
+      racecards.forEach(function(race) {
+        const t24label = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+        const raceLabel = `${race.course} ${t24label}`;
+        const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
+        if (!analysisEntry || !analysisEntry.raceIntelligence) return;
+        const prizeAmount = parsePrizeAmount(race.prize);
+        if (prizeAmount > bigRaceTop) {
+          bigRaceTop = prizeAmount;
+          bigRaceCandidate = { race, t24label, analysisEntry };
+        }
+      });
+      if (bigRaceCandidate) {
+        report.bigRace = {
+          course: bigRaceCandidate.race.course,
+          time: bigRaceCandidate.t24label,
+          raceName: bigRaceCandidate.race.race_name || '',
+          prize: bigRaceCandidate.race.prize || '',
+          raceIntelligence: bigRaceCandidate.analysisEntry.raceIntelligence,
+          courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
+        };
+      }
+    } catch (e) {
+      report.errors.push('bigRace: ' + e.message);
+    }
+
     // 5. Generate per-horse form summaries and race form overviews
     // Use cached racecard data (stored at step 2 from morning fetch) so runner lists
     // are intact even when re-running late in the day after the API strips completed runners
