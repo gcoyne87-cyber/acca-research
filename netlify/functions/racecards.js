@@ -330,6 +330,29 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   });
   if (isCandDWinner) runner.isCandDWinner = true;
 
+  // C&D+G — a stronger version of C&D Winner: the horse's course-and-distance
+  // win came on ground with cut (heavy/yield/soft), AND today's going also
+  // has cut. Same EASY_DAY_RE/WIN_GROUND_RE definitions as Ground Lover below,
+  // recomputed locally here so neither tag's logic depends on the other's
+  // variables. Takes priority over C&D Winner — a horse must never show both.
+  var CDG_EASY_DAY_RE = /^(yielding|soft|heavy)/i;
+  var CDG_WIN_GROUND_RE = /heavy|yield|soft/i;
+  var cdgPrimaryGoing = String(meetingGoing || '')
+    .replace(/^[a-z]+\s*:\s*/i, '')
+    .split(/[,(]/)[0].trim();
+  if (CDG_EASY_DAY_RE.test(cdgPrimaryGoing)) {
+    const isCandDGoing = runs.some(function(h) {
+      return String(h.pos) === '1'
+        && stripParens(h.course) === courseKey
+        && milesFurlongs(h.dist) === distKey
+        && CDG_WIN_GROUND_RE.test(h.going || '');
+    });
+    if (isCandDGoing) {
+      runner.isCandDGoing = true;
+      runner.isCandDWinner = false;
+    }
+  }
+
   // Irish Raider — Irish or NI trainer running
   // at a GB meeting
   // GB Raider — GB trainer running at Irish meeting

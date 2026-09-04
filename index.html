@@ -5619,6 +5619,7 @@ function unlockCorkAnalysis(){
           <div id="edge-chip-cd" onclick="_selectEdgeChip('cd')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">C&amp;D</div>
           <div id="edge-chip-ground" onclick="_selectEdgeChip('ground')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Ground</div>
           <div id="edge-chip-hotyard" onclick="_selectEdgeChip('hotyard')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Hot Yard</div>
+          <div id="edge-chip-cdg" onclick="_selectEdgeChip('cdg')" style="flex:1;text-align:center;background:#fff;color:#5a6478;border:1px solid #e4e8f0;border-radius:99px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">C&amp;D+G</div>
         </div>
         <div id="edge-trainer-input-wrap" style="position:relative">
           <div style="display:flex;align-items:stretch;background:#fff;border-radius:99px;overflow:hidden;box-shadow:0 1px 3px rgba(13,27,62,0.08)">
@@ -11910,6 +11911,7 @@ function _edgeRunnerMatches(ru){
   if(_edgeChipMode==='cd') return !!ru.isCandDWinner;
   if(_edgeChipMode==='ground') return !!ru.isGroundLover;
   if(_edgeChipMode==='hotyard') return !!ru.isHotYard;
+  if(_edgeChipMode==='cdg') return !!ru.isCandDGoing;
   return false;
 }
 
@@ -11944,10 +11946,12 @@ function _renderEdgeChips(){
   var c=document.getElementById('edge-chip-cd');
   var g=document.getElementById('edge-chip-ground');
   var hy=document.getElementById('edge-chip-hotyard');
+  var cdg=document.getElementById('edge-chip-cdg');
   if(t) t.style.cssText=(_edgeChipMode==='trainer'?onStyle:offStyle);
   if(c) c.style.cssText=(_edgeChipMode==='cd'?onStyle:offStyle);
   if(g) g.style.cssText=(_edgeChipMode==='ground'?onStyle:offStyle);
   if(hy) hy.style.cssText=(_edgeChipMode==='hotyard'?onStyle:offStyle);
+  if(cdg) cdg.style.cssText=(_edgeChipMode==='cdg'?onStyle:offStyle);
   var inputWrap=document.getElementById('edge-trainer-input-wrap');
   if(inputWrap) inputWrap.style.display=(_edgeChipMode==='trainer')?'':'none';
 }
@@ -11999,8 +12003,8 @@ function renderTrainerFilterMultiDay(el,isInitial){
   // 'cd'/'ground'): same rendering below, fed by _tfMatchesForDayEdge and an
   // "Edge: ..." chip/clearEdgeFilter() instead — added, not substituted.
   var _isEdge=!_trainerFilter&&_edgeChipMode!=='trainer';
-  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':'Edge: Ground'));
-  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':'Ground specialists'));
+  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':(_edgeChipMode==='cdg'?'Edge: C&D+G':'Edge: Ground')));
+  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':(_edgeChipMode==='cdg'?'C&D+G runners':'Ground specialists')));
   var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
   // Trainer-search path: scroll #today-meetings-list into view, unchanged.
   // Edge-filter path: scroll the chip row into view instead, so the filter
@@ -12051,7 +12055,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   var totalMatches=_visibleDayKeys.reduce(function(s,k){ return s+dayMatches[k].length; },0);
   if(!totalMatches){
-    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' in the next 5 days</div>';
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">'+(_edgeChipMode==='cdg'?'No C&amp;D+G runners found for this date.':('No races found for '+escHtml(_filterNoun)+' in the next 5 days'))+'</div>';
     out+='</div>';
     el.innerHTML=out;
     _scrollAfterRender();
@@ -12075,7 +12079,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
 
   var dayRaces=(dayMatches[_tfSelectedDay]||[]).slice().sort(function(a,b){ return (a.race.t24||0)-(b.race.t24||0); });
   if(!dayRaces.length){
-    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">No races found for '+escHtml(_filterNoun)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)+'</div>';
+    out+='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">'+(_edgeChipMode==='cdg'?'No C&amp;D+G runners found for this date.':('No races found for '+escHtml(_filterNoun)+' on '+escHtml(_tfDayLabels[_tfSelectedDay]||_tfSelectedDay)))+'</div>';
     out+='</div>';
     el.innerHTML=out;
     _scrollAfterRender();
@@ -14102,6 +14106,7 @@ function runnerRow(ru,ctx,extraHtml){
   var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#5a6478;border-radius:99px;padding:2px 7px;white-space:nowrap';
   var _tags=[];
   if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
+  if(ru.isCandDGoing) _tags.push('C&amp;D+G');
   if(ru.isIrishRaider) _tags.push('Irish Raider');
   if(ru.isGBRaider) _tags.push('GB Raider');
   if(ru.isGroundLover) _tags.push('Ground Lover');
@@ -14205,6 +14210,7 @@ function runnerRow(ru,ctx,extraHtml){
   if(_edgeChipMode==='cd'&&ru.isCandDWinner) _rowBg='#ecfdf5';
   if(_edgeChipMode==='ground'&&ru.isGroundLover) _rowBg='#ecfdf5';
   if(_edgeChipMode==='hotyard'&&ru.isHotYard) _rowBg='#ecfdf5';
+  if(_edgeChipMode==='cdg'&&ru.isCandDGoing) _rowBg='#ecfdf5';
   var _isHorseHighlighted=!!(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim());
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
