@@ -2381,6 +2381,20 @@ exports.handler = async function(event) {
     // prize sorts as 0, never wins over one that does.
     try {
       const parsePrizeAmount = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+      // A prize string with more than one distinct number in it (e.g. a
+      // "£8,514 - £2,564" range, or a 1st/2nd breakdown) needs to be told
+      // apart from a single clean value that merely uses comma
+      // thousands-grouping (e.g. "£1,500,000"). Thousands-separator commas —
+      // a digit, a comma, then exactly 3 digits not followed by a further
+      // digit — are stripped first so they're never counted as a group
+      // boundary; what's left is split into digit runs. More than one run
+      // means the string genuinely names multiple numbers, so parsePrizeAmount
+      // would otherwise concatenate them into one garbage figure.
+      const hasMultiplePrizeValues = s => {
+        const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+        const groups = noThousandsCommas.match(/\d+/g) || [];
+        return groups.length > 1;
+      };
       let bigRaceCandidate = null;
       let bigRaceTop = -1;
       racecards.forEach(function(race) {
@@ -2388,13 +2402,8 @@ exports.handler = async function(event) {
         const raceLabel = `${race.course} ${t24label}`;
         const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
         if (!analysisEntry || !analysisEntry.raceIntelligence) return;
+        if (hasMultiplePrizeValues(race.prize)) return;
         const prizeAmount = parsePrizeAmount(race.prize);
-        // A prize string with more than one number in it (e.g. a "£8,514 -
-        // £2,564" range, or a 1st/2nd breakdown) has its digits concatenated
-        // by parsePrizeAmount into one garbage figure — guard against that by
-        // treating anything outside a plausible single-race prize range as
-        // unparseable and skipping the race entirely, same as no analysis.
-        if (prizeAmount > 10000000 || prizeAmount < 100) return;
         if (prizeAmount > bigRaceTop) {
           bigRaceTop = prizeAmount;
           bigRaceCandidate = { race, t24label, analysisEntry };
