@@ -12622,7 +12622,11 @@ function buildDateStrip(){
     var y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
     var ds=y+'-'+mo+'-'+dy;
     var dateVal=i===0?'today':i===1?'tomorrow':ds;
-    var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()];
+    // Future pills: day name + date with ordinal suffix ("Sun 8th") so a week
+    // of pills is unambiguous. 11th-13th are 'th' despite ending 1/2/3.
+    var dayNum=d.getDate();
+    var ordSfx=(dayNum%100>=11&&dayNum%100<=13)?'th':(dayNum%10===1?'st':dayNum%10===2?'nd':dayNum%10===3?'rd':'th');
+    var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()]+' '+dayNum+ordSfx;
     // Home strip highlights the actual current _homeRcDay (may now default to
     // Tomorrow after evening racing); cards strip is untouched — still i===0,
     // matching _cardsDay's own separate, unchanged default.
