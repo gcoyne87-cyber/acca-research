@@ -312,6 +312,17 @@ function redisSet(key, value) {
   });
 }
 
+function redisDel(key) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/del/' + encodeURIComponent(key), method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    req.on('error', reject); req.end();
+  });
+}
+
 // Same as redisSet but with an expiry — Upstash REST takes TTL as ?EX={seconds}
 // on the /set/ path. Used only for the nohistory negative markers below, which
 // must age out (a debutant eventually gets a first run on the books).
@@ -358,6 +369,49 @@ async function storeResults(summaries) {
 
 function sleep(ms) {
   return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+// Raw Redis command (POST /) — used by the one-time legacy wipe below for
+// SCAN, which the path-style helpers can't express.
+function redisCmd(arr) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(arr);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/', method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { try { resolve(JSON.parse(d)); } catch (e) { resolve(null); } }); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
+// One-time wipe of legacy plain-text summaries (2026-09-04). Any
+// form-summary:* value stored as a bare string has no generatedAt and can
+// never pass the staleness check — delete them all once so the steady state
+// is purely JSON. Control keys under the same prefix (heartbeat/lock/
+// complete/nohistory) store objects or numbers, never strings, so the
+// string-only test cannot touch them. Guarded by a done-marker: after one
+// successful pass this returns immediately on every future run.
+async function wipeLegacySummaries() {
+  const marker = await redisGet('form-summary:legacy-wipe-done');
+  if (marker) return 0;
+  let cursor = '0', deleted = 0, iterations = 0;
+  do {
+    const scan = await redisCmd(['SCAN', cursor, 'MATCH', 'form-summary:*', 'COUNT', '500']);
+    if (!scan || !scan.result) break;
+    cursor = scan.result[0];
+    const keys = scan.result[1] || [];
+    for (const key of keys) {
+      const val = await redisGet(key);
+      if (typeof val === 'string') {
+        try { await redisDel(key); deleted++; } catch (e) {}
+      }
+    }
+    iterations++;
+  } while (cursor !== '0' && iterations < 100);
+  try { await redisSet('form-summary:legacy-wipe-done', { wipedAt: new Date().toISOString(), deleted: deleted }); } catch (e) {}
+  console.log('[form-summary] legacy wipe: deleted ' + deleted + ' plain-text summaries');
+  return deleted;
 }
 
 // Accepts { dates, horsesGenerated, horsesSkipped, horsesFailed, errors,
@@ -464,6 +518,9 @@ exports.handler = async function(event) {
   } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
   try {
+    // One-time legacy wipe — no-ops instantly via its done-marker once run.
+    try { await wipeLegacySummaries(); } catch (wipeErr) { console.log('[form-summary] legacy wipe failed: ' + wipeErr.message); }
+
     let runners = await readRacecards();
 
     // Manual test mode — a scheduled run always processes every runner across
@@ -579,10 +636,41 @@ exports.handler = async function(event) {
         horsesSkipped++;
         continue;
       }
+      // Staleness check (2026-09-04 fix): a summary used to be kept forever
+      // once written — Larkins Lane was still described as "arriving with
+      // back-to-back wins" 27 days and two losing runs after generation. Now
+      // a summary only survives if the horse has NOT run since it was
+      // generated; a newer run in the form history deletes it and lets this
+      // run regenerate from current form. Legacy plain-text values (no
+      // generatedAt) are always treated as stale.
       const existingSummary = await redisGet('form-summary:' + runner.horse_id);
       if (existingSummary) {
-        horsesSkipped++;
-        continue;
+        let isStale = false;
+        if (existingSummary && typeof existingSummary === 'object' && existingSummary.generatedAt) {
+          try {
+            const histForStale = await redisGet('form:history:' + runner.horse_id + ':' + runner.date);
+            const latestRunDate = (Array.isArray(histForStale) && histForStale.length && histForStale[0] && histForStale[0].date) ? String(histForStale[0].date) : null;
+            // Calendar-date comparison, >= not > — generation runs at
+            // 05:00-09:00, always BEFORE that day's racing, so a run dated
+            // the generation day happened after the summary was written and
+            // must invalidate it (the Larkins Lane same-day blind spot). A
+            // summary regenerated the morning AFTER a run compares next-day
+            // vs run-day and is correctly kept — no churn.
+            const generationDay = String(existingSummary.generatedAt).slice(0, 10);
+            if (latestRunDate && latestRunDate >= generationDay) {
+              isStale = true;
+            }
+          } catch (staleErr) { /* unverifiable history — keep the summary */ }
+        } else {
+          isStale = true; // plain text / no generatedAt — legacy format
+        }
+        if (!isStale) {
+          horsesSkipped++;
+          continue;
+        }
+        console.log('[form-summary] ' + runner.horseName + ' (' + runner.horse_id + ') summary is stale — deleting and regenerating');
+        try { await redisDel('form-summary:' + runner.horse_id); } catch (delErr) {}
+        // fall through to regeneration below
       }
       let formHistory = await getFormHistory(runner);
       if (!formHistory) {

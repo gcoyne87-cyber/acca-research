@@ -42,7 +42,11 @@ exports.handler = async function(event) {
 
     const summaries = {};
     results.forEach(function(r) {
-      if (r.data) summaries[r.id] = r.data;
+      if (!r.data) return;
+      // Normalise: the client reads .summary — wrap any legacy plain-text
+      // value so the shape is identical whether Redis holds the JSON object
+      // ({summary, generatedAt, ...}) or an old bare string.
+      summaries[r.id] = (typeof r.data === 'string') ? { summary: r.data } : r.data;
     });
 
     return { statusCode: 200, headers, body: JSON.stringify({ summaries: summaries }) };

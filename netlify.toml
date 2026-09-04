@@ -31,6 +31,9 @@
 [functions."form-summary-trigger"]
   schedule = "0 5,7,9 * * *"
 
+[functions."form-summary-watchdog"]
+  schedule = "30 9 * * *"
+
 [functions."refresh-prices-background"]
   schedule = "0 6-21 * * *"
 
