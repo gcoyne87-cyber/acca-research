@@ -14911,7 +14911,6 @@ function loadDailyBuild(){
       });
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
-        renderAIIntelligence();
         if(!window._aiIntelligenceRefreshTimer){
           window._aiIntelligenceRefreshTimer=setInterval(function(){
             var _beforeLen=AI_INTELLIGENCE.length;
@@ -14925,9 +14924,8 @@ function loadDailyBuild(){
           },300000);
         }
       } else if(INTEL_PICKS.length){
-        // Intelligence paused (empty) but intelPicks present — render the
-        // carousel from those; renderAIIntelligence prefers INTEL_PICKS itself.
-        renderAIIntelligence();
+        // Intelligence paused (empty) but intelPicks present — the carousel
+        // renders from those; renderAIIntelligence prefers INTEL_PICKS itself.
         // Mid-session expiry: the signal-card timer above is only created when
         // real intelligence cards exist, so intelPicks need their own. Mirrors
         // that timer's pattern — guarded against duplicates, and re-renders
@@ -14951,6 +14949,12 @@ function loadDailyBuild(){
           },5*60*1000);
         }
       }
+      // Always render once here regardless of which branch above matched (or
+      // neither) — BIG_RACE/CANDG_CARD are assigned unconditionally above and
+      // must reach the carousel even on a day with zero Intel picks, which
+      // previously left both silently unrendered since this call was gated
+      // behind intelItems.length / INTEL_PICKS.length.
+      renderAIIntelligence();
       // Render all AI selections list
       if(data.analyses&&data.analyses.length) renderAllSelections(data.analyses, data.date||'');
 
