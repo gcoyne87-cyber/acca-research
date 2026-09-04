@@ -2197,6 +2197,26 @@ exports.handler = async function(event) {
     // that function and never computed at all on a cache hit, so this does its own
     // independent pass over racecards instead of depending on that data.
     try {
+      // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
+      // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
+      // _buildPopularTrainers list). Needed here so every elite yard running
+      // today is guaranteed a slot in the stored table below, regardless of
+      // where they rank by 14-day strike rate. Stored lowercase to match the
+      // case-insensitive comparisons used against it.
+      const ELITE_TRAINERS_LC = [
+        "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
+        'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
+        'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
+        'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
+        'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
+        'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
+        'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
+        'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
+        'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
+        "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
+        'Sir Mark Prescott Bt'
+      ].map(function(t) { return t.toLowerCase(); });
+
       const trainerTableMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
@@ -2219,6 +2239,34 @@ exports.handler = async function(event) {
         return b.pct - a.pct;
       }).slice(0, 15);
 
+      // Every elite trainer running today, independent of their 14-day rank —
+      // built straight from today's racecards (not from trainerTableTop15) so
+      // an elite yard is included even when it wouldn't otherwise crack the
+      // top 15, or even the >=3-runs floor trainerTableMap requires. This is
+      // what racecards.js's Hot Yard tag actually needs; the homepage's top-15
+      // display list (trainerTableTop15, used below to build the stored rows
+      // and read unchanged elsewhere) is untouched by this addition.
+      const eliteTodayMap = {};
+      racecards.forEach(function(race) {
+        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+          const nameLc = (r.trainer || '').toLowerCase().trim();
+          if (!nameLc || !r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINERS_LC.indexOf(nameLc) === -1) return;
+          const existing = trainerTableMap[r.trainer];
+          if (existing) { eliteTodayMap[r.trainer] = existing; return; }
+          const t14 = r.trainer_14_days || {};
+          eliteTodayMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
+        });
+      });
+
+      // Rows to actually fetch 7-day stats for and store: the top-15 display
+      // set plus any elite trainer running today not already in it. Storing
+      // (not displaying) all 39 is what Change 2 asks for — the homepage
+      // table continues to read only trainerTableTop15-derived rows.
+      const trainerTableStoreMap = {};
+      trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer] = e; });
+      Object.keys(eliteTodayMap).forEach(function(name) { if (!trainerTableStoreMap[name]) trainerTableStoreMap[name] = eliteTodayMap[name]; });
+      const trainerTableToStore = Object.values(trainerTableStoreMap);
+
       // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
       // window comes from the trainers results endpoint (same endpoint and
       // pattern as the Hot Yard 60-day baseline): one date-ranged call per
@@ -2226,7 +2274,7 @@ exports.handler = async function(event) {
       // call leaves that trainer's 7d fields at zero — the table write must
       // never fail because one trainer lookup did.
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      for (const entry of trainerTableTop15) {
+      for (const entry of trainerTableToStore) {
         entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
         if (!entry.trainer_id) continue;
         try {
@@ -2258,7 +2306,7 @@ exports.handler = async function(event) {
         }
       }
 
-      const trainerFormTable = trainerTableTop15.map(function(entry) {
+      const trainerFormTable = trainerTableToStore.map(function(entry) {
         return {
           trainerName: entry.trainer,
           runners14d: entry.runs,
@@ -2341,6 +2389,12 @@ exports.handler = async function(event) {
         const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
         if (!analysisEntry || !analysisEntry.raceIntelligence) return;
         const prizeAmount = parsePrizeAmount(race.prize);
+        // A prize string with more than one number in it (e.g. a "£8,514 -
+        // £2,564" range, or a 1st/2nd breakdown) has its digits concatenated
+        // by parsePrizeAmount into one garbage figure — guard against that by
+        // treating anything outside a plausible single-race prize range as
+        // unparseable and skipping the race entirely, same as no analysis.
+        if (prizeAmount > 10000000 || prizeAmount < 100) return;
         if (prizeAmount > bigRaceTop) {
           bigRaceTop = prizeAmount;
           bigRaceCandidate = { race, t24label, analysisEntry };

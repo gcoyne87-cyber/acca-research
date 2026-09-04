@@ -323,33 +323,54 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
-  const isCandDWinner = runs.some(function(h) {
-    return String(h.pos) === '1'
-      && stripParens(h.course) === courseKey
-      && milesFurlongs(h.dist) === distKey;
-  });
-  if (isCandDWinner) runner.isCandDWinner = true;
 
-  // C&D+G — a stronger version of C&D Winner: the horse's course-and-distance
-  // win came on ground with cut (heavy/yield/soft), AND today's going also
-  // has cut. Same EASY_DAY_RE/WIN_GROUND_RE definitions as Ground Lover below,
-  // recomputed locally here so neither tag's logic depends on the other's
-  // variables. Takes priority over C&D Winner — a horse must never show both.
-  var CDG_EASY_DAY_RE = /^(yielding|soft|heavy)/i;
-  var CDG_WIN_GROUND_RE = /heavy|yield|soft/i;
-  var cdgPrimaryGoing = String(meetingGoing || '')
-    .replace(/^[a-z]+\s*:\s*/i, '')
-    .split(/[,(]/)[0].trim();
-  if (CDG_EASY_DAY_RE.test(cdgPrimaryGoing)) {
-    const isCandDGoing = runs.some(function(h) {
+  // C&D Winner / C&D+G — refresh-prices-background.js's hourly recheck
+  // (recheckCandDGoing) already writes an exact-match isCandDGoing verdict
+  // (true OR explicit false) directly onto this same runner object in
+  // racecards:{date}. That verdict is strictly more trustworthy than the
+  // bucket-regex approach below (going strings from the racecard endpoint and
+  // the form-history endpoint are shaped differently — a loose bucket match
+  // can disagree with an exact match either way). Recomputing here every
+  // request was silently overwriting the persisted result with the looser
+  // bucket answer on every page load — so ANY persisted verdict, true or
+  // false, is kept as-is and the bucket recomputation below is skipped
+  // entirely for this runner. Only a runner the hourly recheck has never
+  // touched (isCandDGoing still undefined) falls through to recomputation.
+  if (runner.isCandDGoing !== undefined) {
+    // Mutual-exclusivity invariant — recheckCandDGoing itself guarantees this
+    // on write when the verdict is true; enforced here too so a runner that
+    // somehow arrived with both flags true is never served that way.
+    if (runner.isCandDGoing === true) runner.isCandDWinner = false;
+  } else {
+    const isCandDWinner = runs.some(function(h) {
       return String(h.pos) === '1'
         && stripParens(h.course) === courseKey
-        && milesFurlongs(h.dist) === distKey
-        && CDG_WIN_GROUND_RE.test(h.going || '');
+        && milesFurlongs(h.dist) === distKey;
     });
-    if (isCandDGoing) {
-      runner.isCandDGoing = true;
-      runner.isCandDWinner = false;
+    if (isCandDWinner) runner.isCandDWinner = true;
+
+    // C&D+G — a stronger version of C&D Winner: the horse's course-and-distance
+    // win came on ground with cut (heavy/yield/soft), AND today's going also
+    // has cut. Same EASY_DAY_RE/WIN_GROUND_RE definitions as Ground Lover below,
+    // recomputed locally here so neither tag's logic depends on the other's
+    // variables. Takes priority over C&D Winner — a horse must never show both.
+    // Only reached when no persisted exact-match verdict exists yet (see above).
+    var CDG_EASY_DAY_RE = /^(yielding|soft|heavy)/i;
+    var CDG_WIN_GROUND_RE = /heavy|yield|soft/i;
+    var cdgPrimaryGoing = String(meetingGoing || '')
+      .replace(/^[a-z]+\s*:\s*/i, '')
+      .split(/[,(]/)[0].trim();
+    if (CDG_EASY_DAY_RE.test(cdgPrimaryGoing)) {
+      const isCandDGoing = runs.some(function(h) {
+        return String(h.pos) === '1'
+          && stripParens(h.course) === courseKey
+          && milesFurlongs(h.dist) === distKey
+          && CDG_WIN_GROUND_RE.test(h.going || '');
+      });
+      if (isCandDGoing) {
+        runner.isCandDGoing = true;
+        runner.isCandDWinner = false;
+      }
     }
   }
 
@@ -372,20 +393,28 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   }
 
   // Ground Lover — today is GENUINELY easy ground AND the horse has
-  // won on ground with cut in its last 6 runs. The day test looks at
-  // the PRIMARY going term only, so "Good, good to soft in places"
-  // days never fire — this tag is meant to be rare. Irish and UK
-  // terms both covered: Yielding/Yielding To Soft/Soft/Soft To
-  // Heavy/Heavy days qualify; Good To Soft / Good To Yielding do not.
+  // won on ground with cut in its last 6 runs. Both the today-going test and
+  // the historical-win test now check the PRIMARY going term only (strip AW
+  // prefix, cut at first comma/bracket, lowercase) — previously the win test
+  // was an unanchored substring match against the raw going string, so a win
+  // on "Good to Soft" (barely any cut) satisfied it via the word "soft"
+  // appearing anywhere in it, while today's own going had to be genuinely
+  // soft/heavy/yielding as its primary term. Same standard both sides now.
+  // Irish and UK terms both covered: Yielding/Yielding To Soft/Soft/Soft To
+  // Heavy/Heavy qualify as a primary term; Good To Soft / Good To Yielding do not.
   var EASY_DAY_RE = /^(yielding|soft|heavy)/i;
-  var WIN_GROUND_RE = /heavy|yield|soft/i;
+  var WIN_GROUND_RE = /^(yielding|soft|heavy)/i;
   var primaryGoing = String(meetingGoing || '')
     .replace(/^[a-z]+\s*:\s*/i, '')   // strip AW surface prefix e.g. "TAPETA: "
     .split(/[,(]/)[0].trim();          // primary term before any ", x in places" / "(GoingStick"
   if(EASY_DAY_RE.test(primaryGoing)){
     var hasGroundWin = runs.some(function(h){
-      return String(h.pos) === '1' &&
-             WIN_GROUND_RE.test(h.going || '');
+      if (String(h.pos) !== '1') return false;
+      var winPrimaryGoing = String(h.going || '')
+        .toLowerCase()
+        .replace(/^[a-z]+\s*:\s*/i, '')
+        .split(/[,(]/)[0].trim();
+      return WIN_GROUND_RE.test(winPrimaryGoing);
     });
     if(hasGroundWin) runner.isGroundLover = true;
   }
