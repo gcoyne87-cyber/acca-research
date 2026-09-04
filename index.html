@@ -11685,31 +11685,12 @@ function todaySelectRace(mid,ri){
     var _race=_m&&_m.races[rcOpenRace[mid]];
     if(_race&&_race.runners&&_race.runners.length){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
-      // The summaries callback re-renders the whole list, which rebuilds the
-      // pill bar at scroll position 0 — AFTER the 60ms restore below has
-      // already run. Restore the selected pill again after that re-render
-      // (instant, not smooth, so the bar doesn't visibly animate twice).
-      _fetchFormSummaries(_ids,function(){
-        _render();
-        setTimeout(function(){
-          var el2=document.getElementById("tdpills-"+mid);
-          var pills2=el2?el2.querySelectorAll(".time-tab"):null;
-          var pill2=pills2?pills2[ri]:null;
-          if(pill2) pill2.scrollIntoView({behavior:"auto",inline:"nearest",block:"nearest"});
-        },0);
-      });
+      // No scroll on tap — the render path's _capturePillScrolls/_restore
+      // keeps the bar where the user left it; the bar itself never moves.
+      _fetchFormSummaries(_ids,function(){ _render(); });
     }
   }
-  setTimeout(function(){
-    rcAttachSwipe(mid);
-    if(rcOpenRace[mid]!=null){
-      var el=document.getElementById("tdpills-"+mid);
-      if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"});
-      var pills=el?el.querySelectorAll(".time-tab"):null;
-      var pill=pills?pills[ri]:null;
-      if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
-    }
-  },60);
+  setTimeout(function(){ rcAttachSwipe(mid); },60);
 }
 
 // Irish local "HH:MM" — used only to auto-default the racecards Today/Tomorrow
@@ -11799,11 +11780,8 @@ function trainerFilterSelectRace(meetingId,raceTime){
     _trainerFilterSelected={meetingId:meetingId,raceTime:raceTime};
   }
   renderTodayMeetingsList();
-  // Same pill restore the other select handlers have — without it the
-  // re-render left the bar rebuilt at scrollLeft 0.
-  var el=document.getElementById('tfd-race-pills');
-  var pill=el?el.querySelector('.time-tab.active'):null;
-  if(pill) pill.scrollIntoView({behavior:'smooth',inline:'nearest'});
+  // No scroll on tap — renderTodayMeetingsList's capture/restore keeps the
+  // bar exactly where the user left it.
 }
 
 // State-only reset used by the navigation paths — unlike clearTrainerFilter()
@@ -11894,7 +11872,7 @@ function _tfLoadDays(){
 // before a re-render and put it back straight after the new markup lands.
 function _capturePillScrolls(){
   var saved={};
-  var bars=document.querySelectorAll('[id^="tdpills-"],[id^="tmpills-"],#tf-race-pills,#tfd-race-pills,#tmf-race-pills,#fd-race-pills');
+  var bars=document.querySelectorAll('[id^="tdpills-"],[id^="tmpills-"],[id^="rcspills-"],#tf-race-pills,#tfd-race-pills,#tmf-race-pills,#fd-race-pills,#nr-strip,#nr-strip-home');
   for(var i=0;i<bars.length;i++){ if(bars[i].scrollLeft) saved[bars[i].id]=bars[i].scrollLeft; }
   return saved;
 }
@@ -11920,9 +11898,7 @@ function _tfSelectRace(dayKey,meetingId,raceTime){
   _tfRaceSel={};
   if(!wasSelected) _tfRaceSel[key]=raceTime;
   renderTodayMeetingsList(false);
-  var el=document.getElementById("tf-race-pills");
-  var pill=el?el.querySelector(".time-tab.active"):null;
-  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
+  // No scroll on tap — the render's capture/restore keeps the bar in place.
 }
 
 // ── EDGE FILTER (Course & Distance / Ground chips) ──────────────────────────
@@ -12109,6 +12085,17 @@ function renderTrainerFilterMultiDay(el,isInitial){
   out+='<div style="position:sticky;top:48px;z-index:20;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f2f7">';
   out+='<div id="tf-race-pills" style="display:flex;gap:7px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1">';
   var selKeyPrefix=_tfSelectedDay+'|';
+  // Auto-open the first race when nothing on this day is selected —
+  // activating a filter (Popular Trainers tap, trainer search, Edge chip)
+  // must show runners immediately, not a bare pill bar. Written as a single
+  // _tfRaceSel state entry (wiping any other day's leftover pick), so the
+  // one-race-green rule from the multi-green fix still holds: this is the
+  // same shape _tfSelectRace itself writes, just chosen automatically.
+  var _hasDaySel=dayRaces.some(function(fr){ return _tfRaceSel[selKeyPrefix+fr.meetingId]===fr.raceTime; });
+  if(!_hasDaySel){
+    _tfRaceSel={};
+    _tfRaceSel[selKeyPrefix+dayRaces[0].meetingId]=dayRaces[0].raceTime;
+  }
   var selectedFr=null;
   dayRaces.forEach(function(fr){
     var rk=selKeyPrefix+fr.meetingId;
@@ -12681,9 +12668,7 @@ var futureDateOpenRace={};
 function futureSelectRace(meetingId,raceIndex,dateStr){
   futureDateOpenRace[meetingId]=futureDateOpenRace[meetingId]===raceIndex?null:raceIndex;
   renderFutureDateContent(dateStr);
-  var el=document.getElementById("fd-race-pills");
-  var pill=el?el.querySelector(".time-tab.active"):null;
-  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
+  // No scroll on tap — the render's capture/restore keeps the bar in place.
 }
 
 function renderFutureDateContent(dateStr,targetEl){
@@ -13022,6 +13007,7 @@ function rcRaceDetailSingleHtml(m,selRace){
 function renderRcSingleList(){
   var el=document.getElementById("rc-single-meetings-list");
   if(!el) return;
+  var _pillSave=_capturePillScrolls();
   var meetings=_homeRcDay==='tomorrow'?TM_MEETINGS:_getLiveMeetings();
   var out='<div style="background:#fff;border-top:1px solid #f0f2f7">';
   meetings.forEach(function(m,idx){
@@ -13073,6 +13059,7 @@ function renderRcSingleList(){
   });
   out+='</div>';
   el.innerHTML=out;
+  _restorePillScrolls(_pillSave);
 }
 function toggleRcSingleMeeting(id){
   if(_rcSingleOpenMeeting===id){
@@ -13371,12 +13358,7 @@ function _raceTabsHtml(mid,time,mname){
 function rcSingleSelectRace(id,ri){
   _rcSingleOpenRace[id]=_rcSingleOpenRace[id]===ri?null:ri;
   renderRcSingleList();
-  if(_rcSingleOpenRace[id]!=null){
-    var el=document.getElementById("rcspills-"+id);
-    var pills=el?el.querySelectorAll(".time-tab"):null;
-    var pill=pills?pills[ri]:null;
-    if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
-  }
+  // No scroll on tap — renderRcSingleList's capture/restore keeps the bar in place.
 }
 function rcPillsHtml(m){
 
@@ -14595,15 +14577,11 @@ function nrAttachSwipe(){
 }
 
 function nrSelect(i){
+  // No scroll on tap — capture the strips' positions before the re-render
+  // and put them back after, so the bar stays exactly where the user left it.
+  var _pillSave=_capturePillScrolls();
   nrSelected=i;nrMoreOpen=false;nrRenderStrip();nrRenderCard();
-  var strip=document.getElementById("nr-strip");
-  var pills=strip?strip.querySelectorAll(".time-tab"):null;
-  var pill=pills?pills[i-nrAnchor]:null;
-  if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
-  var stripHome=document.getElementById("nr-strip-home");
-  var pillsHome=stripHome?stripHome.querySelectorAll(".time-tab"):null;
-  var pillHome=pillsHome?pillsHome[i-nrAnchorHome]:null;
-  if(pillHome) pillHome.scrollIntoView({behavior:"smooth",inline:"nearest"});
+  _restorePillScrolls(_pillSave);
 }
 function nrArrow(dir){
   var next=nrSelected+dir;
@@ -17432,30 +17410,12 @@ function tomorrowSelectRace(mid,ri){
     var _race=_m&&_m.races[tmOpenRace[mid]];
     if(_race&&_race.runners&&_race.runners.length){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
-      // Same fix as todaySelectRace: the summaries callback re-renders the
-      // list and rebuilds the pill bar at scroll 0 after the 60ms restore
-      // below already ran — restore the selected pill again afterwards.
-      _fetchFormSummaries(_ids,function(){
-        _render();
-        setTimeout(function(){
-          var el2=document.getElementById("tmpills-"+mid);
-          var pills2=el2?el2.querySelectorAll(".time-tab"):null;
-          var pill2=pills2?pills2[ri]:null;
-          if(pill2) pill2.scrollIntoView({behavior:"auto",inline:"nearest",block:"nearest"});
-        },0);
-      });
+      // No scroll on tap — the render path's _capturePillScrolls/_restore
+      // keeps the bar where the user left it; the bar itself never moves.
+      _fetchFormSummaries(_ids,function(){ _render(); });
     }
   }
-  setTimeout(function(){
-    tmAttachSwipe(mid);
-    if(tmOpenRace[mid]!=null){
-      var el=document.getElementById("tmpills-"+mid);
-      if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"});
-      var pills=el?el.querySelectorAll(".time-tab"):null;
-      var pill=pills?pills[ri]:null;
-      if(pill) pill.scrollIntoView({behavior:"smooth",inline:"nearest"});
-    }
-  },60);
+  setTimeout(function(){ tmAttachSwipe(mid); },60);
 }
 
 function renderTomorrowMeetingsList(targetEl){
