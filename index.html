@@ -14382,23 +14382,35 @@ function nrLoadProfile(pfx,horseId){
     .then(function(data){
       var p=data.profile||{};
       var races=(data.results&&Array.isArray(data.results.results))?data.results.results:[];
-      // oldest first — API returns newest first
       races=races.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
-      var runs=0,wins=0,owner='',prizeByCcy={},hist=[],lastTrainer=null,lastDate=null;
+      var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
+      var bucketOf=function(race){
+        var t=String(race.type||'').toLowerCase(),s=String(race.surface||'').toLowerCase(),
+            n=String(race.race_name||'').toLowerCase(),g=String(race.going||'').toLowerCase();
+        if(t){if(/hurdle|chase|nh|bumper|national hunt/.test(t))return 'jumps';}
+        else if(/hurdle|chase|bumper|steeplechase|national hunt/.test(n))return 'jumps';
+        if(/^aw$|all.?weather|poly|tapeta|fibresand|dirt|sand/.test(s)||/poly|tapeta|fibresand/.test(g))return 'aw';
+        return 'flat';
+      };
+      var cats={flat:{label:'Flat turf',r:0,w:0,pl:0,pr:{}},aw:{label:'All-weather',r:0,w:0,pl:0,pr:{}},jumps:{label:'Jumps',r:0,w:0,pl:0,pr:{}}};
+      var tot={r:0,w:0,pl:0,pr:{}};
+      var owner='',hist=[],lastTrainer=null,lastDate=null;
       races.forEach(function(race){
         var me=null,rs=race.runners||[];
         for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
         if(!me)return;
-        runs++;
-        if(String(me.position)==='1')wins++;
+        var c=cats[bucketOf(race)];
+        var posN=parseInt(me.position,10);
+        c.r++;tot.r++;
+        if(posN===1){c.w++;tot.w++;}else if(posN===2||posN===3){c.pl++;tot.pl++;}
         if(me.prize){
           var s=String(me.prize).trim();
           var sym=(s.match(/^[^0-9]+/)||[''])[0].trim()||'£';
           var n=parseFloat(s.replace(/[^0-9.]/g,''));
-          if(!isNaN(n))prizeByCcy[sym]=(prizeByCcy[sym]||0)+n;
+          if(!isNaN(n)){c.pr[sym]=(c.pr[sym]||0)+n;tot.pr[sym]=(tot.pr[sym]||0)+n;}
         }
-        if(me.owner)owner=me.owner; // ends on most recent
-        if(me.trainer&&me.trainer!==lastTrainer){
+        if(me.owner)owner=me.owner;
+        if(me.trainer&&norm(me.trainer)!==norm(lastTrainer)){
           if(hist.length)hist[hist.length-1].to=lastDate;
           hist.push({name:me.trainer,from:race.date,to:null});
           lastTrainer=me.trainer;
@@ -14406,27 +14418,45 @@ function nrLoadProfile(pfx,horseId){
         lastDate=race.date;
       });
       var currentTrainer=hist.length?hist[hist.length-1].name:'';
+      var CMAP={b:'Bay',ch:'Chestnut',gr:'Grey',br:'Brown',bl:'Black',ro:'Roan',bb:'Brown','b/br':'Bay/brown','br/b':'Brown/bay','gr/ro':'Grey/roan','ch/ro':'Chestnut/roan','b/ro':'Bay/roan',wh:'White',pal:'Palomino',dun:'Dun'};
+      var colour=CMAP[String(p.colour||'').toLowerCase()]||(p.colour?String(p.colour):'');
+      var sex=p.sex?String(p.sex).charAt(0).toUpperCase()+String(p.sex).slice(1).toLowerCase():'';
+      var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var fmtD=function(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||''));return m?(parseInt(m[3],10)+' '+MON[parseInt(m[2],10)-1]+' '+m[1]):String(d||'');};
+      var yr=function(d){var m=/^(\d{4})/.exec(String(d||''));return m?m[1].slice(2):'';};
       var age='';
-      if(p.dob&&/^\d{4}/.test(p.dob)){age=String(new Date().getFullYear()-parseInt(p.dob.slice(0,4),10));}
-      function row(l,v){return v?'<div><span style="color:#667;font-weight:600">'+l+':</span> '+escHtml(String(v))+'</div>':'';}
-      var out='<div style="font-size:12px;color:#0D1B3E;line-height:1.7">';
-      out+='<div style="margin-bottom:8px">'
-        +row('Age',age)+row('Sex',p.sex)+row('Colour',p.colour)+row('Born',p.dob)
-        +row('Sire',p.sire)+row('Dam',p.dam)+row('Damsire',p.damsire)+row('Breeder',p.breeder)
-        +'</div>';
-      out+='<div style="margin-bottom:8px">'+row('Trainer',currentTrainer)+row('Owner',owner);
+      if(p.dob&&/^\d{4}/.test(p.dob))age=String(new Date().getFullYear()-parseInt(p.dob.slice(0,4),10));
+      var t14='';
+      (function(){
+        var wrap=document.getElementById('nrh-'+pfx);var hn=wrap?(wrap.dataset.horsename||''):'';var ru=null;
+        var lists=[typeof NR_RUNNERS!=='undefined'?NR_RUNNERS:[],typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:[]];
+        for(var L=0;L<lists.length&&!ru;L++){for(var i=0;i<lists[L].length;i++){if((lists[L][i].name||'').toLowerCase()===hn.toLowerCase()){ru=lists[L][i];break;}}}
+        if(ru&&ru.trainer14&&ru.trainer14.runs>0)t14=ru.trainer14.wins+'/'+ru.trainer14.runs+(ru.trainer14.pct?' ('+ru.trainer14.pct+'%)':'')+' last 14d';
+      })();
+      var G='color:#667;',S='font-size:11px;color:#778;';
+      var kv=function(l,v,extra){return v?'<div><span style="'+G+'font-weight:600">'+l+'</span> '+escHtml(String(v))+(extra?' <span style="'+S+'">'+escHtml(extra)+'</span>':'')+'</div>':'';};
+      var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'—';};
+      var line1=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' '),p.dob?'Foaled '+fmtD(p.dob):''].filter(Boolean).join(' · ');
+      var out='<div style="font-size:12px;color:#0D1B3E;line-height:1.55">';
+      if(line1)out+='<div style="font-weight:700;margin-bottom:3px">'+escHtml(line1)+'</div>';
+      out+=kv('Trainer',currentTrainer,t14)+kv('Owner',owner)+kv('Breeder',p.breeder);
+      var ped=[p.sire?'Sire '+p.sire:'',p.dam?'Dam '+p.dam:'',p.damsire?'Damsire '+p.damsire:''].filter(Boolean).join(' · ');
+      if(ped)out+='<div style="'+S+'margin-top:2px">'+escHtml(ped)+'</div>';
       if(hist.length>1){
-        out+='<div><span style="color:#667;font-weight:600">Previous trainers:</span></div>';
-        hist.slice(0,-1).reverse().forEach(function(t){
-          out+='<div style="padding-left:10px">'+escHtml(t.name)+' <span style="color:#889">('+escHtml(t.from||'')+(t.to?' – '+escHtml(t.to):'')+')</span></div>';
-        });
+        var prev=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+yr(t.from)+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
+        out+='<div style="'+S+'">Previously '+escHtml(prev)+'</div>';
+      }
+      if(tot.r>0){
+        var th='padding:5px 6px;font-size:10px;letter-spacing:.04em;color:#778;text-transform:uppercase;text-align:right;border-bottom:1px solid #e3e6ee',
+            td='padding:5px 6px;text-align:right;white-space:nowrap',tdl='padding:5px 6px;text-align:left;white-space:nowrap';
+        out+='<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:12px"><thead><tr>'
+          +'<th style="'+th+'text-align:left">Record</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">Places</th><th style="'+th+'">Win %</th><th style="'+th+'">Prize</th></tr></thead><tbody>';
+        ['flat','aw','jumps'].forEach(function(k){var c=cats[k];if(!c.r)return;
+          out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.pl+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td><td style="'+td+'">'+escHtml(money(c.pr))+'</td></tr>';});
+        out+='<tr style="font-weight:700;border-top:1px solid #e3e6ee"><td style="'+tdl+'">Total</td><td style="'+td+'">'+tot.r+'</td><td style="'+td+'">'+tot.w+'</td><td style="'+td+'">'+tot.pl+'</td><td style="'+td+'">'+Math.round(100*tot.w/tot.r)+'%</td><td style="'+td+'">'+escHtml(money(tot.pr))+'</td></tr>';
+        out+='</tbody></table>';
       }
       out+='</div>';
-      out+='<div>'+row('Runs',String(runs))+row('Wins',String(wins));
-      Object.keys(prizeByCcy).forEach(function(k){
-        out+=row('Prize money',k+Math.round(prizeByCcy[k]).toLocaleString());
-      });
-      out+='</div></div>';
       _nrProfileCache[horseId]={html:out};
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML=out;
