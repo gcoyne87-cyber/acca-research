@@ -2402,7 +2402,22 @@ exports.handler = async function(event) {
         const venueFormatLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
           ? ' Then list the venues where winners came from.'
           : '';
-        const hotYardPrompt = 'Write a Daily Intelligence card for Racing Edge. Between 100 and 105 words exactly — count them. No opinions. No tipster language. No subjective statements. Pure data only. Format: Start with the trainer name, winners from runners in the last 7 days, and strike rate percentage.' + venueFormatLine + ' Then list today\'s runners with course and time. End with one neutral closing line about clicking to view their runners today. The data: Trainer: ' + hotYardTop.trainerName + '. Last 7 days: ' + hotYardTop.runners7d + ' runners, ' + hotYardTop.winners7d + ' winners, ' + hotYardTop.strikeRate7d + '% strike rate.' + venueLine + ' Today\'s runners: ' + runnersLine + '. Write it in third person. No waffle. No market references. No betting language. Data only.';
+        const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot' +
+          ' Yard card for Racing Edge.' +
+          ' Write in plain text only — no asterisks, no markdown.' +
+          ' 105 to 110 words exactly. Count carefully.' +
+          ' No opinions and no predictions. No prices or odds.' +
+          ' Cover the trainer\'s recent form, the winning venues,' +
+          ' today\'s declared runners with course and time, and' +
+          ' close by directing the reader to view the full runner' +
+          ' list on Racing Edge.' +
+          ' The data: Trainer: ' + hotYardTop.trainerName + '.' +
+          ' Last 7 days: ' + hotYardTop.runners7d + ' runners, ' +
+          hotYardTop.winners7d + ' winners, ' +
+          hotYardTop.strikeRate7d + '% strike rate.' +
+          venueLine +
+          ' Today\'s runners: ' + runnersLine + '.' +
+          venueFormatLine;
 
         // Hard 25s ceiling on this call. It runs BEFORE race analysis, and
         // apiPost's socket timeout only emits an event (never destroys the
