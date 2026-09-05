@@ -14206,6 +14206,9 @@ function runnerRow(ru,ctx,extraHtml){
     +'</div>'
     +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 12px 8px">'
       +'<div id="nrh-pai-'+pfx+'"></div>'
+      +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
+      +'<div id="nrh-pmeta-'+pfx+'"></div>'
+      +'<div id="nrh-pft-'+pfx+'"></div>'
     +'</div>'
   +'</div>';
 
@@ -14347,14 +14350,31 @@ function nrLoadEdge(pfx,horseId){
 }
 
 var _nrProfileCache={};
+function _nrProfileForm(pfx,horseId){
+  var fe=document.getElementById('nrh-fe-'+pfx);
+  var meta=document.getElementById('nrh-pmeta-'+pfx);
+  if(fe&&meta){
+    var h='';
+    for(var i=0;i<fe.children.length;i++){
+      var ch=fe.children[i];
+      if(ch.id!=='nrh-ft-'+pfx)h+=ch.outerHTML;
+    }
+    meta.innerHTML=h;
+  }
+  var pft=document.getElementById('nrh-pft-'+pfx);
+  var ft=document.getElementById('nrh-ft-'+pfx);
+  if(pft&&ft&&!pft.innerHTML)pft.innerHTML=ft.innerHTML;
+  nrLoadForm(pfx,horseId,true);
+}
 function nrLoadProfile(pfx,horseId){
-  if(!horseId){nrTogglePanel(pfx,'pe');return;}
+  if(!horseId){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
   var c=_nrProfileCache[horseId];
   var tDiv=document.getElementById('nrh-pai-'+pfx);
-  if(c&&c.html){nrTogglePanel(pfx,'pe');if(tDiv)tDiv.innerHTML=c.html;return;}
-  if(c==='err'){nrTogglePanel(pfx,'pe');return;}
+  if(c&&c.html){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);if(tDiv)tDiv.innerHTML=c.html;return;}
+  if(c==='err'){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
   if(c==='loading')return;
   nrTogglePanel(pfx,'pe');
+  _nrProfileForm(pfx,horseId);
   if(tDiv)tDiv.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Loading profile…</div>';
   _nrProfileCache[horseId]='loading';
   fetch('/.netlify/functions/get-horse-profile?horse_id='+encodeURIComponent(horseId))
@@ -14417,24 +14437,30 @@ function nrLoadProfile(pfx,horseId){
       if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
     });
 }
-function nrLoadForm(pfx,horseId){
-  if(!horseId){nrTogglePanel(pfx,'fe');return;}
+function nrLoadForm(pfx,horseId,silent){
+  if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
   var _cached=_nrFormCache[horseId];
   // Already fetched — toggle panel and re-inject HTML if DOM was rebuilt (e.g. race switch)
   if(_cached&&typeof _cached==='object'){
-    nrTogglePanel(pfx,'fe');
+    if(!silent)nrTogglePanel(pfx,'fe');
     var tDiv0=document.getElementById('nrh-ft-'+pfx);
-    if(tDiv0&&!tDiv0.innerHTML.trim())tDiv0.innerHTML=_cached.html;
+    if(tDiv0&&!tDiv0.innerHTML.trim()){
+      tDiv0.innerHTML=_cached.html;
+      var _pft0=document.getElementById('nrh-pft-'+pfx);
+      if(_pft0)_pft0.innerHTML=_cached.html;
+    }
     return;
   }
-  if(_cached==='err'){nrTogglePanel(pfx,'fe');return;}
+  if(_cached==='err'){if(!silent)nrTogglePanel(pfx,'fe');return;}
   // First open: show panel with loading state, then fetch
-  nrTogglePanel(pfx,'fe');
+  if(!silent)nrTogglePanel(pfx,'fe');
   var tDiv=document.getElementById('nrh-ft-'+pfx);
   if(!tDiv)return;
   if(_cached==='loading')return;
   _nrFormCache[horseId]='loading';
   tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>';
+  var _pft1=document.getElementById('nrh-pft-'+pfx);
+  if(_pft1)_pft1.innerHTML=tDiv.innerHTML;
   var _futureEl=document.getElementById('racing-future-content');
   var _onCardsFuture=_futureEl&&_futureEl.style.display!=='none';
   var _activeDay=_onCardsFuture?_cardsDay:_homeRcDay;
@@ -14494,6 +14520,8 @@ function nrLoadForm(pfx,horseId){
         if(!out)out+='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form history available.</div>';
         _nrFormCache[horseId]={html:out};
         tDiv2.innerHTML=out;
+        var _pft2=document.getElementById('nrh-pft-'+pfx);
+        if(_pft2)_pft2.innerHTML=out;
         return;
       }
       var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -14528,11 +14556,15 @@ function nrLoadForm(pfx,horseId){
       out+='</tbody></table></div>';
       _nrFormCache[horseId]={html:out};
       tDiv2.innerHTML=out;
+      var _pft2b=document.getElementById('nrh-pft-'+pfx);
+      if(_pft2b)_pft2b.innerHTML=out;
     })
     .catch(function(){
       _nrFormCache[horseId]='err';
       var tDiv3=document.getElementById('nrh-ft-'+pfx);
       if(tDiv3)tDiv3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load form data.</div>';
+      var _pft3=document.getElementById('nrh-pft-'+pfx);
+      if(_pft3)_pft3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load form data.</div>';
     });
 }
 function _tipsPillState(btn,active){
