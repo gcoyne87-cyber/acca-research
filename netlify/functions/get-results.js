@@ -234,6 +234,7 @@ exports.handler = async function(event) {
             return {
               pos: pos,
               horse: r.horse || r.horse_name || r.name || '',
+              horse_id: r.horse_id || '',
               draw: r.draw !== undefined && r.draw !== null ? String(r.draw) : '',
               jockey: r.jockey || r.jockey_name || '',
               trainer: r.trainer || r.trainer_name || '',
