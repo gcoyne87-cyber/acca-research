@@ -89,7 +89,7 @@ exports.handler = async function(event) {
     // versa) is still worth returning.
     const [profileSettled, resultsSettled] = await Promise.allSettled([
       apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/pro'),
-      apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/results?limit=50')
+      apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/results?limit=200')
     ]);
 
     // A fulfilled call that returned an API error body ({detail: ...}) is a
