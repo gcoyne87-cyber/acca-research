@@ -350,22 +350,28 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     if (isCandDWinner) runner.isCandDWinner = true;
 
     // C&D+G — a stronger version of C&D Winner: the horse's course-and-distance
-    // win came on ground with cut (heavy/yield/soft), AND today's going also
-    // has cut. Same EASY_DAY_RE/WIN_GROUND_RE definitions as Ground Lover below,
-    // recomputed locally here so neither tag's logic depends on the other's
-    // variables. Takes priority over C&D Winner — a horse must never show both.
+    // win came on EXACTLY today's going. Same exact primary-term comparison as
+    // the hourly recheck (recheckCandDGoing) and the Ground Lover tag below —
+    // previously this fallback used a loose /heavy|yield|soft/ substring test,
+    // so a "Good To Soft" C&D win earned +G on a Heavy day (caught live
+    // 2026-09-05). Day still gated to genuinely easy ground so the tag stays
+    // rare. Takes priority over C&D Winner — a horse must never show both.
     // Only reached when no persisted exact-match verdict exists yet (see above).
     var CDG_EASY_DAY_RE = /^(yielding|soft|heavy)/i;
-    var CDG_WIN_GROUND_RE = /heavy|yield|soft/i;
     var cdgPrimaryGoing = String(meetingGoing || '')
       .replace(/^[a-z]+\s*:\s*/i, '')
       .split(/[,(]/)[0].trim();
     if (CDG_EASY_DAY_RE.test(cdgPrimaryGoing)) {
+      var cdgDayKey = cdgPrimaryGoing.toLowerCase();
       const isCandDGoing = runs.some(function(h) {
-        return String(h.pos) === '1'
-          && stripParens(h.course) === courseKey
-          && milesFurlongs(h.dist) === distKey
-          && CDG_WIN_GROUND_RE.test(h.going || '');
+        if (String(h.pos) !== '1') return false;
+        if (stripParens(h.course) !== courseKey) return false;
+        if (milesFurlongs(h.dist) !== distKey) return false;
+        var cdgWinGoing = String(h.going || '')
+          .toLowerCase()
+          .replace(/^[a-z]+\s*:\s*/i, '')
+          .split(/[,(]/)[0].trim();
+        return cdgWinGoing === cdgDayKey;
       });
       if (isCandDGoing) {
         runner.isCandDGoing = true;
