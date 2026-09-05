@@ -14204,6 +14204,9 @@ function runnerRow(ru,ctx,extraHtml){
     +'<div id="nrh-je-'+pfx+'" style="display:none;padding:6px 12px 8px">'
       +'<div id="nrh-jai-'+pfx+'"></div>'
     +'</div>'
+    +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 12px 8px">'
+      +'<div id="nrh-pai-'+pfx+'"></div>'
+    +'</div>'
   +'</div>';
 
   var _rowBg=(_trainerFilter&&trainer&&trainer.toLowerCase()===_trainerFilter.toLowerCase())?'#ecfdf5':'#fff';
@@ -14222,6 +14225,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div style="flex:1;min-width:0">'
         // Name + form text on one line
         +'<div style="display:flex;align-items:baseline;gap:7px">'
+          +'<span onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;font-size:11px;color:#0D1B3E;flex-shrink:0;line-height:1">&#9654;</span>'
           +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +formText
         +'</div>'
@@ -14261,11 +14265,12 @@ function nrTogglePanel(pfx,panel){
   var wrap=document.getElementById('nrh-'+pfx);
   var feDiv=document.getElementById('nrh-fe-'+pfx);
   var seDiv=document.getElementById('nrh-se-'+pfx);
+  var peDiv=document.getElementById('nrh-pe-'+pfx);
   var feBtn=document.getElementById('nrh-btn-fe-'+pfx);
   var seBtn=document.getElementById('nrh-btn-se-'+pfx);
   if(!wrap)return;
   var cur=wrap.dataset.openPanel||'';
-  var accent=panel==='se'?'#d4af37':'#1e9e6b';
+  var accent=panel==='se'?'#d4af37':panel==='pe'?'#0D1B3E':'#1e9e6b';
   if(cur===panel){
     wrap.style.cssText='display:none';wrap.dataset.openPanel='';
     _nrPillState(feBtn,false);_nrPillState(seBtn,false);
@@ -14274,6 +14279,7 @@ function nrTogglePanel(pfx,panel){
     wrap.style.cssText='display:block;margin:3px 10px 8px;position:relative;border-radius:10px;background:rgba(0,0,0,0.04);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
     if(feDiv)feDiv.style.display=panel==='fe'?'block':'none';
     if(seDiv)seDiv.style.display=panel==='se'?'block':'none';
+    if(peDiv)peDiv.style.display=panel==='pe'?'block':'none';
     _nrPillState(feBtn,panel==='fe');_nrPillState(seBtn,panel==='se');
     nrOpenHistory[pfx]=true;
     var _nab=panel==='fe'?feBtn:panel==='se'?seBtn:null;
@@ -14340,6 +14346,77 @@ function nrLoadEdge(pfx,horseId){
   nrTogglePanel(pfx,'se');
 }
 
+var _nrProfileCache={};
+function nrLoadProfile(pfx,horseId){
+  if(!horseId){nrTogglePanel(pfx,'pe');return;}
+  var c=_nrProfileCache[horseId];
+  var tDiv=document.getElementById('nrh-pai-'+pfx);
+  if(c&&c.html){nrTogglePanel(pfx,'pe');if(tDiv)tDiv.innerHTML=c.html;return;}
+  if(c==='err'){nrTogglePanel(pfx,'pe');return;}
+  if(c==='loading')return;
+  nrTogglePanel(pfx,'pe');
+  if(tDiv)tDiv.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Loading profile…</div>';
+  _nrProfileCache[horseId]='loading';
+  fetch('/.netlify/functions/get-horse-profile?horse_id='+encodeURIComponent(horseId))
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var p=data.profile||{};
+      var races=(data.results&&Array.isArray(data.results.results))?data.results.results:[];
+      // oldest first — API returns newest first
+      races=races.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
+      var runs=0,wins=0,owner='',prizeByCcy={},hist=[],lastTrainer=null,lastDate=null;
+      races.forEach(function(race){
+        var me=null,rs=race.runners||[];
+        for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
+        if(!me)return;
+        runs++;
+        if(String(me.position)==='1')wins++;
+        if(me.prize){
+          var s=String(me.prize).trim();
+          var sym=(s.match(/^[^0-9]+/)||[''])[0].trim()||'£';
+          var n=parseFloat(s.replace(/[^0-9.]/g,''));
+          if(!isNaN(n))prizeByCcy[sym]=(prizeByCcy[sym]||0)+n;
+        }
+        if(me.owner)owner=me.owner; // ends on most recent
+        if(me.trainer&&me.trainer!==lastTrainer){
+          if(hist.length)hist[hist.length-1].to=lastDate;
+          hist.push({name:me.trainer,from:race.date,to:null});
+          lastTrainer=me.trainer;
+        }
+        lastDate=race.date;
+      });
+      var currentTrainer=hist.length?hist[hist.length-1].name:'';
+      var age='';
+      if(p.dob&&/^\d{4}/.test(p.dob)){age=String(new Date().getFullYear()-parseInt(p.dob.slice(0,4),10));}
+      function row(l,v){return v?'<div><span style="color:#667;font-weight:600">'+l+':</span> '+escHtml(String(v))+'</div>':'';}
+      var out='<div style="font-size:12px;color:#0D1B3E;line-height:1.7">';
+      out+='<div style="margin-bottom:8px">'
+        +row('Age',age)+row('Sex',p.sex)+row('Colour',p.colour)+row('Born',p.dob)
+        +row('Sire',p.sire)+row('Dam',p.dam)+row('Damsire',p.damsire)+row('Breeder',p.breeder)
+        +'</div>';
+      out+='<div style="margin-bottom:8px">'+row('Trainer',currentTrainer)+row('Owner',owner);
+      if(hist.length>1){
+        out+='<div><span style="color:#667;font-weight:600">Previous trainers:</span></div>';
+        hist.slice(0,-1).reverse().forEach(function(t){
+          out+='<div style="padding-left:10px">'+escHtml(t.name)+' <span style="color:#889">('+escHtml(t.from||'')+(t.to?' – '+escHtml(t.to):'')+')</span></div>';
+        });
+      }
+      out+='</div>';
+      out+='<div>'+row('Runs',String(runs))+row('Wins',String(wins));
+      Object.keys(prizeByCcy).forEach(function(k){
+        out+=row('Prize money',k+Math.round(prizeByCcy[k]).toLocaleString());
+      });
+      out+='</div></div>';
+      _nrProfileCache[horseId]={html:out};
+      var tDiv2=document.getElementById('nrh-pai-'+pfx);
+      if(tDiv2)tDiv2.innerHTML=out;
+    })
+    .catch(function(){
+      _nrProfileCache[horseId]='err';
+      var tDiv2=document.getElementById('nrh-pai-'+pfx);
+      if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
+    });
+}
 function nrLoadForm(pfx,horseId){
   if(!horseId){nrTogglePanel(pfx,'fe');return;}
   var _cached=_nrFormCache[horseId];
