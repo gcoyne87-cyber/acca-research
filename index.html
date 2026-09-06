@@ -14208,7 +14208,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div id="nrh-jai-'+pfx+'"></div>'
     +'</div>'
     +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 6px 8px">'
-      +'<div id="nrh-pai-'+pfx+'" style="padding:0 6px"></div>'
+      +'<div id="nrh-pai-'+pfx+'"></div>'
       +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
       +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
@@ -14450,13 +14450,13 @@ function nrLoadProfile(pfx,horseId){
         for(var L=0;L<lists.length&&!ru;L++){for(var i=0;i<lists[L].length;i++){if((lists[L][i].name||'').toLowerCase()===hn.toLowerCase()){ru=lists[L][i];break;}}}
         if(ru&&ru.trainer14&&ru.trainer14.runs>0)t14=ru.trainer14.wins+'/'+ru.trainer14.runs+(ru.trainer14.pct?' ('+ru.trainer14.pct+'%)':'')+' last 14d';
       })();
-      var LBL='font-size:10px;font-weight:700;letter-spacing:.05em;color:#8a90a3;text-transform:uppercase;line-height:1.2';
-      var MUT='color:#8a90a3;font-weight:400';
+      var LBL='font-size:9px;font-weight:800;letter-spacing:.05em;color:#0D1B3E;text-transform:uppercase;line-height:1.2';
+      var MUT='color:#9aa3b5;font-weight:400;font-size:10px;line-height:1.6';
       var fld=function(label,val,sub){
         if(!val)return '';
-        return '<div style="padding:4px 0">'
+        return '<div style="padding:3px 0">'
           +'<div style="'+LBL+'">'+label+'</div>'
-          +'<div>'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
+          +'<div style="font-size:11px;color:#0D1B3E;line-height:1.45">'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
       };
       var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'';};
       var horseLine=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' ').toLowerCase()].filter(Boolean).join(' ');
@@ -14465,18 +14465,18 @@ function nrLoadProfile(pfx,horseId){
       var prevLine='';
       if(hist.length>1)prevLine=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
       var recLine=tot.r?tot.r+' runs · '+tot.w+' wins · '+Math.round(100*tot.w/tot.r)+'%':'';
-      var out='<div style="font-size:12px;color:#0D1B3E;line-height:1.5">';
+      var out='<div style="padding:8px 12px 6px;font-size:11px;color:#0D1B3E;line-height:1.45">';
       out+=fld('Horse',horseLine,p.dob?'· foaled '+fmtD(p.dob):'')
          +fld('Trainer',currentTrainer,t14)
          +fld(owner&&p.breeder?'Owner · breeder':(owner?'Owner':'Breeder'),ownBreed)
          +fld('Pedigree',pedLine,p.damsire?'('+p.damsire+')':'')
          +fld('Previously',prevLine)
-         +(tot.r?'<div style="padding:4px 0"><div style="'+LBL+'">Prize money</div><div style="font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
+         +(tot.r?'<div style="padding:3px 0"><div style="'+LBL+'">Prize money</div><div style="font-size:11px;color:#0D1B3E;line-height:1.45;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
       if(tot.r>0){
-        var th='padding:5px 6px;font-size:10px;letter-spacing:.05em;color:#8a90a3;text-transform:uppercase;text-align:right;border-bottom:1px solid #e3e6ee',
-            td='padding:5px 6px;text-align:right;white-space:nowrap',tdl='padding:5px 6px;text-align:left;white-space:nowrap';
+        var th='text-align:right;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc',
+            td='padding:6px;text-align:right;white-space:nowrap;color:#0D1B3E',tdl='padding:6px;text-align:left;white-space:nowrap;color:#0D1B3E';
         out+='<div style="'+LBL+'margin-top:8px">Career record</div>';
-        out+='<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:12px"><thead><tr>'
+        out+='<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px"><thead><tr style="border-bottom:2px solid #e4e8f0">'
           +'<th style="'+th+'text-align:left">Surface</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">Places</th><th style="'+th+'">Win %</th><th style="'+th+'">Prize</th></tr></thead><tbody>';
         ['flat','aw','jumps'].forEach(function(k){var c=cats[k];if(!c.r)return;
           out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.pl+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td><td style="'+td+'">'+escHtml(money(c.pr)||'—')+'</td></tr>';});
