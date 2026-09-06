@@ -281,7 +281,7 @@ exports.handler = async function(event) {
           time: time,
           name: race.race_name || race.name || race.title || '',
           dist: race.distance || race.dist || '',
-          cls: cls ? 'Class ' + cls : '',
+          cls: cls ? (/^class\s/i.test(cls) ? cls : 'Class ' + cls) : '',
           prize: prize,
           winner_prize: (winnerRunner && winnerRunner.prize) || '',
           going: race.going || race.ground || '',

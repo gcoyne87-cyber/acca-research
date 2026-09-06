@@ -17219,9 +17219,10 @@ function renderResultsPage(){
               +(r.horse_id?'<span onclick="nrLoadProfile(\''+rpfx+'\',\''+_rHid+'\')" title="Horse profile" style="cursor:pointer;font-size:11px;color:#0D1B3E;flex-shrink:0;line-height:1">&#9654;</span>':'')
               +'<span style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
             +'</div>';
-            if(r.jockey||r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
+            if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">J</span> '+escHtml(r.jockey)+'</div>';
+            if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">T</span> '+escHtml(r.trainer)+'</div>';
             var _rWtOr=[];
-            if(r.wt) _rWtOr.push(escHtml(String(r.wt)));
+            if(r.wt) _rWtOr.push('<span style="font-size:10px;font-weight:700;color:#b0b7c6">W</span> '+escHtml(String(r.wt)));
             if(r.or) _rWtOr.push('OR '+escHtml(String(r.or)));
             if(_rWtOr.length) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+_rWtOr.join(' &middot; ')+'</div>';
             html+='</div>';
