@@ -14456,7 +14456,7 @@ function nrLoadProfile(pfx,horseId){
         if(!val)return '';
         return '<div style="padding:3px 0">'
           +'<div style="'+LBL+'">'+label+'</div>'
-          +'<div style="font-size:11px;color:#0D1B3E;line-height:1.45">'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
+          +'<div style="font-size:11px;color:#5a6478;line-height:1.6">'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
       };
       var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'';};
       var horseLine=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' ').toLowerCase()].filter(Boolean).join(' ');
@@ -14465,13 +14465,13 @@ function nrLoadProfile(pfx,horseId){
       var prevLine='';
       if(hist.length>1)prevLine=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
       var recLine=tot.r?tot.r+' runs · '+tot.w+' wins · '+Math.round(100*tot.w/tot.r)+'%':'';
-      var out='<div style="padding:8px 12px 6px;font-size:11px;color:#0D1B3E;line-height:1.45">';
+      var out='<div style="padding:8px 12px 6px;font-size:11px;color:#5a6478;line-height:1.6">';
       out+=fld('Horse',horseLine,p.dob?'· foaled '+fmtD(p.dob):'')
          +fld('Trainer',currentTrainer,t14)
          +fld(owner&&p.breeder?'Owner · breeder':(owner?'Owner':'Breeder'),ownBreed)
          +fld('Pedigree',pedLine,p.damsire?'('+p.damsire+')':'')
          +fld('Previously',prevLine)
-         +(tot.r?'<div style="padding:3px 0"><div style="'+LBL+'">Prize money</div><div style="font-size:11px;color:#0D1B3E;line-height:1.45;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
+         +(tot.r?'<div style="padding:3px 0"><div style="'+LBL+'">Prize money</div><div style="font-size:11px;color:#5a6478;line-height:1.6;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
       if(tot.r>0){
         var th='text-align:right;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc',
             td='padding:6px;text-align:right;white-space:nowrap;color:#0D1B3E',tdl='padding:6px;text-align:left;white-space:nowrap;color:#0D1B3E';
