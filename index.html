@@ -1654,6 +1654,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 .ai-cta-green{display:block;width:100%;background:#fff;color:#0D1B3E;border:1.5px solid #10b981;border-radius:99px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
 .time-tab{transition:transform .15s,opacity .15s;cursor:pointer}
 .time-tab:hover{transform:translateY(-2px);opacity:.8}
+[id^="nrh-pft-"] table{display:none}
 .ai-cta-green span{color:#10b981}
 .ai-cta-green:hover{box-shadow:0 0 0 3px rgba(16,185,129,0.22),0 2px 10px rgba(0,0,0,0.07);transform:translateY(-1px)}
 .ai-cta-dark{display:block;width:100%;background:#0D1B3E;color:#fff;border:1.5px solid #0D1B3E;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:box-shadow .18s,transform .18s}
@@ -14211,6 +14212,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
       +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
+      +'<div id="nrh-pcareer-'+pfx+'" style="padding:0"></div>'
     +'</div>'
   +'</div>';
 
@@ -14385,7 +14387,7 @@ function nrLoadProfile(pfx,horseId){
   if(!horseId){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
   var c=_nrProfileCache[horseId];
   var tDiv=document.getElementById('nrh-pai-'+pfx);
-  if(c&&c.html){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);if(tDiv)tDiv.innerHTML=c.html;return;}
+  if(c&&c.html){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);if(tDiv)tDiv.innerHTML=c.html;var pc0=document.getElementById('nrh-pcareer-'+pfx);if(pc0)pc0.innerHTML=c.formHtml||'';return;}
   if(c==='err'){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
   if(c==='loading')return;
   nrTogglePanel(pfx,'pe');
@@ -14482,7 +14484,45 @@ function nrLoadProfile(pfx,horseId){
         out+='</tbody></table>';
       }
       out+='</div>';
-      _nrProfileCache[horseId]={html:out};
+      var runsDesc=[];
+      races.forEach(function(race){
+        var me=null,rs=race.runners||[];
+        for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
+        if(me)runsDesc.push({race:race,me:me,ran:rs.length>1?rs.length:null});
+      });
+      runsDesc.reverse();
+      var _fMon2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var fDate=function(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||''));return m?(m[3]+' '+_fMon2[parseInt(m[2],10)-1]+" '"+m[1].slice(2)):String(d||'');};
+      var abG=typeof _nrAbGoing==='function'?_nrAbGoing:function(x){return x||'';};
+      var abD=typeof _nrAbDist==='function'?_nrAbDist:function(x){return x||'';};
+      var abC=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
+      var abJ=typeof _nrAbJockey==='function'?_nrAbJockey:function(x){return x||'';};
+      var TH='text-align:left;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
+      var formHtml='';
+      if(runsDesc.length){
+        formHtml+='<div style="'+LBL+'margin:10px 6px 4px">Form · '+runsDesc.length+' runs</div>';
+        formHtml+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;max-width:100%;border-collapse:collapse;font-size:11px">';
+        formHtml+='<thead><tr style="border-bottom:2px solid #e4e8f0"><th style="'+TH+'">Date</th><th style="'+TH+'">Course</th><th style="'+TH+'">Dist</th><th style="'+TH+'">Gng</th><th style="'+TH+';text-align:center">Pos</th><th style="'+TH+';text-align:right">SP</th><th style="'+TH+'">Jockey</th><th style="'+TH+';text-align:right">OR</th></tr></thead><tbody>';
+        runsDesc.forEach(function(x){
+          var r=x.race,m=x.me;
+          var pInt=parseInt(m.position,10);
+          var pCol=pInt===1?'#1e9e6b':(pInt===2||pInt===3)?'#b7860b':'#0D1B3E';
+          formHtml+='<tr style="border-bottom:1px solid #f0f2f7">'
+            +'<td style="padding:6px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(fDate(r.date))+'</td>'
+            +'<td style="padding:6px;font-weight:600;color:#0D1B3E">'+escHtml(abC(r.course))+'</td>'
+            +'<td style="padding:6px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abD(r.dist))+'</td>'
+            +'<td style="padding:6px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abG(r.going))+'</td>'
+            +'<td style="padding:6px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(String(m.position||'-'))+'</span>'+(x.ran?'<span style="font-size:9px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>'
+            +'<td style="padding:6px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.sp||'–')+'</td>'
+            +'<td style="padding:6px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(abJ(m.jockey))+'</td>'
+            +'<td style="padding:6px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.or||'–')+'</td>'
+            +'</tr>';
+        });
+        formHtml+='</tbody></table></div>';
+      }
+      var pc=document.getElementById('nrh-pcareer-'+pfx);
+      if(pc)pc.innerHTML=formHtml;
+      _nrProfileCache[horseId]={html:out,formHtml:formHtml};
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML=out;
     })
