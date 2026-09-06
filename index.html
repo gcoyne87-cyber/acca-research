@@ -11492,6 +11492,7 @@ function loadRacecards(){
         _renderPopularTrainers();
         var inl=document.getElementById('racing-inline-meeting');
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
+        setTimeout(_nrRestorePanels,0);
       },60000);
     })
     .catch(function(err){window._rcFetchInFlight=false;console.warn('[RacingEdge] Today racecard load failed:',err);});
@@ -11688,7 +11689,7 @@ function todaySelectRace(mid,ri){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
       // No scroll on tap — the render path's _capturePillScrolls/_restore
       // keeps the bar where the user left it; the bar itself never moves.
-      _fetchFormSummaries(_ids,function(){ _render(); });
+      _fetchFormSummaries(_ids,function(){ _render(); setTimeout(_nrRestorePanels,0); });
     }
   }
   setTimeout(function(){ rcAttachSwipe(mid); },60);
@@ -13095,6 +13096,7 @@ function _renderCurrentHomeList(){
   if(_homeRcDay==='today'){ renderTodayMeetingsList(); }
   else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(_el); }
   else if(_homeRcDay){ renderFutureDateContent(_homeRcDay,_el); }
+  setTimeout(_nrRestorePanels,0);
 }
 function rcTabSelect(mid,time,mname,tab){
   var now=Date.now();
@@ -14139,7 +14141,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'</div>';
     }).join('');
   }
-  var histCarousel='<div id="nrh-'+pfx+'" data-horsename="'+escHtml(ru.name)+'" style="display:none">'
+  var histCarousel='<div id="nrh-'+pfx+'" data-horsename="'+escHtml(ru.name)+'" data-horseid="'+escHtml(ru.horse_id||'')+'" style="display:none">'
     +'<div id="nrh-fe-'+pfx+'" style="display:none;padding:0 0 10px">'
       +(function(){
         var html='';
@@ -14204,10 +14206,10 @@ function runnerRow(ru,ctx,extraHtml){
     +'<div id="nrh-je-'+pfx+'" style="display:none;padding:6px 12px 8px">'
       +'<div id="nrh-jai-'+pfx+'"></div>'
     +'</div>'
-    +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 12px 8px">'
-      +'<div id="nrh-pai-'+pfx+'"></div>'
+    +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 6px 8px">'
+      +'<div id="nrh-pai-'+pfx+'" style="padding:0 6px"></div>'
       +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
-      +'<div id="nrh-pmeta-'+pfx+'"></div>'
+      +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
     +'</div>'
   +'</div>';
@@ -14264,6 +14266,19 @@ function _nrPillState(btn,active){
   btn.style.borderColor=active?'#0D1B3E':'#d4af37';
   btn.style.color=active?'#d4af37':'#0D1B3E';
 }
+function _nrRestorePanels(){
+  Object.keys(nrOpenHistory).forEach(function(pfx){
+    var panel=nrOpenHistory[pfx];
+    if(!panel)return;
+    var wrap=document.getElementById('nrh-'+pfx);
+    if(!wrap||wrap.dataset.openPanel)return;
+    var hid=wrap.dataset.horseid||'';
+    if(panel==='pe'&&typeof nrLoadProfile==='function')nrLoadProfile(pfx,hid);
+    else if(panel==='fe')nrLoadForm(pfx,hid);
+    else if(panel==='se'&&typeof nrLoadEdge==='function')nrLoadEdge(pfx,hid);
+    if(!wrap.dataset.openPanel)nrTogglePanel(pfx,panel);
+  });
+}
 function nrTogglePanel(pfx,panel){
   var wrap=document.getElementById('nrh-'+pfx);
   var feDiv=document.getElementById('nrh-fe-'+pfx);
@@ -14284,7 +14299,7 @@ function nrTogglePanel(pfx,panel){
     if(seDiv)seDiv.style.display=panel==='se'?'block':'none';
     if(peDiv)peDiv.style.display=panel==='pe'?'block':'none';
     _nrPillState(feBtn,panel==='fe');_nrPillState(seBtn,panel==='se');
-    nrOpenHistory[pfx]=true;
+    nrOpenHistory[pfx]=panel;
     var _nab=panel==='fe'?feBtn:panel==='se'?seBtn:null;
     var _nec=wrap.querySelector('.nr-caret');if(_nec)_nec.parentNode.removeChild(_nec);
     if(_nab){var _nbr=_nab.getBoundingClientRect();var _nwr=wrap.getBoundingClientRect();var _nal=Math.round(Math.max(12,_nbr.left-_nwr.left+_nbr.width/2-5));var _nca=document.createElement('div');_nca.className='nr-caret';_nca.style.cssText='position:absolute;top:-8px;left:'+_nal+'px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid '+accent+';pointer-events:none;z-index:3';wrap.insertBefore(_nca,wrap.firstChild);}
@@ -14477,6 +14492,15 @@ function nrLoadProfile(pfx,horseId){
       if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
     });
 }
+function _nrAbJockey(n){
+  var s=String(n||'').replace(/\(\d+\)/g,'').replace(/\s+/g,' ').trim();
+  if(!s)return '';
+  var parts=s.split(' ').filter(function(w){return !/^(mr|mrs|ms|miss|dr)\.?$/i.test(w);});
+  if(parts.length<2)return s;
+  var last=parts[parts.length-1];
+  var first=parts[0].replace(/[^A-Za-z]/g,'');
+  return (first?first.charAt(0).toUpperCase()+'. ':'')+last;
+}
 function nrLoadForm(pfx,horseId,silent){
   if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
   var _cached=_nrFormCache[horseId];
@@ -14569,13 +14593,13 @@ function nrLoadForm(pfx,horseId,silent){
       out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
       out+='<table style="width:100%;border-collapse:collapse">';
       out+='<thead><tr style="border-bottom:2px solid #e4e8f0">';
-      out+='<th style="'+_thS2+';padding:5px 6px 5px 12px">Date</th>';
+      out+='<th style="'+_thS2+';padding:5px 6px">Date</th>';
       out+='<th style="'+_thS2+'">Course</th>';
       out+='<th style="'+_thS2+'">Dist</th>';
       out+='<th style="'+_thS2+'">Gng</th>';
       out+='<th style="'+_thS2+';text-align:center">Pos</th>';
       out+='<th style="'+_thS2+';text-align:right">SP</th>';
-      out+='<th style="'+_thS2+';padding:5px 12px 5px 6px">Jockey</th>';
+      out+='<th style="'+_thS2+';padding:5px 6px">Jockey</th>';
       out+='</tr></thead><tbody>';
       hist.forEach(function(h){
         var posStr=String(h.pos||'-');
@@ -14584,13 +14608,13 @@ function nrLoadForm(pfx,horseId,silent){
         var _dp=h.date?String(h.date).split('-'):[];
         var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
         out+='<tr style="border-bottom:1px solid #f0f2f7">';
-        out+='<td style="padding:7px 6px 7px 12px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
+        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
         out+='<td style="padding:7px 6px;font-weight:600;color:#0D1B3E;font-size:11px;white-space:nowrap">'+escHtml(h.course||'')+'</td>';
         out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(h.dist||'')+'</td>';
         out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(h.going||'')+'</td>';
         out+='<td style="padding:7px 6px;text-align:center;white-space:nowrap"><span style="font-size:13px;font-weight:800;color:'+posCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#c0c6d4">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
         out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;text-align:right;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-        out+='<td style="padding:7px 12px 7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(h.jockey||'')+'</td>';
+        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(_nrAbJockey(h.jockey)||'')+'</td>';
         out+='</tr>';
       });
       out+='</tbody></table></div>';
@@ -17749,7 +17773,7 @@ function tomorrowSelectRace(mid,ri){
       var _ids=_race.runners.map(function(r){return r.horse_id;}).filter(Boolean);
       // No scroll on tap — the render path's _capturePillScrolls/_restore
       // keeps the bar where the user left it; the bar itself never moves.
-      _fetchFormSummaries(_ids,function(){ _render(); });
+      _fetchFormSummaries(_ids,function(){ _render(); setTimeout(_nrRestorePanels,0); });
     }
   }
   setTimeout(function(){ tmAttachSwipe(mid); },60);
