@@ -67,6 +67,26 @@ function apiGetRacing(path) {
   });
 }
 
+async function fetchAllResults(horseId) {
+  const PAGE = 50, MAX_PAGES = 4;
+  let all = [], first = null;
+  for (let pg = 0; pg < MAX_PAGES; pg++) {
+    let body;
+    try {
+      body = await apiGetRacing('/v1/horses/' + encodeURIComponent(horseId)
+        + '/results?limit=' + PAGE + '&skip=' + (pg * PAGE));
+    } catch (e) { body = null; }
+    if (!body || body.detail || !Array.isArray(body.results)) {
+      if (pg === 0) return null;
+      break;
+    }
+    if (pg === 0) first = body;
+    all = all.concat(body.results);
+    if (body.results.length < PAGE) break;
+  }
+  return Object.assign({}, first, { results: all, total: all.length, limit: all.length, skip: 0 });
+}
+
 exports.handler = async function(event) {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
@@ -76,7 +96,7 @@ exports.handler = async function(event) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'horse_id is required' }) };
     }
 
-    const cacheKey = 'horse:profile:' + horseId;
+    const cacheKey = 'horse:profile:v2:' + horseId;
 
     // Cache tier — the 24h TTL below means any hit is fresh by definition.
     const cached = await redisGet(cacheKey);
@@ -89,14 +109,15 @@ exports.handler = async function(event) {
     // versa) is still worth returning.
     const [profileSettled, resultsSettled] = await Promise.allSettled([
       apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/pro'),
-      apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/results?limit=200')
+      fetchAllResults(horseId)
     ]);
 
     // A fulfilled call that returned an API error body ({detail: ...}) is a
-    // failure for our purposes, not data.
+    // failure for our purposes, not data. The results helper already folds
+    // its own failures (error body, parse, first-page miss) into null.
     const profile = (profileSettled.status === 'fulfilled' && profileSettled.value && !profileSettled.value.detail)
       ? profileSettled.value : null;
-    const results = (resultsSettled.status === 'fulfilled' && resultsSettled.value && !resultsSettled.value.detail)
+    const results = (resultsSettled.status === 'fulfilled' && resultsSettled.value)
       ? resultsSettled.value : null;
 
     if (!profile && !results) {
@@ -106,8 +127,11 @@ exports.handler = async function(event) {
     const combined = { profile: profile, results: results };
 
     // Cache write is best-effort — a Redis failure must never fail the
-    // response the caller is waiting on.
-    try { await redisSetEx(cacheKey, combined, 86400); } catch (e) { /* best-effort */ }
+    // response the caller is waiting on. Only a COMPLETE result (both
+    // halves) is cached: a partial is still served to the caller, but the
+    // next request retries the missing half instead of pinning the gap
+    // in Redis for 24 hours.
+    if (profile && results) { try { await redisSetEx(cacheKey, combined, 86400); } catch (e) { /* best-effort */ } }
 
     return { statusCode: 200, headers, body: JSON.stringify(combined) };
   } catch (e) {
