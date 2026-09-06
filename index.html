@@ -14551,7 +14551,7 @@ function nrLoadForm(pfx,horseId,silent){
   if(_cached&&typeof _cached==='object'){
     if(!silent)nrTogglePanel(pfx,'fe');
     var tDiv0=document.getElementById('nrh-ft-'+pfx);
-    if(tDiv0&&!tDiv0.innerHTML.trim()){
+    if(tDiv0&&tDiv0.innerHTML!==_cached.html){
       tDiv0.innerHTML=_cached.html;
       var _pft0=document.getElementById('nrh-pft-'+pfx);
       if(_pft0)_pft0.innerHTML=_cached.html;
