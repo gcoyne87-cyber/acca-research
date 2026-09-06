@@ -14522,7 +14522,7 @@ function nrLoadForm(pfx,horseId,silent){
   if(!tDiv)return;
   if(_cached==='loading')return;
   _nrFormCache[horseId]='loading';
-  tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>';
+  tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>'+tDiv.innerHTML;
   var _pft1=document.getElementById('nrh-pft-'+pfx);
   if(_pft1)_pft1.innerHTML=tDiv.innerHTML;
   var _futureEl=document.getElementById('racing-future-content');
@@ -14581,6 +14581,8 @@ function nrLoadForm(pfx,horseId,silent){
 
       // Form history cards
       if(!hist.length){
+        var _keepT=(tDiv2&&tDiv2.innerHTML.match(/<table[\s\S]*?<\/table>/))||null;
+        if(_keepT)out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">'+_keepT[0]+'</div>';
         if(!out)out+='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form history available.</div>';
         _nrFormCache[horseId]={html:out};
         tDiv2.innerHTML=out;
