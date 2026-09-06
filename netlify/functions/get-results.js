@@ -244,7 +244,11 @@ exports.handler = async function(event) {
               // (lowest decimal SP), prize kept because prize money is
               // per-RUNNER in this API — there is no race-level prize field.
               sp_dec: (r.sp_dec !== undefined && r.sp_dec !== null && !isNaN(parseFloat(r.sp_dec))) ? parseFloat(r.sp_dec) : null,
-              prize: r.prize || ''
+              prize: r.prize || '',
+              // Weight ("9-7") and official rating — same raw field names
+              // horse-form.js reads from this results-family runner shape.
+              wt: (r.weight !== undefined && r.weight !== null && String(r.weight).trim()) ? String(r.weight).trim() : (r.weight_lbs ? String(r.weight_lbs) : ''),
+              or: (r.or !== undefined && r.or !== null && /^\d+$/.test(String(r.or).trim())) ? String(r.or).trim() : ''
             };
           })
           .filter(function(r) { return r.horse; })
@@ -259,7 +263,15 @@ exports.handler = async function(event) {
 
         const cls = race.race_class || race.class || '';
         const prize = race.prize || race.total_prize_money || race.prize_money || '';
-        const winningTime = race.winning_time || race.time_description || '';
+        // Widened candidate chain — winning_time/time_description were empty
+        // on every live race (checked 2026-09-06); the API may carry the
+        // clock under one of these instead. Harmless when absent. race.time
+        // is accepted only when it does NOT look like an off time (HH:MM) —
+        // this endpoint's own venue mapper treats race.time as an off-time
+        // fallback, so "2:30" here would be the race's start, not its clock.
+        const rawWinTime = race.winning_time || race.time_description || race.winning_time_detail || race.win_time
+          || ((race.time && !/^\d{1,2}:\d{2}$/.test(String(race.time).trim())) ? race.time : '');
+        const winningTime = rawWinTime || '';
         const totalSp = race.total_sp_pct ? Math.round(race.total_sp_pct) + '%'
           : (race.total_sp ? String(race.total_sp) : '');
 
@@ -286,6 +298,39 @@ exports.handler = async function(event) {
           return (a.time || '').localeCompare(b.time || '');
         });
       });
+
+      // Non-runners — the results API omits NRs entirely (its runners list is
+      // finishers only, and `ran` above is derived from it), so the only
+      // source of truth is the day's declared card: cross-reference the
+      // cached racecards:{date} and list every declared runner missing from
+      // the result. Best-effort: no racecards cache, or an unmatched race,
+      // simply means no NR line for that race.
+      try {
+        const declaredCard = await redisGetJson('racecards:' + date);
+        if (declaredCard && Array.isArray(declaredCard.meetings)) {
+          const normName = function(s) {
+            return String(s || '').toLowerCase().replace(/\s*\([^)]*\)\s*$/, '').replace(/[^a-z0-9]/g, '');
+          };
+          const declaredByRace = {};
+          declaredCard.meetings.forEach(function(m) {
+            const vKey = normaliseCourse(m.name || '');
+            (m.races || []).forEach(function(rc) {
+              declaredByRace[vKey + '|' + (rc.t || '')] = (rc.runners || []).map(function(ru) { return ru.name || ''; }).filter(Boolean);
+            });
+          });
+          venueOrder.forEach(function(id) {
+            venueMap[id].races.forEach(function(race) {
+              if (!race.runners || !race.runners.length) return; // race not run — nothing to compare yet
+              const declared = declaredByRace[id + '|' + race.time];
+              if (!declared || !declared.length) return;
+              const ranSet = {};
+              race.runners.forEach(function(r) { ranSet[normName(r.horse)] = true; });
+              const nrs = declared.filter(function(n) { return !ranSet[normName(n)]; });
+              if (nrs.length) race.non_runners = nrs;
+            });
+          });
+        }
+      } catch (nrErr) { /* NR derivation is additive — never fail the response */ }
 
       const pagePayload = { date, venues: venueOrder.map(function(id) { return venueMap[id]; }), partial: partial, fetched: results.length };
       // Cache complete past-date responses for 24h — never partial ones (a

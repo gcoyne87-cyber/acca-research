@@ -11875,7 +11875,7 @@ function _tfLoadDays(){
 // before a re-render and put it back straight after the new markup lands.
 function _capturePillScrolls(){
   var saved={};
-  var bars=document.querySelectorAll('[id^="tdpills-"],[id^="tmpills-"],[id^="rcspills-"],#tf-race-pills,#tfd-race-pills,#tmf-race-pills,#fd-race-pills,#nr-strip,#nr-strip-home');
+  var bars=document.querySelectorAll('[id^="tdpills-"],[id^="tmpills-"],[id^="rcspills-"],[id^="res-pills-"],#tf-race-pills,#tfd-race-pills,#tmf-race-pills,#fd-race-pills,#nr-strip,#nr-strip-home');
   for(var i=0;i<bars.length;i++){ if(bars[i].scrollLeft) saved[bars[i].id]=bars[i].scrollLeft; }
   return saved;
 }
@@ -16423,6 +16423,22 @@ function _setResTrainerFilter(name){
   if(inp) inp.value=name;
   var clr=document.getElementById('res-trainer-search-clear');
   if(clr) clr.style.display='flex';
+  // Auto-open the first race with a matching runner — filtering must show
+  // runners immediately, not a closed venue list.
+  if(name&&_resData){
+    var _nlc=name.toLowerCase().trim();
+    outer: for(var vi=0;vi<_resData.length;vi++){
+      var v=_resData[vi];
+      for(var ri=0;ri<(v.races||[]).length;ri++){
+        var rr=v.races[ri];
+        if((rr.runners||[]).some(function(x){return (x.trainer||'').toLowerCase().trim()===_nlc;})){
+          _resOpenVenue=v.courseId;
+          _resOpenRace[v.courseId]=ri;
+          break outer;
+        }
+      }
+    }
+  }
   renderResultsPage();
 }
 function _submitResTrainerSearch(){
@@ -16604,7 +16620,7 @@ function _renderResDateBar(){
   if(!bar) return;
   var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
-  var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var now=new Date();
   var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   var cur=_resLoadedDate||todayStr;
@@ -16612,7 +16628,10 @@ function _renderResDateBar(){
   for(var i=0;i<4;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
     var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    var label=i===0?'Today':i===1?'Yesterday':dayNames[d.getDay()];
+    // Same day+ordinal format as the racecards date strip — "Fri 4th".
+    var dayNum=d.getDate();
+    var ordSfx=(dayNum%100>=11&&dayNum%100<=13)?'th':(dayNum%10===1?'st':dayNum%10===2?'nd':dayNum%10===3?'rd':'th');
+    var label=i===0?'Today':i===1?'Yesterday':dayNames[d.getDay()]+' '+dayNum+ordSfx;
     html+='<button data-date="'+ds+'" onclick="_resSelectDate(\''+ds+'\')" style="'+(ds===cur?activeStyle:inactiveStyle)+'">'+label+'</button>';
   }
   bar.innerHTML=html;
@@ -17034,6 +17053,7 @@ function _startHomeResultsPolling(){
 function renderResultsPage(){
   var body=document.getElementById('res-body');
   if(!body) return;
+  var _pillSave=_capturePillScrolls();
   if(!_resData||!_resData.length){
     body.innerHTML='<div style="padding:40px 16px;text-align:center;color:#9aa3b5;font-size:13px">No races found.</div>';
     renderResultsFeed();
@@ -17128,6 +17148,11 @@ function renderResultsPage(){
             var p=parseInt(r.pos);
             var isW=p===1;
             var ord=ordN(r.pos);
+            // Profile panel pfx — unique per venue/race/row, same nrh- id
+            // scheme as runnerRow so nrLoadProfile/nrTogglePanel/_nrRestorePanels
+            // all work unchanged on results rows.
+            var rpfx='res_'+String(cid)+'_'+String(race.time||'').replace(/[^0-9]/g,'')+'_'+ri;
+            var _rHid=escHtml(r.horse_id||'').replace(/'/g,"\\'");
             // Row: position | silk column (draw small above silk, vertically
             // centred across both text lines via the row's align-items:center)
             // | horse + jockey·trainer | SP. The raw draw prefix inline with
@@ -17139,11 +17164,31 @@ function renderResultsPage(){
               +nrSilk(_resSilkFor(r.horse,ri))
             +'</div>';
             html+='<div style="flex:1;min-width:0">';
-            html+='<div style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</div>';
+            html+='<div style="display:flex;align-items:baseline;gap:6px;min-width:0">'
+              +(r.horse_id?'<span onclick="nrLoadProfile(\''+rpfx+'\',\''+_rHid+'\')" title="Horse profile" style="cursor:pointer;font-size:11px;color:#0D1B3E;flex-shrink:0;line-height:1">&#9654;</span>':'')
+              +'<span style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
+            +'</div>';
             if(r.jockey||r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
+            var _rWtOr=[];
+            if(r.wt) _rWtOr.push(escHtml(String(r.wt)));
+            if(r.or) _rWtOr.push('OR '+escHtml(String(r.or)));
+            if(_rWtOr.length) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+_rWtOr.join(' &middot; ')+'</div>';
             html+='</div>';
             if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
             html+='</div>';
+            // Hidden profile panel wrapper — the same nrh- structure runnerRow
+            // builds (profile panel only; no Form/Analysis panels here).
+            if(r.horse_id){
+              html+='<div id="nrh-'+rpfx+'" data-horsename="'+escHtml(r.horse)+'" data-horseid="'+escHtml(r.horse_id||'')+'" style="display:none">'
+                +'<div id="nrh-pe-'+rpfx+'" style="display:none;padding:6px 6px 8px">'
+                  +'<div id="nrh-pai-'+rpfx+'"></div>'
+                  +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
+                  +'<div id="nrh-pmeta-'+rpfx+'" style="padding:0 6px"></div>'
+                  +'<div id="nrh-pft-'+rpfx+'"></div>'
+                  +'<div id="nrh-pcareer-'+rpfx+'" style="padding:0"></div>'
+                +'</div>'
+              +'</div>';
+            }
           });
           // Footer
           html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f0f2f7;font-size:12px;color:#9aa3b5;line-height:1.5">';
@@ -17187,6 +17232,9 @@ function renderResultsPage(){
             }).join(', ');
             html+='<br>Fav: <span style="color:#0D1B3E;font-weight:600">'+favTxt+'</span>';
           })();
+          if(race.non_runners&&race.non_runners.length){
+            html+='<br>NR: <span style="color:#0D1B3E">'+race.non_runners.map(function(n){return escHtml(n);}).join(', ')+'</span>';
+          }
           html+='</div>';
         }
         html+='</div>';
@@ -17202,18 +17250,12 @@ function renderResultsPage(){
   body.innerHTML=html;
   renderResultsFeed();
   // The innerHTML rebuild above resets every pill row's horizontal scroll to
-  // 0. Restore the open venue's active pill into view after EVERY re-render —
-  // this single hook covers a pill tap (selectResRace), a venue toggle
-  // (toggleResVenue), and the 90-second results poll, all of which route
-  // through this function. Instant (auto) so the row snaps back rather than
-  // visibly animating; block:nearest so the page never jumps vertically.
-  if(_resOpenVenue){
-    var _resPillRow=document.getElementById('res-pills-'+_resOpenVenue);
-    if(_resPillRow){
-      var _resActPill=_resPillRow.children[_resOpenRace[_resOpenVenue]||0];
-      if(_resActPill&&_resActPill.scrollIntoView) _resActPill.scrollIntoView({behavior:'auto',inline:'nearest',block:'nearest'});
-    }
-  }
+  // 0. Restore each bar to exactly where the user left it (captured at the
+  // top of this function) — never scroll to the tapped pill, so the bar
+  // stays put on tap, venue toggle, and the 90-second poll alike.
+  _restorePillScrolls(_pillSave);
+  // Re-open any horse profile panel the rebuild destroyed.
+  setTimeout(_nrRestorePanels,0);
 }
 
 function toggleResVenue(courseId){
