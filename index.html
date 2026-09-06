@@ -5901,6 +5901,10 @@ function unlockCorkAnalysis(){
       </div>
       <!-- Results trainer filter — completely independent of the racecard
            trainer filter (_resTrainerFilter, own input, own clear). -->
+      <div id="res-trainer-carousel" style="display:none;margin:0 0 12px;padding:0 16px">
+        <div style="font-size:11px;font-weight:700;color:#0D1B3E;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Trainers in today's results</div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px"><div id="res-car-track" style="display:flex;padding:2px 0"></div></div>
+      </div>
       <div id="res-trainer-search-wrap" style="padding:0 16px 10px;background:#f5f7fb">
         <div style="background:#fff;border:1px solid #edeff4;border-radius:16px;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -16428,6 +16432,40 @@ function _onResTrainerSearchInput(val){
   }).join('');
   dd.style.display='block';
 }
+function _buildResTrainerCarousel(){
+  if(!_resData||!_resData.length)return;
+  var seen={},trainers=[];
+  _resData.forEach(function(v){
+    (v.races||[]).forEach(function(r){
+      (r.runners||[]).forEach(function(ru){
+        if(!ru.trainer)return;
+        var k=ru.trainer.trim().toLowerCase();
+        if(seen[k])return;
+        seen[k]=true;
+        trainers.push(ru.trainer.trim());
+      });
+    });
+  });
+  trainers.sort(function(a,b){return a.localeCompare(b);});
+  if(!trainers.length)return;
+  var el=document.getElementById('res-trainer-carousel');
+  if(!el)return;
+  var chips='';
+  trainers.forEach(function(t){
+    var te=t.replace(/'/g,"\\'");
+    chips+='<div onclick="_setResTrainerFilter(\''+te+'\');selectRacingSection(\'results\')" '
+      +'style="flex-shrink:0;min-width:120px;background:#fff;border:1px solid #e3e6ee;'
+      +'border-radius:10px;padding:8px 12px;cursor:pointer;margin-right:8px">'
+      +'<div style="font-size:12px;font-weight:700;color:#0D1B3E;white-space:nowrap;'
+      +'overflow:hidden;text-overflow:ellipsis;max-width:140px">'+escHtml(t)+'</div>'
+      +'<div style="font-size:10px;color:#1e9e6b;margin-top:2px">View results &rarr;</div>'
+      +'</div>';
+  });
+  var track=el.querySelector('#res-car-track');
+  if(!track)return;
+  track.innerHTML=chips;
+  el.style.display='block';
+}
 function _setResTrainerFilter(name){
   _resTrainerFilter=name;
   var inp=document.getElementById('res-trainer-search-input');
@@ -16676,6 +16714,7 @@ function loadResultsPage(date){
   if(!_resData&&_resApiCache[d]){
     _resData=_resApiCache[d];
     renderResultsPage();
+    _buildResTrainerCarousel();
   }
 
   // For today: build venue/race structure instantly from already-loaded RC_MEETINGS
@@ -16742,6 +16781,7 @@ function loadResultsPage(date){
         }
         _setResStatus('');
         renderResultsPage();
+        _buildResTrainerCarousel();
       })
       .catch(function(e){
         _resApiFetching=false;
