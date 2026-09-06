@@ -2549,6 +2549,12 @@ exports.handler = async function(event) {
           time: bigRaceCandidate.t24label,
           raceName: bigRaceCandidate.race.race_name || '',
           prize: bigRaceCandidate.race.prize || '',
+          runners: bigRaceCandidate.race.runners
+            ? bigRaceCandidate.race.runners.filter(function(r){return !r.is_non_runner;}).length
+            : (bigRaceCandidate.race.field_size||0),
+          distance: bigRaceCandidate.race.distance||'',
+          going: bigRaceCandidate.race.going||'',
+          raceClass: bigRaceCandidate.race.race_class||'',
           raceIntelligence: bigRaceCandidate.analysisEntry.raceIntelligence,
           courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
         };
