@@ -13,6 +13,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script>
+// Irish calendar date — the racing day. toISOString() is UTC, which is an
+// hour behind the Irish clock during summer time: between 23:00 UTC and
+// midnight UTC the two disagree on what "today" is. Every client-side
+// calendar-day string (racecards, results, picks, tracker) is built through
+// this so "today" always means the Europe/Dublin racing day, matching
+// irishTodayStr in racecards.js / form-summary-background.js. Defined in the
+// first script block so it is global before any later block runs.
+function irishDateStr(d){
+  var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Dublin'}).formatToParts(d||new Date());
+  function g(t){var p=parts.filter(function(x){return x.type===t;})[0];return (p&&p.value)||'';}
+  return g('year')+'-'+g('month')+'-'+g('day');
+}
+
   firebase.initializeApp({
     apiKey: "AIzaSyBtkzCm1fI3bbLfjsC1x4p6cZVfZtkEjoo",
     authDomain: "racingedge-fd3d7.firebaseapp.com",
@@ -3229,7 +3242,7 @@ window.addEventListener('load',function(){
     function normName(s){ return (s||'').toLowerCase().replace(/\s*\((ire|gb|fr|usa|ger|aus|nz|ity|spa|bel|den|swe|nor|cze|pol|hun|por|tur|chi|arg|bra|jap|hkg|uae|can|saf|ind)\)/g,'').replace(/[^a-z0-9]/g,''); }
 
     function syncResults(){
-      var today=new Date().toISOString().slice(0,10);
+      var today=irishDateStr();
       var recs=getRecs();
       // Collect all dates (including today) that have unresolved picks
       var dates=[];
@@ -3322,8 +3335,8 @@ window.addEventListener('load',function(){
         else cleaned.push(rec);
       });
       saveRecs(cleaned);
-      var today=new Date().toISOString().slice(0,10);
-      console.log('[pt-trace] ptShow: unlock — today(UTC)='+today); // TEMP TRACE — remove after verification
+      var today=irishDateStr();
+      console.log('[pt-trace] ptShow: unlock — today(Irish)='+today); // TEMP TRACE — remove after verification
       // Redis first: merge the shared master record set into the local cache
       // before anything renders, so every device starts from identical data.
       // A failed pull falls back to local-only — exactly the old behaviour.
@@ -3358,7 +3371,7 @@ window.addEventListener('load',function(){
       });
       var missing=[];
       for(var i=1;i<=7;i++){
-        var d=new Date(Date.now()-i*86400000).toISOString().slice(0,10);
+        var d=irishDateStr(new Date(Date.now()-i*86400000));
         if(!(haveIntel[d]&&havePhase3[d])) missing.push(d);
       }
       console.log('[pt-trace] backfill: incomplete dates →',missing.join(', ')||'(none)'); // TEMP TRACE — remove after verification
@@ -3379,7 +3392,7 @@ window.addEventListener('load',function(){
     if(isAuth()){
       ptShow();
       setInterval(function(){
-        var today=new Date().toISOString().slice(0,10);
+        var today=irishDateStr();
         fetchToday(today,function(recs){ ptRender(recs); syncResults(); });
       },60000);
     }
@@ -7350,7 +7363,7 @@ function renderLeagueCarousel(){
 
 }
 
-function formatDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function formatDate(d){return irishDateStr(d);}
 
 function updateDateDisplay(){
 
@@ -9885,7 +9898,7 @@ var infMultiFixtures={};
 
 function infFormatDate(d){
 
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return irishDateStr(d);
 
 }
 
@@ -9981,7 +9994,7 @@ function infSetAll(){
 
     var d=new Date(base);d.setDate(base.getDate()+i);
 
-    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    days.push(irishDateStr(d));
 
   }
 
@@ -10031,7 +10044,7 @@ function infPickCountry(c){
 
     var d=new Date(base);d.setDate(base.getDate()+i);
 
-    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    days.push(irishDateStr(d));
 
   }
 
@@ -11377,7 +11390,7 @@ function _buildNrFromMeetings(meetings,isTomorrow){
 
 function _getLiveMeetings(){
   var now=new Date();
-  var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var todayStr=irishDateStr(now);
   var nowMins=now.getHours()*60+now.getMinutes();
   var result=[];
   RC_MEETINGS.forEach(function(m){
@@ -11402,8 +11415,8 @@ function _getLiveMeetings(){
 function loadRacecards(){
   var now=new Date();
   var tmrw=new Date(now); tmrw.setDate(tmrw.getDate()+1);
-  var tmrwStr=tmrw.toISOString().slice(0,10);
-  var _rcLoadingDateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var tmrwStr=irishDateStr(tmrw);
+  var _rcLoadingDateStr=irishDateStr(now);
   window._rcFetchInFlight=true;
 
   fetch('/.netlify/functions/racecards')
@@ -11471,7 +11484,7 @@ function loadRacecards(){
       if(window._rcAutoRefresh) clearInterval(window._rcAutoRefresh);
       window._rcAutoRefresh=setInterval(function(){
         var _n=new Date();
-        var _nStr=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0');
+        var _nStr=irishDateStr(_n);
         if(_nStr!==window._rcLoadedDateStr && !window._rcFetchInFlight){
           loadRacecards();
           return;
@@ -11849,7 +11862,7 @@ function _tfLoadDays(){
   _tfDayLabels={today:'Today'};
   for(var i=1;i<=4;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
-    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var ds=irishDateStr(d);
     _tfDayDates.push(ds);
     _tfDayLabels[ds]=i===1?'Tomorrow':dayNames[d.getDay()];
   }
@@ -12767,7 +12780,7 @@ function renderFutureDateContent(dateStr,targetEl){
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
-          var _hn=new Date(),_ht=_hn.getFullYear()+'-'+String(_hn.getMonth()+1).padStart(2,'0')+'-'+String(_hn.getDate()).padStart(2,'0'),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=_hm.getFullYear()+'-'+String(_hm.getMonth()+1).padStart(2,'0')+'-'+String(_hm.getDate()).padStart(2,'0'),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
+          var _hn=new Date(),_ht=irishDateStr(_hn),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=irishDateStr(_hm),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
           if(_ha && _ha.raceIntelligence && dateStr===_ht){
             out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
           }
@@ -12841,7 +12854,7 @@ function renderTodayMeetingsList(isInitial){
     var _sampleRace=(RC_MEETINGS[0].races||[])[0];
     var _sampleDateStr=_sampleRace&&(_sampleRace._offDt||'').slice(0,10);
     var _nowD=new Date();
-    var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
+    var _todayD=irishDateStr(_nowD);
     if(_sampleDateStr && _sampleDateStr!==_todayD){
       // Every loaded race is dated before today — this is yesterday's stale data
       // that the date filter correctly emptied out. Fetch today's fresh card
@@ -14581,10 +14594,10 @@ function nrLoadForm(pfx,horseId,silent){
   var _activeDay=_onCardsFuture?_cardsDay:_homeRcDay;
   var _now=new Date(),_activeDateStr;
   if(_activeDay==='today'){
-    _activeDateStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+    _activeDateStr=irishDateStr(_now);
   } else if(_activeDay==='tomorrow'){
     var _tmrw=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate()+1);
-    _activeDateStr=_tmrw.getFullYear()+'-'+String(_tmrw.getMonth()+1).padStart(2,'0')+'-'+String(_tmrw.getDate()).padStart(2,'0');
+    _activeDateStr=irishDateStr(_tmrw);
   } else {
     _activeDateStr=_activeDay;
   }
@@ -14998,7 +15011,7 @@ function horseEdges(horseName){
 
 function loadDailyBuild(){
   var td=new Date(); td.setDate(td.getDate()+1);
-  var tomorrowDate=td.toISOString().slice(0,10);
+  var tomorrowDate=irishDateStr(td);
 
   function _ctaRaceTimePassed(ctaDestination,itemDate){
     var _dest=ctaDestination||'';
@@ -15020,7 +15033,7 @@ function loadDailyBuild(){
     }
     if(itemDate){
       var _ld=new Date();
-      var _localTodayStr=_ld.getFullYear()+'-'+String(_ld.getMonth()+1).padStart(2,'0')+'-'+String(_ld.getDate()).padStart(2,'0');
+      var _localTodayStr=irishDateStr(_ld);
       if(itemDate<_localTodayStr) return true;
     }
     var m=(ctaDestination||'').match(/^race:[^:]+:(\d{1,2}):(\d{2})$/);
@@ -15128,7 +15141,7 @@ function loadDailyBuild(){
       var tomorrowItems=(tomorrowData&&tomorrowData.intelligence&&tomorrowData.intelligence.length)?tomorrowData.intelligence:[];
       var intelItems=todayItems.concat(tomorrowItems);
       var _ldToday=new Date();
-      var _todayDateStr=_ldToday.getFullYear()+'-'+String(_ldToday.getMonth()+1).padStart(2,'0')+'-'+String(_ldToday.getDate()).padStart(2,'0');
+      var _todayDateStr=irishDateStr(_ldToday);
       intelItems.forEach(function(item){
         if(item.date && item.date > _todayDateStr && (item.ctaDestination||'').indexOf('trainer:')===0){
           item.ctaDestination='tomorrowtrainer:'+item.ctaDestination.substring('trainer:'.length);
@@ -15145,7 +15158,7 @@ function loadDailyBuild(){
           window._aiIntelligenceRefreshTimer=setInterval(function(){
             var _beforeLen=AI_INTELLIGENCE.length;
             AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
-              var _now = new Date().toISOString().slice(0,10);
+              var _now = irishDateStr();
               return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination,item.date);
             });
             var _clockNow=new Date();
@@ -15207,7 +15220,7 @@ function loadHistoricalSelections(){
   for(var i=1;i<=14;i++){
     var d=new Date(now);
     d.setDate(d.getDate()-i);
-    var ds=d.toISOString().slice(0,10);
+    var ds=irishDateStr(d);
     if(!_ptAllSelByDate[ds]){
       try{ var stored=localStorage.getItem('allsel:'+ds); if(stored){ _ptAllSelByDate[ds]=JSON.parse(stored); } else { datesToCheck.push(ds); } }catch(e){ datesToCheck.push(ds); }
     }
@@ -15327,7 +15340,7 @@ function highlightHorse(name){
 
 function renderAIIntelligence(){
   var _ldNow=new Date();
-  var _todayStr = _ldNow.getFullYear()+'-'+String(_ldNow.getMonth()+1).padStart(2,'0')+'-'+String(_ldNow.getDate()).padStart(2,'0');
+  var _todayStr = irishDateStr(_ldNow);
   var el=document.getElementById('ai-intelligence-list');
   if(!el) return;
 
@@ -15365,7 +15378,7 @@ function renderAIIntelligence(){
     // "06:30 pre-race on the picks' own morning".
     var _fn=window._ctaRaceTimePassed;
     var _pn=new Date();
-    var _pTodayStr=_pn.getFullYear()+'-'+String(_pn.getMonth()+1).padStart(2,'0')+'-'+String(_pn.getDate()).padStart(2,'0');
+    var _pTodayStr=irishDateStr(_pn);
     var _pNowMins=_pn.getHours()*60+_pn.getMinutes();
     var _staleMorning=window._intelPicksDate&&window._intelPicksDate<_pTodayStr&&_pNowMins>=360;
     if(_staleMorning) return [];
@@ -15873,7 +15886,7 @@ window._ptRQNext=function(){
           // its outcomes written into ptRecs2 already. Prune before storing so
           // old caches can't accumulate and fill localStorage ("exceeded the
           // quota" seen on desktop 2026-08-16).
-          var _cutoff=new Date(Date.now()-3*86400000).toISOString().slice(0,10);
+          var _cutoff=irishDateStr(new Date(Date.now()-3*86400000));
           var _stale=[];
           for(var _ri=0;_ri<localStorage.length;_ri++){
             var _rk=localStorage.key(_ri);
@@ -15917,7 +15930,7 @@ window._ptRQAdd=function(d){
 window._ptInjectAllSel=function(){
   var outer=document.getElementById('pt-all-sel-outer');
   if(!outer) return;
-  var today=new Date().toISOString().slice(0,10);
+  var today=irishDateStr();
 
   // todayPicks from loaded globals (fallback when tracker recs not yet in localStorage)
   // Each horse maps to an ARRAY of {label,color} so multiple signals all show
@@ -16008,7 +16021,7 @@ window._ptInjectAllSel=function(){
 // remove-then-refetch pattern blanked every result for the whole fetch window,
 // and permanently whenever a fetch stalled.
 setInterval(function(){
-  var _td=new Date().toISOString().slice(0,10);
+  var _td=irishDateStr();
   delete window._ptRQ.seen[_td];
   if(window._ptRQAdd) window._ptRQAdd(_td);
 },60000);
@@ -16522,13 +16535,13 @@ function _loadResultsFeed(ds){
     if(_resFeedDate!==ds) return; // a newer tab choice superseded this load
     var venues=(data&&!data.error&&data.venues)?data.venues:[];
     var hasResults=venues.some(function(v){ return (v.races||[]).some(function(r){ return r.runners&&r.runners.length; }); });
-    var todayStr=new Date().toISOString().slice(0,10);
+    var todayStr=irishDateStr();
     if(!hasResults&&ds===todayStr){
       // Nothing has finished yet today (every morning before racing) — fall
       // back to yesterday so the strip is never an empty hole, and move the
       // Today/Yesterday tab highlight + label so what's shown stays honest.
       // Same pattern as the homepage Latest Results strip.
-      var y=new Date(Date.now()-86400000).toISOString().slice(0,10);
+      var y=irishDateStr(new Date(Date.now()-86400000));
       var bT=document.getElementById('subbtn-rt');
       var bY=document.getElementById('subbtn-ry');
       if(bT) bT.className='subbtn';
@@ -16619,7 +16632,7 @@ function _startResultsPolling(){
     if(!w){ _stopResultsPolling(); return; }
     var n=new Date();
     if(n>w.end){ _stopResultsPolling(); return; }
-    var today=new Date().toISOString().slice(0,10);
+    var today=irishDateStr();
     if(_resLoadedDate===today){
       delete _resApiCache[today];
       _resApiFetching=false;
@@ -16671,12 +16684,12 @@ function _renderResDateBar(){
   var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var now=new Date();
-  var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var todayStr=irishDateStr(now);
   var cur=_resLoadedDate||todayStr;
   var html='';
   for(var i=0;i<4;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
-    var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var ds=irishDateStr(d);
     // Same day+ordinal format as the racecards date strip — "Fri 4th".
     var dayNum=d.getDate();
     var ordSfx=(dayNum%100>=11&&dayNum%100<=13)?'th':(dayNum%10===1?'st':dayNum%10===2?'nd':dayNum%10===3?'rd':'th');
@@ -16690,7 +16703,7 @@ function _resSelectDate(ds){
 }
 
 function loadResultsPage(date){
-  var today=new Date().toISOString().slice(0,10);
+  var today=irishDateStr();
   var d=date||today;
   var isToday=(d===today);
   var lbl=document.getElementById('res-date-label');
@@ -16804,7 +16817,7 @@ function _setResStatus(msg){
 }
 
 function refreshResults(){
-  var d=_resLoadedDate||(new Date().toISOString().slice(0,10));
+  var d=_resLoadedDate||(irishDateStr());
   delete _resApiCache[d];
   _resApiFetching=false;
   _resApiError=null;
@@ -16862,7 +16875,7 @@ function renderResultsFeed(){
   // _resData. First call bootstraps to today; the async load re-enters here
   // with data.
   if(!_resFeedDate){
-    _loadResultsFeed(new Date().toISOString().slice(0,10));
+    _loadResultsFeed(irishDateStr());
     return;
   }
 
@@ -16958,7 +16971,7 @@ function _fetchHomeResults(){
       .then(function(data){ return (data&&!data.error&&data.venues)||[]; })
       .catch(function(){ return []; });
   }
-  var today=new Date().toISOString().slice(0,10);
+  var today=irishDateStr();
   var todayVenues=await getDay(today);
   if(hasFinished(todayVenues)){
     _homeRes.data=todayVenues;
@@ -16966,7 +16979,7 @@ function _fetchHomeResults(){
     renderHomeResultsStrip();
     return;
   }
-  var yday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  var yday=irishDateStr(new Date(Date.now()-86400000));
   var ydayVenues=await getDay(yday);
   if(hasFinished(ydayVenues)){
     _homeRes.data=ydayVenues;
@@ -17415,7 +17428,7 @@ function selectResultsSubTab(sub){
   });
   var d=new Date();
   if(sub==='yesterday') d.setDate(d.getDate()-1);
-  var ds=d.toISOString().slice(0,10);
+  var ds=irishDateStr(d);
   var lbl=document.getElementById('res-date-label');
   if(lbl) lbl.textContent=sub==='yesterday'?ds+' · Yesterday':'Today';
   // Drives ONLY the Latest Results strip — the detailed Full Results section
@@ -17717,7 +17730,7 @@ function selectRacingSection(s){
     if(resultsC) resultsC.style.display="";
     // Only refetch if a race has finished since we last loaded — otherwise serve from cache instantly
     if(_newRaceFinishedSinceLastFetch()){
-      var _resToday=new Date().toISOString().slice(0,10);
+      var _resToday=irishDateStr();
       delete _resApiCache[_resToday];
       _resApiFetching=false;
     }
@@ -19448,7 +19461,7 @@ function checkQuota(type,onAllowed,onBlocked){
   var user=firebase.auth().currentUser;
   if(!user){ openAuthModal(); return; }
   var q=QUOTA[type];
-  var today=new Date().toISOString().slice(0,10);
+  var today=irishDateStr();
   var db=firebase.firestore();
   var ref=db.collection('users').doc(user.uid);
   ref.get().then(function(doc){
