@@ -16788,7 +16788,7 @@ function loadResultsPage(date){
   // responses. Guarded per-date via _resFetchInFlight (maintained by
   // _sharedResultsFetch) — a global in-flight flag here let today's fetch
   // block a Yesterday tap's fetch entirely.
-  if(!_resApiCache[d]&&!_resFetchInFlight[d]){
+  if(!_resApiCache[d]){
     _resApiFetching=true;
     _setResStatus('Loading results…');
     // Shared-promise dedupe: if the homepage strip (or anything else) already
