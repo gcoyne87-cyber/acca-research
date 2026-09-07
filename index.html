@@ -14560,7 +14560,7 @@ function _nrAbDist(d){
 }
 function _nrAbGoing(g){
   var raw=String(g||'').replace(/^(TAPETA|POLYTRACK|FIBRESAND):\s*/i,'').trim();
-  return raw.replace(/\bStandard\b/gi,'Std').replace(/\bYielding\b/gi,'Yld');
+  return raw.replace(/\bGood To\b/gi,'Gd To').replace(/\bStandard\b/gi,'Std').replace(/\bYielding\b/gi,'Yld');
 }
 function nrLoadForm(pfx,horseId,silent){
   if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
