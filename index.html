@@ -11514,6 +11514,7 @@ function loadRacecards(){
       if(!data.meetings||!data.meetings.length) return;
       TM_MEETINGS=data.meetings;
       window._tmRealDataLoaded=true;
+      _renderPopularTrainers();
       tmActiveVenue=TM_MEETINGS[0].id;
       tmOpenMeeting='';
       tmOpenRace={};
