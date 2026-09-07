@@ -14246,9 +14246,9 @@ function runnerRow(ru,ctx,extraHtml){
       +'</div>'
       +'<div style="flex:1;min-width:0">'
         // Name + form text on one line
-        +'<div style="display:flex;align-items:baseline;gap:7px">'
+        +'<div style="display:flex;align-items:center;gap:4px">'
           +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
-          +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:2px;border-radius:50%;background:#eef1f7;color:#0D1B3E;font-size:12px;line-height:1">&#9660;</span>'
+          +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>'
           +formText
         +'</div>'
         // Jockey (own line), Trainer (own line below)
@@ -17282,9 +17282,9 @@ function renderResultsPage(){
               +nrSilk(_resSilkFor(r.horse,ri))
             +'</div>';
             html+='<div style="flex:1;min-width:0">';
-            html+='<div style="display:flex;align-items:baseline;gap:6px;min-width:0">'
-              +(r.horse_id?'<span onclick="nrLoadProfile(\''+rpfx+'\',\''+_rHid+'\')" title="Horse profile" style="cursor:pointer;font-size:11px;color:#0D1B3E;flex-shrink:0;line-height:1">&#9654;</span>':'')
+            html+='<div style="display:flex;align-items:center;gap:6px;min-width:0">'
               +'<span style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
+              +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
             +'</div>';
             if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">J</span> '+escHtml(r.jockey)+'</div>';
             if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">T</span> '+escHtml(r.trainer)+'</div>';
