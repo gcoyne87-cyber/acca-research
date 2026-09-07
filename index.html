@@ -16455,7 +16455,31 @@ function _buildResTrainerCarousel(){
     if(String(ru.pos).trim()==='1')map[k].wins++;
   });});});
   var trainers=Object.keys(map).map(function(k){return map[k];});
-  if(!trainers.length){el.style.display='none';return;}
+  if(!trainers.length){
+    // No finished races on the loaded day — borrow yesterday's card so the
+    // carousel is never blank. Chips get a loadResultsPage(yesterday) prefix
+    // so a tap lands on the day the data came from. One attempt per build
+    // cycle (_resCarFallback), reset after any successful build.
+    var yd=irishDateStr(new Date(Date.now()-86400000));
+    if(_resLoadedDate!==yd&&!window._resCarFallback){
+      window._resCarFallback=true;
+      _sharedResultsFetch(yd).then(function(data){
+        var venues=(data&&data.venues)||[];
+        if(!venues.length){el.style.display='none';return;}
+        var saveD=_resData,saveL=_resLoadedDate;
+        _resData=venues;_resLoadedDate=yd;
+        _buildResTrainerCarousel();
+        _resData=saveD;_resLoadedDate=saveL;
+        var chips=el.querySelectorAll('[onclick^="_setResTrainerFilter"]');
+        for(var i=0;i<chips.length;i++){
+          var oc=chips[i].getAttribute('onclick');
+          chips[i].setAttribute('onclick','loadResultsPage(\''+yd+'\');setTimeout(function(){'+oc+'},400);');
+        }
+      }).catch(function(){el.style.display='none';});
+      return;
+    }
+    el.style.display='none';return;
+  }
   trainers.sort(function(a,b){return b.wins-a.wins||b.runs-a.runs||a.name.localeCompare(b.name);});
   var isToday=(_resLoadedDate===irishDateStr());
   var isYday=(_resLoadedDate===irishDateStr(new Date(Date.now()-86400000)));
@@ -16463,7 +16487,7 @@ function _buildResTrainerCarousel(){
   var out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0">';
   out+='<div style="display:flex;align-items:center;gap:10px">';
   out+='<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>';
-  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainers in Results'+(isToday?'':' &middot; '+escHtml(dayWord))+'</div>';
+  out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Popular Trainers &middot; Results</div>';
   out+='</div>';
   out+='<div onclick="var inp=document.getElementById(\'res-trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
@@ -16481,6 +16505,7 @@ function _buildResTrainerCarousel(){
   out+='</div></div>';
   el.innerHTML=out;
   el.style.display='';
+  window._resCarFallback=false;
 }
 function _setResTrainerFilter(name){
   _resTrainerFilter=name;
