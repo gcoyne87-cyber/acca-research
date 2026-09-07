@@ -14227,6 +14227,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
       +'<div id="nrh-pcareer-'+pfx+'" style="padding:0"></div>'
+      +'<div onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" style="text-align:center;padding:10px 0 4px;cursor:pointer;font-size:12px;font-weight:700;color:#0D1B3E">&#9650; Close</div>'
     +'</div>'
   +'</div>';
 
@@ -14246,8 +14247,8 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div style="flex:1;min-width:0">'
         // Name + form text on one line
         +'<div style="display:flex;align-items:baseline;gap:7px">'
-          +'<span onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;font-size:11px;color:#0D1B3E;flex-shrink:0;line-height:1">&#9654;</span>'
           +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+          +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:2px;border-radius:50%;background:#eef1f7;color:#0D1B3E;font-size:12px;line-height:1">&#9660;</span>'
           +formText
         +'</div>'
         // Jockey (own line), Trainer (own line below)
@@ -14271,7 +14272,7 @@ function runnerRow(ru,ctx,extraHtml){
       })()
     +'</div>'
     +(extraHtml||'')
-    +(function(){var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");var ps='display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 14px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';var down='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';return '<div style="display:flex;justify-content:center;gap:8px;padding:8px 12px"><button id="nrh-btn-fe-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" style="'+ps+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Form</span>'+down+'</button><button id="nrh-btn-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" style="'+ps+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Analysis</span>'+down+'</button></div>';})()
+    +(function(){var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");var ps='display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 14px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';var down='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';return '<div style="display:flex;justify-content:center;gap:8px;padding:8px 12px"><button id="nrh-btn-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" style="'+ps+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Analysis</span>'+down+'</button></div>';})()
     +histCarousel
   +'</div>';
 }
@@ -14323,6 +14324,8 @@ function nrTogglePanel(pfx,panel){
     if(typeof NR_RUNNERS!=='undefined'){for(var _i=0;_i<NR_RUNNERS.length;_i++){if((NR_RUNNERS[_i].name||'').toLowerCase()===(hn||'').toLowerCase()){ru=NR_RUNNERS[_i];break;}}}
     if(!ru&&typeof RC_RUNNERS!=='undefined'){for(var _i=0;_i<RC_RUNNERS.length;_i++){if((RC_RUNNERS[_i].name||'').toLowerCase()===(hn||'').toLowerCase()){ru=RC_RUNNERS[_i];break;}}}
   }
+  var _arr=document.getElementById('nrh-arr-'+pfx);
+  if(_arr)_arr.innerHTML=(wrap.dataset.openPanel==='pe')?'&#9650;':'&#9660;';
 }
 var _nrEdgeCache={};
 var _nrFormCache={};
