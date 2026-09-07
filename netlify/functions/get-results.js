@@ -248,7 +248,8 @@ exports.handler = async function(event) {
               // Weight ("9-7") and official rating — same raw field names
               // horse-form.js reads from this results-family runner shape.
               wt: (r.weight !== undefined && r.weight !== null && String(r.weight).trim()) ? String(r.weight).trim() : (r.weight_lbs ? String(r.weight_lbs) : ''),
-              or: (r.or !== undefined && r.or !== null && /^\d+$/.test(String(r.or).trim())) ? String(r.or).trim() : ''
+              or: (r.or !== undefined && r.or !== null && /^\d+$/.test(String(r.or).trim())) ? String(r.or).trim() : '',
+              age: r.age || ''
             };
           })
           .filter(function(r) { return r.horse; })

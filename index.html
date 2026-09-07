@@ -5908,10 +5908,6 @@ function unlockCorkAnalysis(){
            day names). Pills rendered by _renderResDateBar; selection loads
            that date's results into res-body below. The Latest Results feed
            above always shows the most recent results regardless. -->
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 6px">
-        <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Full Results</div>
-      </div>
       <!-- Results trainer filter — completely independent of the racecard
            trainer filter (_resTrainerFilter, own input, own clear). -->
       <div id="res-trainer-carousel" style="padding:8px 14px 6px;background:#f5f7fb;display:none"></div>
@@ -17286,12 +17282,10 @@ function renderResultsPage(){
               +'<span style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
               +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
             +'</div>';
-            if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">J</span> '+escHtml(r.jockey)+'</div>';
-            if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:10px;font-weight:700;color:#b0b7c6">T</span> '+escHtml(r.trainer)+'</div>';
-            var _rWtOr=[];
-            if(r.wt) _rWtOr.push('<span style="font-size:10px;font-weight:700;color:#b0b7c6">W</span> '+escHtml(String(r.wt)));
-            if(r.or) _rWtOr.push('OR '+escHtml(String(r.or)));
-            if(_rWtOr.length) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+_rWtOr.join(' &middot; ')+'</div>';
+            if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
+            if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';
+            if(r.wt||r.or) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+(r.wt?escHtml(String(r.wt)):'')+(r.wt&&r.or?' &middot; ':'')+(r.or?'OR '+escHtml(String(r.or)):'')+'</div>';
+            if(r.age) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(String(r.age))+'</div>';
             html+='</div>';
             if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
             html+='</div>';
