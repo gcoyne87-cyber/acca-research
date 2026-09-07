@@ -2549,7 +2549,13 @@ exports.handler = async function(event) {
         report.bigRace = {
           course: bigRaceCandidate.race.course,
           time: bigRaceCandidate.t24label,
-          raceName: bigRaceCandidate.race.race_name || '',
+          raceName: (function(){
+            var n=String(bigRaceCandidate.race.race_name||'');
+            n=n.replace(/\s*\(GBB Race\)/gi,'');
+            n=n.replace(/\s*\(GBB\)\s*/gi,'');
+            n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
+            return n.trim();
+          })(),
           prize: bigRaceCandidate.race.prize || '',
           runners: bigRaceCandidate.race.runners
             ? bigRaceCandidate.race.runners.filter(function(r){return !r.is_non_runner;}).length
