@@ -15435,6 +15435,8 @@ function renderAIIntelligence(){
       sigColor:'#10b981',
       trainerName:HOT_YARD.trainerName||'',
       strikeLabel:(HOT_YARD.strikeRate7d!=null?HOT_YARD.strikeRate7d:0)+'%',
+      winners7d:HOT_YARD.winners7d||0,
+      runners7d:HOT_YARD.runners7d||0,
       intelligenceText:escHtml(HOT_YARD_CARD||'')
     }]);
   }
@@ -15453,7 +15455,7 @@ function renderAIIntelligence(){
             +'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.strikeLabel)+'</div>'
           +'</div>'
           +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+escHtml(item.trainerName)+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">In-form yard &middot; last 7 days</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'

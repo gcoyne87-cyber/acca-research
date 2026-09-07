@@ -2402,14 +2402,16 @@ exports.handler = async function(event) {
         const venueFormatLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
           ? ' Then list the venues where winners came from.'
           : '';
-        const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot' +
-          ' Yard card for Racing Edge.' +
-          ' Write in plain text only — no asterisks, no markdown.' +
-          ' 105 to 110 words exactly. Count carefully.' +
-          ' No opinions and no predictions. No prices or odds.' +
-          ' Cover the trainer\'s recent form, the winning venues,' +
-          ' today\'s declared runners with course and time, and' +
-          ' close by directing the reader to view the full runner' +
+        const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot Yard' +
+          ' card for Racing Edge. Plain text only — no asterisks, no' +
+          ' markdown, no bold, no headers. Do not begin with the' +
+          ' trainer name, a label, or any heading — start directly' +
+          ' with the first sentence of the card.' +
+          ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+          ' No opinions, no predictions. No prices or odds.' +
+          ' Cover the trainer\'s recent form stats, the winning' +
+          ' venues, today\'s declared runners with course and time,' +
+          ' and close by directing the reader to view the full runner' +
           ' list on Racing Edge.' +
           ' The data: Trainer: ' + hotYardTop.trainerName + '.' +
           ' Last 7 days: ' + hotYardTop.runners7d + ' runners, ' +
