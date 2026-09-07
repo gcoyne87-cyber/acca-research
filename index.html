@@ -16477,6 +16477,8 @@ function _buildResTrainerCarousel(){
   var track=el.querySelector('#res-car-track');
   if(!track)return;
   track.innerHTML=chips;
+  var _hd=el.querySelector('div');
+  if(_hd)_hd.textContent=(_resLoadedDate===irishDateStr())?"Trainers in today's results":"Trainers in these results";
   el.style.display='block';
 }
 function _setResTrainerFilter(name){
@@ -16745,8 +16747,11 @@ function loadResultsPage(date){
     renderResultsPage();
   }
 
-  // Fetch results from API — only once per date, don't cache empty/failed responses
-  if(!_resApiCache[d]&&!_resApiFetching){
+  // Fetch results from API — only once per date, don't cache empty/failed
+  // responses. Guarded per-date via _resFetchInFlight (maintained by
+  // _sharedResultsFetch) — a global in-flight flag here let today's fetch
+  // block a Yesterday tap's fetch entirely.
+  if(!_resApiCache[d]&&!_resFetchInFlight[d]){
     _resApiFetching=true;
     _setResStatus('Loading results…');
     // Shared-promise dedupe: if the homepage strip (or anything else) already
@@ -16765,6 +16770,10 @@ function loadResultsPage(date){
         var hasRunners=venues.some(function(v){return (v.races||[]).some(function(r){return r.runners&&r.runners.length;});});
         if(hasRunners) _resApiCache[d]=venues; // only cache when we actually got data
         _resLastFetchMs=Date.now(); // record when we last successfully fetched
+        // Stale-fetch guard: the user may have switched date while this fetch
+        // was in flight — the day is cached above for their return, but it
+        // must not write into the view (or repaint) for a different date.
+        if(_resLoadedDate!==d)return;
 
         if(!_resData||!isToday){
           _resData=venues;
