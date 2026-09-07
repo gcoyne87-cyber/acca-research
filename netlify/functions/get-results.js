@@ -247,7 +247,13 @@ exports.handler = async function(event) {
               prize: r.prize || '',
               // Weight ("9-7") and official rating — same raw field names
               // horse-form.js reads from this results-family runner shape.
-              wt: (r.weight !== undefined && r.weight !== null && String(r.weight).trim()) ? String(r.weight).trim() : (r.weight_lbs ? String(r.weight_lbs) : ''),
+              wt: (function(){
+                var _w=String(r.weight||'').trim();
+                if(_w&&_w.indexOf('-')!==-1){var _p=_w.split('-');return _p[0]+'st '+(_p[1]||'0')+'lb';}
+                var _lbs=parseInt(r.weight_lbs||0,10);
+                if(_lbs)return Math.floor(_lbs/14)+'st '+(_lbs%14)+'lb';
+                return '';
+              })(),
               or: (r.or !== undefined && r.or !== null && /^\d+$/.test(String(r.or).trim())) ? String(r.or).trim() : '',
               age: r.age || ''
             };

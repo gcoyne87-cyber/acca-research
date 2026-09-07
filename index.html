@@ -16972,10 +16972,10 @@ function renderResultsFeed(){
       html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
       html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
       html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:'+(isW?'700':'500')+';color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
+      html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
       if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
       html+='</div>';
-      if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
+      if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
       html+='</div>';
     });
     html+='</div>';
@@ -17098,10 +17098,10 @@ function renderHomeResultsStrip(){
         html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
         html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
         html+='<div style="flex:1;min-width:0">';
-        html+='<div style="font-size:13px;font-weight:'+(isW?'700':'500')+';color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
+        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
         if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
         html+='</div>';
-        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:'+(isW?'#1e9e6b':'#5a6378')+';flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
+        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
         html+='</div>';
       });
       html+='</div>';
@@ -17279,7 +17279,7 @@ function renderResultsPage(){
             +'</div>';
             html+='<div style="flex:1;min-width:0">';
             html+='<div style="display:flex;align-items:center;gap:6px;min-width:0">'
-              +'<span style="font-size:14px;font-weight:'+(isW?'800':'600')+';color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
+              +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
               +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
             +'</div>';
             if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
@@ -17287,7 +17287,7 @@ function renderResultsPage(){
             if(r.wt||r.or) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+(r.wt?escHtml(String(r.wt)):'')+(r.wt&&r.or?' &middot; ':'')+(r.or?'OR '+escHtml(String(r.or)):'')+'</div>';
             if(r.age) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(String(r.age))+'</div>';
             html+='</div>';
-            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:'+(isW?'#1e9e6b':'#0D1B3E')+';flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
+            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:#0D1B3E;flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
             html+='</div>';
             // Hidden profile panel wrapper — the same nrh- structure runnerRow
             // builds (profile panel only; no Form/Analysis panels here).
