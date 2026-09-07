@@ -2615,8 +2615,18 @@ exports.handler = async function(event) {
     report.candgCard = null;
     if (report.candgHorses.length) {
       try {
-        const candgPrompt = "You are writing a Daily Intelligence card for Racing Edge, a horse racing intelligence service. Write exactly 105 words — no more, no less. Do not go below 100 words. You are presenting data, not tips. No tipster language. No 'we recommend' or 'back this horse'. Pure factual presentation.\n\n" +
-          'Today\'s going conditions have produced ' + report.candgHorses.length + ' horses that have won at their exact course, distance and going conditions within their last 6 runs. List them naturally — for each horse include their name, course, distance, today\'s going, and when they won here on the same going. Open with how many horses qualify today and where they are running. Close with one clean summary sentence. Write it so it reads like sharp intelligence, not a list. The horses are: ' + candgHorseLines.join('; ');
+        const candgPrompt = 'You are an expert horse racing analyst writing a card for' +
+          ' Racing Edge. Plain text only — no markdown, no asterisks,' +
+          ' no bold, no headers, no bullet points. Do not begin with' +
+          ' a label, heading or title — start directly with the first' +
+          ' sentence. 105 to 110 words exactly. Count carefully.' +
+          ' No tipster language. No opinions. No prices or odds.' +
+          ' Open with the total number of qualifiers and the venues' +
+          ' they run at today. Name the two or three most interesting' +
+          ' qualifiers with their course, distance and going — one' +
+          ' short factual sentence each. Close by directing the reader' +
+          ' to view the full qualifying runner list on Racing Edge.' +
+          ' The horses are: ' + candgHorseLines.join('; ');
 
         const candgResp = await callClaude('', candgPrompt, 400, true);
         if (candgResp.text && candgResp.text.trim()) {

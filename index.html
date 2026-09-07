@@ -15417,7 +15417,7 @@ function renderAIIntelligence(){
   if(CANDG_CARD){
     _items=_items.concat([{
       isCandDG:true,
-      signalType:'C&D+G',
+      signalType:'SPECIALIST',
       sigColor:'#14b8a6',
       countLabel:CANDG_COUNT+' horse'+(CANDG_COUNT===1?'':'s'),
       intelligenceText:escHtml(CANDG_CARD||'')
@@ -15475,8 +15475,8 @@ function renderAIIntelligence(){
             +'</div>'
             +'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.countLabel)+'</div>'
           +'</div>'
-          +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">C&amp;D+G Watch</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">Course, distance &amp; going winners running today</div>'
+          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course, Distance &amp; Ground Winners</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">Horses that have won at today\'s exact course, distance and going</div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
