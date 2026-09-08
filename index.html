@@ -14218,8 +14218,8 @@ function runnerRow(ru,ctx,extraHtml){
     +'<div id="nrh-je-'+pfx+'" style="display:none;padding:6px 12px 8px">'
       +'<div id="nrh-jai-'+pfx+'"></div>'
     +'</div>'
-    +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:6px 6px 8px">'
-      +'<div id="nrh-pai-'+pfx+'"></div>'
+    +'<div id="nrh-pe-'+pfx+'" style="display:none;padding:0">'
+      +'<div id="nrh-pai-'+pfx+'" style="padding:0 6px"></div>'
       +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
       +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
@@ -14280,8 +14280,8 @@ function runnerRow(ru,ctx,extraHtml){
         +'color:#9aa3b5;border-bottom:2px solid transparent;cursor:pointer">Race Analysis &#9660;</div>'
         +'</div>';
     })()
-    +histCarousel
-  +'</div>';
+  +'</div>'
+  +histCarousel;
 }
 
 function _nrPillState(btn,active){
@@ -14570,7 +14570,7 @@ function _nrAbDist(d){
 }
 function _nrAbGoing(g){
   var raw=String(g||'').replace(/^(TAPETA|POLYTRACK|FIBRESAND):\s*/i,'').trim();
-  return raw.replace(/\bGood To\b/gi,'Gd To').replace(/\bStandard\b/gi,'Std').replace(/\bYielding\b/gi,'Yld');
+  return raw.replace(/\bGood To\b/gi,'Gd To').replace(/\bStandard\b/gi,'Std').replace(/\bYielding\b/gi,'Yld').replace(/\bTo Heavy\b/gi,'To Hvy');
 }
 function nrLoadForm(pfx,horseId,silent){
   if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
