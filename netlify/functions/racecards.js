@@ -481,10 +481,10 @@ async function enrichRunnerTags(meetings, date) {
         hotYardTrainers = tfTable.filter(function(t) {
           const name = (t.trainerName || '').toLowerCase().trim();
           const sr14 = t.strikeRate14d != null ? Number(t.strikeRate14d) : (Number(t.strikeRate) || 0);
-          return ELITE_TRAINERS_LC.indexOf(name) !== -1
-            && Number(t.runners7d) >= 9
+          return Number(t.runners7d) >= 4
             && Number(t.winners7d) >= 4
-            && Number(t.strikeRate7d) > sr14;
+            && Number(t.strikeRate7d) > sr14
+            && Number(t.strikeRate7d) >= 30;
         }).sort(function(a, b) { return Number(b.strikeRate7d) - Number(a.strikeRate7d); })
           .slice(0, 3)
           .map(function(t) { return (t.trainerName || '').toLowerCase().trim(); });
