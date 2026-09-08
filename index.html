@@ -12930,7 +12930,7 @@ function renderTodayMeetingsList(isInitial){
     if(_rcListForCards){
       out+='<div style="display:flex;align-items:center;padding:10px 12px 4px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:17px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
@@ -12940,7 +12940,7 @@ function renderTodayMeetingsList(isInitial){
     }else{
       out+='<div style="display:flex;align-items:center;padding:6px 12px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:17px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
@@ -13039,7 +13039,7 @@ function renderRcSingleList(){
     out+='<div id="rcs-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
     out+='<div style="display:flex;align-items:center;padding:10px 12px 4px">';
     out+='<div style="flex:1;min-width:0">';
-    out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+    out+='<div style="font-size:17px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
     out+='</div>';
     out+='<div onclick="toggleRcSingleMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
     out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
