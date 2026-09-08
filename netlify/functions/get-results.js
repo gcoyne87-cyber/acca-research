@@ -230,7 +230,7 @@ exports.handler = async function(event) {
         const runners = (race.runners || [])
           .map(function(r) {
             const pos = String(r.position || r.pos || '');
-            const sp = r.sp_dec ? fractionalFromDecimal(parseFloat(r.sp_dec)) : (r.sp || r.sp_fractional || '');
+            const sp = r.sp_dec ? fractionalFromDecimal(parseFloat(r.sp_dec), r.sp_fractional) : (r.sp || r.sp_fractional || '');
             return {
               pos: pos,
               horse: r.horse || r.horse_name || r.name || '',
@@ -361,7 +361,7 @@ exports.handler = async function(event) {
         const key = normaliseName(r.horse || r.horse_name || r.name || '');
         if (!key) return;
         const pos = String(r.position || r.pos || '');
-        const sp = r.sp_dec ? fractionalFromDecimal(parseFloat(r.sp_dec)) : (r.sp || r.sp_fractional || '');
+        const sp = r.sp_dec ? fractionalFromDecimal(parseFloat(r.sp_dec), r.sp_fractional) : (r.sp || r.sp_fractional || '');
         lookup[key] = { sp, pos, course, courseNorm: normaliseCourse(course), time, ran: (race.runners || []).length };
       });
     });
@@ -385,10 +385,11 @@ exports.handler = async function(event) {
   }
 };
 
-function fractionalFromDecimal(dec) {
+function fractionalFromDecimal(dec, rawFrac) {
   if (!dec || dec <= 1) return 'SP';
   const n = dec - 1;
   const common = [
+    [1,20],[1,15],[1,12],[1,11],[1,10],[1,9],[1,8],[1,7],[1,6],
     [1,5],[2,9],[1,4],[2,7],[3,10],[1,3],[4,11],[2,5],[4,9],[1,2],
     [4,7],[8,13],[4,6],[8,11],[4,5],[5,6],[10,11],[1,1],[6,5],[5,4],
     [11,8],[6,4],[13,8],[7,4],[15,8],[2,1],[9,4],[5,2],[11,4],[3,1],
@@ -401,5 +402,12 @@ function fractionalFromDecimal(dec) {
     if (diff < bestDiff) { bestDiff = diff; best = f; }
   });
   if (best && bestDiff < 0.05) return best[0] + '/' + best[1];
-  return Math.round(n) + '/1';
+  const num = Math.round(n);
+  // Never emit "0/1": a price too short to snap to a rung falls back to
+  // evens if the decimal is ~2.0, else the raw fractional string, else SP.
+  if (num <= 0) {
+    if (Math.abs(dec - 2) < 0.05) return 'EVS';
+    return rawFrac ? String(rawFrac) : 'SP';
+  }
+  return num + '/1';
 }
