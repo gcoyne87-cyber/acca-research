@@ -14304,13 +14304,11 @@ function runnerRow(ru,ctx,extraHtml){
     +(extraHtml||'')
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;padding:0 12px 2px">'
+      return '<div style="display:flex;gap:6px;padding:6px 12px 6px 50px">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
-        +'style="flex:1;text-align:center;padding:6px 8px 5px;font-size:12px;font-weight:700;'
-        +'color:#1e9e6b;border-bottom:2px solid #1e9e6b;cursor:pointer">Form &#9660;</div>'
+        +'style="font-size:11px;font-weight:600;color:#1e9e6b;border:1.5px solid #1e9e6b;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Form &#9660;</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="flex:1;text-align:center;padding:6px 8px 5px;font-size:12px;font-weight:600;'
-        +'color:#9aa3b5;border-bottom:2px solid transparent;cursor:pointer">Race Analysis &#9660;</div>'
+        +'style="font-size:11px;font-weight:600;color:#6b7280;border:1.5px solid #d1d5db;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Race Analysis &#9660;</div>'
         +'</div>';
     })()
   +'</div>'
