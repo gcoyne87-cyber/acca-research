@@ -12776,7 +12776,7 @@ function renderFutureDateContent(dateStr,targetEl){
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
           var _hn=new Date(),_ht=irishDateStr(_hn),_hm=new Date(_hn.getFullYear(),_hn.getMonth(),_hn.getDate()+1),_hms=irishDateStr(_hm),_hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
           if(_ha && _ha.raceIntelligence && dateStr===_ht){
-            out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
+            out+='<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_ha.raceIntelligence)+'</div>';
           }
           out+=_raceTabsHtml(m.id,sr.t,m.name);
           out+='</div>';
@@ -12905,7 +12905,7 @@ function renderTodayMeetingsList(isInitial){
         out2+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
         var _hk=(selMeeting.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence){
-          out2+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
+          out2+='<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_ha.raceIntelligence)+'</div>';
         }
         out2+=_raceTabsHtml(selMeeting.id,sr.t,selMeeting.name);
         out2+='</div>';
@@ -12972,7 +12972,7 @@ function renderTodayMeetingsList(isInitial){
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence){
-          out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
+          out+='<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_ha.raceIntelligence)+'</div>';
         }
         out+=_raceTabsHtml(m.id,sr.t,m.name);
         out+='</div>';
@@ -13067,7 +13067,7 @@ function renderRcSingleList(){
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence && _homeRcDay==='today'){
-          out+='<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_ha.raceIntelligence)+'</div>';
+          out+='<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_ha.raceIntelligence)+'</div>';
         }
         out+=_raceTabsHtml(m.id,sr.t,m.name);
         out+='</div>';
@@ -14801,7 +14801,7 @@ function nrRenderCard(){
         +((r.class||r.prize)?'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((r.class||'')+(r.class&&r.prize?' · ':'')+(r.prize||''))+'</div>':'')
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(_cleanGoing(r.going)) +' · '+ r.runners +' runners</div>'
         +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceHook?'<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_a.raceHook)+'</div>':''}())
-        +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceIntelligence?'<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(_a.raceIntelligence)+'</div>':''}())
+        +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceIntelligence?'<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_a.raceIntelligence)+'</div>':''}())
         +_raceTabsHtml(r.venue,r.t,r.venue)
       +'</div>'
       +(_rcTabState[r.venue+'-'+r.t]&&_rcTabState[r.venue+'-'+r.t]!=='form'?'':runners)
