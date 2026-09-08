@@ -14481,9 +14481,7 @@ function nrLoadProfile(pfx,horseId){
       var MUT='color:#374151;font-weight:400;font-size:11px;line-height:1.6';
       var fld=function(label,val,sub){
         if(!val)return '';
-        return '<div style="padding:4px 0">'
-          +'<div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px">'+label+'</div>'
-          +'<div style="font-size:11px;color:#1a202c;line-height:1.5">'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
+        return '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:0.5px solid #f8f9fb"><span style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;width:64px;flex-shrink:0;padding-top:2px">'+label+'</span><span style="font-size:11px;color:#1a202c;line-height:1.5;flex:1">'+escHtml(String(val))+(sub?' <span style="color:#6b7280;font-size:10px">'+escHtml(sub)+'</span>':'')+' </span></div>';
       };
       var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'';};
       var horseLine=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' ').toLowerCase()].filter(Boolean).join(' ');
@@ -14498,7 +14496,7 @@ function nrLoadProfile(pfx,horseId){
          +fld(owner&&p.breeder?'Owner · breeder':(owner?'Owner':'Breeder'),ownBreed)
          +fld('Pedigree',pedLine,p.damsire?'('+p.damsire+')':'')
          +fld('Previously',prevLine)
-         +(tot.r?'<div style="padding:4px 0"><div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px">Prize money</div><div style="font-size:11px;color:#1a202c;line-height:1.5;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
+         +(tot.r?'<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:0.5px solid #f8f9fb"><span style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;width:64px;flex-shrink:0;padding-top:2px">Prize</span><span style="font-size:11px;color:#1a202c;line-height:1.5;font-weight:700;flex:1">'+escHtml(money(tot.pr)||'—')+' <span style="color:#6b7280;font-size:10px">'+escHtml(recLine)+'</span></span></div>':'');
       if(tot.r>0){
         var th='text-align:right;padding:5px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#f8f9fb;border-bottom:1px solid #f0f2f5',
             td='padding:5px 6px;text-align:right;white-space:nowrap;color:#374151;border-bottom:0.5px solid #f8f9fb',tdl='padding:5px 6px;text-align:left;white-space:nowrap;color:#374151;border-bottom:0.5px solid #f8f9fb',
