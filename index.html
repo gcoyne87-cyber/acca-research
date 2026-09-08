@@ -14482,7 +14482,7 @@ function nrLoadProfile(pfx,horseId){
       var fld=function(label,val,sub){
         if(!val)return '';
         return '<div style="padding:4px 0">'
-          +'<div style="'+LBL+';margin-bottom:1px">'+label+'</div>'
+          +'<div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px">'+label+'</div>'
           +'<div style="font-size:11px;color:#1a202c;line-height:1.5">'+escHtml(String(val))+(sub?' <span style="'+MUT+'">'+escHtml(sub)+'</span>':'')+'</div></div>';
       };
       var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'';};
@@ -14498,12 +14498,12 @@ function nrLoadProfile(pfx,horseId){
          +fld(owner&&p.breeder?'Owner · breeder':(owner?'Owner':'Breeder'),ownBreed)
          +fld('Pedigree',pedLine,p.damsire?'('+p.damsire+')':'')
          +fld('Previously',prevLine)
-         +(tot.r?'<div style="padding:4px 0"><div style="'+LBL+';margin-bottom:1px">Prize money</div><div style="font-size:11px;color:#1a202c;line-height:1.5;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
+         +(tot.r?'<div style="padding:4px 0"><div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px">Prize money</div><div style="font-size:11px;color:#1a202c;line-height:1.5;font-weight:700">'+escHtml(money(tot.pr)||'—')+' <span style="'+MUT+'">'+escHtml(recLine)+'</span></div></div>':'');
       if(tot.r>0){
         var th='text-align:right;padding:5px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#f8f9fb;border-bottom:1px solid #f0f2f5',
             td='padding:5px 6px;text-align:right;white-space:nowrap;color:#374151;border-bottom:0.5px solid #f8f9fb',tdl='padding:5px 6px;text-align:left;white-space:nowrap;color:#374151;border-bottom:0.5px solid #f8f9fb',
             tdT=td.replace('#374151','#0b1628'),tdlT=tdl.replace('#374151','#0b1628');
-        out+='<div style="'+LBL+';margin-top:8px">Career record</div>';
+        out+='<div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px;margin-top:8px">Career record</div>';
         out+='<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px"><thead><tr style="border-bottom:2px solid #e4e8f0">'
           +'<th style="'+th+';text-align:left">Surface</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">Places</th><th style="'+th+'">Win %</th><th style="'+th+'">Prize</th></tr></thead><tbody>';
         ['flat','aw','jumps'].forEach(function(k){var c=cats[k];if(!c.r)return;
