@@ -14044,7 +14044,7 @@ function _sortByPrice(runners){
 // reads the same truth. Sizing matches the runner tag badges (_tagPill). The
 // rare both-flags case (a market volatile enough to cross both thresholds in
 // one day): whichever side of the anchor the current price sits on wins.
-var _pmPillBase='display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap';
+var _pmPillBase='display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;white-space:nowrap';
 function _pmDec(s){
   if(!s||s==='SP') return 0;
   var p=String(s).trim();
@@ -14062,11 +14062,11 @@ function _priceMovePillHtml(ru){
     showShort=!!(_c&&_a&&_c<_a);
   }
   if(showShort){
-    return '<div style="margin-top:2px"><span style="'+_pmPillBase+';background:#e8f7f0;border:1px solid #b8e0cc;color:#1e9e6b">'
+    return '<div style="margin-top:2px"><span style="'+_pmPillBase+';color:#1e9e6b">'
       +'<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
       +'Shortening</span></div>';
   }
-  return '<div style="margin-top:2px"><span style="'+_pmPillBase+';background:#fdecea;border:1px solid #f5c6c0;color:#e74c3c">'
+  return '<div style="margin-top:2px"><span style="'+_pmPillBase+';color:#e74c3c">'
     +'<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>'
     +'Drifting</span></div>';
 }
