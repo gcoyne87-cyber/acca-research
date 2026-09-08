@@ -2566,6 +2566,34 @@ exports.handler = async function(event) {
           raceIntelligence: bigRaceCandidate.analysisEntry.raceIntelligence,
           courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
         };
+        // Short display name for the card title — one small Claude call. Falls
+        // back to the full raceName on any failure or empty response so the
+        // card always has a title. Tokens roll into the report accumulators
+        // like every other card call.
+        report.bigRace.raceNameShort = report.bigRace.raceName;
+        try {
+          const shortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
+            ' Keep the key identity words — drop sponsor names.' +
+            ' For Group/Grade/Listed races keep the grade in' +
+            ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
+            ' Return only the shortened name, nothing else.' +
+            ' Race name: ' + report.bigRace.raceName;
+          const shortResp = await callClaude('', shortNamePrompt, 60, true);
+          const shortText = (shortResp.text || '').trim();
+          if (shortText) report.bigRace.raceNameShort = shortText;
+          report.inputTokens += shortResp.inputTokens || 0;
+          report.outputTokens += shortResp.outputTokens || 0;
+          report.cacheReadTokens += shortResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += shortResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'bigrace-name', label: 'Big Race Short Name',
+            inputTokens: shortResp.inputTokens || 0, outputTokens: shortResp.outputTokens || 0,
+            cacheReadTokens: shortResp.cacheReadTokens || 0, cacheWriteTokens: shortResp.cacheWriteTokens || 0
+          });
+        } catch (eShort) {
+          report.errors.push('bigRace raceNameShort: ' + eShort.message);
+          report.bigRace.raceNameShort = report.bigRace.raceName;
+        }
       }
     } catch (e) {
       report.errors.push('bigRace: ' + e.message);

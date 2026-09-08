@@ -15405,6 +15405,7 @@ function renderAIIntelligence(){
       signalType:'BIG RACE OF THE DAY',
       sigColor:'#d4af37',
       raceName:BIG_RACE.raceName||'',
+      raceNameShort:BIG_RACE.raceNameShort||BIG_RACE.raceName||'',
       course:BIG_RACE.course||'',
       time:BIG_RACE.time||'',
       prize:BIG_RACE.prize||'',
@@ -15502,9 +15503,9 @@ function renderAIIntelligence(){
             +(item.prize?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:13px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.prize)+'</div>':'')
           +'</div>'
           +(function(){
-            var _rn=escHtml(item.raceName||'');
+            var _rn=escHtml(item.raceNameShort||item.raceName||'');
             var _gr='';
-            var _grm=_rn.match(/\s*\(((Group|Grade|G)\s*\d+|Listed)\s*\)\s*$/i);
+            var _grm=_rn.match(/\s*\(((Group|Grade|Gr|G)\s*\d+|Listed)\s*\)\s*$/i);
             if(_grm){_gr=_grm[0].trim();_rn=_rn.slice(0,_rn.length-_grm[0].length).trim();}
             return '<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_rn+(_gr?'<span style="font-size:14px;font-weight:400;color:#fff"> '+_gr+'</span>':'')+'</div>';
           })()
