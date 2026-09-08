@@ -14099,8 +14099,9 @@ function runnerRow(ru,ctx,extraHtml){
   var jockey=ru.jockey||ru.jt||'';
   var trainer=ru.trainer||'';
 
-  // Form as plain string — dashes only exist for season breaks, shown as-is
-  var formText=ru.form?'<span style="font-size:11px;font-weight:600;color:#9aa3b5;letter-spacing:0.03em;flex-shrink:0">'+escHtml(ru.form)+'</span>':'';
+  // Form as plain string on its own line below the name — dashes only exist
+  // for season breaks, shown as-is
+  var formText=ru.form?'<div style="font-size:11px;color:#6b7280;margin-top:1px">'+escHtml(ru.form)+'</div>':'';
 
   // Jockey on its own line
   var jockeyLine=jockey?'<div style="font-size:11px;color:#7a8499;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
@@ -14242,12 +14243,13 @@ function runnerRow(ru,ctx,extraHtml){
         +silk
       +'</div>'
       +'<div style="flex:1;min-width:0">'
-        // Name + form text on one line
+        // Name line
         +'<div style="display:flex;align-items:center;gap:4px">'
           +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>'
-          +formText
         +'</div>'
+        // Form string on its own line directly below the name
+        +formText
         // Jockey (own line), Trainer (own line below)
         +jockeyLine
         +trainerLine
