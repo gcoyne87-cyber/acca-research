@@ -127,10 +127,11 @@ exports.handler = async function(event) {
 
     // 3-4. Read cached racecards for each date, extract every unique horse_id,
     // and track which of the 4 dates each horse actually runs on
+    let missingDates = 0;
     const horseDates = new Map(); // horse_id -> [dateStr, ...]
     for (const dateStr of dateStrs) {
       const cached = await redisGet('racecards:' + dateStr);
-      if (!cached || !cached.meetings || !cached.meetings.length) continue; // skip silently
+      if (!cached || !cached.meetings || !cached.meetings.length) { missingDates++; continue; } // skip silently
 
       cached.meetings.forEach(meeting => {
         (meeting.races || []).forEach(race => {
@@ -144,6 +145,8 @@ exports.handler = async function(event) {
         });
       });
     }
+
+    if(missingDates === dateStrs.length){ await sendNotification('Horse History Batch 2 — RACECARDS MISSING', ['Timestamp: '+new Date().toISOString(),'All '+dateStrs.length+' racecard dates were missing from Redis. fetch-future-cards may not have run.','Dates checked: '+dateStrs.join(', '),'Fetched: 0, Skipped: 0, Failed: 0'].join('\n')); return { statusCode: 200, body: JSON.stringify({ error: 'all racecard dates missing' }) }; }
 
     const uniqueHorseIds = Array.from(horseDates.keys());
 
@@ -181,7 +184,7 @@ exports.handler = async function(event) {
         horseDates.forEach(function(dates) { if (dates.indexOf(d) !== -1) count++; });
         return d + ': ' + count + ' horses found';
       });
-      await sendNotification('Horse History Batch 2', [
+      await sendNotification((horsesFetched === 0 && horsesSkippedFromCache === 0 ? 'Horse History Batch 2 — WARNING: zero horses processed' : 'Horse History Batch 2'), [
         'Timestamp: ' + new Date().toISOString(),
         'Dates covered: ' + dateStrs.join(', '),
         '',
