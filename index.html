@@ -11759,6 +11759,8 @@ var _tfSelectedDay=null;  // active tab key: 'today' or a date string
 var _tfRaceSel={};        // per-day-per-meeting selected race: key = dayKey+'|'+meetingId -> raceTime
 
 function setTrainerFilter(trainerName){
+  trainerName=(trainerName||'').trim();
+  if(!trainerName){ clearTrainerFilter(); return; }
   // One filter at a time: a trainer search switches any active edge row off
   // so the toggle visuals match what the list is actually showing.
   if(_edgeChipMode!=='trainer'){ _edgeChipMode='trainer'; _renderEdgeChips(); }
@@ -11772,7 +11774,7 @@ function setTrainerFilter(trainerName){
   var filteredRaces=[];
   meetings.forEach(function(m){
     (m.races||[]).forEach(function(race,ri){
-      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
       if(hasMatch){ filteredRaces.push({meetingId:m.id,raceIndex:ri,raceTime:race.t}); }
     });
   });
@@ -11785,7 +11787,7 @@ function setTrainerFilter(trainerName){
       if(tmMatch) return;
       (m.races||[]).forEach(function(race,ri){
         if(tmMatch) return;
-        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
         if(hasMatch){ tmMatch={meetingId:m.id,raceIndex:ri}; }
       });
     });
@@ -11796,7 +11798,7 @@ function setTrainerFilter(trainerName){
       if(fdMatch) return;
       (m.races||[]).forEach(function(race,ri){
         if(fdMatch) return;
-        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
         if(hasMatch){ fdMatch={meetingId:m.id,raceIndex:ri}; }
       });
     });
@@ -11862,7 +11864,7 @@ function _tfMatchesForDay(meetings,trainerName){
   var out=[];
   (meetings||[]).forEach(function(m){
     (m.races||[]).forEach(function(race,ri){
-      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase()===trainerName.toLowerCase(); });
+      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
       if(hasMatch){ out.push({meetingId:m.id,meetingName:m.name,meeting:m,raceIndex:ri,raceTime:race.t,race:race}); }
     });
   });
@@ -12300,6 +12302,7 @@ function _buildPopularTrainers(){
 }
 
 function _renderPopularTrainers(){
+  var _ptActive=document.getElementById('pt-trainer-search'); if(_ptActive && document.activeElement===_ptActive){ return; }
   var el=document.getElementById('popular-trainers-section');
   if(!el) return;
   var _tmMode=_popularTrainersTomorrowMode();
@@ -12318,7 +12321,7 @@ function _renderPopularTrainers(){
   // across the innerHTML rebuild.
   var _ptPrev=document.getElementById('pt-trainer-search');
   var _ptTyped=_ptPrev?_ptPrev.value:'';
-  out+='<div style="display:flex;align-items:center;position:relative;margin:0 0 10px;padding:4px 8px;border:none;background:#fff;border-radius:8px"><input id="pt-trainer-search" type="text" placeholder="Enter trainer name..." value="'+escHtml(_ptTyped)+'" style="flex:1;border:none;outline:none;font-size:13px;color:#0b1628;background:transparent;padding:4px 32px 4px 0" /><button onclick="setTrainerFilter(document.getElementById(\'pt-trainer-search\').value)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round"/></svg></button></div>';
+  out+='<div style="display:flex;align-items:center;position:relative;margin:0 0 10px;padding:4px 8px;border:none;background:#fff;border-radius:8px"><input id="pt-trainer-search" type="text" placeholder="Enter trainer name..." value="'+escHtml(_ptTyped)+'" style="flex:1;border:none;outline:none;font-size:13px;color:#0b1628;background:transparent;padding:4px 32px 4px 0" onkeydown="if(event.key===\'Enter\'){setTrainerFilter(this.value);}" /><button onclick="setTrainerFilter(document.getElementById(\'pt-trainer-search\').value)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round"/></svg></button></div>';
   out+='<div id="pt-carousel" style="overflow:hidden;padding:0 2px 4px">';
   out+='<div id="pt-car-track" style="display:flex;gap:10px;will-change:transform">';
   trainers.forEach(function(t){
