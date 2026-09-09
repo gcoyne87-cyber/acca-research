@@ -1491,6 +1491,7 @@ exports.handler = async function(event) {
       }).catch(function() {});
     }
   } catch (hbErr) {}
+  const BUILD_START = Date.now();
   const RUN_FULL_BUILD = true;
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
@@ -2571,6 +2572,13 @@ exports.handler = async function(event) {
         // card always has a title. Tokens roll into the report accumulators
         // like every other card call.
         report.bigRace.raceNameShort = report.bigRace.raceName;
+        // Hard 20s ceiling on this call, same pattern as the Hot Yard card
+        // call above — apiPost's socket timeout only emits an event (never
+        // destroys the socket), so a hung Anthropic call here would
+        // otherwise stall the whole build. On timeout the short name is
+        // skipped and the fallback full raceName (set above) stands.
+        const BIG_RACE_NAME_TIMEOUT_MS = 20000;
+        let brnTimer = null;
         try {
           const shortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
             ' Keep the key identity words — drop sponsor names.' +
@@ -2578,7 +2586,12 @@ exports.handler = async function(event) {
             ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
             ' Return only the shortened name, nothing else.' +
             ' Race name: ' + report.bigRace.raceName;
-          const shortResp = await callClaude('', shortNamePrompt, 60, true);
+          const shortResp = await Promise.race([
+            callClaude('', shortNamePrompt, 60, true),
+            new Promise(function(_, reject) {
+              brnTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_NAME_TIMEOUT_MS);
+            })
+          ]);
           const shortText = (shortResp.text || '').trim();
           if (shortText) report.bigRace.raceNameShort = shortText;
           report.inputTokens += shortResp.inputTokens || 0;
@@ -2591,8 +2604,11 @@ exports.handler = async function(event) {
             cacheReadTokens: shortResp.cacheReadTokens || 0, cacheWriteTokens: shortResp.cacheWriteTokens || 0
           });
         } catch (eShort) {
+          console.log('[daily-build] bigRace raceNameShort: ' + eShort.message);
           report.errors.push('bigRace raceNameShort: ' + eShort.message);
           report.bigRace.raceNameShort = report.bigRace.raceName;
+        } finally {
+          if (brnTimer) clearTimeout(brnTimer);
         }
       }
     } catch (e) {
@@ -2648,6 +2664,13 @@ exports.handler = async function(event) {
     // accurate.
     report.candgCard = null;
     if (report.candgHorses.length) {
+      // Hard 25s ceiling on this call, same pattern as the Hot Yard card
+      // call above — apiPost's socket timeout only emits an event (never
+      // destroys the socket), so a hung Anthropic call here would otherwise
+      // stall the whole build. On timeout the card is skipped (candgCard
+      // stays null) and the build carries on.
+      const CANDG_CARD_TIMEOUT_MS = 25000;
+      let candgTimer = null;
       try {
         const candgPrompt = 'You are an expert horse racing analyst writing a card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks,' +
@@ -2662,7 +2685,12 @@ exports.handler = async function(event) {
           ' to view the full qualifying runner list on Racing Edge.' +
           ' The horses are: ' + candgHorseLines.join('; ');
 
-        const candgResp = await callClaude('', candgPrompt, 400, true);
+        const candgResp = await Promise.race([
+          callClaude('', candgPrompt, 400, true),
+          new Promise(function(_, reject) {
+            candgTimer = setTimeout(function() { reject(new Error('timed out after ' + (CANDG_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CANDG_CARD_TIMEOUT_MS);
+          })
+        ]);
         if (candgResp.text && candgResp.text.trim()) {
           report.candgCard = candgResp.text.trim();
         }
@@ -2676,8 +2704,11 @@ exports.handler = async function(event) {
           cacheReadTokens: candgResp.cacheReadTokens || 0, cacheWriteTokens: candgResp.cacheWriteTokens || 0
         });
       } catch (e) {
+        console.log('[daily-build] candgCard: ' + e.message);
         report.errors.push('candgCard: ' + e.message);
         report.candgCard = null;
+      } finally {
+        if (candgTimer) clearTimeout(candgTimer);
       }
     }
 
@@ -2892,6 +2923,14 @@ exports.handler = async function(event) {
     // back to their score sort) and the failure is recorded in the build log
     // AND the completion email, never silently.
     let nbReorderStatusLine = 'NB Reorder: not run';
+    // Hard 30s ceiling on this call — longer than the other card calls since
+    // it affects NAP/NB ordering. Same pattern as the Hot Yard card call
+    // above — apiPost's socket timeout only emits an event (never destroys
+    // the socket), so a hung Anthropic call here would otherwise stall the
+    // whole build. On timeout the catch block below leaves report.analyses
+    // untouched, so the day keeps its confidence-score order.
+    const NB_REORDER_TIMEOUT_MS = 30000;
+    let nbTimer = null;
     try {
       // Same filter + ranking get-daily-build.js applies at read time, so the
       // horse at rank 1 here is exactly the NAP the site already shows.
@@ -2910,7 +2949,12 @@ exports.handler = async function(event) {
             + '\nRunners in race: ' + runnerCount
             + '\nCase: ' + (a.strongestSelection.pullQuote || 'none');
         }).join('\n\n');
-        const nbResp = await callClaude(NB_REORDER_PROMPT, candidateBlock, 400, true);
+        const nbResp = await Promise.race([
+          callClaude(NB_REORDER_PROMPT, candidateBlock, 400, true),
+          new Promise(function(_, reject) {
+            nbTimer = setTimeout(function() { reject(new Error('timed out after ' + (NB_REORDER_TIMEOUT_MS / 1000) + 's — skipped')); }, NB_REORDER_TIMEOUT_MS);
+          })
+        ]);
         report.inputTokens += nbResp.inputTokens || 0;
         report.outputTokens += nbResp.outputTokens || 0;
         report.cacheReadTokens += nbResp.cacheReadTokens || 0;
@@ -2947,7 +2991,10 @@ exports.handler = async function(event) {
     } catch (nbErr) {
       nbReorderStatusLine = 'NB Reorder: FAILED — using original confidence score order for today (' + nbErr.message + ')';
       report.warnings.push(nbReorderStatusLine);
+      report.errors.push(nbReorderStatusLine);
       console.error('[daily-build] ' + nbReorderStatusLine);
+    } finally {
+      if (nbTimer) clearTimeout(nbTimer);
     }
 
     // 6. Calculate cost and store final report
