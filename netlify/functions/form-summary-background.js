@@ -244,23 +244,22 @@ async function callClaude(runners) {
     return 'HORSE: ' + r.horseName + ' | ' + r.course + ' ' + r.time + ' ' + r.date + '\n' + r.formHistory;
   }).join('\n\n');
 
-  const userMessage = 'For each horse below, write one paragraph of form analysis based ' +
-    'solely on its race history. Do not reference today\'s going or today\'s race — describe ' +
-    'what the horse\'s form tells us about its preferences and profile.\n\n' +
-    'Rules — every paragraph must follow all four:\n' +
-    '1. Cite at least 2 specific facts from the horse\'s actual form — a specific date, course ' +
-    'name, going description, finishing position, or official rating. Invented or vague facts ' +
-    'are not acceptable.\n' +
-    '2. Never use these phrases: should go close, respected, one to watch, cannot be discounted, ' +
-    'each-way claims, if in the mood, hard to assess, eye-catching, promising, interesting, ' +
-    'capable of better.\n' +
-    '3. The opening three words of each paragraph must be different from every other paragraph ' +
-    'in this batch.\n' +
-    '4. If the form genuinely says little — few runs, no clear pattern — say so honestly in 2-3 ' +
-    'sentences. Never pad.\n\n' +
+  const userMessage = 'For each horse below, write a structured form analysis based solely on its ' +
+    'race history. Do not reference today\'s going or today\'s race. Never invent facts. Never use ' +
+    'yards in distances — write 2m4f not 2m4f110y, strip leading zero miles (6f not 0m6f). If the ' +
+    'form says little, say so honestly — never pad.\n\n' +
+    'Rules every section must follow:\n\n' +
+    'Cite specific facts — date, course, distance, going, finishing position. No vague generalisations.\n' +
+    'Never use: should go close, respected, one to watch, cannot be discounted, each-way claims, ' +
+    'if in the mood, hard to assess, eye-catching, promising, interesting, capable of better.\n' +
+    'If fewer than 3 runs exist, keep each section to 2 sentences maximum and say the form is limited.\n\n' +
     'Return in this exact format for each horse, nothing else:\n' +
     'HORSE: [horse name]\n' +
-    'SUMMARY: [one paragraph]\n\n' +
+    'RECENT_FORM: [paragraph — how have the last 6 runs gone, any trend improving declining or inconsistent]\n' +
+    'GOING: [paragraph — what surfaces encountered, best and worst performances by going, any clear preference or aversion]\n' +
+    'TRIP: [paragraph — what distances run at, best and worst by trip, has trip been stepped up or dropped]\n' +
+    'TRACK: [paragraph — any course form, venues where ran well or poorly, any specialist tendencies]\n' +
+    'KEY_ANGLE: [paragraph — one honest conclusion, what needs to go right for this horse today based purely on form profile]\n\n' +
     'Horses:\n' + horseBlocks;
 
   const resp = await apiPost('api.anthropic.com', '/v1/messages', {
@@ -277,20 +276,25 @@ async function callClaude(runners) {
   const content = resp.content || [];
   const text = content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
 
-  // Matches "HORSE: <name>\nSUMMARY: <paragraph>" blocks, each summary running
+  // Matches "HORSE: <name>" followed by the five labelled sections
+  // (RECENT_FORM / GOING / TRIP / TRACK / KEY_ANGLE), the last section running
   // until the next HORSE: marker or end of text.
   const summaries = [];
-  const blockRe = /HORSE:\s*(.+?)\s*\nSUMMARY:\s*([\s\S]*?)(?=\nHORSE:|$)/g;
+  const blockRe = /HORSE:\s*(.+?)\s*\nRECENT_FORM:\s*([\s\S]*?)\nGOING:\s*([\s\S]*?)\nTRIP:\s*([\s\S]*?)\nTRACK:\s*([\s\S]*?)\nKEY_ANGLE:\s*([\s\S]*?)(?=\nHORSE:|$)/g;
   let match;
   while ((match = blockRe.exec(text)) !== null) {
     const parsedName = match[1].trim();
-    const summary = match[2].trim();
+    const recentForm = match[2].trim();
+    const going = match[3].trim();
+    const trip = match[4].trim();
+    const track = match[5].trim();
+    const keyAngle = match[6].trim().replace(/[\s—\-]+$/,'');
     const runner = usable.find(function(r) { return (r.horseName || '').trim().toLowerCase() === parsedName.toLowerCase(); });
     if (!runner) {
       console.log('[form-summary] callClaude: could not match parsed horse "' + parsedName + '" back to a runner — skipping');
       continue;
     }
-    summaries.push({ horse_id: runner.horse_id, horseName: runner.horseName, summary: summary });
+    summaries.push({ horse_id: runner.horse_id, horseName: runner.horseName, recentForm: recentForm, going: going, trip: trip, track: track, keyAngle: keyAngle });
   }
 
   return {
@@ -350,11 +354,7 @@ async function storeResults(summaries) {
 
   for (const item of (summaries || [])) {
     try {
-      await redisSet('form-summary:' + item.horse_id, {
-        horseName: item.horseName,
-        summary: item.summary,
-        generatedAt: new Date().toISOString()
-      });
+      await redisSet('form-summary:' + item.horse_id, { horseName: item.horseName, summary: item.recentForm, recentForm: item.recentForm, going: item.going, trip: item.trip, track: item.track, keyAngle: item.keyAngle, generatedAt: new Date().toISOString() });
       stored++;
     } catch (e) {
       failed++;

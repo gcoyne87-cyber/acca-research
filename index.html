@@ -11653,6 +11653,11 @@ function getMeetingImg(id){
   return el?el.src:"";
 }
 
+// Structured form-summary render — five labelled sections when the cached
+// object carries recentForm/going/trip/track/keyAngle; falls back to the old
+// single-paragraph `summary` field for entries generated before the reshape.
+function _renderFormSections(s){ if(!s) return ''; if(!s.recentForm) return s.summary?'<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.6;padding:8px 14px">'+escHtml(s.summary)+'</div>':''; var sec=function(label,text,isKey){ if(!text)return ''; var wrap=isKey?'background:#f0fdf4;border-left:3px solid #1e9e6b;margin:0;':''; return '<div style="padding:10px 14px;border-bottom:0.5px solid #f0f2f5;'+wrap+'">' +'<div style="font-size:9px;font-weight:700;color:'+(isKey?'#1e9e6b':'#9ca3af')+';text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">'+label+'</div>' +'<div style="font-size:12px;color:'+(isKey?'#1a202c':'#374151')+';line-height:1.6;'+(isKey?'font-style:italic;':'')+'">'+escHtml(text)+'</div>' +'</div>'; }; return sec('Recent Form',s.recentForm,false) +sec('Going',s.going,false) +sec('Trip',s.trip,false) +sec('Track',s.track,false) +sec('Key Angle',s.keyAngle,true); }
+
 // Batched form-summary fetch — call with the horse_ids of a just-opened race's
 // runners. Skips ids already resolved (found or confirmed absent, tracked via
 // `id in _formSummaries`) so re-opening a race never re-fetches. cb runs once
@@ -14236,7 +14241,7 @@ function runnerRow(ru,ctx,extraHtml){
           _ih+='</tbody></table></div>';
         }
         var _fs=ru.horse_id?_formSummaries[ru.horse_id]:null;
-        var _summaryHtml=(_fs&&_fs.summary)?'<div style="padding:0 12px 8px;font-size:11px;color:#5a6478;line-height:1.6">'+escHtml(_fs.summary)+'</div>':'';
+        var _summaryHtml=_renderFormSections(_fs);
         html+='<div id="nrh-ft-'+pfx+'">'+_summaryHtml+_ih+'</div>';
         return html;
       })()
@@ -14653,9 +14658,7 @@ function nrLoadForm(pfx,horseId,silent){
       var summ=data.summary||null;
       var out='';
       var _fsum=_formSummaries[horseId];
-      if(_fsum&&_fsum.summary){
-        out+='<div style="padding:8px 14px;font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.6;border-bottom:0.5px solid #f0f2f5">'+escHtml(_fsum.summary.replace(/[\s—-]+$/,''))+'</div>';
-      }
+      out+=_renderFormSections(_fsum);
 
       // 5 labeled form rows — Ground / Distance / Course / Form / Key angle
       if(summ){
