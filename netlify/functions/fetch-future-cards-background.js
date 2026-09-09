@@ -72,7 +72,7 @@ function redisSet(key, value) {
     const req = https.request({
       hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
       headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { if(res.statusCode !== 200){ return reject(new Error('Redis write failed: HTTP '+res.statusCode+' '+d)); } try { const parsed=JSON.parse(d); if(parsed && parsed.error){ return reject(new Error('Redis write error: '+parsed.error)); } } catch(e){} resolve(d); }); });
     req.on('error', reject); req.write(body); req.end();
   });
 }
