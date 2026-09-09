@@ -1,7 +1,7 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-module.exports.config = { schedule: '0 6-21 * * *', timeout: 120 };
+module.exports.config = { timeout: 120 };
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
