@@ -26,6 +26,7 @@ function apiGet(path) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
+        if(res.statusCode !== 200){ return reject(new Error('API error: HTTP ' + res.statusCode + ' ' + data.substring(0,200))); }
         try { resolve(JSON.parse(data)); }
         catch(e) { reject(new Error('Parse error: ' + data.substring(0, 200))); }
       });
@@ -102,6 +103,7 @@ async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
       race_class: race.race_class || ''
     };
   });
+  if(history.length === 0){ throw new Error('Empty history returned for horse ' + horse_id + ' — skipping Redis write'); }
   await Promise.all(dateStrs.map(dateStr => redisSet('form:history:' + horse_id + ':' + dateStr, history)));
   return history;
 }

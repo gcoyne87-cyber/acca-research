@@ -12715,7 +12715,6 @@ function _meetingInfoLine(m){
   races.forEach(function(r){ if(jumpsRe.test((r.name||'')+' '+(r.type||''))) jumps++; });
   var disc=jumps===0?'Flat':(jumps===races.length?'Jumps':'Mixed');
   var parts=[races.length+(races.length===1?' race':' races'),escHtml(minR.t||'')+' - '+escHtml(maxR.t||'')];
-  if(m.going) parts.push(escHtml(_cleanGoing(m.going)));
   parts.push(disc);
   return '<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+parts.join(' &middot; ')+'</div>';
 }
