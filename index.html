@@ -14304,7 +14304,7 @@ function runnerRow(ru,ctx,extraHtml){
     +(extraHtml||'')
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;gap:6px;padding:6px 12px 6px 50px">'
+      return '<div style="display:flex;gap:6px;padding:6px 12px 6px 38px">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
         +'style="font-size:11px;font-weight:600;color:#1e9e6b;border:1.5px solid #1e9e6b;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Form &#9660;</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
@@ -15555,7 +15555,8 @@ function renderAIIntelligence(){
     // into the card at build time; fall back to the baked price only when no
     // live match is found (e.g. the horse was withdrawn since generation).
     var _livePrice=_reLiveCardPrice(item.ctaDestination, item.horseName);
-    var _displayPrice=_livePrice||item.price;
+    var _rawPrice=_livePrice||item.price||'';
+    var _displayPrice=/^(\d+\/\d+|EVS|SP|F|NR|[\d.]+)$/i.test((_rawPrice||'').trim())?_rawPrice.trim():'';
     // Jockey / trainer / form line — same fields, same style, same &middot;
     // join as the NAP/NB pick cards (renderRacingPicks, fullMetaParts). The
     // card object itself never carries these fields, so they're pulled live

@@ -471,7 +471,7 @@ Produce the best 3-6 cards from the combined pool of candidates across signals 1
     "signalType": "Tipster Consensus | Ground Edge | Course and Distance | Class Drop | Hot Yard | Intelligence",
     "sigColor": "#hex",
     "horseName": "Horse Name or Trainer Name or Venue — Going",
-    "price": "odds e.g. 5/2 or empty string",
+    "price": "fractional odds only e.g. '5/2', 'EVS', 'SP' — never a sentence, never words, empty string if unknown",
     "meta": "HH:MM Course · details or X runners today or X ground specialists",
     "intelligenceText": "2-3 sentences — specific, actionable, no publication names. intelligenceText for every signal must not exceed 80 words. This applies to all 6 signal types without exception. Count carefully — stop at 80 words. Do not mention any price or odds in intelligenceText. This applies to all 6 signal types: Tipster Consensus, Ground Edge, Course and Distance, Class Drop, Hot Yard and Intelligence. Prices change and must never appear in any card text.",
     "ctaLabel": "Analyse [Course] [HH:MM]",
