@@ -12160,7 +12160,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     var sr=selectedFr.race;
     out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
     out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(selMeeting.name)+' &middot; '+escHtml(sr.t)+'</div>';
-    out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+    out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
     var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
     if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
@@ -12804,7 +12804,7 @@ function renderFutureDateContent(dateStr,targetEl){
           var sr=m.races[selRace];
           out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
           out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
-          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
@@ -12933,7 +12933,7 @@ function renderTodayMeetingsList(isInitial){
         rcOpenRace[selMeeting.id]=_selectedEntry.raceIndex;
         out2+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out2+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(selMeeting.name)+' &middot; '+escHtml(sr.t)+'</div>';
-        out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out2+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
@@ -13000,7 +13000,7 @@ function renderTodayMeetingsList(isInitial){
         var sr=m.races[selRace];
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
-        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
@@ -13020,7 +13020,7 @@ function renderTodayMeetingsList(isInitial){
           out+='<div style="border-top:1px solid #f0f2f7">';
           out+='<div style="padding:10px 14px 4px">';
           out+='<div style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(race.t)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml(race.name)+' &middot; '+escHtml(race.dist)+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml(race.name)+' &middot; '+escHtml(_nrAbDist(race.dist))+'</div>';
           var _rcp=(race.class||'')+(race.class&&race.prize?' · ':'')+(race.prize||'');
           if(_rcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:4px">'+escHtml(_rcp)+'</div>';
           out+='</div>';
@@ -13095,7 +13095,7 @@ function renderRcSingleList(){
         var sr=m.races[selRace];
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
-        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+        out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
@@ -14825,7 +14825,7 @@ function nrRenderCard(){
           +'<div style="font-size:16px;font-weight:700;color:#0D1B3E">'+ escHtml(r.venue) +' · '+ escHtml(r.t) +'</div>'
           +'<div id="'+cdId+'" style="font-size:12px;font-weight:700;color:#10b981;white-space:nowrap">'+nrFmtCd(secs)+'</div>'
         +'</div>'
-        +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(r.dist) +'</div>'
+        +'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+ escHtml(r.type) +' · '+ escHtml(_nrAbDist(r.dist)) +'</div>'
         +((r.class||r.prize)?'<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((r.class||'')+(r.class&&r.prize?' · ':'')+(r.prize||''))+'</div>':'')
         +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+ escHtml(_cleanGoing(r.going)) +' · '+ r.runners +' runners</div>'
         +(function(){var _k=(r.venue+' '+r.t).toLowerCase().trim(),_a=_cachedRaceAnalyses[_k];return _a&&_a.raceHook?'<div style="background:#f8fafc;border-radius:8px;margin:4px 14px 8px;padding:10px 12px;font-size:13px;color:#374151;font-style:italic;line-height:1.6">'+escHtml(_a.raceHook)+'</div>':''}())
@@ -15401,7 +15401,10 @@ function renderAIIntelligence(){
         meta:escHtml(_rt+' '+_rc),
         intelligenceText:escHtml(p.pullQuote||p.raceIntelligence||''),
         ctaLabel:'Analyse '+escHtml(_rc)+' '+escHtml(_rt),
-        ctaDestination:'race:'+_slug+':'+_rt
+        ctaDestination:'race:'+_slug+':'+_rt,
+        jockey:p.jockey||'',
+        trainer:p.trainer||'',
+        formFigures:p.formFigures||''
       };
     });
     // Visibility rules: during the racing day a pick still hides once its
@@ -15569,11 +15572,12 @@ function renderAIIntelligence(){
     var _isHotYard=item.signalType==='Hot Yard';
     var _liveRunner=_isHotYard?null:_reLiveCardRunner(item.ctaDestination, item.horseName);
     var _jtfParts=[];
-    if(_liveRunner){
-      if(_liveRunner.jockey) _jtfParts.push(escHtml(_liveRunner.jockey));
-      if(_liveRunner.trainer) _jtfParts.push(escHtml(_liveRunner.trainer));
-      if(_liveRunner.form) _jtfParts.push(escHtml(_liveRunner.form));
-    }
+    var _j=(_liveRunner&&_liveRunner.jockey)||item.jockey||'';
+    var _tr=(_liveRunner&&_liveRunner.trainer)||item.trainer||'';
+    var _fm=(_liveRunner&&_liveRunner.form)||item.formFigures||'';
+    if(_j) _jtfParts.push(escHtml(_j));
+    if(_tr) _jtfParts.push(escHtml(_tr));
+    if(_fm) _jtfParts.push(escHtml(_fm));
     var _jtfLine=_jtfParts.length?'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+_jtfParts.join(' &middot; ')+'</div>':'';
     return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
       +(imgSrc?'<img src="'+imgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
@@ -17280,7 +17284,7 @@ function renderResultsPage(){
         // race-level race.prize never fires), formatted via _fmtPrize with
         // the venue's currency.
         html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
-        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+(race.name&&race.dist?' &middot; ':'')+escHtml(race.dist||'')+'</div>';
+        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
         var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
         var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
         if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
@@ -18104,7 +18108,7 @@ function renderTomorrowMeetingsList(targetEl){
           var sr=m.races[selRace];
           out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
           out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
-          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(sr.dist)+'</div>';
+          out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
           var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
           if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
           out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
