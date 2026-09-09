@@ -42,6 +42,7 @@ function apiGet(path) {
       });
     });
     req.on('error', reject);
+    req.setTimeout(25000, function(){ req.destroy(); reject(new Error('apiGet socket timeout after 25s: '+path)); });
     req.end();
   });
 }
@@ -87,6 +88,18 @@ function redisDel(key) {
       headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN }
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
     req.on('error', reject); req.end();
+  });
+}
+
+function redisSetEx(key, value, ttlSeconds) {
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key) + '?EX=' + ttlSeconds, method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { if(res.statusCode !== 200){ return reject(new Error('Redis write failed: HTTP '+res.statusCode+' '+d)); } try { const parsed=JSON.parse(d); if(parsed && parsed.error){ return reject(new Error('Redis write error: '+parsed.error)); } } catch(e){} resolve(d); }); });
+    req.on('error', reject); req.write(body); req.end();
   });
 }
 
@@ -314,6 +327,17 @@ exports.handler = async function(event) {
 
   const now = new Date();
   const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+  const lockKey = 'price-refresh:lock:' + today;
+  const existingLock = await redisGet(lockKey);
+  if(existingLock){
+    const lockAge = Date.now() - (existingLock.ts||0);
+    if(lockAge < 110000){
+      console.log('[refresh-prices] lock active, standing down (age: '+Math.round(lockAge/1000)+'s)');
+      return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: 'lock active' }) };
+    }
+  }
+  await redisSetEx(lockKey, { ts: Date.now() }, 120);
 
   let todayUpdated = 0;
   let todayError = null;
