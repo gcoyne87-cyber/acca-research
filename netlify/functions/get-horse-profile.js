@@ -61,10 +61,14 @@ function apiGetRacing(path) {
       headers: { 'Authorization': 'Basic ' + RACING_AUTH, 'Accept': 'application/json' }
     }, res => {
       let d = ''; res.on('data', c => d += c);
-      res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse')); } });
+      res.on('end', () => { try { const parsed = JSON.parse(d); parsed._httpStatus = res.statusCode; resolve(parsed); } catch(e) { reject(new Error('Parse error')); } });
     });
     req.on('error', reject); req.end();
   });
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function fetchAllResults(horseId) {
@@ -112,6 +116,24 @@ exports.handler = async function(event) {
       fetchAllResults(horseId)
     ]);
 
+    // A single retry, after a 3s delay, for any call that came back 429 —
+    // transient at typical request volumes, so one retry usually succeeds
+    // without the caller ever seeing a failure. Only one retry per call; if
+    // it fails again, proceed with whatever data is available rather than
+    // looping. Mutating .value in place keeps the derivation below unchanged.
+    if (profileSettled.status === 'fulfilled' && profileSettled.value && profileSettled.value._httpStatus === 429) {
+      await sleep(3000);
+      try {
+        profileSettled.value = await apiGetRacing('/v1/horses/' + encodeURIComponent(horseId) + '/pro');
+      } catch (e) { /* leave as-is; proceed with whatever data is available */ }
+    }
+    if (resultsSettled.status === 'fulfilled' && resultsSettled.value && resultsSettled.value._httpStatus === 429) {
+      await sleep(3000);
+      try {
+        resultsSettled.value = await fetchAllResults(horseId);
+      } catch (e) { /* leave as-is; proceed with whatever data is available */ }
+    }
+
     // A fulfilled call that returned an API error body ({detail: ...}) is a
     // failure for our purposes, not data. The results helper already folds
     // its own failures (error body, parse, first-page miss) into null.
@@ -121,8 +143,19 @@ exports.handler = async function(event) {
       ? resultsSettled.value : null;
 
     if (!profile && !results) {
+      const stillRateLimited = (profileSettled.status === 'fulfilled' && profileSettled.value && profileSettled.value._httpStatus === 429)
+        || (resultsSettled.status === 'fulfilled' && resultsSettled.value && resultsSettled.value._httpStatus === 429);
+      if (stillRateLimited) {
+        return { statusCode: 503, headers, body: JSON.stringify({ error: 'rate limited', retryable: true }) };
+      }
       return { statusCode: 404, headers, body: JSON.stringify({ error: 'No data found for horse ' + horseId }) };
     }
+
+    // Internal-only field, no longer needed now that both retry decisions
+    // above are done — strip it so it never reaches the client response or
+    // the 24h Redis cache.
+    if (profile) delete profile._httpStatus;
+    if (results) delete results._httpStatus;
 
     const combined = { profile: profile, results: results };
 

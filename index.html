@@ -14451,6 +14451,7 @@ function nrLoadProfile(pfx,horseId){
   var tDiv=document.getElementById('nrh-pai-'+pfx);
   if(c&&c.html){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);if(tDiv)tDiv.innerHTML=c.html;var pc0=document.getElementById('nrh-pcareer-'+pfx);if(pc0)pc0.innerHTML=c.formHtml||'';return;}
   if(c==='err'){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
+  if(c==='retry'){delete _nrProfileCache[horseId];}
   if(c==='loading')return;
   nrTogglePanel(pfx,'pe');
   _nrProfileForm(pfx,horseId);
@@ -14587,8 +14588,9 @@ function nrLoadProfile(pfx,horseId){
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML=out;
     })
-    .catch(function(){
-      _nrProfileCache[horseId]='err';
+    .catch(function(err){
+      var _msg=(err&&err.message)||'';
+      _nrProfileCache[horseId]=(_msg.indexOf('HTTP 503')!==-1||_msg.indexOf('retryable')!==-1)?'retry':'err';
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
     });
