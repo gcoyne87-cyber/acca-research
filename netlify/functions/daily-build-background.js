@@ -2563,7 +2563,7 @@ exports.handler = async function(event) {
           distance: bigRaceCandidate.race.distance||'',
           going: bigRaceCandidate.race.going||'',
           raceClass: bigRaceCandidate.race.race_class||'',
-          raceIntelligence: bigRaceCandidate.analysisEntry.raceIntelligence,
+          raceIntelligence: (bigRaceCandidate.analysisEntry.strongestSelection && bigRaceCandidate.analysisEntry.strongestSelection.pullQuote) || bigRaceCandidate.analysisEntry.raceIntelligence,
           courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
         };
         // Short display name for the card title — one small Claude call. Falls
