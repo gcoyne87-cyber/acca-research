@@ -14141,9 +14141,9 @@ function runnerRow(ru,ctx,extraHtml){
   var formText=ru.form?'<div style="font-size:11px;color:#4b5563;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
 
   // Jockey on its own line
-  var jockeyLine=jockey?'<div style="font-size:11px;color:#1a1f2e;font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
+  var jockeyLine=jockey?'<div style="font-size:10px;color:#1a1f2e;font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
   // Trainer on its own line below
-  var trainerLine=trainer?'<div style="font-size:11px;color:#1a1f2e;font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
+  var trainerLine=trainer?'<div style="font-size:10px;color:#1a1f2e;font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
 
   // Weight · OR on next line
   var wtOrAgeParts=[];
@@ -14313,11 +14313,11 @@ function runnerRow(ru,ctx,extraHtml){
     +(extraHtml||'')
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;gap:8px;padding:8px 12px 6px 38px">'
+      return '<div style="display:flex;gap:18px;padding:8px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:700;color:#92710a;background:#fef9ec;border:1.5px solid #c9a84c;border-radius:20px;padding:4px 12px;cursor:pointer;white-space:nowrap">Form</div>'
+        +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:700;color:#1a3a6b;background:#eef2f9;border:1.5px solid #b8c4dc;border-radius:20px;padding:4px 12px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
+        +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
         +'</div>';
     })()
   +'</div>'
