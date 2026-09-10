@@ -14138,25 +14138,25 @@ function runnerRow(ru,ctx,extraHtml){
 
   // Form as plain string on its own line below the name — dashes only exist
   // for season breaks, shown as-is
-  var formText=ru.form?'<div style="font-size:11px;color:#4b5563;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
+  var formText=ru.form?'<div style="font-size:11px;color:#9aa3b5;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
 
   // Jockey on its own line
-  var jockeyLine=jockey?'<div style="font-size:10px;color:#1a1f2e;font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
+  var jockeyLine=jockey?'<div style="font-size:10px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
   // Trainer on its own line below
-  var trainerLine=trainer?'<div style="font-size:10px;color:#1a1f2e;font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
+  var trainerLine=trainer?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
 
   // Weight · OR on next line
   var wtOrAgeParts=[];
   if(ru.wt) wtOrAgeParts.push(escHtml(ru.wt));
   if(ru.or) wtOrAgeParts.push('OR '+escHtml(String(ru.or)));
   if(ru.age) wtOrAgeParts.push(escHtml(String(ru.age))+'yo');
-  var wtOrLine=wtOrAgeParts.length?'<div style="font-size:10px;color:#4b5563;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
+  var wtOrLine=wtOrAgeParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
   var ageLine='';
 
   // Runner tag badges — flags computed server-side in racecards.js
   // (enrichRunnerTags). To add a new tag: add its flag there, then one
   // _tags.push(...) line here. Renders nothing at all when no tags apply.
-  var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#1a1f2e;border-radius:99px;padding:2px 7px;white-space:nowrap';
+  var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#9aa3b5;border-radius:99px;padding:2px 7px;white-space:nowrap';
   var _tags=[];
   if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
   if(ru.isCandDGoing) _tags.push('C&amp;D+G');
