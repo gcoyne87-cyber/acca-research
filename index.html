@@ -14466,6 +14466,13 @@ function nrLoadProfile(pfx,horseId){
       var p=data.profile||{};
       var races=(data.results&&Array.isArray(data.results.results))?data.results.results:[];
       races=races.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
+      // Ascending sort above means the most recent race is the LAST element,
+      // not the first — confirmed against the sort comparator, not assumed.
+      // No trainer-country field exists anywhere in the API (see nrLoadProfile
+      // read from this session), so the horse's most recent race region is
+      // used as the best available proxy for where it's currently based.
+      var mostRecentRace=races.length?races[races.length-1]:null;
+      var currentSym=(mostRecentRace&&mostRecentRace.region==='IRE')?'€':'£';
       var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
       var bucketOf=function(race){
         var t=String(race.type||'').toLowerCase(),s=String(race.surface||'').toLowerCase(),
@@ -14475,8 +14482,8 @@ function nrLoadProfile(pfx,horseId){
         if(/^aw$|all.?weather|poly|tapeta|fibresand|dirt|sand/.test(s)||/poly|tapeta|fibresand/.test(g))return 'aw';
         return 'flat';
       };
-      var cats={flat:{label:'Flat turf',r:0,w:0,pl:0,pr:{}},aw:{label:'All-weather',r:0,w:0,pl:0,pr:{}},jumps:{label:'Jumps',r:0,w:0,pl:0,pr:{}}};
-      var tot={r:0,w:0,pl:0,pr:{}};
+      var cats={flat:{label:'Flat turf',r:0,w:0,pl:0,pr:0},aw:{label:'All-weather',r:0,w:0,pl:0,pr:0},jumps:{label:'Jumps',r:0,w:0,pl:0,pr:0}};
+      var tot={r:0,w:0,pl:0,pr:0};
       var owner='',hist=[],lastTrainer=null,lastDate=null;
       races.forEach(function(race){
         var me=null,rs=race.runners||[];
@@ -14488,9 +14495,8 @@ function nrLoadProfile(pfx,horseId){
         if(posN===1){c.w++;tot.w++;}else if(posN===2||posN===3){c.pl++;tot.pl++;}
         if(me.prize){
           var s=String(me.prize).trim();
-          var sym=(s.match(/^[^0-9]+/)||[''])[0].trim()||'£';
           var n=parseFloat(s.replace(/[^0-9.]/g,''));
-          if(!isNaN(n)){c.pr[sym]=(c.pr[sym]||0)+n;tot.pr[sym]=(tot.pr[sym]||0)+n;}
+          if(!isNaN(n)){c.pr+=n;tot.pr+=n;}
         }
         if(me.owner)owner=me.owner;
         if(me.trainer&&norm(me.trainer)!==norm(lastTrainer)){
@@ -14522,12 +14528,7 @@ function nrLoadProfile(pfx,horseId){
         if(!val)return '';
         return '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:0.5px solid #f8f9fb"><span style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;width:64px;flex-shrink:0;padding-top:2px">'+label+'</span><span style="font-size:11px;color:#1a202c;line-height:1.5;flex:1">'+escHtml(String(val))+(sub?' <span style="color:#6b7280;font-size:10px">'+escHtml(sub)+'</span>':'')+' </span></div>';
       };
-      var money=function(pr){
-        var keys=Object.keys(pr);
-        if(!keys.length) return '';
-        var dominant=keys.reduce(function(a,b){return pr[a]>=pr[b]?a:b;});
-        return dominant+Math.round(pr[dominant]).toLocaleString();
-      };
+      var money=function(amount, sym){ return amount ? sym+Math.round(amount).toLocaleString() : ''; };
       var horseLine=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' ').toLowerCase()].filter(Boolean).join(' ');
       var ownBreed=[owner,p.breeder].filter(Boolean).join(' · ');
       var pedLine=[p.sire,p.dam].filter(Boolean).join(' – ');
@@ -14538,7 +14539,7 @@ function nrLoadProfile(pfx,horseId){
       // Stat strip — five cells on the pale green band. ru is the live
       // racecard runner (hoisted above) for OR and days since last run.
       var _cell=function(label,value){return '<div style="flex:1;padding:9px 0 9px 14px"><div style="font-size:8px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;font-weight:600;color:#374151">'+value+'</div></div>';};
-      var _prizeStr=money(tot.pr);
+      var _prizeStr=money(tot.pr, currentSym);
       out+='<div style="font-size:11px;color:#9ca3af;padding:4px 14px 0">'+escHtml([colour,sex].filter(Boolean).join(' ').toLowerCase())+(p.dob?' · foaled '+escHtml(fmtD(p.dob)):'')+'</div>';
       out+='<div style="display:flex;background:#f0fdf4;margin:0">';
       out+=_cell('Age',age?escHtml(age)+'yo':'—');
@@ -14625,8 +14626,8 @@ function nrLoadProfile(pfx,horseId){
         out+='<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px"><thead><tr style="border-bottom:2px solid #e4e8f0">'
           +'<th style="'+th+';text-align:left">Surface</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">Places</th><th style="'+th+'">Win %</th><th style="'+th+'">Prize</th></tr></thead><tbody>';
         ['flat','aw','jumps'].forEach(function(k){var c=cats[k];if(!c.r)return;
-          out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.pl+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td><td style="'+td+'">'+escHtml(money(c.pr)||'—')+'</td></tr>';});
-        out+='<tr style="font-weight:700;border-top:1px solid #e3e6ee"><td style="'+tdlT+'">Total</td><td style="'+tdT+'">'+tot.r+'</td><td style="'+tdT+'">'+tot.w+'</td><td style="'+tdT+'">'+tot.pl+'</td><td style="'+tdT+'">'+Math.round(100*tot.w/tot.r)+'%</td><td style="'+tdT+'">'+escHtml(money(tot.pr)||'—')+'</td></tr>';
+          out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.pl+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td><td style="'+td+'">'+escHtml(money(c.pr, currentSym)||'—')+'</td></tr>';});
+        out+='<tr style="font-weight:700;border-top:1px solid #e3e6ee"><td style="'+tdlT+'">Total</td><td style="'+tdT+'">'+tot.r+'</td><td style="'+tdT+'">'+tot.w+'</td><td style="'+tdT+'">'+tot.pl+'</td><td style="'+tdT+'">'+Math.round(100*tot.w/tot.r)+'%</td><td style="'+tdT+'">'+escHtml(money(tot.pr, currentSym)||'—')+'</td></tr>';
         out+='</tbody></table>';
         out+='</div>';
       }
