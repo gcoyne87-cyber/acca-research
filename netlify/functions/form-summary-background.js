@@ -267,7 +267,7 @@ async function callClaude(runners) {
     'anthropic-version': '2023-06-01'
   }, {
     model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   });
@@ -275,6 +275,13 @@ async function callClaude(runners) {
   const usage = resp.usage || {};
   const content = resp.content || [];
   const text = content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
+
+  // Truncation: a batch cut off at max_tokens loses its tail horses to the
+  // parser below. Surface it explicitly (console + a truncated flag the
+  // caller pushes into the run's errors) rather than letting those horses
+  // silently land in the "no summary came back" failure count.
+  const truncated = resp.stop_reason === 'max_tokens';
+  if (truncated) console.warn('[form-summary] batch truncated at max_tokens — ' + usable.map(function(r) { return r.horseName || r.horse_id; }).join(', '));
 
   // Matches "HORSE: <name>" followed by the five labelled sections
   // (RECENT_FORM / GOING / TRIP / TRACK / KEY_ANGLE), the last section running
@@ -300,7 +307,8 @@ async function callClaude(runners) {
   return {
     summaries: summaries,
     inputTokens: usage.input_tokens || 0,
-    outputTokens: usage.output_tokens || 0
+    outputTokens: usage.output_tokens || 0,
+    truncated: truncated
   };
 }
 
@@ -569,7 +577,7 @@ exports.handler = async function(event) {
     // fills: generation starts seconds into the run, history fetches are only
     // paid for horses actually generated this run, and the today-first runner
     // order means today's card completes before future days are touched.
-    const BATCH = 10;
+    const BATCH = 5;
     let pending = [];
     let batchNum = 0;
 
@@ -604,6 +612,7 @@ exports.handler = async function(event) {
 
       totalInputTokens += result.inputTokens || 0;
       totalOutputTokens += result.outputTokens || 0;
+      if (result.truncated) errors.push('batch ' + batchNum + ': truncated at max_tokens — ' + batch.map(function(r) { return r.horseName || r.horse_id; }).join(', '));
 
       const summarisedIds = new Set(result.summaries.map(function(s) { return s.horse_id; }));
       batch.forEach(function(r) {
