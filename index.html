@@ -14284,7 +14284,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div style="flex:1;min-width:0">'
         // Name line
         +'<div style="display:flex;align-items:center;gap:6px">'
-          +'<span style="font-size:19px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+          +'<span style="font-size:14px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:14px;font-weight:700;line-height:1">&#9660;</span>'
         +'</div>'
         // Form string on its own line directly below the name
@@ -14312,11 +14312,11 @@ function runnerRow(ru,ctx,extraHtml){
     +(extraHtml||'')
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;gap:6px;padding:6px 12px 6px 38px">'
+      return '<div style="display:flex;gap:18px;padding:8px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:600;color:#1e9e6b;border:1.5px solid #1e9e6b;border-radius:6px;padding:5px 12px;cursor:pointer;white-space:nowrap">Form &#9660;</div>'
+        +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:600;color:#6b7280;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 12px;cursor:pointer;white-space:nowrap">Race Analysis &#9660;</div>'
+        +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
         +'</div>';
     })()
   +'</div>'
