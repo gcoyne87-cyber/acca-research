@@ -12170,7 +12170,8 @@ function renderTrainerFilterMultiDay(el,isInitial){
     var _tfTabKey=selMeeting.id+'-'+sr.t;
     if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
       var runnersForRace=_sortByPrice((sr.runners&&sr.runners.length)?sr.runners:[]);
-      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_inlineHorseAnalysisHtml(selMeeting.id,sr.t,selMeeting.name,r.name));}).join('')+'</div>';
+      var favNames=_rcFavNames(runnersForRace);
+      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_inlineHorseAnalysisHtml(selMeeting.id,sr.t,selMeeting.name,r.name),!!favNames[r.name]);}).join('')+'</div>';
     }
     out+='</div>';
   }
@@ -13058,7 +13059,8 @@ function rcRaceDetailSingleHtml(m,selRace){
   var out='<div id="rcs-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var race=m.races[selRace];
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
+  var favNames=_rcFavNames(runners);
+  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
@@ -13496,7 +13498,8 @@ function rcRaceDetailHtml(m){
   var out='<div id="rc-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
 
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
+  var favNames=_rcFavNames(runners);
+  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
 
   out+='</div>';
 
@@ -14130,7 +14133,7 @@ function _priceMoveRunnerByName(name){
   return null;
 }
 
-function runnerRow(ru,ctx,extraHtml){
+function runnerRow(ru,ctx,extraHtml,isFav){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var silk=ru.silk?nrSilk(ru.silk):'';
   var jockey=ru.jockey||ru.jt||'';
@@ -14301,7 +14304,7 @@ function runnerRow(ru,ctx,extraHtml){
         // below it in a wrapper that adds no padding, margin or border of its
         // own, so the box's size, shape and position are unchanged either way.
         var _btn='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0;background:#fff;border:1.5px solid #c9a84c;border-radius:6px;padding:4px 10px">'
-          +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+'</div>'
+          +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+(isFav?'F':'')+'</div>'
         +'</button>';
         var _pm=_priceMovePillHtml(ru);
         return _pm?'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end">'+_btn+_pm+'</div>':_btn;
@@ -14906,7 +14909,8 @@ function nrRenderCard(){
   var secs=nrSecsLeft(nrSelected);
   function buildNrCard(runnerCtx){
     var raceRunners=_sortByPrice((r._runners&&r._runners.length)?r._runners:NR_RUNNERS);
-    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_inlineHorseAnalysisHtml(r.venue,r.t,r.venue,ru.name));}).join('');
+    var favNames=_rcFavNames(raceRunners);
+    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_inlineHorseAnalysisHtml(r.venue,r.t,r.venue,ru.name),!!favNames[ru.name]);}).join('');
     var cdId=runnerCtx==='nrhome'?'nr-hdr-cd-home':'nr-hdr-cd';
     return '<div>'
       +'<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">'
@@ -17022,6 +17026,37 @@ function _raceIsFinished(timeStr){
   }catch(e){return false;}
 }
 
+// Racecard favourite marker — same comparison _resFavNames does for the
+// results page (lowest decimal price across the race's runners, joint
+// favourites all included via the 1e-9 tolerance), but for live racecard
+// runners: reads .price, the only price field these carry (racecards have
+// no sp_dec equivalent, confirmed against a live fetch), and keys the
+// returned map by .name rather than .horse to match how racecard runner
+// records identify themselves.
+function _rcFavNames(runners){
+  function priceDec(r){
+    var s=String(r.price||'').trim();
+    if(!s||s==='SP') return null;
+    if(/^evs$|^evens$/i.test(s)) return 2;
+    var q=s.split('/');
+    if(q.length===2){var n=parseFloat(q[0]),dd=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(dd)&&dd>0)return n/dd+1;}
+    var f=parseFloat(s);
+    return (!isNaN(f)&&f>1)?f:null;
+  }
+  var best=null;
+  (runners||[]).forEach(function(r){
+    var d=priceDec(r);
+    if(d!==null&&(best===null||d<best-1e-9)) best=d;
+  });
+  var out={};
+  if(best===null) return out;
+  (runners||[]).forEach(function(r){
+    var d=priceDec(r);
+    if(d!==null&&Math.abs(d-best)<1e-9) out[r.name]=true;
+  });
+  return out;
+}
+
 // Favourite marker — the runner(s) with the lowest decimal SP in a race,
 // derived exactly as the Full Results footer "Fav:" line does it (sp_dec from
 // the server when present, fractional sp string as fallback). Returns a map
@@ -18021,7 +18056,8 @@ function tmRaceDetailHtml(m){
   var race=m.races[selRace];
   var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:TM_RUNNERS);
-  out+=runners.map(function(r){return runnerRow(r,'tm',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name));}).join('');
+  var favNames=_rcFavNames(runners);
+  out+=runners.map(function(r){return runnerRow(r,'tm',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
