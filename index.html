@@ -14267,7 +14267,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
     +'<div style="display:flex;align-items:flex-start;padding:9px 12px;gap:9px;background:transparent">'
-      +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px">'
+      +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-top:1px">'
         +'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+ru.n+'</span>'
         +silk
       +'</div>'
@@ -14303,7 +14303,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         // as it always was. Pill: the untouched button plus the pill stacked
         // below it in a wrapper that adds no padding, margin or border of its
         // own, so the box's size, shape and position are unchanged either way.
-        var _btn='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0;background:#fff;border:1.5px solid #c9a84c;border-radius:6px;padding:4px 10px">'
+        var _btn='<button class="price-btn" onclick="nrAddToSlip(\''+escHtml(ru.name)+'\',\''+escHtml(ru.price)+'\')" style="flex-shrink:0;background:#f3f4f6;border-radius:6px;padding:4px 10px">'
           +'<div style="font-size:13px;font-weight:700;color:#0D1B3E">'+escHtml(ru.price)+(isFav?'F':'')+'</div>'
         +'</button>';
         var _pm=_priceMovePillHtml(ru);
