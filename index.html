@@ -14522,7 +14522,12 @@ function nrLoadProfile(pfx,horseId){
         if(!val)return '';
         return '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:0.5px solid #f8f9fb"><span style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;width:64px;flex-shrink:0;padding-top:2px">'+label+'</span><span style="font-size:11px;color:#1a202c;line-height:1.5;flex:1">'+escHtml(String(val))+(sub?' <span style="color:#6b7280;font-size:10px">'+escHtml(sub)+'</span>':'')+' </span></div>';
       };
-      var money=function(pr){return Object.keys(pr).map(function(k){return k+Math.round(pr[k]).toLocaleString();}).join(' / ')||'';};
+      var money=function(pr){
+        var keys=Object.keys(pr);
+        if(!keys.length) return '';
+        var dominant=keys.reduce(function(a,b){return pr[a]>=pr[b]?a:b;});
+        return dominant+Math.round(pr[dominant]).toLocaleString();
+      };
       var horseLine=[age?age+'yo':'',[colour,sex].filter(Boolean).join(' ').toLowerCase()].filter(Boolean).join(' ');
       var ownBreed=[owner,p.breeder].filter(Boolean).join(' · ');
       var pedLine=[p.sire,p.dam].filter(Boolean).join(' – ');
