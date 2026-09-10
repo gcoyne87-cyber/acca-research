@@ -14153,19 +14153,6 @@ function runnerRow(ru,ctx,extraHtml){
   var wtOrLine=wtOrAgeParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
   var ageLine='';
 
-  // Runner tag badges — flags computed server-side in racecards.js
-  // (enrichRunnerTags). To add a new tag: add its flag there, then one
-  // _tags.push(...) line here. Renders nothing at all when no tags apply.
-  var _tagPill='display:inline-block;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#f0f2f7;border:1px solid #e4e8f0;color:#9aa3b5;border-radius:99px;padding:2px 7px;white-space:nowrap';
-  var _tags=[];
-  if(ru.isCandDWinner) _tags.push('C&amp;D Winner');
-  if(ru.isCandDGoing) _tags.push('C&amp;D+G');
-  if(ru.isIrishRaider) _tags.push('Irish Raider');
-  if(ru.isGBRaider) _tags.push('GB Raider');
-  if(ru.isGroundLover) _tags.push('Ground Lover');
-  if(ru.isHotYard) _tags.push('Hot Yard');
-  var tagsHtml=_tags.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">'+_tags.map(function(t){return '<span style="'+_tagPill+'">'+t+'</span>';}).join('')+'</div>':'';
-
   var badgeHtml='';
 
   var cards='';
@@ -14282,11 +14269,22 @@ function runnerRow(ru,ctx,extraHtml){
         +silk
       +'</div>'
       +'<div style="flex:1;min-width:0">'
-        // Name line
-        +'<div style="display:flex;align-items:center;gap:6px">'
+        // Name line — flex-wrap so multiple gold tag pills wrap onto a new
+        // line on narrow viewports instead of overflowing off-screen.
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
           +'<span style="font-size:15px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:14px;font-weight:700;line-height:1">&#9660;</span>'
-          +(ru.isCandDGoing?'<span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:3px 10px;font-size:10px;font-weight:700;color:#0b1628;flex-shrink:0">&#9733; C&amp;D+G</span>':'')
+          +(function(){
+            var _t=[];
+            if(ru.isCandDWinner) _t.push('C&amp;D Winner');
+            if(ru.isCandDGoing) _t.push('C&amp;D+G');
+            if(ru.isIrishRaider) _t.push('Irish Raider');
+            if(ru.isGBRaider) _t.push('GB Raider');
+            if(ru.isGroundLover) _t.push('Ground Lover');
+            if(ru.isHotYard) _t.push('Hot Yard');
+            if(!_t.length) return '';
+            return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:3px 10px;font-size:10px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap">&#9733; '+t+'</span>';}).join('');
+          })()
         +'</div>'
         // Form string on its own line directly below the name
         +formText
@@ -14295,7 +14293,6 @@ function runnerRow(ru,ctx,extraHtml){
         +trainerLine
         // Weight · OR
         +wtOrLine+ageLine
-        +tagsHtml
       +'</div>'
       +(function(){
         // The grey price box must be byte-identical to its pre-pill markup —
