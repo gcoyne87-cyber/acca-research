@@ -14271,7 +14271,7 @@ function runnerRow(ru,ctx,extraHtml){
       +'<div style="flex:1;min-width:0">'
         // Name line — flex-wrap so multiple gold tag pills wrap onto a new
         // line on narrow viewports instead of overflowing off-screen.
-        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        +'<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">'
           +'<span style="font-size:15px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:14px;font-weight:700;line-height:1">&#9660;</span>'
           +(function(){
@@ -14283,7 +14283,7 @@ function runnerRow(ru,ctx,extraHtml){
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
             if(!_t.length) return '';
-            return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:3px 10px;font-size:10px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap">&#9733; '+t+'</span>';}).join('');
+            return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
           })()
         +'</div>'
         // Form string on its own line directly below the name
