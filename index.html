@@ -14138,7 +14138,7 @@ function runnerRow(ru,ctx,extraHtml){
 
   // Form as plain string on its own line below the name — dashes only exist
   // for season breaks, shown as-is
-  var formText=ru.form?'<div style="font-size:11px;color:#6b7280;margin-top:1px">'+escHtml(ru.form)+'</div>':'';
+  var formText=ru.form?'<div style="font-size:11px;color:#9ca3af;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
 
   // Jockey on its own line
   var jockeyLine=jockey?'<div style="font-size:11px;color:#7a8499;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
@@ -14146,11 +14146,12 @@ function runnerRow(ru,ctx,extraHtml){
   var trainerLine=trainer?'<div style="font-size:11px;color:#7a8499;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
 
   // Weight · OR on next line
-  var wtOrParts=[];
-  if(ru.wt) wtOrParts.push(escHtml(ru.wt));
-  if(ru.or) wtOrParts.push('OR '+escHtml(String(ru.or)));
-  var wtOrLine=wtOrParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+wtOrParts.join(' &middot; ')+'</div>':'';
-  var ageLine=ru.age?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(ru.age)+'</div>':'';
+  var wtOrAgeParts=[];
+  if(ru.wt) wtOrAgeParts.push(escHtml(ru.wt));
+  if(ru.or) wtOrAgeParts.push('OR '+escHtml(String(ru.or)));
+  if(ru.age) wtOrAgeParts.push(escHtml(String(ru.age))+'yo');
+  var wtOrLine=wtOrAgeParts.length?'<div style="font-size:10px;color:#9ca3af;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
+  var ageLine='';
 
   // Runner tag badges — flags computed server-side in racecards.js
   // (enrichRunnerTags). To add a new tag: add its flag there, then one
@@ -14282,9 +14283,9 @@ function runnerRow(ru,ctx,extraHtml){
       +'</div>'
       +'<div style="flex:1;min-width:0">'
         // Name line
-        +'<div style="display:flex;align-items:center;gap:4px">'
-          +'<span style="font-size:14px;font-weight:800;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
-          +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#9aa3b5;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:19px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+          +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:14px;font-weight:700;line-height:1">&#9660;</span>'
         +'</div>'
         // Form string on its own line directly below the name
         +formText
@@ -14313,9 +14314,9 @@ function runnerRow(ru,ctx,extraHtml){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
       return '<div style="display:flex;gap:6px;padding:6px 12px 6px 38px">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:600;color:#1e9e6b;border:1.5px solid #1e9e6b;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Form &#9660;</div>'
+        +'style="font-size:11px;font-weight:600;color:#1e9e6b;border:1.5px solid #1e9e6b;border-radius:6px;padding:5px 12px;cursor:pointer;white-space:nowrap">Form &#9660;</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:11px;font-weight:600;color:#6b7280;border:1.5px solid #d1d5db;border-radius:5px;padding:4px 10px;cursor:pointer;white-space:nowrap">Race Analysis &#9660;</div>'
+        +'style="font-size:11px;font-weight:600;color:#6b7280;border:1.5px solid #d1d5db;border-radius:6px;padding:5px 12px;cursor:pointer;white-space:nowrap">Race Analysis &#9660;</div>'
         +'</div>';
     })()
   +'</div>'
