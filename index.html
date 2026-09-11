@@ -14831,13 +14831,61 @@ function nrLoadForm(pfx,horseId,silent){
       }
 
       // 4. Going preference green/red boxes
-      if(_fsum&&_fsum.goingBest){
-        out+='<div style="padding:8px 14px;border-bottom:0.5px solid #f0f2f5">';
-        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Going preference</div>';
-        out+='<div style="display:flex;gap:8px">';
-        out+='<div style="flex:1;padding:8px 10px;border-radius:8px;background:#f0fdf4"><div style="font-size:9px;font-weight:600;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Best on</div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(_fsum.goingBest)+'</div>'+(_fsum.goingBestDetail?'<div style="font-size:10px;color:#6b7280;margin-top:2px">'+escHtml(_fsum.goingBestDetail)+'</div>':'')+'</div>';
-        if(_fsum.goingAvoid) out+='<div style="flex:1;padding:8px 10px;border-radius:8px;background:#fef2f2"><div style="font-size:9px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Struggles on</div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(_fsum.goingAvoid)+'</div>'+(_fsum.goingAvoidDetail?'<div style="font-size:10px;color:#b91c1c;margin-top:2px">'+escHtml(_fsum.goingAvoidDetail)+'</div>':'')+'</div>';
-        out+='</div></div>';
+      if(hist.length){
+        var _gp={},_gpOrder=[],_gN=0;
+        var _ord=function(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+        hist.forEach(function(h){
+          var _g=(h.going||'').trim();if(!_g)return;
+          var _p=parseInt(String(h.position||h.pos||''),10);if(isNaN(_p))return;
+          if(!_gp[_g]){_gp[_g]={g:_g,runs:0,wins:0,places:0,pos:[]};_gpOrder.push(_g);}
+          var r=_gp[_g];r.runs++;r.pos.push(_p);_gN++;
+          if(_p===1)r.wins++;else if(_p===2||_p===3)r.places++;
+        });
+        var _gArr=_gpOrder.map(function(g){return _gp[g];});
+        var _winners=_gArr.filter(function(r){return r.wins>0;}).sort(function(a,b){return (b.wins/b.runs)-(a.wins/a.runs)||b.wins-a.wins;});
+        var _placers=_gArr.filter(function(r){return r.wins===0&&r.places>0;}).sort(function(a,b){return (b.places/b.runs)-(a.places/a.runs);});
+        var _fmtRec=function(r){var t=[];if(r.wins)t.push(r.wins+(r.wins===1?' win':' wins'));if(r.places)t.push(r.places+(r.places===1?' place':' places'));return (t.length?t.join(', '):'No win or place')+' · '+r.runs+(r.runs===1?' run':' runs');};
+        var _strug=function(exclude){
+          var w=null;
+          _gArr.forEach(function(r){
+            if(exclude.indexOf(r.g)!==-1||r.runs<2||r.wins||r.places)return;
+            var _avg=r.pos.reduce(function(a,b){return a+b;},0)/r.runs;
+            if(_avg>=5&&(!w||_avg>w.avg))w={r:r,avg:_avg};
+          });
+          return w?w.r:null;
+        };
+        var _bx=function(kind,label,going,detail){
+          var bg=kind==='g'?'#f0fdf4':kind==='r'?'#fef2f2':'#f8f9fb';
+          var lc=kind==='g'?'#1e9e6b':kind==='r'?'#dc2626':'#9ca3af';
+          var gc=kind==='n'?'#4b5563':'#0b1628',gs=kind==='n'?'12px':'13px',gw=kind==='n'?'600':'700';
+          var dc=kind==='r'?'#b91c1c':'#6b7280';
+          return '<div style="flex:1;padding:8px 10px;border-radius:8px;background:'+bg+'"><div style="font-size:9px;font-weight:600;color:'+lc+';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">'+label+'</div><div style="font-size:'+gs+';font-weight:'+gw+';color:'+gc+'">'+escHtml(going)+'</div><div style="font-size:10px;color:'+dc+';margin-top:2px">'+escHtml(detail)+'</div></div>';
+        };
+        var _gpHtml='';
+        if(_gArr.length){
+          var _allGoings=_gArr.map(function(r){return _nrAbGoing(r.g);}).join(' · ');
+          if(_winners.length>=2){
+            _gpHtml=_bx('g','Won on',_nrAbGoing(_winners[0].g),_fmtRec(_winners[0]))+_bx('g','Won on',_nrAbGoing(_winners[1].g),_fmtRec(_winners[1]));
+          } else if(_winners.length===1){
+            var _s1=_strug([_winners[0].g]);
+            _gpHtml=_bx('g','Best on',_nrAbGoing(_winners[0].g),_fmtRec(_winners[0]));
+            if(_s1)_gpHtml+=_bx('r','Struggles on',_nrAbGoing(_s1.g),_s1.pos.slice(0,3).map(_ord).join(', ')+' · '+_s1.runs+(_s1.runs===1?' run':' runs'));
+          } else if(_gN<=4&&_gArr.length>=2){
+            _gpHtml=_bx('n','No going preference',_allGoings,'Only '+_gN+' career runs across '+_gArr.length+' types of going — too little evidence yet');
+          } else if(_placers.length&&_placers[0].runs>=2&&(_placers.length===1||( _placers[0].places/_placers[0].runs)>=2*(_placers[1].places/_placers[1].runs))){
+            var _s2=_strug([_placers[0].g]);
+            _gpHtml=_bx('g','Best on',_nrAbGoing(_placers[0].g),_fmtRec(_placers[0]));
+            if(_s2)_gpHtml+=_bx('r','Struggles on',_nrAbGoing(_s2.g),_s2.pos.slice(0,3).map(_ord).join(', ')+' · '+_s2.runs+(_s2.runs===1?' run':' runs'));
+          } else {
+            var _anyP=_gArr.some(function(r){return r.places>0;});
+            _gpHtml=_bx('n','No going preference',_allGoings,(_anyP?'Similar placed form':'Similar form')+' across '+(_gArr.length===1?'this going':'all '+_gArr.length)+', no wins');
+          }
+        }
+        if(_gpHtml){
+          out+='<div style="padding:8px 14px;border-bottom:0.5px solid #f0f2f5">';
+          out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Going preference</div>';
+          out+='<div style="display:flex;gap:8px">'+_gpHtml+'</div></div>';
+        }
       }
 
       // 5. Form Summary heading + run count
