@@ -14226,7 +14226,6 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         if(ru.headgear) meta.push(ru.headgear+(ru.headgearRun==='1'?' (1st time)':''));
         if(ru.windSurgery) meta.push('Wind op');
         if(ru.trainer14&&ru.trainer14.runs>0) meta.push('Trainer 14d: '+_mv(ru.trainer14.wins+'/'+ru.trainer14.runs));
-        if(meta.length) html+='<div style="display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 14px;background:#0b1628;font-size:10px;color:rgba(255,255,255,0.55);line-height:1.6">'+meta.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
         var _ih='';
         if(ru.history&&ru.history.length){
           var _thS='text-align:left;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
