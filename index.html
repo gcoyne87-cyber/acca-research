@@ -14269,16 +14269,23 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
     +'<div style="display:flex;align-items:flex-start;padding:9px 12px;gap:9px;background:transparent">'
-      +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-top:1px">'
-        +'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+ru.n+'</span>'
-        +silk
-      +'</div>'
       +'<div style="flex:1;min-width:0">'
-        // Name line — flex-wrap so multiple gold tag pills wrap onto a new
-        // line on narrow viewports instead of overflowing off-screen.
-        +'<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:2px">'
-          +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+        // Row 1 — number, silk, name, chevron, all on one line, vertically centered
+        +'<div style="display:flex;align-items:center;gap:9px">'
+          +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px">'
+            +'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+ru.n+'</span>'
+            +silk
+          +'</div>'
+          +'<span style="flex:1;min-width:0;font-size:14px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:12px;font-weight:700;line-height:1">&#9660;</span>'
+        +'</div>'
+        // Row 2 — indented to align under the name (past number+silk+gap),
+        // form/jockey-trainer/weight-OR-age, then tag pills, then tabs
+        +'<div style="padding-left:38px">'
+          +formText
+          +jockeyLine
+          +trainerLine
+          +wtOrLine+ageLine
           +(function(){
             var _t=[];
             if(ru.isCandDWinner) _t.push('C&amp;D Winner');
@@ -14288,16 +14295,18 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
             if(!_t.length) return '';
-            return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
+            return '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">'+_t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap">&#9733; '+t+'</span>';}).join('')+'</div>';
+          })()
+          +(function(){
+            var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
+            return '<div style="display:flex;gap:18px;padding:8px 0 0;border-bottom:1px solid #f0f2f5">'
+              +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
+              +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
+              +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
+              +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
+              +'</div>';
           })()
         +'</div>'
-        // Form string on its own line directly below the name
-        +formText
-        // Jockey (own line), Trainer (own line below)
-        +jockeyLine
-        +trainerLine
-        // Weight · OR
-        +wtOrLine+ageLine
       +'</div>'
       +(function(){
         // The grey price box must be byte-identical to its pre-pill markup —
@@ -14313,15 +14322,6 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       })()
     +'</div>'
     +(extraHtml||'')
-    +(function(){
-      var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;gap:18px;padding:8px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
-        +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
-        +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
-        +'</div>';
-    })()
   +'</div>'
   +histCarousel;
 }
