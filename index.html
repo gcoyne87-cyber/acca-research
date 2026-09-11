@@ -3260,11 +3260,27 @@ window.addEventListener('load',function(){
       var allLookups={};
 
       dates.forEach(function(date){
+        // A fetch that never settles (dropped connection, a stuck live
+        // pagination sweep server-side, etc. — fetch() itself has no timeout)
+        // used to leave `pending` permanently >0, wedging "Syncing results…"
+        // on screen forever with no way to clear. Same 20s-stale idiom
+        // window._ptRQNext already uses for its own queue.
+        var _settled=false;
+        var _timeoutId=setTimeout(function(){
+          if(_settled) return;
+          _settled=true;
+          console.log('[pt-trace] syncResults: get-results TIMED OUT for',date,'after 20s — continuing without it this cycle');
+          pending--;
+          if(pending===0) applyAll();
+        },20000);
         fetch('/.netlify/functions/get-results?date='+date)
           .then(function(r){ return r.json(); })
           .then(function(data){ if(data.lookup) allLookups[date]=data.lookup; })
           .catch(function(){})
           .finally(function(){
+            if(_settled) return;
+            _settled=true;
+            clearTimeout(_timeoutId);
             pending--;
             if(pending===0) applyAll();
           });
@@ -16237,7 +16253,7 @@ window._ptRQNext=function(){
           var _existingCount=0;
           try{
             var _exRaw=localStorage.getItem('results:'+item.d);
-            if(_exRaw){ var _ex=JSON.parse(_exRaw); var _exLk=(_ex&&_ex.lookup)?_ex.lookup:_ex; _existingCount=Object.keys(_exLk||{}).length; }
+            if(_exRaw){ var _ex=JSON.parse(_exRaw); if(_ex && !Array.isArray(_ex.races)) _ex = null; var _exLk=(_ex&&_ex.lookup)?_ex.lookup:_ex; _existingCount=Object.keys(_exLk||{}).length; }
           }catch(_e){}
           if(_isPartial&&_existingCount>Object.keys(lk).length){
             console.log('[pt-trace] results for',item.d,'PARTIAL ('+Object.keys(lk).length+' < cached '+_existingCount+') — keeping existing cache'); // TEMP TRACE — remove after verification
@@ -16303,6 +16319,7 @@ window._ptInjectAllSel=function(){
       var _cr=localStorage.getItem('results:'+date);
       if(_cr){
         var _cp=JSON.parse(_cr);
+        if(_cp && !Array.isArray(_cp.races)) _cp = null;
         if(_cp&&_cp.lookup){
           if(Object.keys(_cp.lookup).length){ cachedLookup=_cp.lookup; cachedSuspect=!!_cp.partial; cachedRaces=_cp.races||null; }
         } else if(_cp&&Object.keys(_cp).length){
