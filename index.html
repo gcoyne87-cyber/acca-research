@@ -11658,7 +11658,7 @@ function getMeetingImg(id){
 // single-paragraph `summary` field for entries generated before the reshape.
 function _renderFormSections(s,part){
   if(!s) return '';
-  if(!s.recentForm) return s.summary?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff"><div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div><div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.summary)+'</div></div>':'';
+  if(!s.recentForm) return s.summary?'<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff"><div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div><div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.summary)+'</div></div>':'';
   var sub=function(label,text){
     if(!text) return '';
     return '<div style="margin-bottom:10px">'
@@ -11667,12 +11667,12 @@ function _renderFormSections(s,part){
       +'</div>';
   };
   var keyAngle=s.keyAngle
-    ?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    ?'<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
       +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.keyAngle)+'</div>'
       +'</div>'
     :'';
-  var card='<div style="margin:6px 14px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+  var card='<div style="margin:6px 6px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
     +sub('Recent Form',s.recentForm)
     +sub('Going',s.going)
     +sub('Trip',s.trip)
@@ -14822,8 +14822,8 @@ function nrLoadForm(pfx,horseId,silent){
           var _st=bold?';font-weight:700;border-top:1px solid #e5e7eb':'';
           return '<tr><td style="'+_crTd+';text-align:left;color:'+(bold?'#0b1628':'#4b5563')+_st+'">'+escHtml(label)+'</td><td style="'+_crTd+_st+'">'+r.runs+'</td><td style="'+_crTd+_st+'">'+r.wins+'</td><td style="'+_crTd+_st+'">'+r.places+'</td><td style="'+_crTd+_st+'">'+_wp+'</td><td style="'+_crTd+_st+'">'+_pz+'</td></tr>';
         };
-        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px 6px">Career Record</div>';
-        out+='<div style="padding:0 14px 10px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:10px 6px 6px">Career Record</div>';
+        out+='<div style="padding:0 6px 10px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_crTh+';text-align:left">Surface</th><th style="'+_crTh+'">Runs</th><th style="'+_crTh+'">Wins</th><th style="'+_crTh+'">Places</th><th style="'+_crTh+'">Win%</th><th style="'+_crTh+'">Prize</th></tr></thead><tbody>';
         _crOrder.forEach(function(k){out+=_crRow(k,_cr[k],false);});
         out+=_crRow('Total',_crTot,true);
@@ -14882,7 +14882,7 @@ function nrLoadForm(pfx,horseId,silent){
           }
         }
         if(_gpHtml){
-          out+='<div style="padding:8px 14px;border-bottom:0.5px solid #f0f2f5">';
+          out+='<div style="padding:8px 6px;border-bottom:0.5px solid #f0f2f5">';
           out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Going preference</div>';
           out+='<div style="display:flex;gap:8px">'+_gpHtml+'</div></div>';
         }
@@ -14890,17 +14890,17 @@ function nrLoadForm(pfx,horseId,silent){
 
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
-        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 14px 1px">Form Summary</div>';
-        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 14px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
+        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 6px 1px">Form Summary</div>';
+        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 6px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
         out+=_renderFormSections(_fsum,'card');
       }
 
       // 6. Form table with trainer-change gold dividers
       if(hist.length){
         var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var _thS2='text-align:left;padding:4px 3px 4px 14px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
+        var _thS2='text-align:left;padding:4px 3px 4px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
-        out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px 4px">Form · '+hist.length+' runs</div>';
+        out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 6px 4px">Form · '+hist.length+' runs</div>';
         out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
@@ -14913,11 +14913,11 @@ function nrLoadForm(pfx,horseId,silent){
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
           var _tr=h.trainer||'';
           if(_tr&&_tr!==_lastTrainer&&_lastTrainer!==''){
-            out+='<tr><td colspan="7" style="padding:6px 14px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
+            out+='<tr><td colspan="7" style="padding:6px 6px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
           }
           _lastTrainer=_tr;
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
-          out+='<td style="padding:5px 3px 5px 14px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
+          out+='<td style="padding:5px 3px 5px 6px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
           out+='<td style="padding:5px 3px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
           out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
           out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
