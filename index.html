@@ -12143,7 +12143,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   // tick re-renders this view, so the flip happens mid-session. Trainer mode
   // untouched — _visibleDayKeys===dayKeys there.
   var _visibleDayKeys=dayKeys;
-  if(_isEdge){
+  {
     var _emNow=new Date();
     var _emNowMins=_emNow.getHours()*60+_emNow.getMinutes();
     dayMatches.today=(dayMatches.today||[]).filter(function(fr){ return !fr.race.t24||fr.race.t24>=_emNowMins; });
