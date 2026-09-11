@@ -11658,7 +11658,7 @@ function getMeetingImg(id){
 // single-paragraph `summary` field for entries generated before the reshape.
 function _renderFormSections(s){
   if(!s) return '';
-  if(!s.recentForm) return s.summary?'<div style="padding:10px 14px;font-size:12px;color:#374151;line-height:1.6;border:1px solid #e5e7eb;border-radius:8px;margin:10px 14px">'+escHtml(s.summary)+'</div>':'';
+  if(!s.recentForm) return s.summary?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff"><div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div><div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.summary)+'</div></div>':'';
   var sub=function(label,text){
     if(!text) return '';
     return '<div style="margin-bottom:10px">'
@@ -11666,16 +11666,18 @@ function _renderFormSections(s){
       +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+escHtml(text)+'</div>'
       +'</div>';
   };
-  var card='<div style="margin:6px 14px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px">'
+  var keyAngle=s.keyAngle
+    ?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+      +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
+      +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.keyAngle)+'</div>'
+      +'</div>'
+    :'';
+  var card='<div style="margin:6px 14px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
     +sub('Recent Form',s.recentForm)
     +sub('Going',s.going)
     +sub('Trip',s.trip)
     +sub('Track',s.track)
     +'</div>';
-  var keyAngle=s.keyAngle?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
-    +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
-    +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.keyAngle)+'</div>'
-    +'</div>':'';
   return keyAngle+card;
 }
 
@@ -14770,7 +14772,7 @@ function nrLoadForm(pfx,horseId,silent){
       if(!tDiv2) return;
       var hist=data.history||[];
       var _fsum=_formSummaries[horseId];
-      var out='';
+      var out='<div style="background:#fff">';
 
       // 1. Stat strip — pull from live runner data same way nrLoadProfile does
       var _ru2=null;
@@ -14848,6 +14850,7 @@ function nrLoadForm(pfx,horseId,silent){
 
       if(!out) out='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form data available.</div>';
 
+      out+='</div>';
       _nrFormCache[horseId]={html:out};
       tDiv2.innerHTML=out;
       var _pft2b=document.getElementById('nrh-pft-'+pfx);
