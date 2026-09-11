@@ -29,7 +29,7 @@
   schedule = "50 23 * * *"
 
 [functions."form-summary-trigger"]
-  schedule = "0 5,7,9 * * *"
+  schedule = "*/15 * * * *"
 
 [functions."form-summary-watchdog"]
   schedule = "30 9 * * *"

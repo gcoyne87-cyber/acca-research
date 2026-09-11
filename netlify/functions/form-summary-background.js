@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 
 // No schedule here — deliberately. A schedule paired directly onto a
 // -background function never actually fires (see form-summary-trigger.js,
-// which now carries the '0 5,7,9 * * *' cron and POSTs here), and a function
+// which now carries the '*/15 * * * *' cron and POSTs here), and a function
 // that IS scheduled rejects external HTTP triggers with a 403 at Netlify's
 // edge — so the schedule must live on the trigger, not here.
 module.exports.config = { timeout: 900 };
@@ -555,11 +555,13 @@ exports.handler = async function(event) {
 
     const dates = Array.from(new Set(runners.map(function(r) { return r.date; }))).sort();
 
-    // Today's runners first — same today-first rule as the toProcess sort below,
-    // applied here so the pre-filter's time budget is spent on today's horses
-    // before any future date's.
+    // Race date ascending — today first, then tomorrow, then day+2/3/4 — so
+    // the time budget below is always spent nearest-race-first. Plain string
+    // comparison sorts YYYY-MM-DD correctly; stable sort (guaranteed since
+    // ES2019) keeps each date's runners in the racecard order readRacecards()
+    // already built them in.
     runners.sort(function(a,b){
-      return (a.date===todayStr?0:1)-(b.date===todayStr?0:1);
+      return a.date<b.date?-1:a.date>b.date?1:0;
     });
 
     let horsesSkipped = 0;

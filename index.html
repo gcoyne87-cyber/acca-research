@@ -14806,7 +14806,15 @@ function nrLoadForm(pfx,horseId,silent){
       (function(){
         var wrap=document.getElementById('nrh-'+pfx);
         var hn=wrap?(wrap.dataset.horsename||''):'';
-        var lists=[typeof NR_RUNNERS!=='undefined'?NR_RUNNERS:[],typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:[]];
+        // Tomorrow/future-day Cards runners live in _futureDateCache[date] (an
+        // array of meetings, same shape racecards.js always returns — age/or/
+        // lastRun field names are identical to RC_RUNNERS, no mapping needed),
+        // not in NR_RUNNERS/RC_RUNNERS, which only ever hold today's card.
+        var _fdRunners=[];
+        if(typeof _futureDateCache!=='undefined'&&_futureDateCache[_activeDateStr]){
+          _futureDateCache[_activeDateStr].forEach(function(m){(m.races||[]).forEach(function(r){(r.runners||[]).forEach(function(ru){_fdRunners.push(ru);});});});
+        }
+        var lists=[typeof NR_RUNNERS!=='undefined'?NR_RUNNERS:[],typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:[],_fdRunners];
         for(var L=0;L<lists.length&&!_ru2;L++){for(var i=0;i<lists[L].length;i++){if((lists[L][i].name||'').toLowerCase()===hn.toLowerCase()){_ru2=lists[L][i];break;}}}
       })();
       out+='<div style="display:flex;background:#f0fdf4;border-bottom:0.5px solid #d1fae5">';
