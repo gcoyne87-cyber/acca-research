@@ -11658,29 +11658,55 @@ function getMeetingImg(id){
 // single-paragraph `summary` field for entries generated before the reshape.
 function _renderFormSections(s,part){
   if(!s) return '';
-  if(!s.recentForm) return s.summary?'<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff"><div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div><div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.summary)+'</div></div>':'';
-  var sub=function(label,text){
-    if(!text) return '';
-    return '<div style="margin-bottom:10px">'
-      +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">'+label+'</div>'
-      +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+escHtml(text)+'</div>'
-      +'</div>';
-  };
-  var keyAngle=s.keyAngle
-    ?'<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+  var _esc=typeof escHtml==='function'?escHtml:function(x){return x;};
+  if(part==='key'){
+    if(!s.keyAngle) return '';
+    return '<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
-      +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.keyAngle)+'</div>'
-      +'</div>'
-    :'';
-  var card='<div style="margin:6px 6px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
-    +sub('Recent Form',s.recentForm)
-    +sub('Going',s.going)
-    +sub('Trip',s.trip)
-    +sub('Track',s.track)
-    +'</div>';
-  if(part==='key') return keyAngle;
-  if(part==='card') return card;
-  return keyAngle+card;
+      +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+_esc(s.keyAngle)+'</div>'
+      +'</div>';
+  }
+  if(part==='card'){
+    if(!s.recentForm) return '';
+    var _uid='nrfs'+Math.random().toString(36).slice(2,7);
+    var _tab=function(id,label,active){
+      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:13px;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:11px 4px 9px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
+    };
+    var _pane=function(id,label,text,active){
+      if(!text) return '';
+      return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
+        +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">'+label+'</div>'
+        +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+_esc(text)+'</div>'
+        +'</div>';
+    };
+    var tabs='<div style="display:flex;border-bottom:2px solid #f0f2f5">'
+      +_tab('r','Recent',true)
+      +(s.going?_tab('g','Going',false):'')
+      +(s.trip?_tab('t','Trip',false):'')
+      +(s.track?_tab('k','Track',false):'')
+      +'</div>';
+    var panes='<div style="margin:8px 6px 10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+      +_pane('r','Recent Form',s.recentForm,true)
+      +_pane('g','Going',s.going,false)
+      +_pane('t','Trip',s.trip,false)
+      +_pane('k','Track',s.track,false)
+      +'</div>';
+    return tabs+panes;
+  }
+  return '';
+}
+
+function _nrFsShow(uid,id){
+  ['r','g','t','k'].forEach(function(x){
+    var tab=document.getElementById(uid+'-tab-'+x);
+    var pane=document.getElementById(uid+'-pane-'+x);
+    if(!tab||!pane)return;
+    var active=x===id;
+    tab.style.color=active?'#1e9e6b':'#9ca3af';
+    tab.style.fontWeight=active?'700':'600';
+    tab.style.borderBottom=active?'3px solid #1e9e6b':'3px solid transparent';
+    pane.style.display=active?'block':'none';
+  });
 }
 
 // Batched form-summary fetch — call with the horse_ids of a just-opened race's
