@@ -14337,7 +14337,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
       return '<div style="display:flex;gap:18px;padding:8px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
-        +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+hid+'\')" '
+        +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" '
         +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
         +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
