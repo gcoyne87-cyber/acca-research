@@ -14799,8 +14799,34 @@ function nrLoadForm(pfx,horseId,silent){
       out+=_renderFormSections(_fsum);
 
       // 3. Career record — from nrLoadProfile cache if available, skip if not yet loaded
-      var _pc=_nrProfileCache[horseId];
-      if(_pc&&_pc.careerHtml) out+=_pc.careerHtml;
+      if(hist.length){
+        var _cr={},_crOrder=[];
+        hist.forEach(function(h){
+          var _sf=(h.surface||'').trim();
+          if(!_sf)_sf='Flat';
+          if(!_cr[_sf]){_cr[_sf]={runs:0,wins:0,places:0,prize:0};_crOrder.push(_sf);}
+          var _p=parseInt(String(h.position||h.pos||''),10);
+          _cr[_sf].runs++;
+          if(_p===1)_cr[_sf].wins++;else if(_p===2||_p===3)_cr[_sf].places++;
+          var _pv=parseFloat(String(h.prize||'').replace(/[^0-9.]/g,''));if(!isNaN(_pv))_cr[_sf].prize+=_pv;
+        });
+        var _crTot={runs:0,wins:0,places:0,prize:0};
+        _crOrder.forEach(function(k){_crTot.runs+=_cr[k].runs;_crTot.wins+=_cr[k].wins;_crTot.places+=_cr[k].places;_crTot.prize+=_cr[k].prize;});
+        var _crTh='font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;padding:4px 6px;border-bottom:1px solid #f0f2f5;white-space:nowrap';
+        var _crTd='padding:5px 6px;text-align:right;font-size:11px;color:#0b1628;white-space:nowrap';
+        var _crRow=function(label,r,bold){
+          var _wp=r.runs?Math.round(r.wins/r.runs*100)+'%':'—';
+          var _pz=r.prize>0?'£'+Math.round(r.prize).toLocaleString('en-GB'):'—';
+          var _st=bold?';font-weight:700;border-top:1px solid #e5e7eb':'';
+          return '<tr><td style="'+_crTd+';text-align:left;color:'+(bold?'#0b1628':'#4b5563')+_st+'">'+escHtml(label)+'</td><td style="'+_crTd+_st+'">'+r.runs+'</td><td style="'+_crTd+_st+'">'+r.wins+'</td><td style="'+_crTd+_st+'">'+r.places+'</td><td style="'+_crTd+_st+'">'+_wp+'</td><td style="'+_crTd+_st+'">'+_pz+'</td></tr>';
+        };
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px 6px">Career Record</div>';
+        out+='<div style="padding:0 14px 10px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+        out+='<thead><tr><th style="'+_crTh+';text-align:left">Surface</th><th style="'+_crTh+'">Runs</th><th style="'+_crTh+'">Wins</th><th style="'+_crTh+'">Places</th><th style="'+_crTh+'">Win%</th><th style="'+_crTh+'">Prize</th></tr></thead><tbody>';
+        _crOrder.forEach(function(k){out+=_crRow(k,_cr[k],false);});
+        out+=_crRow('Total',_crTot,true);
+        out+='</tbody></table></div>';
+      }
 
       // 4. Going preference green/red boxes
       if(_fsum&&_fsum.goingBest){
