@@ -11656,7 +11656,28 @@ function getMeetingImg(id){
 // Structured form-summary render — five labelled sections when the cached
 // object carries recentForm/going/trip/track/keyAngle; falls back to the old
 // single-paragraph `summary` field for entries generated before the reshape.
-function _renderFormSections(s){ if(!s) return ''; if(!s.recentForm) return s.summary?'<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.6;padding:8px 14px">'+escHtml(s.summary)+'</div>':''; var sec=function(label,text,isKey){ if(!text)return ''; var wrap=isKey?'background:#f0fdf4;border-left:3px solid #1e9e6b;margin:0;':''; return '<div style="padding:10px 14px;border-bottom:0.5px solid #f0f2f5;'+wrap+'">' +'<div style="font-size:9px;font-weight:700;color:'+(isKey?'#1e9e6b':'#9ca3af')+';text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">'+label+'</div>' +'<div style="font-size:12px;color:'+(isKey?'#1a202c':'#374151')+';line-height:1.6;'+(isKey?'font-style:italic;':'')+'">'+escHtml(text)+'</div>' +'</div>'; }; return sec('Recent Form',s.recentForm,false) +sec('Going',s.going,false) +sec('Trip',s.trip,false) +sec('Track',s.track,false) +sec('Key Angle',s.keyAngle,true); }
+function _renderFormSections(s){
+  if(!s) return '';
+  if(!s.recentForm) return s.summary?'<div style="padding:10px 14px;font-size:12px;color:#374151;line-height:1.6;border:1px solid #e5e7eb;border-radius:8px;margin:10px 14px">'+escHtml(s.summary)+'</div>':'';
+  var sub=function(label,text){
+    if(!text) return '';
+    return '<div style="margin-bottom:10px">'
+      +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">'+label+'</div>'
+      +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+escHtml(text)+'</div>'
+      +'</div>';
+  };
+  var card='<div style="margin:6px 14px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:8px">'
+    +sub('Recent Form',s.recentForm)
+    +sub('Going',s.going)
+    +sub('Trip',s.trip)
+    +sub('Track',s.track)
+    +'</div>';
+  var keyAngle=s.keyAngle?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
+    +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.keyAngle)+'</div>'
+    +'</div>':'';
+  return keyAngle+card;
+}
 
 // Batched form-summary fetch — call with the horse_ids of a just-opened race's
 // runners. Skips ids already resolved (found or confirmed absent, tracked via
@@ -14746,75 +14767,87 @@ function nrLoadForm(pfx,horseId,silent){
     })
     .then(function(data){
       var tDiv2=document.getElementById('nrh-ft-'+pfx);
-      if(!tDiv2)return;
+      if(!tDiv2) return;
       var hist=data.history||[];
-      var summ=data.summary||null;
-      var out='';
       var _fsum=_formSummaries[horseId];
+      var out='';
+
+      // 1. Stat strip — pull from live runner data same way nrLoadProfile does
+      var _ru2=null;
+      (function(){
+        var wrap=document.getElementById('nrh-'+pfx);
+        var hn=wrap?(wrap.dataset.horsename||''):'';
+        var lists=[typeof NR_RUNNERS!=='undefined'?NR_RUNNERS:[],typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:[]];
+        for(var L=0;L<lists.length&&!_ru2;L++){for(var i=0;i<lists[L].length;i++){if((lists[L][i].name||'').toLowerCase()===hn.toLowerCase()){_ru2=lists[L][i];break;}}}
+      })();
+      out+='<div style="display:flex;background:#f0fdf4;border-bottom:0.5px solid #d1fae5">';
+      var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
+      out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age))+'yo':'—');
+      out+=_sc('Rating',(_ru2&&_ru2.or)?'OR '+escHtml(String(_ru2.or)):'—');
+      out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d ago':'—');
+      out+=_sc('Record',(_ru2&&_ru2.record)?escHtml(_ru2.record):'—');
+      out+='<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+(_fsum&&_fsum.prize?escHtml(_fsum.prize):'—')+'</div></div>';
+      out+='</div>';
+
+      // 2. Key Angle + Form Summary card via _renderFormSections
       out+=_renderFormSections(_fsum);
 
-      // 5 labeled form rows — Ground / Distance / Course / Form / Key angle
-      if(summ){
-        if(summ.formParagraph){
-          out+='<div style="font-size:11px;color:#1e9e6b;line-height:1.6;padding:8px 14px;font-style:italic;border-bottom:0.5px solid #f0f2f5">'+escHtml(summ.formParagraph)+'</div>';
-        }
-        var _frows=[
-          {label:'Ground',val:summ.groundFit},
-          {label:'Distance',val:summ.distanceFit},
-          {label:'Course',val:summ.courseHandedness},
-          {label:'Form',val:summ.formTrend},
-          {label:'Key angle',val:summ.keyAngle}
-        ].filter(function(r){return r.val;});
-        if(_frows.length){
-          out+='<div style="padding:6px 14px;border-bottom:0.5px solid #f0f2f5">';
-          _frows.forEach(function(row){
-            out+='<div style="display:flex;gap:8px;padding:2px 0"><span style="flex-shrink:0;width:60px;font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;padding-top:2px">'+escHtml(row.label)+'</span><span style="font-size:11px;color:#1a202c;line-height:1.45;flex:1">'+escHtml(row.val)+'</span></div>';
-          });
-          out+='</div>';
-        }
+      // 3. Career record — from nrLoadProfile cache if available, skip if not yet loaded
+      var _pc=_nrProfileCache[horseId];
+      if(_pc&&_pc.careerHtml) out+=_pc.careerHtml;
+
+      // 4. Going preference green/red boxes
+      if(_fsum&&_fsum.goingBest){
+        out+='<div style="padding:8px 14px;border-bottom:0.5px solid #f0f2f5">';
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Going preference</div>';
+        out+='<div style="display:flex;gap:8px">';
+        out+='<div style="flex:1;padding:8px 10px;border-radius:8px;background:#f0fdf4"><div style="font-size:9px;font-weight:600;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Best on</div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(_fsum.goingBest)+'</div>'+(_fsum.goingBestDetail?'<div style="font-size:10px;color:#6b7280;margin-top:2px">'+escHtml(_fsum.goingBestDetail)+'</div>':'')+'</div>';
+        if(_fsum.goingAvoid) out+='<div style="flex:1;padding:8px 10px;border-radius:8px;background:#fef2f2"><div style="font-size:9px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Struggles on</div><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(_fsum.goingAvoid)+'</div>'+(_fsum.goingAvoidDetail?'<div style="font-size:10px;color:#b91c1c;margin-top:2px">'+escHtml(_fsum.goingAvoidDetail)+'</div>':'')+'</div>';
+        out+='</div></div>';
       }
 
-      // Form history cards
-      if(!hist.length){
-        var _keepT=(tDiv2&&tDiv2.innerHTML.match(/<table[\s\S]*?<\/table>/))||null;
-        if(_keepT)out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">'+_keepT[0]+'</div>';
-        if(!out)out+='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form history available.</div>';
-        _nrFormCache[horseId]={html:out};
-        tDiv2.innerHTML=out;
-        var _pft2=document.getElementById('nrh-pft-'+pfx);
-        if(_pft2)_pft2.innerHTML=out;
-        return;
+      // 5. Form Summary heading + run count
+      if(_fsum&&_fsum.recentForm){
+        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 14px 1px">Form Summary</div>';
+        out+='<div style="font-size:10px;color:#9ca3af;padding:0 14px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
       }
-      var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      var _thS2='text-align:left;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
-      out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
-      out+='<table style="width:100%;border-collapse:collapse">';
-      out+='<thead><tr style="border-bottom:2px solid #e4e8f0">';
-      out+='<th style="'+_thS2+';padding:5px 6px">Date</th>';
-      out+='<th style="'+_thS2+'">Course</th>';
-      out+='<th style="'+_thS2+'">Dist</th>';
-      out+='<th style="'+_thS2+'">Gng</th>';
-      out+='<th style="'+_thS2+';text-align:center">Pos</th>';
-      out+='<th style="'+_thS2+';text-align:right">SP</th>';
-      out+='<th style="'+_thS2+';padding:5px 6px">Jockey</th>';
-      out+='</tr></thead><tbody>';
-      hist.forEach(function(h){
-        var posStr=String(h.pos||'-');
-        var p=parseInt(posStr,10);
-        var posCol=p===1?'#1e9e6b':p===2||p===3?'#b7860b':'#0D1B3E';
-        var _dp=h.date?String(h.date).split('-'):[];
-        var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
-        out+='<tr style="border-bottom:1px solid #f0f2f7">';
-        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
-        out+='<td style="padding:7px 6px;font-weight:600;color:#0D1B3E;font-size:11px;white-space:nowrap">'+escHtml(h.course||'')+'</td>';
-        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist)||'')+'</td>';
-        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going)||'')+'</td>';
-        out+='<td style="padding:7px 6px;text-align:center;white-space:nowrap"><span style="font-size:13px;font-weight:800;color:'+posCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#c0c6d4">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;text-align:right;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-        out+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(_nrAbJockey(h.jockey)||'')+'</td>';
-        out+='</tr>';
-      });
-      out+='</tbody></table></div>';
+
+      // 6. Form table with trainer-change gold dividers
+      if(hist.length){
+        var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var _thS2='text-align:left;padding:4px 3px 4px 14px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
+        var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
+        out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px 4px">Form · '+hist.length+' runs</div>';
+        out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
+        out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+        out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
+        var _lastTrainer='';
+        hist.forEach(function(h){
+          var posStr=String(h.position||h.pos||'-');
+          var p=parseInt(posStr,10);
+          var pCol=p===1?'#1e9e6b':p===2||p===3?'#b7860b':'#0D1B3E';
+          var _dp=h.date?String(h.date).split('-'):[];
+          var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
+          var _tr=h.trainer||'';
+          if(_tr&&_tr!==_lastTrainer&&_lastTrainer!==''){
+            out+='<tr><td colspan="7" style="padding:6px 14px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
+          }
+          _lastTrainer=_tr;
+          out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
+          out+='<td style="padding:5px 3px 5px 14px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
+          out+='<td style="padding:5px 3px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
+          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
+          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
+          out+='<td style="padding:5px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:5px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
+          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='</tr>';
+        });
+        out+='</tbody></table></div>';
+      }
+
+      if(!out) out='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form data available.</div>';
+
       _nrFormCache[horseId]={html:out};
       tDiv2.innerHTML=out;
       var _pft2b=document.getElementById('nrh-pft-'+pfx);
