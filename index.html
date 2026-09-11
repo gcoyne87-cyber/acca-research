@@ -14251,7 +14251,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       +'</div>';
     }).join('');
   }
-  var histCarousel='<div id="nrh-'+pfx+'" data-horsename="'+escHtml(ru.name)+'" data-horseid="'+escHtml(ru.horse_id||'')+'" style="display:none">'
+  var histCarousel='<div id="nrh-'+pfx+'" data-horsename="'+escHtml(ru.name)+'" data-horseid="'+escHtml(ru.horse_id||'')+'" data-age="'+escHtml(String(ru.age||''))+'" data-or="'+escHtml(String(ru.or||''))+'" data-lastrun="'+escHtml(String(ru.lastRun||''))+'" style="display:none">'
     +'<div id="nrh-fe-'+pfx+'" style="display:none;padding:0 0 10px">'
       +(function(){
         var html='';
@@ -14833,6 +14833,7 @@ function nrLoadForm(pfx,horseId,silent){
         var lists=[typeof NR_RUNNERS!=='undefined'?NR_RUNNERS:[],typeof RC_RUNNERS!=='undefined'?RC_RUNNERS:[],_fdRunners];
         for(var L=0;L<lists.length&&!_ru2;L++){for(var i=0;i<lists[L].length;i++){if((lists[L][i].name||'').toLowerCase()===hn.toLowerCase()){_ru2=lists[L][i];break;}}}
       })();
+      if(!_ru2){var _w2=document.getElementById('nrh-'+pfx);if(_w2&&(_w2.dataset.age||_w2.dataset.or||_w2.dataset.lastrun))_ru2={age:_w2.dataset.age,or:_w2.dataset.or,lastRun:_w2.dataset.lastrun};}
       out+='<div style="display:flex;background:#f0fdf4;border-bottom:0.5px solid #d1fae5">';
       var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
       out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age))+'yo':'—');
