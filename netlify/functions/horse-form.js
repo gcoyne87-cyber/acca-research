@@ -134,6 +134,7 @@ async function lookupHistory(horse_id, targetDate, today) {
     const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6');
     const history = (data.results || []).map(race => {
       const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
+      if (process.env.NODE_ENV !== 'development') console.log('RUNNER_KEYS:', JSON.stringify(Object.keys(runner)));
       return {
         date: race.date || '',
         course: race.course || '',
