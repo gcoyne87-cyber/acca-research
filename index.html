@@ -14787,7 +14787,9 @@ function nrLoadForm(pfx,horseId,silent){
       out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age))+'yo':'—');
       out+=_sc('Rating',(_ru2&&_ru2.or)?'OR '+escHtml(String(_ru2.or)):'—');
       out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d ago':'—');
-      out+=_sc('Record',(_ru2&&_ru2.record)?escHtml(_ru2.record):'—');
+      var _recRuns=hist.length,_recW=0,_recP=0;
+      hist.forEach(function(h){var _p=parseInt(String(h.position||h.pos||''),10);if(_p===1)_recW++;else if(_p===2||_p===3)_recP++;});
+      out+=_sc('Record',_recRuns?_recRuns+'·'+_recW+'W·'+_recP+'P':'—');
       out+='<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+(_fsum&&_fsum.prize?escHtml(_fsum.prize):'—')+'</div></div>';
       out+='</div>';
 
