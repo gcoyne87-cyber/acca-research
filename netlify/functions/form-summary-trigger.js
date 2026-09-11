@@ -10,7 +10,7 @@ const https = require('https');
 // (scheduled:false, isTest:true, 2026-08-05 and 2026-08-07). This function
 // carries the schedule instead and hands off to the background function for
 // the real 5-15 minute run.
-module.exports.config = { schedule: '0 5,7,9 * * *' };
+module.exports.config = { schedule: '*/30 * * * *' };
 
 function triggerRun() {
   return new Promise((resolve, reject) => {

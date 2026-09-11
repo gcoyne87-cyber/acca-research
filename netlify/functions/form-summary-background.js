@@ -526,6 +526,16 @@ exports.handler = async function(event) {
   } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
   try {
+    // Snapshot of the complete marker as it stood before this run touched
+    // anything — used below to decide whether this run is the first to
+    // drain today's queue (email-worthy) or just another pass over an
+    // already-completed day (silent, at the new 30-min cadence).
+    let alreadyCompletedBeforeThisRun = false;
+    try {
+      const preRunMarker = await redisGet('form-summary:complete:' + todayStr);
+      alreadyCompletedBeforeThisRun = !!(preRunMarker && preRunMarker.status === 'complete');
+    } catch (markerErr) { /* unreadable marker — treat as not-yet-complete */ }
+
     // One-time legacy wipe — no-ops instantly via its done-marker once run.
     try { await wipeLegacySummaries(); } catch (wipeErr) { console.log('[form-summary] legacy wipe failed: ' + wipeErr.message); }
 
@@ -626,8 +636,6 @@ exports.handler = async function(event) {
       horsesGenerated += storeResult.stored;
       horsesFailed += storeResult.failed;
       if (storeResult.errors.length) errors.push.apply(errors, storeResult.errors);
-
-      await sleep(1000);
     }
 
     for (const runner of runners) {
@@ -728,7 +736,22 @@ exports.handler = async function(event) {
       });
     } catch (ce) {}
 
-    await sendEmail(summary);
+    // Email gating (2026-09-11, 30-min cadence): a run only emails when it's
+    // genuinely newsworthy — the first run to fully drain today's queue, a
+    // genuine failure (nothing generated, something failed), or the very
+    // first run of the day even if it timed out mid-queue. Every other run —
+    // a later top-up pass over an already-completed day, or a silent run
+    // that found nothing new/stale and nothing failed — sends nothing.
+    const isFirstDrainToday = !timedOut && horsesGenerated > 0 && !alreadyCompletedBeforeThisRun;
+    const isGenuineFailure = horsesGenerated === 0 && horsesFailed > 0;
+    const isFirstRunTimedOut = timedOut && !alreadyCompletedBeforeThisRun;
+    const shouldSendEmail = isFirstDrainToday || isGenuineFailure || isFirstRunTimedOut;
+
+    if (shouldSendEmail) {
+      await sendEmail(summary);
+    } else {
+      console.log('[form-summary] email suppressed — horsesGenerated=' + horsesGenerated + ' horsesFailed=' + horsesFailed + ' timedOut=' + timedOut + ' alreadyCompletedBeforeThisRun=' + alreadyCompletedBeforeThisRun);
+    }
 
     console.log('[form-summary] DONE', new Date().toISOString(), JSON.stringify(summary));
 
