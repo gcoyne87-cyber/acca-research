@@ -14789,7 +14789,10 @@ function nrLoadForm(pfx,horseId,silent){
       var _recRuns=hist.length,_recW=0,_recP=0;
       hist.forEach(function(h){var _p=parseInt(String(h.position||h.pos||''),10);if(_p===1)_recW++;else if(_p===2||_p===3)_recP++;});
       out+=_sc('Record',_recRuns?_recRuns+'·'+_recW+'W·'+_recP+'P':'—');
-      out+='<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+(_fsum&&_fsum.prize?escHtml(_fsum.prize):'—')+'</div></div>';
+      var _przTot=0;
+      hist.forEach(function(h){var _pv=parseFloat(String(h.prize||'').replace(/[^0-9.]/g,''));if(!isNaN(_pv))_przTot+=_pv;});
+      var _przStr=_przTot>0?'£'+Math.round(_przTot).toLocaleString('en-GB'):'—';
+      out+='<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+_przStr+'</div></div>';
       out+='</div>';
 
       // 2. Key Angle + Form Summary card via _renderFormSections

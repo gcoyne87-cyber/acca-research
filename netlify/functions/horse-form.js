@@ -142,7 +142,11 @@ async function lookupHistory(horse_id, targetDate, today) {
         ran: (race.runners || []).length || 0,
         sp: runner.sp || '',
         jockey: runner.jockey || '',
-        race_class: race.class || race.race_class || ''
+        race_class: race.class || race.race_class || '',
+        trainer: runner.trainer || '',
+        prize: runner.prize || '',
+        surface: race.surface || '',
+        type: race.type || ''
       };
     });
     if (history.length) {
