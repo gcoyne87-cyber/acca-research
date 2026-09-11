@@ -153,7 +153,7 @@ exports.handler = async function(event) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ date, error: resp.body.detail || ('API status ' + resp.status), venues: [], lookup: {}, partial: true, fetched: 0 })
+        body: JSON.stringify({ date, error: resp.body.detail || ('API status ' + resp.status), venues: [], lookup: {}, races: [], partial: true, fetched: 0 })
       };
     }
 
@@ -354,9 +354,16 @@ exports.handler = async function(event) {
 
     // ── LOOKUP VIEW (default) ── for Winners tracker sync
     const lookup = {};
+    // One entry per race actually present in this response (course + off
+    // time), independent of whether any of its runners matched into `lookup`
+    // below — the client needs this to tell "no result for this race yet"
+    // (pending) apart from "race is in, this horse just isn't a finisher"
+    // (a real NR), rather than guessing from a fixed clock.
+    const races = [];
     filtered.forEach(function(race) {
       const course = race.course || race.venue || '';
       const time = race.off_time || race.off_dt || race.time || '';
+      races.push({ course: course, courseNorm: normaliseCourse(course), time: time });
       (race.runners || []).forEach(function(r) {
         const key = normaliseName(r.horse || r.horse_name || r.name || '');
         if (!key) return;
@@ -366,7 +373,7 @@ exports.handler = async function(event) {
       });
     });
 
-    const lookupPayload = { date, lookup, partial: partial, fetched: results.length };
+    const lookupPayload = { date, lookup, races, partial: partial, fetched: results.length };
     if (isPastDate && !partial) {
       await redisSetJsonEx(cacheKey, lookupPayload, 86400);
     }

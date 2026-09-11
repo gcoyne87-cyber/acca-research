@@ -3280,7 +3280,7 @@ window.addEventListener('load',function(){
           if(!match||!match.pos) return;
           // Non-runner or void — never count against stats; auto-clear any accidental L
           var posStr=String(match.pos).toUpperCase().trim();
-          if(posStr==='NR'||posStr==='VOID'||posStr==='VOI'){
+          if(posStr==='VOID'||posStr==='VOI'){
             if(r.result==='L'){r.result='';changed=true;}
             return;
           }
@@ -16113,7 +16113,7 @@ function _fmtSelDate(d){
   return parseInt(p[2])+' '+months[parseInt(p[1])-1]+' '+p[0];
 }
 
-function _buildSelRows(analyses,lookup,topPicks,date,dateRecs){
+function _buildSelRows(analyses,lookup,topPicks,date,dateRecs,races,partial){
   var excl=(_selExclude&&date&&_selExclude[date])?_selExclude[date].map(function(s){return _normSelName(s);}):[];
   var _tc={'NAP':'#d4af37','NB':'#3b82f6','Strongest':'#8b5cf6','Tipster Consensus':'#f97316','Ground Edge':'#0ea5e9','Trainer':'#d4af37','Jockey Booking':'#8b5cf6','Trainer Form':'#d4af37','Intelligence':'#94a3b8','Hot Yard':'#10b981'};
   var rows=[];
@@ -16158,12 +16158,14 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs){
       if(posStr==='F'||posStr==='P'||posStr==='U'||posStr==='R'||posStr==='B'){rl=posStr;rc='#c0392b';}
       var fs=posNum===1?'13px':'11px';
       resultHtml='<span style="font-size:'+fs+';font-weight:800;color:'+rc+'">'+escHtml(rl)+'</span>';
-    } else if(lookup&&!res&&time){
-      var _tp=time.split(':');
-      if(_tp.length===2){
-        var _rd=new Date(date+'T'+(_tp[0].length===1?'0'+_tp[0]:_tp[0])+':'+_tp[1]+':00');
-        if(new Date()-_rd>30*60*1000) resultHtml='<span style="font-size:10px;font-weight:800;color:#9aa3b5">NR</span>';
-      }
+    } else {
+      // No result found for this selection's horse. Decide NR vs pending by
+      // whether its actual race is even present in these results — never by
+      // a fixed clock, and never when the fetch itself was partial (a
+      // rate-limited/paginated sweep can be missing real finishers, not just
+      // non-runners, so nothing should read as NR until we have a full read).
+      var _rMatch=(races||[]).some(function(rr){return _courseMatch(course,rr.course)&&_normTime(time)===_normTime(rr.time);});
+      if(_rMatch&&!partial) resultHtml='<span style="font-size:10px;font-weight:800;color:#9aa3b5">NR</span>';
     }
     html+='<div style="display:flex;align-items:flex-start;padding:8px 12px;gap:8px;'+(picks&&picks.length?'background:#edfaf3;':'')+(idx>0?'border-top:1px solid #f0f2f7':'')+'">';
     html+='<div style="flex-shrink:0;width:42px;padding-top:1px"><div style="font-size:10px;font-weight:700;color:#0D1B3E;white-space:nowrap">'+escHtml(time)+'</div><div style="font-size:9px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(course)+'</div></div>';
@@ -16203,6 +16205,7 @@ window._ptRQNext=function(){
       window._ptRQ.busy=false;
       var lk=data&&data.lookup;
       var _isPartial=!!(data&&data.partial);
+      var _races=(data&&data.races)||[];
       console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,'partial:',_isPartial,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
       if(lk&&Object.keys(lk).length){
         try{
@@ -16231,7 +16234,7 @@ window._ptRQNext=function(){
           if(_isPartial&&_existingCount>Object.keys(lk).length){
             console.log('[pt-trace] results for',item.d,'PARTIAL ('+Object.keys(lk).length+' < cached '+_existingCount+') — keeping existing cache'); // TEMP TRACE — remove after verification
           } else {
-            localStorage.setItem('results:'+item.d,JSON.stringify({partial:_isPartial,lookup:lk}));
+            localStorage.setItem('results:'+item.d,JSON.stringify({partial:_isPartial,lookup:lk,races:_races}));
             console.log('[pt-trace] results stored → localStorage["results:'+item.d+'"]'+(_isPartial?' (flagged partial)':'')); // TEMP TRACE — remove after verification
           }
         }catch(e){
@@ -16287,13 +16290,13 @@ window._ptInjectAllSel=function(){
     // format, treated as suspect (could be a stale partial from before the
     // rate-limit fixes) — both suspect kinds trigger one refresh per session
     // for past dates, and the writer keeps whichever response has more entries.
-    var cachedLookup=null, cachedSuspect=false;
+    var cachedLookup=null, cachedSuspect=false, cachedRaces=null;
     try{
       var _cr=localStorage.getItem('results:'+date);
       if(_cr){
         var _cp=JSON.parse(_cr);
         if(_cp&&_cp.lookup){
-          if(Object.keys(_cp.lookup).length){ cachedLookup=_cp.lookup; cachedSuspect=!!_cp.partial; }
+          if(Object.keys(_cp.lookup).length){ cachedLookup=_cp.lookup; cachedSuspect=!!_cp.partial; cachedRaces=_cp.races||null; }
         } else if(_cp&&Object.keys(_cp).length){
           cachedLookup=_cp; cachedSuspect=true; // old format — no flag, assume suspect
         }
@@ -16309,7 +16312,7 @@ window._ptInjectAllSel=function(){
     var existingList=document.getElementById(listId);
     if(existingList){
       if(cachedLookup){
-        existingList.innerHTML=_buildSelRows(analyses,cachedLookup,picks,date,dateRecArr);
+        existingList.innerHTML=_buildSelRows(analyses,cachedLookup,picks,date,dateRecArr,cachedRaces,cachedSuspect);
       } else {
         console.log('[pt-trace] inject: no results cache yet for',date,'— queueing fetch'); // TEMP TRACE — remove after verification
         window._ptRQAdd(date);
@@ -16326,7 +16329,7 @@ window._ptInjectAllSel=function(){
     secDiv.innerHTML='<button onclick="(function(){var l=document.getElementById(\''+listId+'\');var c=document.getElementById(\''+chevId+'\');var open=l.style.display!==\'none\';l.style.display=open?\'none\':\'block\';c.style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\';})()" style="width:100%;display:flex;align-items:center;gap:10px;margin-bottom:8px;background:none;border:none;padding:0 2px;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent">'
       +'<div style="font-size:10px;font-weight:700;color:#5a6478;letter-spacing:0.13em;text-transform:uppercase;flex:1">'+escHtml(title)+'</div>'
       +'<svg id="'+chevId+'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa3b5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>'
-      +'</button><div id="'+listId+'">'+_buildSelRows(analyses,cachedLookup,picks,date,dateRecArr)+'</div>';
+      +'</button><div id="'+listId+'">'+_buildSelRows(analyses,cachedLookup,picks,date,dateRecArr,cachedRaces,cachedSuspect)+'</div>';
 
     window._ptRQAdd(date);
   });
