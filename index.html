@@ -14276,8 +14276,8 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       +'<div style="flex:1;min-width:0">'
         // Name line — flex-wrap so multiple gold tag pills wrap onto a new
         // line on narrow viewports instead of overflowing off-screen.
-        +'<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">'
-          +'<span style="font-size:15px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+        +'<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:2px">'
+          +'<span style="font-size:14px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:12px;font-weight:700;line-height:1">&#9660;</span>'
           +(function(){
             var _t=[];
