@@ -14143,10 +14143,12 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   // for season breaks, shown as-is
   var formText=ru.form?'<div style="font-size:11px;color:#9aa3b5;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
 
-  // Jockey on its own line
-  var jockeyLine=jockey?'<div style="font-size:10px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(jockey)+'</div>':'';
-  // Trainer on its own line below
-  var trainerLine=trainer?'<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(trainer)+'</div>':'';
+  // Jockey and trainer combined onto one dot-separated line
+  var jockeyTrainerParts=[];
+  if(jockey) jockeyTrainerParts.push(escHtml(jockey));
+  if(trainer) jockeyTrainerParts.push(escHtml(trainer));
+  var jockeyLine=jockeyTrainerParts.length?'<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+jockeyTrainerParts.join(' &middot; ')+'</div>':'';
+  var trainerLine='';
 
   // Weight · OR on next line
   var wtOrAgeParts=[];
