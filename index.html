@@ -11656,7 +11656,7 @@ function getMeetingImg(id){
 // Structured form-summary render — five labelled sections when the cached
 // object carries recentForm/going/trip/track/keyAngle; falls back to the old
 // single-paragraph `summary` field for entries generated before the reshape.
-function _renderFormSections(s){
+function _renderFormSections(s,part){
   if(!s) return '';
   if(!s.recentForm) return s.summary?'<div style="margin:10px 14px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff"><div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div><div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(s.summary)+'</div></div>':'';
   var sub=function(label,text){
@@ -11678,6 +11678,8 @@ function _renderFormSections(s){
     +sub('Trip',s.trip)
     +sub('Track',s.track)
     +'</div>';
+  if(part==='key') return keyAngle;
+  if(part==='card') return card;
   return keyAngle+card;
 }
 
@@ -14796,7 +14798,7 @@ function nrLoadForm(pfx,horseId,silent){
       out+='</div>';
 
       // 2. Key Angle + Form Summary card via _renderFormSections
-      out+=_renderFormSections(_fsum);
+      out+=_renderFormSections(_fsum,'key');
 
       // 3. Career record — from nrLoadProfile cache if available, skip if not yet loaded
       if(hist.length){
@@ -14841,7 +14843,8 @@ function nrLoadForm(pfx,horseId,silent){
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
         out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 14px 1px">Form Summary</div>';
-        out+='<div style="font-size:10px;color:#9ca3af;padding:0 14px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
+        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 14px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
+        out+=_renderFormSections(_fsum,'card');
       }
 
       // 6. Form table with trainer-change gold dividers
