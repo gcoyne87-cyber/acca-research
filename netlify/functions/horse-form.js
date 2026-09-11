@@ -37,13 +37,14 @@ function redisGet(key) {
   });
 }
 
-function redisSet(key, value) {
+function redisSet(key, value, ttlSeconds) {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return Promise.resolve(null);
   const url = new URL(UPSTASH_URL);
   const body = JSON.stringify(value);
+  const path = '/set/' + encodeURIComponent(key) + (ttlSeconds ? '?EX=' + ttlSeconds : '');
   return new Promise(resolve => {
     const req = https.request({
-      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      hostname: url.hostname, path: path, method: 'POST',
       headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d)); });
     req.on('error', () => resolve(null)); req.write(body); req.end();
@@ -151,7 +152,7 @@ async function lookupHistory(horse_id, targetDate, today) {
     });
     if (history.length) {
       // Fire-and-forget — redisSet resolves (never rejects) on failure.
-      redisSet('form:history:' + horse_id + ':' + targetDate, history);
+      redisSet('form:history:' + horse_id + ':' + targetDate, history, 86400);
       return history;
     }
   } catch(e) { /* no runs anywhere, or API down — empty is now genuinely empty */ }
