@@ -135,6 +135,10 @@ async function fetchHorseHistory(horse_id) {
         ran: (race.runners || []).length || 0,
         sp: runner.sp || '',
         jockey: runner.jockey || '',
+        trainer: runner.trainer || '',
+        prize: runner.prize || '',
+        surface: race.surface || '',
+        type: race.type || '',
         // AUDIT-DAILY-INTELLIGENCE.md, item 3: the Racing API results endpoint returns
         // the class under `class`, not `race_class` — this field was always empty
         // (100% of sampled historical results), starving Class Drop's Pool 1. Confirmed

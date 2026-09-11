@@ -108,12 +108,12 @@ function apiGetRacing(path) {
 async function lookupHistory(horse_id, targetDate, today) {
   // 1. The dated key, exactly as before
   let h = await redisGet('form:history:' + horse_id + ':' + targetDate);
-  if (Array.isArray(h) && h.length) return h;
+  if (Array.isArray(h) && h.length && Object.prototype.hasOwnProperty.call(h[0], 'trainer')) return h;
 
   // 2. Today's key
   if (targetDate !== today) {
     h = await redisGet('form:history:' + horse_id + ':' + today);
-    if (Array.isArray(h) && h.length) return h;
+    if (Array.isArray(h) && h.length && Object.prototype.hasOwnProperty.call(h[0], 'trainer')) return h;
   }
 
   // 3. Any dated key this horse has — most recent date first (YYYY-MM-DD
@@ -123,7 +123,7 @@ async function lookupHistory(horse_id, targetDate, today) {
     keys.sort().reverse();
     for (const k of keys) {
       h = await redisGet(k);
-      if (Array.isArray(h) && h.length) return h;
+      if (Array.isArray(h) && h.length && Object.prototype.hasOwnProperty.call(h[0], 'trainer')) return h;
     }
   } catch(e) { /* scan failure falls through to the live call */ }
 
@@ -134,7 +134,6 @@ async function lookupHistory(horse_id, targetDate, today) {
     const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6');
     const history = (data.results || []).map(race => {
       const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
-      if (process.env.NODE_ENV !== 'development') console.log('RUNNER_KEYS:', JSON.stringify(Object.keys(runner)));
       return {
         date: race.date || '',
         course: race.course || '',

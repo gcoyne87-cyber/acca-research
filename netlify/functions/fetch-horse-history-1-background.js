@@ -100,7 +100,11 @@ async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
       ran: (race.runners || []).length || 0,
       sp: runner.sp || '',
       jockey: runner.jockey || '',
-      race_class: race.race_class || ''
+      trainer: runner.trainer || '',
+      prize: runner.prize || '',
+      surface: race.surface || '',
+      type: race.type || '',
+      race_class: race.class || race.race_class || ''
     };
   });
   if(history.length === 0){ throw new Error('Empty history returned for horse ' + horse_id + ' — skipping Redis write'); }
