@@ -11677,7 +11677,7 @@ function _renderFormSections(s,part){
   var _esc=typeof escHtml==='function'?escHtml:function(x){return x;};
   if(part==='key'){
     if(!s.keyAngle) return '';
-    return '<div style="margin:8px 6px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    return '<div style="margin:8px 12px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
       +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+_esc(s.keyAngle)+'</div>'
       +'</div>';
@@ -11701,7 +11701,7 @@ function _renderFormSections(s,part){
       +(s.trip?_tab('t','Trip',false):'')
       +(s.track?_tab('k','Track',false):'')
       +'</div>';
-    var panes='<div style="margin:8px 6px 10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    var panes='<div style="margin:8px 12px 10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +_pane('r','Recent Form',s.recentForm,true)
       +_pane('g','Going',s.going,false)
       +_pane('t','Trip',s.trip,false)
@@ -14427,7 +14427,7 @@ function nrTogglePanel(pfx,panel){
     nrOpenHistory[pfx]=false;
   } else {
     if(wrap._closeTimer){ clearTimeout(wrap._closeTimer); wrap._closeTimer=null; }
-    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 10px 8px;position:relative;border-radius:10px;background:rgba(0,0,0,0.04);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
+    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 4px 8px;position:relative;border-radius:10px;background:rgba(0,0,0,0.04);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
     wrap.style.maxHeight='0'; wrap.style.overflow='hidden'; wrap.style.transition='max-height 0.25s ease'; requestAnimationFrame(function(){ wrap.style.maxHeight='8000px'; });
     if(feDiv)feDiv.style.display=panel==='fe'?'block':'none';
     if(seDiv)seDiv.style.display=panel==='se'?'block':'none';
@@ -14873,8 +14873,8 @@ function nrLoadForm(pfx,horseId,silent){
           var _st=bold?';font-weight:700;border-top:1px solid #e5e7eb':'';
           return '<tr><td style="'+_crTd+';text-align:left;color:'+(bold?'#0b1628':'#4b5563')+_st+'">'+escHtml(label)+'</td><td style="'+_crTd+_st+'">'+r.runs+'</td><td style="'+_crTd+_st+'">'+r.wins+'</td><td style="'+_crTd+_st+'">'+r.places+'</td><td style="'+_crTd+_st+'">'+_wp+'</td><td style="'+_crTd+_st+'">'+_pz+'</td></tr>';
         };
-        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:10px 6px 6px">Career Record</div>';
-        out+='<div style="padding:0 6px 10px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:10px 12px 6px">Career Record</div>';
+        out+='<div style="padding:0 12px 10px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_crTh+';text-align:left">Surface</th><th style="'+_crTh+'">Runs</th><th style="'+_crTh+'">Wins</th><th style="'+_crTh+'">Places</th><th style="'+_crTh+'">Win%</th><th style="'+_crTh+'">Prize</th></tr></thead><tbody>';
         _crOrder.forEach(function(k){out+=_crRow(k,_cr[k],false);});
         out+=_crRow('Total',_crTot,true);
@@ -14933,7 +14933,7 @@ function nrLoadForm(pfx,horseId,silent){
           }
         }
         if(_gpHtml){
-          out+='<div style="padding:8px 6px;border-bottom:0.5px solid #f0f2f5">';
+          out+='<div style="padding:8px 12px;border-bottom:0.5px solid #f0f2f5">';
           out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Going preference</div>';
           out+='<div style="display:flex;gap:8px">'+_gpHtml+'</div></div>';
         }
@@ -14958,7 +14958,7 @@ function nrLoadForm(pfx,horseId,silent){
         var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
         var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
         var _notes=(_fsum&&_fsum.trainerNotes)||{};
-        out+='<div style="padding:8px 6px;border-bottom:0.5px solid #f0f2f5">';
+        out+='<div style="padding:8px 12px;border-bottom:0.5px solid #f0f2f5">';
         out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Trainer history</div>';
         _per.forEach(function(p,i){
           var cur=i===0;
@@ -14977,8 +14977,8 @@ function nrLoadForm(pfx,horseId,silent){
 
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
-        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 6px 1px">Form Summary</div>';
-        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 6px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
+        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 12px 1px">Form Summary</div>';
+        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 12px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
         out+=_renderFormSections(_fsum,'card');
       }
 
@@ -14987,7 +14987,7 @@ function nrLoadForm(pfx,horseId,silent){
         var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var _thS2='text-align:left;padding:4px 3px 4px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
-        out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 6px 4px">Form · '+hist.length+' runs</div>';
+        out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 12px 4px">Form · '+hist.length+' runs</div>';
         out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
@@ -15000,7 +15000,7 @@ function nrLoadForm(pfx,horseId,silent){
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
           var _tr=h.trainer||'';
           if(_tr&&_tr!==_lastTrainer&&_lastTrainer!==''){
-            out+='<tr><td colspan="7" style="padding:6px 6px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
+            out+='<tr><td colspan="7" style="padding:6px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
           }
           _lastTrainer=_tr;
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
