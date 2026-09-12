@@ -17050,7 +17050,7 @@ function _getResWindow(){
   function toToday(totalMins){
     return new Date(now.getFullYear(),now.getMonth(),now.getDate(),Math.floor(totalMins/60),totalMins%60,0);
   }
-  return { start:toToday(Math.min.apply(null,mins)), end:toToday(Math.max.apply(null,mins)+90) };
+  return { start:toToday(Math.min.apply(null,mins)-15), end:toToday(Math.max.apply(null,mins)+90) };
 }
 
 function _stopResultsPolling(){
@@ -17074,6 +17074,15 @@ function _startResultsPolling(){
       delete _resApiCache[today];
       _resApiFetching=false;
       loadResultsPage(today);
+    } else {
+      // On another day: keep the date bar current so the Today pill appears
+      // when the 15-minute window opens, and light it from today's first
+      // result without changing the day being viewed. _sharedResultsFetch
+      // resolves with the whole response — pass its venues array.
+      _renderResDateBar();
+      if(_resTodayHasResultFor!==today){
+        _sharedResultsFetch(today).then(function(v){ if(_resNoteTodayResults(v&&v.venues))_renderResDateBar(); }).catch(function(){});
+      }
     }
     // Keep the independent Latest Results strip live too when it's showing
     // today — shares the same in-flight fetch as the page refresh above.
@@ -17114,6 +17123,30 @@ function _normTime(t){
 // results into the detailed section via the existing loadResultsPage/date
 // path; re-rendered on every load so the highlight always tracks
 // _resLoadedDate.
+var _resTodayHasResultFor='';
+function _resNoteTodayResults(venues){
+  var t=irishDateStr();
+  if(_resTodayHasResultFor===t)return true;
+  var any=(venues||[]).some(function(v){return (v.races||[]).some(function(r){return (r.runners||[]).some(function(ru){return ru.pos&&String(ru.pos).trim();});});});
+  if(any)_resTodayHasResultFor=t;
+  return any;
+}
+function _resTodayDue(){
+  // True from 15 minutes before today's first race off time. Same source and
+  // minute field as the Popular Trainers today-mode logic (RC_TODAY_MEETINGS,
+  // race.t24 = off time in minutes from midnight, Irish local). That logic's
+  // _nowMins is a local inside its own function, so the current Irish time is
+  // derived here via Intl in Europe/Dublin.
+  try{
+    var src=(typeof RC_TODAY_MEETINGS!=='undefined'&&RC_TODAY_MEETINGS.length)?RC_TODAY_MEETINGS:[];
+    var first=null;
+    src.forEach(function(m){(m.races||[]).forEach(function(r){var t=Number(r.t24);if(!isNaN(t)&&(first===null||t<first))first=t;});});
+    if(first===null)return false;
+    var nowM=(typeof _nowMins==='function')?_nowMins():(typeof _nowMins==='number'?_nowMins:null);
+    if(nowM===null){var n=new Date();var p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(n);var h=+p.find(function(x){return x.type==='hour';}).value,mi=+p.find(function(x){return x.type==='minute';}).value;nowM=h*60+mi;}
+    return nowM>=first-15;
+  }catch(e){return false;}
+}
 function _renderResDateBar(){
   var bar=document.getElementById('res-date-bar');
   if(!bar) return;
@@ -17125,6 +17158,7 @@ function _renderResDateBar(){
   var cur=_resLoadedDate||todayStr;
   var html='';
   for(var i=0;i<4;i++){
+    if(i===0&&_resTodayHasResultFor!==todayStr&&!_resTodayDue())continue;
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
     var ds=irishDateStr(d);
     // Same day+ordinal format as the racecards date strip — "Fri 4th".
@@ -17163,6 +17197,7 @@ function loadResultsPage(date){
   // refetch would leave the reset _resData stuck on "Loading…".)
   if(!_resData&&_resApiCache[d]){
     _resData=_resApiCache[d];
+    if(d===irishDateStr()&&_resNoteTodayResults(_resApiCache[d]))_renderResDateBar();
     renderResultsPage();
     _buildResTrainerCarousel();
   }
@@ -17204,6 +17239,7 @@ function loadResultsPage(date){
         var venues=data.venues||[];
         var hasRunners=venues.some(function(v){return (v.races||[]).some(function(r){return r.runners&&r.runners.length;});});
         if(hasRunners) _resApiCache[d]=venues; // only cache when we actually got data
+        if(d===irishDateStr()&&_resNoteTodayResults(venues))_renderResDateBar();
         _resLastFetchMs=Date.now(); // record when we last successfully fetched
         // Stale-fetch guard: the user may have switched date while this fetch
         // was in flight — the day is cached above for their return, but it
