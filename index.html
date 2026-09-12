@@ -13091,7 +13091,7 @@ function renderTodayMeetingsList(isInitial){
           out+='<div style="border-top:1px solid #f0f2f7">';
           out+='<div style="padding:10px 14px 4px">';
           out+='<div style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(race.t)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml(race.name)+' &middot; '+escHtml(_nrAbDist(race.dist))+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+' &middot; '+escHtml(_nrAbDist(race.dist))+'</div>';
           var _rcp=(race.class||'')+(race.class&&race.prize?' · ':'')+(race.prize||'');
           if(_rcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:4px">'+escHtml(_rcp)+'</div>';
           out+='</div>';
@@ -13773,7 +13773,7 @@ function _old_unused_renderRacingMeetings(){
 
         detailHtml='<div class="rc-race-detail">'
 
-          +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml(race.name)+'</div>'
+          +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+'</div>'
 
           +'<div class="rc-race-sub">'+escHtml(race.dist)+' &middot; '+race.r+' runners</div>'
 
@@ -17628,7 +17628,7 @@ function renderResultsPage(){
         // race-level race.prize never fires), formatted via _fmtPrize with
         // the venue's currency.
         html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
-        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
+        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
         var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
         var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
         if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
