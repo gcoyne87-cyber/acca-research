@@ -14028,9 +14028,23 @@ function nrTick(){
   // Auto-advance: if current race has been off for 3+ minutes, move to next upcoming race
   var cur=NR_RACES[nrSelected];
   if(cur&&(cur.mins*60-elapsed)<-180){
+    var _advanced=false;
     for(var _ni=nrSelected+1;_ni<NR_RACES.length;_ni++){
       if((NR_RACES[_ni].mins*60-elapsed)>-180){
-        nrSelected=_ni;nrAnchor=_ni;nrAnchorHome=_ni;nrMoreOpen=false;nrRenderStrip();nrRenderCard();break;
+        nrSelected=_ni;nrAnchor=_ni;nrAnchorHome=_ni;nrMoreOpen=false;nrRenderStrip();nrRenderCard();_advanced=true;break;
+      }
+    }
+    if(!_advanced){
+      var _src=typeof TM_MEETINGS!=='undefined'&&TM_MEETINGS.length?TM_MEETINGS:typeof RC_MEETINGS!=='undefined'&&RC_MEETINGS.length?RC_MEETINGS:null;
+      if(_src){
+        var _isTm=_src===TM_MEETINGS;
+        var _rebuilt=_buildNrFromMeetings(_src,_isTm);
+        if(_rebuilt&&_rebuilt.races&&_rebuilt.races.length){
+          NR_RACES=_rebuilt.races;
+          nrStartTime=Date.now();
+          nrSelected=0;nrAnchor=0;nrAnchorHome=0;nrMoreOpen=false;
+          nrRenderStrip();nrRenderCard();
+        }
       }
     }
   }
@@ -15040,18 +15054,20 @@ function nrLoadForm(pfx,horseId,silent){
 }
 function nrFmExpand(pfx,el){
   var xTbody=document.getElementById('nrh-fmx-'+pfx);
-  if(xTbody){xTbody.style.display='';}
   var btnRow=document.getElementById('nrh-fm-'+pfx);
-  if(btnRow){
+  if(xTbody) xTbody.style.display='';
+  if(btnRow&&btnRow.parentNode){
+    btnRow.parentNode.appendChild(btnRow);
     btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
   }
 }
 function nrFmCollapse(pfx){
   var xTbody=document.getElementById('nrh-fmx-'+pfx);
-  if(xTbody){xTbody.style.display='none';}
   var btnRow=document.getElementById('nrh-fm-'+pfx);
-  if(btnRow){
-    var remaining=xTbody?xTbody.querySelectorAll('tr').length:0;
+  if(xTbody) xTbody.style.display='none';
+  if(btnRow&&xTbody&&xTbody.parentNode){
+    xTbody.parentNode.insertBefore(btnRow,xTbody);
+    var remaining=xTbody.querySelectorAll('tr').length;
     var label=remaining===1?'run':'runs';
     btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
   }
