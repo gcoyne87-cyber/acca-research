@@ -2493,10 +2493,6 @@ window.addEventListener('load',function(){
     <div id="subbar-cards" style="display:none;align-items:center">
       <div id="cards-date-strip" style="display:flex"></div>
     </div>
-    <div id="subbar-results" style="display:none;align-items:center">
-      <button class="subbtn act" id="subbtn-rt" onclick="selectResultsSubTab('today')">Today</button>
-      <button class="subbtn" id="subbtn-ry" onclick="selectResultsSubTab('yesterday')">Yesterday</button>
-    </div>
     <div id="subbar-picks" style="display:none;align-items:center">
       <button class="subbtn act" id="subbtn-pt" onclick="selectPicksSubTab('today')">Today</button>
       <button class="subbtn" id="subbtn-ptmr" onclick="selectPicksSubTab('tomorrow')">Tomorrow</button>
@@ -5925,14 +5921,8 @@ function unlockCorkAnalysis(){
     <!-- RESULTS PAGE -->
     <div id="racing-results-content" style="display:none;background:#f5f7fb;padding:0 0 80px;font-family:'Barlow',sans-serif">
       <div id="res-status" style="display:none;padding:8px 14px;font-size:12px;color:#9aa3b5"></div>
-      <!-- Latest results horizontal feed -->
-      <div id="res-feed-section" style="display:none;padding:8px 0 4px">
-        <div style="display:flex;align-items:center;gap:10px;padding:4px 14px 8px">
-          <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Latest Results</div>
-        </div>
-        <div id="res-feed" style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
-      </div>
+      <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
+      <div id="res-body"></div>
       <!-- Detailed results: heading + date bar (Today / Yesterday / two prior
            day names). Pills rendered by _renderResDateBar; selection loads
            that date's results into res-body below. The Latest Results feed
@@ -5959,8 +5949,6 @@ function unlockCorkAnalysis(){
           </div>
         </div>
       </div>
-      <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
-      <div id="res-body"></div>
     </div>
 
   <!-- OUR RECENT WINNERS STRIP -->
@@ -17858,9 +17846,11 @@ function selectMainTab(tab){
     if(sb) sb.style.display='none';
     selectRacingSection('nextrace');
   } else if(tab==='results'){
-    if(sb) sb.style.display='block';
+    // The results Today/Yesterday sub-bar was removed with the results-page
+    // Latest Results feed — with no bar to show, keep the shared sub-bar hidden.
     var sr=document.getElementById('subbar-results');
-    if(sr) sr.style.display='flex';
+    if(sr){ if(sb) sb.style.display='block'; sr.style.display='flex'; }
+    else if(sb) sb.style.display='none';
     selectRacingSection('results');
   } else if(tab==='winners'){
     if(sb) sb.style.display='none';
