@@ -14783,7 +14783,7 @@ function nrLoadForm(pfx,horseId,silent){
   if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
   var _cached=_nrFormCache[horseId];
   // Already fetched — toggle panel and re-inject HTML if DOM was rebuilt (e.g. race switch)
-  if(_cached&&typeof _cached==='object'){
+  if(_cached&&typeof _cached==='object'&&_cached.v===2){
     if(!silent)nrTogglePanel(pfx,'fe');
     var tDiv0=document.getElementById('nrh-ft-'+pfx);
     if(tDiv0&&tDiv0.innerHTML!==_cached.html){
@@ -15039,7 +15039,7 @@ function nrLoadForm(pfx,horseId,silent){
       if(!out) out='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form data available.</div>';
 
       out+='</div>';
-      _nrFormCache[horseId]={html:out};
+      _nrFormCache[horseId]={html:out,v:2};
       tDiv2.innerHTML=out;
       var _pft2b=document.getElementById('nrh-pft-'+pfx);
       if(_pft2b)_pft2b.innerHTML=out;
