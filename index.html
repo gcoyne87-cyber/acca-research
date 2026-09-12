@@ -14944,15 +14944,16 @@ function nrLoadForm(pfx,horseId,silent){
         var _runs=hist.filter(function(h){return h.trainer&&h.date;}).slice();
         _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
         if(!_runs.length)return;
+        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
         var _per=[];
         _runs.forEach(function(h){
           var _t=String(h.trainer).trim();
           var _last=_per[_per.length-1];
-          if(_last&&_last.name===_t){_last.to=h.date;_last.runs++;}
+          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
           else _per.push({name:_t,from:h.date,to:h.date,runs:1});
         });
         var _cardTr=(_ru2&&_ru2.trainer)?String(_ru2.trainer).trim():'';
-        if(_cardTr&&_per[_per.length-1].name.toLowerCase()!==_cardTr.toLowerCase())_per.push({name:_cardTr,from:'',to:'',runs:0});
+        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
         _per.reverse();
         var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
@@ -14994,7 +14995,7 @@ function nrLoadForm(pfx,horseId,silent){
         var _lastTrainer='';
         hist.forEach(function(h,_hi){
           if(_hi===6){
-            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more runs ▼</span></td></tr>';
+            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
             out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
           }
           var posStr=String(h.position||h.pos||'-');
@@ -15037,10 +15038,22 @@ function nrLoadForm(pfx,horseId,silent){
     });
 }
 function nrFmExpand(pfx,el){
-  var body=document.getElementById('nrh-fmx-'+pfx);
-  if(body) body.style.display='';
+  var xTbody=document.getElementById('nrh-fmx-'+pfx);
+  if(xTbody){xTbody.style.display='';}
   var btnRow=document.getElementById('nrh-fm-'+pfx);
-  if(btnRow&&btnRow.parentNode) btnRow.parentNode.removeChild(btnRow);
+  if(btnRow){
+    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
+  }
+}
+function nrFmCollapse(pfx){
+  var xTbody=document.getElementById('nrh-fmx-'+pfx);
+  if(xTbody){xTbody.style.display='none';}
+  var btnRow=document.getElementById('nrh-fm-'+pfx);
+  if(btnRow){
+    var remaining=xTbody?xTbody.querySelectorAll('tr').length:0;
+    var label=remaining===1?'run':'runs';
+    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
+  }
 }
 function _tipsPillState(btn,active){
   if(!btn)return;
