@@ -12389,7 +12389,7 @@ function _renderPopularTrainers(){
   // across the innerHTML rebuild.
   var _ptPrev=document.getElementById('pt-trainer-search');
   var _ptTyped=_ptPrev?_ptPrev.value:'';
-  out+='<div style="display:flex;align-items:center;position:relative;margin:0 0 10px;padding:4px 8px;border:none;background:#fff;border-radius:8px"><input id="pt-trainer-search" type="text" placeholder="Enter trainer name..." value="'+escHtml(_ptTyped)+'" style="flex:1;border:none;outline:none;font-size:13px;color:#0b1628;background:transparent;padding:4px 32px 4px 0" onkeydown="if(event.key===\'Enter\'){setTrainerFilter(this.value);}" /><button onclick="setTrainerFilter(document.getElementById(\'pt-trainer-search\').value)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round"/></svg></button></div>';
+  out+='<div style="display:flex;align-items:center;position:relative;margin:0 0 10px;padding:4px 8px;border:none;background:#fff;border-radius:8px"><input id="pt-trainer-search" type="text" placeholder="Enter trainer name..." value="'+escHtml(_ptTyped)+'" style="flex:1;border:none;outline:none;font-size:13px;color:#0b1628;background:transparent;padding:4px 32px 4px 0" onkeydown="if(event.key===\'Enter\'){setTrainerFilter(this.value);}" oninput="_onTrainerSearchInput(this.value,\'pt-trainer-search-dropdown\')" /><div id="pt-trainer-search-dropdown" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);z-index:100;max-height:220px;overflow-y:auto;display:none"></div><button onclick="setTrainerFilter(document.getElementById(\'pt-trainer-search\').value)" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round"/></svg></button></div>';
   out+='<div id="pt-carousel" style="overflow:hidden;padding:0 2px 4px">';
   out+='<div id="pt-car-track" style="display:flex;gap:10px;will-change:transform">';
   trainers.forEach(function(t){
@@ -12645,8 +12645,9 @@ function loadTrainerFormTable(){
 }
 loadTrainerFormTable();
 
-function _onTrainerSearchInput(val){
-  var dd=document.getElementById('trainer-search-dropdown');
+function _onTrainerSearchInput(val,ddId){
+  ddId=ddId||'trainer-search-dropdown';
+  var dd=document.getElementById(ddId);
   if(!dd) return;
   var _accentRe=new RegExp('['+String.fromCharCode(768)+'-'+String.fromCharCode(879)+']','g');
   function norm(s){
@@ -12677,7 +12678,7 @@ function _onTrainerSearchInput(val){
   var matches=scored.slice(0,8).map(function(x){ return x.name; });
   if(!matches.length){ dd.style.display='none'; dd.innerHTML=''; return; }
   dd.innerHTML=matches.map(function(n){
-    return '<div onclick="_selectTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
+    return '<div onclick="_selectTrainerSearchResult(\''+n.replace(/'/g,"\\'")+'\',\''+ddId+'\')" style="padding:10px 14px;font-size:14px;color:#0D1B3E;font-family:inherit;cursor:pointer;border-bottom:1px solid #f0f2f7">'+escHtml(n)+'</div>';
   }).join('');
   dd.style.display='block';
 }
@@ -12691,8 +12692,8 @@ function _submitTrainerSearch(){
   setTrainerFilter(val);
 }
 
-function _selectTrainerSearchResult(name){
-  var dd=document.getElementById('trainer-search-dropdown');
+function _selectTrainerSearchResult(name,ddId){
+  var dd=document.getElementById(ddId||'trainer-search-dropdown');
   if(dd){ dd.style.display='none'; dd.innerHTML=''; }
   setTrainerFilter(name);
 }
