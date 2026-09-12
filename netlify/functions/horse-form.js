@@ -131,7 +131,7 @@ async function lookupHistory(horse_id, targetDate, today) {
   // The result is cached under the dated key (fire-and-forget) so the next
   // open of this horse is a tier-1 hit.
   try {
-    const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6');
+    const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=50');
     const history = (data.results || []).map(race => {
       const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
       return {

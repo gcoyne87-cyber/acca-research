@@ -88,7 +88,7 @@ function sleep(ms) {
 }
 
 async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
-  const data = await apiGet('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6');
+  const data = await apiGet('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=50');
   const history = (data.results || []).map(race => {
     const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
     return {

@@ -121,7 +121,7 @@ async function fetchHorseHistory(horse_id) {
   } catch(e) {}
   try {
     const data = await apiGet('api.theracingapi.com',
-      '/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=6',
+      '/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=50',
       { 'Authorization': 'Basic ' + RACING_AUTH }
     );
     const history = (data.results || []).map(race => {

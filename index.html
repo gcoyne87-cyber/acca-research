@@ -11677,7 +11677,7 @@ function _renderFormSections(s,part){
   var _esc=typeof escHtml==='function'?escHtml:function(x){return x;};
   if(part==='key'){
     if(!s.keyAngle) return '';
-    return '<div style="margin:8px 12px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    return '<div style="margin:8px 0px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Key Angle</div>'
       +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+_esc(s.keyAngle)+'</div>'
       +'</div>';
@@ -11686,7 +11686,7 @@ function _renderFormSections(s,part){
     if(!s.recentForm) return '';
     var _uid='nrfs'+Math.random().toString(36).slice(2,7);
     var _tab=function(id,label,active){
-      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:13px;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:11px 4px 9px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
+      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:13px;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:11px 12px 9px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
     };
     var _pane=function(id,label,text,active){
       if(!text) return '';
@@ -11701,7 +11701,7 @@ function _renderFormSections(s,part){
       +(s.trip?_tab('t','Trip',false):'')
       +(s.track?_tab('k','Track',false):'')
       +'</div>';
-    var panes='<div style="margin:8px 12px 10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+    var panes='<div style="margin:8px 0px 10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
       +_pane('r','Recent Form',s.recentForm,true)
       +_pane('g','Going',s.going,false)
       +_pane('t','Trip',s.trip,false)
@@ -14427,7 +14427,7 @@ function nrTogglePanel(pfx,panel){
     nrOpenHistory[pfx]=false;
   } else {
     if(wrap._closeTimer){ clearTimeout(wrap._closeTimer); wrap._closeTimer=null; }
-    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 4px 8px;position:relative;border-radius:10px;background:rgba(0,0,0,0.04);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
+    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 0 8px;position:relative;border-radius:0;background:#fff;border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
     wrap.style.maxHeight='0'; wrap.style.overflow='hidden'; wrap.style.transition='max-height 0.25s ease'; requestAnimationFrame(function(){ wrap.style.maxHeight='8000px'; });
     if(feDiv)feDiv.style.display=panel==='fe'?'block':'none';
     if(seDiv)seDiv.style.display=panel==='se'?'block':'none';
@@ -14835,7 +14835,7 @@ function nrLoadForm(pfx,horseId,silent){
       })();
       if(!_ru2){var _w2=document.getElementById('nrh-'+pfx);if(_w2&&(_w2.dataset.age||_w2.dataset.or||_w2.dataset.lastrun))_ru2={age:_w2.dataset.age,or:_w2.dataset.or,lastRun:_w2.dataset.lastrun};}
       out+='<div style="display:flex;background:#f0fdf4;border-bottom:0.5px solid #d1fae5">';
-      var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
+      var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
       out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age))+'yo':'—');
       out+=_sc('Rating',(_ru2&&_ru2.or)?'OR '+escHtml(String(_ru2.or)):'—');
       out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d ago':'—');
@@ -14845,7 +14845,7 @@ function nrLoadForm(pfx,horseId,silent){
       var _przTot=0;
       hist.forEach(function(h){var _pv=parseFloat(String(h.prize||'').replace(/[^0-9.]/g,''));if(!isNaN(_pv))_przTot+=_pv;});
       var _przStr=_przTot>0?'£'+Math.round(_przTot).toLocaleString('en-GB'):'—';
-      out+='<div style="flex:1;padding:8px 0 8px 10px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+_przStr+'</div></div>';
+      out+='<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+_przStr+'</div></div>';
       out+='</div>';
 
       // 2. Key Angle + Form Summary card via _renderFormSections
@@ -14865,8 +14865,8 @@ function nrLoadForm(pfx,horseId,silent){
         });
         var _crTot={runs:0,wins:0,places:0,prize:0};
         _crOrder.forEach(function(k){_crTot.runs+=_cr[k].runs;_crTot.wins+=_cr[k].wins;_crTot.places+=_cr[k].places;_crTot.prize+=_cr[k].prize;});
-        var _crTh='font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;padding:4px 6px;border-bottom:1px solid #f0f2f5;white-space:nowrap';
-        var _crTd='padding:5px 6px;text-align:right;font-size:11px;color:#0b1628;white-space:nowrap';
+        var _crTh='font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;padding:4px 12px;border-bottom:1px solid #f0f2f5;white-space:nowrap';
+        var _crTd='padding:5px 12px;text-align:right;font-size:11px;color:#0b1628;white-space:nowrap';
         var _crRow=function(label,r,bold){
           var _wp=r.runs?Math.round(r.wins/r.runs*100)+'%':'—';
           var _pz=r.prize>0?'£'+Math.round(r.prize).toLocaleString('en-GB'):'—';
@@ -14910,7 +14910,7 @@ function nrLoadForm(pfx,horseId,silent){
           var lc=kind==='g'?'#1e9e6b':kind==='r'?'#dc2626':'#9ca3af';
           var gc=kind==='n'?'#4b5563':'#0b1628',gs=kind==='n'?'12px':'13px',gw=kind==='n'?'600':'700';
           var dc=kind==='r'?'#b91c1c':'#6b7280';
-          return '<div style="flex:1;padding:8px 10px;border-radius:8px;background:'+bg+'"><div style="font-size:9px;font-weight:600;color:'+lc+';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">'+label+'</div><div style="font-size:'+gs+';font-weight:'+gw+';color:'+gc+'">'+escHtml(going)+'</div><div style="font-size:10px;color:'+dc+';margin-top:2px">'+escHtml(detail)+'</div></div>';
+          return '<div style="flex:1;padding:8px 12px;border-radius:8px;background:'+bg+'"><div style="font-size:9px;font-weight:600;color:'+lc+';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">'+label+'</div><div style="font-size:'+gs+';font-weight:'+gw+';color:'+gc+'">'+escHtml(going)+'</div><div style="font-size:10px;color:'+dc+';margin-top:2px">'+escHtml(detail)+'</div></div>';
         };
         var _gpHtml='';
         if(_gArr.length){
@@ -14985,14 +14985,18 @@ function nrLoadForm(pfx,horseId,silent){
       // 6. Form table with trainer-change gold dividers
       if(hist.length){
         var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var _thS2='text-align:left;padding:4px 3px 4px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
+        var _thS2='text-align:left;padding:4px 3px 4px 12px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
         out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:10px 12px 4px">Form · '+hist.length+' runs</div>';
         out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
         var _lastTrainer='';
-        hist.forEach(function(h){
+        hist.forEach(function(h,_hi){
+          if(_hi===6){
+            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more runs ▼</span></td></tr>';
+            out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
+          }
           var posStr=String(h.position||h.pos||'-');
           var p=parseInt(posStr,10);
           var pCol=p===1?'#1e9e6b':p===2||p===3?'#b7860b':'#0D1B3E';
@@ -15004,13 +15008,13 @@ function nrLoadForm(pfx,horseId,silent){
           }
           _lastTrainer=_tr;
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
-          out+='<td style="padding:5px 3px 5px 6px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
-          out+='<td style="padding:5px 3px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
-          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
-          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:5px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-          out+='<td style="padding:5px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-          out+='<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<td style="padding:5px 3px 5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
+          out+='<td style="padding:5px 12px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
+          out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
+          out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
+          out+='<td style="padding:5px 12px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:5px 12px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
+          out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
           out+='</tr>';
         });
         out+='</tbody></table></div>';
@@ -15031,6 +15035,12 @@ function nrLoadForm(pfx,horseId,silent){
       var _pft3=document.getElementById('nrh-pft-'+pfx);
       if(_pft3)_pft3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load form data.</div>';
     });
+}
+function nrFmExpand(pfx,el){
+  var body=document.getElementById('nrh-fmx-'+pfx);
+  if(body) body.style.display='';
+  var btnRow=document.getElementById('nrh-fm-'+pfx);
+  if(btnRow&&btnRow.parentNode) btnRow.parentNode.removeChild(btnRow);
 }
 function _tipsPillState(btn,active){
   if(!btn)return;
