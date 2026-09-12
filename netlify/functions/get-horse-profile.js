@@ -100,12 +100,17 @@ exports.handler = async function(event) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'horse_id is required' }) };
     }
 
+    // Trainer-spell analysis from the trainer-history background job (7-day
+    // TTL, null when not yet generated). Attached to the response on both
+    // paths below but never written into the profile cache entry.
+    const th = await redisGet('horse:trainer-history:' + horseId);
+
     const cacheKey = 'horse:profile:v2:' + horseId;
 
     // Cache tier — the 24h TTL below means any hit is fresh by definition.
     const cached = await redisGet(cacheKey);
     if (cached && (cached.profile || cached.results)) {
-      return { statusCode: 200, headers, body: JSON.stringify(cached) };
+      return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, cached, { trainerHistory: th || null })) };
     }
 
     // Two parallel Racing API calls; allSettled so one failure never takes
@@ -166,7 +171,7 @@ exports.handler = async function(event) {
     // in Redis for 24 hours.
     if (profile && results) { try { await redisSetEx(cacheKey, combined, 86400); } catch (e) { /* best-effort */ } }
 
-    return { statusCode: 200, headers, body: JSON.stringify(combined) };
+    return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, combined, { trainerHistory: th || null })) };
   } catch (e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }

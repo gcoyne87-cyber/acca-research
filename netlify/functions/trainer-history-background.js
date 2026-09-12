@@ -373,8 +373,11 @@ exports.handler = async function(event) {
   const isScheduled = !event.httpMethod;
   const qs = (event && event.queryStringParameters) || {};
   const DATE = (qs.date && /^\d{4}-\d{2}-\d{2}$/.test(qs.date)) ? qs.date : '2026-09-13';
+  // Self-chain hop counter — a partial run re-invokes itself via the test twin
+  // with hop+1 until the day is complete or the cap (8) is reached.
+  const hop = Math.max(0, parseInt(qs.hop, 10) || 0);
 
-  console.log('[trainer-history] START', new Date().toISOString(), 'date:', DATE, 'scheduled:', isScheduled);
+  console.log('[trainer-history] START', new Date().toISOString(), 'date:', DATE, 'hop:', hop, 'scheduled:', isScheduled);
 
   // Heartbeat — fire-and-forget first write so an invocation killed early
   // still leaves evidence in Redis.
@@ -545,11 +548,33 @@ exports.handler = async function(event) {
       counts: counts,
       tokens: tokens,
       elapsedSec: Math.round((Date.now() - startTime) / 1000),
-      timedOut: timedOut
+      timedOut: timedOut,
+      hop: hop
     };
     try { await redisSet('trainer-history:complete:' + DATE, summary); } catch (ce) {}
     console.log('[trainer-history] DONE', JSON.stringify(summary));
     try { await redisSet('trainer-history:lock:' + DATE, null); } catch (ue) {}
+    // Self-chain: a partial run hands the remaining runners to a fresh
+    // invocation (the lock is already released above, so the next hop starts
+    // straight away). Capped at 8 hops so a stuck day can never loop forever.
+    if (timedOut && hop < 8) {
+      try {
+        await new Promise(function(resolve){
+          const req = https.request({
+            hostname: 'superlative-flan-93dfc4.netlify.app',
+            path: '/.netlify/functions/trainer-history-test-background?date=' + DATE + '&hop=' + (hop + 1),
+            method: 'POST',
+            headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
+          }, function(res){ res.resume(); res.on('end', resolve); });
+          req.on('error', function(){ resolve(); });
+          req.setTimeout(10000, function(){ req.destroy(); resolve(); });
+          req.end();
+        });
+        console.log('[trainer-history] partial — self-chained hop ' + (hop + 1));
+      } catch (e) {}
+    } else if (timedOut) {
+      console.log('[trainer-history] hop cap reached — not chaining');
+    }
     return { statusCode: 200, headers, body: JSON.stringify(summary) };
   } catch (e) {
     console.log('[trainer-history] ERROR', e.message);
