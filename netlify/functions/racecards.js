@@ -614,3 +614,6 @@ exports.handler = async function(event) {
     };
   }
 };
+
+exports.enrichRunnerTags = enrichRunnerTags;
+exports.computeRunnerTags = computeRunnerTags;

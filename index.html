@@ -3211,7 +3211,7 @@ window.addEventListener('load',function(){
           html+='<div style="width:3px;height:34px;border-radius:2px;background:'+tc+';flex-shrink:0"></div>';
           // Horse + venue + angle
           html+='<div style="flex:1;min-width:0;overflow:hidden">';
-          html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+rec.horse+'</div>';
+          html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+rec.horse+_edgeTagChips(rec,8)+'</div>';
           html+='<div style="font-size:11px;color:#5a6478;margin-top:1px">'+rec.course+' &middot; '+rec.time+(rec.price&&rec.price!=='-'?' &middot; <span style="color:#b8870a;font-weight:700">'+rec.price+'</span>':'')+'</div>';
           if(rec.angle) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:3px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+rec.angle+'</div>';
           html+='</div>';
@@ -3294,6 +3294,7 @@ window.addEventListener('load',function(){
           if(!allLookups[r.date]) return;
           var match=allLookups[r.date][normName(r.horse)];
           if(!match||!match.pos) return;
+          ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard'].forEach(function(k){ if(match[k]&&!r[k]){ r[k]=true; changed=true; } });
           // Non-runner or void — never count against stats; auto-clear any accidental L
           var posStr=String(match.pos).toUpperCase().trim();
           if(posStr==='VOID'||posStr==='VOI'){
@@ -11525,6 +11526,7 @@ function loadRacecards(){
           buildDateStrip();
         }
         _renderCurrentHomeList();
+        if(typeof _fetchHomeResults==='function'){var _w=_getResWindow();var _n=new Date();if(_w&&_n>=_w.start&&_n<=_w.end)_fetchHomeResults();}
         // Re-evaluates the Popular Trainers evening switch each tick — flips
         // to "Tomorrow's Trainers" once today's last race is off, and back on
         // the midnight refetch (which re-renders via loadRacecards anyway).
@@ -16214,6 +16216,7 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs,races,partial){
     var sel=item.sel,time=item.time,course=item.course,nk=item.nk;
     var picks=item.extraLabels||(topPicks&&topPicks[nk])||null;
     var res=lookup?lookup[nk]:null;
+    if(res){['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard'].forEach(function(k){if(res[k])sel[k]=true;});}
     var posStr=res?String(res.pos||''):'';
     var posNum=parseInt(posStr,10);
     var resultHtml='<span style="font-size:11px;font-weight:600;color:#9aa3b5">–</span>';
@@ -16239,6 +16242,7 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs,races,partial){
     html+='<span style="font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0">'+escHtml(sel.horseName)+'</span>';
     if(sel.odds) html+='<span style="flex-shrink:0;font-size:11px;font-weight:800;color:#b8870a;white-space:nowrap">'+escHtml(sel.odds)+'</span>';
     if(picks&&picks.length) picks.forEach(function(p){html+='<span style="flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:'+p.color+';color:#fff;border-radius:4px;padding:1px 5px;white-space:nowrap">'+escHtml(p.label)+'</span>';});
+    html+=_edgeTagChips(sel,8);
     html+='</div>';
     if(sel.jockey) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(sel.jockey)+'</div>';
     if(sel.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(sel.trainer)+'</div>';
@@ -17038,7 +17042,7 @@ function _getResWindow(){
   function toToday(totalMins){
     return new Date(now.getFullYear(),now.getMonth(),now.getDate(),Math.floor(totalMins/60),totalMins%60,0);
   }
-  return { start:toToday(Math.min.apply(null,mins)), end:toToday(Math.max.apply(null,mins)+45) };
+  return { start:toToday(Math.min.apply(null,mins)), end:toToday(Math.max.apply(null,mins)+90) };
 }
 
 function _stopResultsPolling(){
@@ -17337,6 +17341,17 @@ function _resFavNames(runners){
   return out;
 }
 
+function _edgeTagChips(o,fs,pad){
+  var _t=[];
+  if(o.isCandDWinner)_t.push('C&amp;D Winner');
+  if(o.isCandDGoing)_t.push('C&amp;D+G');
+  if(o.isIrishRaider)_t.push('Irish Raider');
+  if(o.isGBRaider)_t.push('GB Raider');
+  if(o.isGroundLover)_t.push('Ground Lover');
+  if(o.isHotYard)_t.push('Hot Yard');
+  if(!_t.length)return '';
+  return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
+}
 function renderResultsFeed(){
   var wrap=document.getElementById('res-feed-section');
   var feed=document.getElementById('res-feed');
@@ -17393,7 +17408,7 @@ function renderResultsFeed(){
       html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
       html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
       html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
+      html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_edgeTagChips(r,7,'0 4px')+'</div>';
       if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
       html+='</div>';
       if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
@@ -17519,7 +17534,7 @@ function renderHomeResultsStrip(){
         html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
         html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
         html+='<div style="flex:1;min-width:0">';
-        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.horse)+'</div>';
+        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_edgeTagChips(r,7,'0 4px')+'</div>';
         if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
         html+='</div>';
         if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
@@ -17699,9 +17714,10 @@ function renderResultsPage(){
               +nrSilk(_resSilkFor(r.horse,ri))
             +'</div>';
             html+='<div style="flex:1;min-width:0">';
-            html+='<div style="display:flex;align-items:center;gap:6px;min-width:0">'
+            html+='<div style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap">'
               +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
               +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
+              +_edgeTagChips(r,8)
             +'</div>';
             if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
             if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';

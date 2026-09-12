@@ -1,4 +1,5 @@
 const https = require('https');
+const racecardsMod = require('./racecards');
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -201,6 +202,30 @@ exports.handler = async function(event) {
       return !reg || reg === 'GB' || reg === 'IRE' || reg === 'IE' || reg === 'UK';
     });
 
+    // ── Shared by both views: the day's declared card + edge tag maps ──
+    // normName strips a trailing "(IRE)"-style suffix and all punctuation so
+    // result names match declared names. Tags are computed at read time by
+    // racecards.js's enrichRunnerTags (never stored on the card). Every step
+    // is best-effort: no card, or a tag failure, just leaves runners untagged
+    // and the page view with no NR line.
+    const normName = function(s) {
+      return String(s || '').toLowerCase().replace(/\s*\([^)]*\)\s*$/, '').replace(/[^a-z0-9]/g, '');
+    };
+    const TAG_KEYS = ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard'];
+    const tagsById = {}, tagsByName = {};
+    let declaredCard = null;
+    try {
+      declaredCard = await redisGetJson('racecards:' + date);
+      if (declaredCard && Array.isArray(declaredCard.meetings)) {
+        try { await racecardsMod.enrichRunnerTags(declaredCard.meetings, date); } catch (eTag) { /* tags are additive */ }
+        declaredCard.meetings.forEach(function(m){ (m.races||[]).forEach(function(rc){ (rc.runners||[]).forEach(function(ru){
+          const flags = {}; TAG_KEYS.forEach(function(k){ if (ru[k]) flags[k] = true; });
+          if (ru.horse_id) tagsById[ru.horse_id] = flags;
+          if (ru.name) tagsByName[normName(ru.name)] = flags;
+        }); }); });
+      }
+    } catch (eCard) { declaredCard = null; }
+
     // ── PAGE VIEW ─── structured data for the Results page UI
     if (view === 'page') {
       const venueMap = {};
@@ -313,11 +338,7 @@ exports.handler = async function(event) {
       // the result. Best-effort: no racecards cache, or an unmatched race,
       // simply means no NR line for that race.
       try {
-        const declaredCard = await redisGetJson('racecards:' + date);
         if (declaredCard && Array.isArray(declaredCard.meetings)) {
-          const normName = function(s) {
-            return String(s || '').toLowerCase().replace(/\s*\([^)]*\)\s*$/, '').replace(/[^a-z0-9]/g, '');
-          };
           const declaredByRace = {};
           declaredCard.meetings.forEach(function(m) {
             const vKey = normaliseCourse(m.name || '');
@@ -328,6 +349,10 @@ exports.handler = async function(event) {
           venueOrder.forEach(function(id) {
             venueMap[id].races.forEach(function(race) {
               if (!race.runners || !race.runners.length) return; // race not run — nothing to compare yet
+              (race.runners||[]).forEach(function(r){
+                const f = (r.horse_id && tagsById[r.horse_id]) || tagsByName[normName(r.horse)] || null;
+                if (f) TAG_KEYS.forEach(function(k){ if (f[k]) r[k] = true; });
+              });
               const declared = declaredByRace[id + '|' + race.time];
               if (!declared || !declared.length) return;
               const ranSet = {};
@@ -369,7 +394,10 @@ exports.handler = async function(event) {
         if (!key) return;
         const pos = String(r.position || r.pos || '');
         const sp = r.sp_dec ? fractionalFromDecimal(parseFloat(r.sp_dec), r.sp_fractional) : (r.sp || r.sp_fractional || '');
-        lookup[key] = { sp, pos, course, courseNorm: normaliseCourse(course), time, ran: (race.runners || []).length };
+        const entry = { sp, pos, course, courseNorm: normaliseCourse(course), time, ran: (race.runners || []).length };
+        const f = (r.horse_id && tagsById[r.horse_id]) || tagsByName[normName(r.horse || r.horse_name || r.name || '')] || null;
+        if (f) TAG_KEYS.forEach(function(k){ if (f[k]) entry[k] = true; });
+        lookup[key] = entry;
       });
     });
 
