@@ -17630,6 +17630,19 @@ function renderResultsPage(){
     html+='</div>';
   }
 
+  var _pickMap={};
+  (function(){
+    var d=_resLoadedDate||irishDateStr();
+    try{(JSON.parse(localStorage.getItem('ptRecs2'))||[]).forEach(function(r){
+      if(!r||!r.horse||!r.date||!r.type)return;
+      if(r.date!==d)return;
+      if(r.type==='NAP'||r.type==='NB')_pickMap[_normSelName(r.horse)]=r.type;
+    });}catch(e){}
+    if(d===irishDateStr()&&typeof RACING_PICKS!=='undefined'&&RACING_PICKS.length){
+      if(RACING_PICKS[0]&&RACING_PICKS[0].horse&&!_pickMap[_normSelName(RACING_PICKS[0].horse)])_pickMap[_normSelName(RACING_PICKS[0].horse)]='NAP';
+      if(RACING_PICKS[1]&&RACING_PICKS[1].horse&&!_pickMap[_normSelName(RACING_PICKS[1].horse)])_pickMap[_normSelName(RACING_PICKS[1].horse)]='NB';
+    }
+  })();
   _resData.forEach(function(venue,vi){
     var cid=venue.courseId||_normCourse(venue.course);
     var isOpen=_resOpenVenue===cid;
@@ -17726,6 +17739,7 @@ function renderResultsPage(){
               +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
               +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
               +_edgeTagChips(r,8)
+              +(function(){var _pk=_pickMap[_normSelName(r.horse)];return _pk?'<span style="flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#0D1B3E;color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap">'+_pk+'</span>':'';})()
             +'</div>';
             if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
             if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';
