@@ -172,14 +172,18 @@ exports.handler = async function(event) {
   const today = new Date().toISOString().slice(0, 10);
   const targetDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
 
-  const [summary, history] = await Promise.all([
+  // Trainer-spell analysis from trainer-history-background.js (7-day TTL,
+  // null until generated). Read at response time on every request — only
+  // the history slice is cached (lookupHistory), never the whole response.
+  const [summary, history, th] = await Promise.all([
     redisGet('form:summary:' + horse_id + ':' + targetDate),
-    lookupHistory(horse_id, targetDate, today)
+    lookupHistory(horse_id, targetDate, today),
+    redisGet('horse:trainer-history:' + horse_id)
   ]);
 
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ history: history || [], summary: summary || null })
+    body: JSON.stringify({ history: history || [], summary: summary || null, trainerHistory: th || null })
   };
 };

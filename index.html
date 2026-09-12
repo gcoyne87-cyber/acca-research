@@ -14983,19 +14983,22 @@ function nrLoadForm(pfx,horseId,silent){
         var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
         var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _notes=(_fsum&&_fsum.trainerNotes)||{};
+        var _notes={};
+        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
+          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
+        }
         out+='<div style="padding:8px 12px;border-bottom:0.5px solid #f0f2f5">';
         out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Trainer history</div>';
         _per.forEach(function(p,i){
           var cur=i===0;
           var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
-          var note=_notes[p.name]||'';
+          var note=_notes[_normT(p.name)]||'';
           out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:'+(i===_per.length-1?'0':'10px')+'">';
           out+='<div style="width:9px;height:9px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';margin-top:3px;flex-shrink:0"></div>';
           out+='<div style="flex:1;min-width:0">';
           out+='<div><span style="font-size:12px;font-weight:600;color:'+(cur?'#0b1628':'#4b5563')+'">'+escHtml(p.name)+'</span>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
           out+='<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
-          if(note)out+='<div style="font-size:11px;color:#4b5563;line-height:1.5;margin-top:4px">'+escHtml(note)+'</div>';
+          if(note)out+='<div style="margin-top:5px;background:#fff;border:1px solid #d1fae5;border-left:3px solid #1e9e6b;border-radius:6px;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1e9e6b;margin-bottom:2px">Trainer analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(note)+'</div></div>';
           out+='</div></div>';
         });
         out+='</div>';
