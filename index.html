@@ -14686,6 +14686,15 @@ function nrLoadProfile(pfx,horseId){
       // profile if the API ever supplies one; otherwise use hist, the
       // trainer-change list already derived from the results above (the
       // same source prevLine is built from), one dot per past trainer.
+      var _thMap={},_thReason=(data.trainerHistory&&data.trainerHistory.reason)||'';
+      if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
+        data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_thMap[norm(s.trainer)+'|'+String(s.from||'')]=s.text; });
+      }
+      var _thBox=function(text){
+        if(!text)return '';
+        return '<div style="margin-top:6px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(text)+'</div></div>';
+      };
+      var _thFor=function(name,from){ return _thMap[norm(name)+'|'+String(from||'')]||''; };
       var _prevItems=[];
       if(Array.isArray(p.previousTrainers)&&p.previousTrainers.length){
         p.previousTrainers.forEach(function(t){
@@ -14694,13 +14703,18 @@ function nrLoadProfile(pfx,horseId){
           _prevItems.push({name:n,sub:(t&&t.from?String(t.from).slice(0,4):'')+(t&&t.to?'–'+yr(t.to):'')});
         });
       }else if(hist.length>1){
-        hist.slice(0,-1).reverse().forEach(function(t){_prevItems.push({name:t.name,sub:(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')});});
+        hist.slice(0,-1).reverse().forEach(function(t){_prevItems.push({name:t.name,from:t.from,sub:(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')});});
       }
       out+='<div style="padding:8px 14px">';
       out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trainer history</div>';
-      out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#1e9e6b;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(currentTrainer||'—')+' <span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span></div>'+(t14?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">14d form: '+escHtml(t14.replace(/\s*last 14d$/,''))+'</div>':'')+'</div></div>';
+      out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#1e9e6b;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(currentTrainer||'—')+' <span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span></div>'+(t14?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">14d form: '+escHtml(t14.replace(/\s*last 14d$/,''))+'</div>':'')
+        +_thBox(_thFor(currentTrainer,hist.length?hist[hist.length-1].from:''))
+        +(_thReason==='too-few-runs'?'<div style="margin-top:4px;font-size:10px;color:#9ca3af">Fewer than three career runs — too early to assess a pattern.</div>':'')
+        +'</div></div>';
       _prevItems.forEach(function(it){
-        out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#d1d5db;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.sub?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(it.sub)+'</div>':'')+'</div></div>';
+        out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#d1d5db;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.sub?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(it.sub)+'</div>':'')
+          +_thBox(_thFor(it.name,it.from))
+          +'</div></div>';
       });
       out+='</div>';
       if(tot.r>0){
