@@ -15056,8 +15056,8 @@ function nrFmExpand(pfx,el){
   var xTbody=document.getElementById('nrh-fmx-'+pfx);
   var btnRow=document.getElementById('nrh-fm-'+pfx);
   if(xTbody) xTbody.style.display='';
-  if(btnRow&&btnRow.parentNode){
-    btnRow.parentNode.appendChild(btnRow);
+  if(btnRow&&xTbody){
+    xTbody.appendChild(btnRow);
     btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
   }
 }
