@@ -17401,6 +17401,26 @@ function _edgeTagChips(o,fs,pad){
   if(!_t.length)return '';
   return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
 }
+// NAP / NB pick lookup — one source of truth for Full Results and both Latest
+// Results strips. Tracker records (ptRecs2) for the date, then RACING_PICKS
+// fills gaps for today only.
+function _pickMapForDate(dateStr){
+  var map={};
+  try{(JSON.parse(localStorage.getItem('ptRecs2'))||[]).forEach(function(r){
+    if(!r||!r.horse||!r.date||!r.type)return;
+    if(r.date!==dateStr)return;
+    if(r.type==='NAP'||r.type==='NB')map[_normSelName(r.horse)]=r.type;
+  });}catch(e){}
+  if(dateStr===irishDateStr()&&typeof RACING_PICKS!=='undefined'&&RACING_PICKS.length){
+    if(RACING_PICKS[0]&&RACING_PICKS[0].horse&&!map[_normSelName(RACING_PICKS[0].horse)])map[_normSelName(RACING_PICKS[0].horse)]='NAP';
+    if(RACING_PICKS[1]&&RACING_PICKS[1].horse&&!map[_normSelName(RACING_PICKS[1].horse)])map[_normSelName(RACING_PICKS[1].horse)]='NB';
+  }
+  return map;
+}
+function _pickPill(horse,pickMap,size){
+  var _pk=pickMap?pickMap[_normSelName(horse)]:'';
+  return _pk?'<span style="flex-shrink:0;font-size:'+(size||9)+'px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#0D1B3E;color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap">'+_pk+'</span>':'';
+}
 function renderResultsFeed(){
   var wrap=document.getElementById('res-feed-section');
   var feed=document.getElementById('res-feed');
@@ -17413,6 +17433,7 @@ function renderResultsFeed(){
     _loadResultsFeed(irishDateStr());
     return;
   }
+  var _pickMap=_pickMapForDate(_resFeedDate||irishDateStr());
 
   // Collect all races that have results, sorted most recent first
   var racesWithResults=[];
@@ -17457,7 +17478,7 @@ function renderResultsFeed(){
       html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
       html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
       html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_edgeTagChips(r,7,'0 4px')+'</div>';
+      html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,_pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
       if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
       html+='</div>';
       if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
@@ -17546,6 +17567,7 @@ function renderHomeResultsStrip(){
   // yesterday's card (same navy pill style as the Trainer Form window pills).
   var _ydayPill=document.getElementById('home-res-yday-pill');
   if(_ydayPill) _ydayPill.style.display=(_homeRes.loadedDate==='yesterday')?'':'none';
+  var _pickMap=_pickMapForDate(_homeRes.loadedDate==='yesterday'?irishDateStr(new Date(Date.now()-86400000)):irishDateStr());
   function renderFrom(venues){
     var racesWithResults=[];
     (venues||[]).forEach(function(venue){
@@ -17583,7 +17605,7 @@ function renderHomeResultsStrip(){
         html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
         html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
         html+='<div style="flex:1;min-width:0">';
-        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_edgeTagChips(r,7,'0 4px')+'</div>';
+        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,_pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
         if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
         html+='</div>';
         if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
@@ -17671,19 +17693,7 @@ function renderResultsPage(){
     html+='</div>';
   }
 
-  var _pickMap={};
-  (function(){
-    var d=_resLoadedDate||irishDateStr();
-    try{(JSON.parse(localStorage.getItem('ptRecs2'))||[]).forEach(function(r){
-      if(!r||!r.horse||!r.date||!r.type)return;
-      if(r.date!==d)return;
-      if(r.type==='NAP'||r.type==='NB')_pickMap[_normSelName(r.horse)]=r.type;
-    });}catch(e){}
-    if(d===irishDateStr()&&typeof RACING_PICKS!=='undefined'&&RACING_PICKS.length){
-      if(RACING_PICKS[0]&&RACING_PICKS[0].horse&&!_pickMap[_normSelName(RACING_PICKS[0].horse)])_pickMap[_normSelName(RACING_PICKS[0].horse)]='NAP';
-      if(RACING_PICKS[1]&&RACING_PICKS[1].horse&&!_pickMap[_normSelName(RACING_PICKS[1].horse)])_pickMap[_normSelName(RACING_PICKS[1].horse)]='NB';
-    }
-  })();
+  var _pickMap=_pickMapForDate(_resLoadedDate||irishDateStr());
   _resData.forEach(function(venue,vi){
     var cid=venue.courseId||_normCourse(venue.course);
     var isOpen=_resOpenVenue===cid;
@@ -17780,7 +17790,7 @@ function renderResultsPage(){
               +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
               +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
               +_edgeTagChips(r,8)
-              +(function(){var _pk=_pickMap[_normSelName(r.horse)];return _pk?'<span style="flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#0D1B3E;color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap">'+_pk+'</span>':'';})()
+              +_pickPill(r.horse,_pickMap,9)
             +'</div>';
             if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
             if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';
