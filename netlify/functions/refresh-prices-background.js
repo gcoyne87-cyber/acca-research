@@ -351,9 +351,14 @@ exports.handler = async function(event) {
     } else if (freshData && freshData.racecards && freshData.racecards.length) {
       // Build a horse_id -> fresh price lookup from the raw Racing API response
       const freshPriceMap = {};
+      // Non-runners declared after the 23:00 card build — the fresh API still
+      // lists them (is_non_runner / number 'NR') with no odds, so without this
+      // they stayed in the cached card priced 'SP' and sorted to the bottom.
+      const freshNrSet = {};
       freshData.racecards.forEach(function(race) {
         (race.runners || []).forEach(function(r) {
           if (!r.horse_id) return;
+          if (r.is_non_runner || String(r.number) === 'NR') freshNrSet[r.horse_id] = true;
           const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
           freshPriceMap[r.horse_id] = extractPrice(oddsArr, 'Boyle Sports');
         });
@@ -393,6 +398,11 @@ exports.handler = async function(event) {
           const fg = freshGoingByRace[m.id + '|' + (race.t || '')];
           if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
           (race.runners || []).forEach(function(ru) {
+            if (ru.horse_id && freshNrSet[ru.horse_id] === true) {
+              ru.nonRunner = true;
+              ru.price = 'NR';
+              return; // no price update or movement tracking for a withdrawn horse
+            }
             if (ru.horse_id && freshPriceMap.hasOwnProperty(ru.horse_id)) {
               ru.price = freshPriceMap[ru.horse_id];
               if (applyPriceMovement(ru, freshPriceMap[ru.horse_id], anchors)) anchorsDirty = true;
