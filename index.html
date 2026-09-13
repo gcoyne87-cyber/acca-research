@@ -5653,17 +5653,28 @@ function unlockCorkAnalysis(){
          both lead to the same runner view. Sits above the Racecards section. -->
     <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
     <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
-    <div id="trainer-search-wrap" style="padding:0 16px 12px;background:#f5f6f8">
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0 0">
-        <div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
-        <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Edges</div>
+    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
+        <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
+        <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
+        <button id="rc-filter-btn" onclick="_rcFilterToggle()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #c9a84c;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;color:#0b1628;cursor:pointer;margin-left:auto;flex-shrink:0;font-family:inherit">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg>
+          <span>Filter</span>
+          <span id="rc-filter-badge" style="display:none;background:#c9a84c;color:#fff;border-radius:10px;min-width:16px;height:16px;font-size:10px;font-weight:700;align-items:center;justify-content:center;padding:0 4px">1</span>
+        </button>
       </div>
-      <div style="font-size:12px;color:#9aa3b5;margin:3px 0 10px;padding-left:13px">Filter today's runners by trainer, course &amp; distance, or ground preference</div>
-      <!-- Option C toggle rows. One edge filter active at a time; the row
-           visuals are driven by _renderEdgeChips, the filter logic is the
-           unchanged _selectEdgeChip / clearEdgeFilter pair. #edge-filter-chips
-           is kept as the container id — renderTrainerFilterMultiDay's scroll
-           hook references it. -->
+      <div id="today-racecards-subheading" style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Race analysis and form guide for today's meetings</div>
+    </div>
+    <!-- Filter panel — trainer search plus the four edge toggle rows (moved
+         here from the former Today's Edges section). Opened by #rc-filter-btn.
+         The filter logic underneath is unchanged: _selectEdgeChip /
+         clearEdgeFilter for the edge rows, setTrainerFilter / clearTrainerFilter
+         for the trainer input; the result view is renderTrainerFilterMultiDay.
+         The row visuals are painted by _renderEdgeChips by id. -->
+    <div id="rc-filter-panel" style="display:none;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:0 14px 12px">
+      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by trainer</div>
+      <div style="position:relative;margin-bottom:14px"><input id="rc-trainer-search" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value,'rc-trainer-search-dropdown')" onkeydown="if(event.key==='Enter'){setTrainerFilter(this.value);_rcFilterClose();}" style="width:100%;height:36px;border:1px solid #e5e7eb;border-radius:8px;padding:0 10px;font-size:14px;box-sizing:border-box;font-family:inherit"><div id="rc-trainer-search-dropdown" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);z-index:100;max-height:220px;overflow-y:auto;display:none"></div></div>
+      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by edge</div>
       <div id="edge-filter-chips">
         <div id="edge-row-cd" onclick="_toggleEdgeRow('cd')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
           <div><div id="edge-row-cd-name" style="font-size:13px;font-weight:700;color:#0b1628">Course &amp; Distance</div><div style="font-size:11px;color:#6b7280">Runners who have already won over today's course and trip</div></div>
@@ -5682,22 +5693,14 @@ function unlockCorkAnalysis(){
           <div id="edge-row-hotyard-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-hotyard-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
         </div>
       </div>
-      <!-- Trainer search input kept in the DOM but hidden: setTrainerFilter /
-           _resetTrainerFilterState still read and write it, and the Popular
-           Trainers arrow CTA still targets it. -->
+      <div style="display:flex;gap:8px;margin-top:14px"><button onclick="_rcFilterClear()" style="flex:1;height:38px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button onclick="_rcFilterClose()" style="flex:2;height:38px;border-radius:8px;border:none;background:#1e9e6b;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Apply</button></div>
+      <!-- Legacy trainer input kept in the DOM but hidden: setTrainerFilter /
+           _resetTrainerFilterState / clearTrainerFilter still read and write it. -->
       <div id="edge-trainer-input-wrap" style="display:none;position:relative">
         <input id="trainer-search-input" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value)" onfocus="_onTrainerSearchInput(this.value)" style="width:100%;box-sizing:border-box;padding:12px 34px 12px 18px;border:none;font-size:14px;font-family:inherit;color:#0D1B3E;background:transparent;outline:none">
         <span id="trainer-search-clear" onclick="_clearTrainerSearchInput()" style="display:none">&times;</span>
         <div id="trainer-search-dropdown" style="display:none"></div>
       </div>
-    </div>
-
-    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
-        <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
-        <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
-      </div>
-      <div id="today-racecards-subheading" style="font-size:12px;color:#9aa3b5;margin:3px 0 0;padding-left:13px">Race analysis and form guide for today's meetings</div>
     </div>
     <div id="home-date-strip-bar" style="display:none;background:#f5f7fb;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center">
       <div id="home-date-strip" style="display:flex"></div>
@@ -11889,6 +11892,7 @@ function setTrainerFilter(trainerName){
   _tfSelectedDay=null;
   _tfRaceSel={};
   _tfLoadDays();
+  _rcFilterBadge();
 }
 
 function trainerFilterSelectRace(meetingId,raceTime){
@@ -11914,6 +11918,7 @@ function _resetTrainerFilterState(){
   if(inp) inp.value='';
   var clr=document.getElementById('trainer-search-clear');
   if(clr) clr.style.display='none';
+  _rcFilterBadge();
 }
 
 function clearTrainerFilter(){
@@ -11925,6 +11930,7 @@ function clearTrainerFilter(){
   if(inp) inp.value='';
   var clr=document.getElementById('trainer-search-clear');
   if(clr) clr.style.display='none';
+  _rcFilterBadge();
   var _cardsTmrwC=document.getElementById('racing-tomorrow-content');
   var _cardsFutureC=document.getElementById('racing-future-content');
   var _onCardsTomorrow=_cardsTmrwC&&_cardsTmrwC.style.display!=='none';
@@ -12058,7 +12064,8 @@ function _edgeDayMeetings(k){
 
 // Option C toggle rows — paints every row from _edgeChipMode. 'trainer' is
 // the no-edge-filter default, so all four rows read as off in that state.
-// Styles here must match the static markup in #edge-filter-chips.
+// Styles here must match the static markup of the rows inside #rc-filter-panel
+// (#edge-filter-chips).
 function _renderEdgeChips(){
   var rowOn='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #1e9e6b;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
   var rowOff='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
@@ -12073,6 +12080,7 @@ function _renderEdgeChips(){
     if(tg) tg.style.background=on?'#1e9e6b':'#e5e7eb';
     if(dt) dt.style.left=on?'18px':'2px';
   });
+  _rcFilterBadge();
 }
 
 // Row tap: an already-active row switches off (clearEdgeFilter restores the
@@ -12081,6 +12089,32 @@ function _renderEdgeChips(){
 function _toggleEdgeRow(mode){
   if(_edgeChipMode===mode){ clearEdgeFilter(); return; }
   _selectEdgeChip(mode);
+  _rcFilterClose();
+}
+
+// Racecards-header Filter button + panel (#rc-filter-btn / #rc-filter-panel).
+// Presentation only — every tap inside the panel lands on the unchanged
+// _toggleEdgeRow / setTrainerFilter / clear* paths.
+function _rcFilterToggle(){
+  var p=document.getElementById('rc-filter-panel');
+  if(!p) return;
+  p.style.display=(p.style.display==='none'||!p.style.display)?'block':'none';
+}
+function _rcFilterClose(){
+  var p=document.getElementById('rc-filter-panel');
+  if(p) p.style.display='none';
+}
+function _rcFilterClear(){
+  if(_edgeChipMode!=='trainer') clearEdgeFilter();
+  if(_trainerFilter) clearTrainerFilter();
+  var i=document.getElementById('rc-trainer-search');
+  if(i) i.value='';
+  _rcFilterBadge();
+}
+function _rcFilterBadge(){
+  var b=document.getElementById('rc-filter-badge');
+  if(!b) return;
+  b.style.display=(_trainerFilter||_edgeChipMode!=='trainer')?'inline-flex':'none';
 }
 
 function _selectEdgeChip(mode){
@@ -12119,7 +12153,7 @@ function clearEdgeFilter(){
 function _activateEdgeFilterFromCta(mode){
   selectRacingSection('racecards');
   // _selectEdgeChip -> _tfLoadDays -> renderTodayMeetingsList(true) ->
-  // renderTrainerFilterMultiDay(el, true) already scrolls #edge-filter-chips
+  // renderTrainerFilterMultiDay(el, true) already scrolls the meetings list
   // into view via _scrollAfterRender() — no separate scroll needed here.
   _selectEdgeChip(mode);
 }
@@ -12396,7 +12430,7 @@ function _renderPopularTrainers(){
   out+='<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>';
   out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">'+(_tmMode?'Popular Trainers &middot; Tomorrow':'Popular Trainers')+'</div>';
   out+='</div>';
-  out+='<div onclick="var inp=document.getElementById(\'trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
+  out+='<div onclick="var p=document.getElementById(\'rc-filter-panel\');if(p)p.style.display=\'block\';var inp=document.getElementById(\'rc-trainer-search\');if(inp)inp.focus();var t=document.getElementById(\'today-racecards-title\');if(t){t.style.scrollMarginTop=\'56px\';t.scrollIntoView({behavior:\'smooth\',block:\'start\'});}" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
   out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their runners '+(_tmMode?'tomorrow':'today')+'</div>';
   // Inline trainer search — bare text field with a gold magnifier, no box.
@@ -12711,6 +12745,7 @@ function _selectTrainerSearchResult(name,ddId){
   var dd=document.getElementById(ddId||'trainer-search-dropdown');
   if(dd){ dd.style.display='none'; dd.innerHTML=''; }
   setTrainerFilter(name);
+  if(ddId==='rc-trainer-search-dropdown') _rcFilterClose();
 }
 
 function _clearTrainerSearchInput(){
@@ -18108,6 +18143,7 @@ function selectRacingSection(s){
   // taps and the Form/Analysis/Tips tabs never call this function at all.
   if(_edgeChipMode!=='trainer'&&s!=='home'&&s!=='racecards'){
     clearEdgeFilter();
+    _rcFilterClose();
   }
   if(typeof s==='string'&&s.indexOf('tomorrowtrainer:')===0){
     _trainerFilterSelected = null;
