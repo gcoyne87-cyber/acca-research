@@ -14686,7 +14686,7 @@ function nrLoadProfile(pfx,horseId){
       }
       var _thBox=function(text){
         if(!text)return '';
-        return '<div style="margin-top:6px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(text)+'</div></div>';
+        return '<div style="margin-top:6px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(_thTidy(text))+'</div></div>';
       };
       var _thFor=function(name,from){ return _thMap[norm(name)+'|'+String(from||'')]||''; };
       var _prevItems=[];
@@ -14788,6 +14788,14 @@ function _nrAbDist(d){ var s=String(d||'').trim(); s=s.replace(/^0m/i,''); s=s.r
 function _nrAbGoing(g){
   var raw=String(g||'').replace(/^(TAPETA|POLYTRACK|FIBRESAND):\s*/i,'').trim();
   return raw.replace(/\bGood To\b/gi,'Gd To').replace(/\bStandard\b/gi,'Std').replace(/\bYielding\b/gi,'Yld').replace(/\bTo Heavy\b/gi,'To Hvy');
+}
+function _thTidy(t){
+  var s=String(t||'');
+  var W={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+  s=s.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[- ](one|two|three|four|five|six|seven|eight|nine)\b/gi,function(m,a,b){return String(W[a.toLowerCase()]+W[b.toLowerCase()]);});
+  s=s.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/gi,function(m){return String(W[m.toLowerCase()]);});
+  s=s.replace(/(\d)\s*(per ?cent|percent)\b/gi,'$1%');
+  return s;
 }
 function nrLoadForm(pfx,horseId,silent){
   if(!horseId){if(!silent)nrTogglePanel(pfx,'fe');return;}
@@ -14992,14 +15000,22 @@ function nrLoadForm(pfx,horseId,silent){
         _per.forEach(function(p,i){
           var cur=i===0;
           var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
-          var note=_notes[_normT(p.name)]||'';
+          var note=_thTidy(_notes[_normT(p.name)]||'');
           out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:'+(i===_per.length-1?'0':'10px')+'">';
           out+='<div style="width:9px;height:9px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';margin-top:3px;flex-shrink:0"></div>';
           out+='<div style="flex:1;min-width:0">';
           out+='<div><span style="font-size:12px;font-weight:600;color:'+(cur?'#0b1628':'#4b5563')+'">'+escHtml(p.name)+'</span>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
           out+='<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
-          if(note)out+='<div style="margin-top:5px;background:#fff;border:1px solid #d1fae5;border-left:3px solid #1e9e6b;border-radius:6px;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1e9e6b;margin-bottom:2px">Trainer analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(note)+'</div></div>';
           out+='</div></div>';
+          // Trainer analysis row — same container/label/value styles as the Key
+          // Angle box (_renderFormSections 'key'). That box sits at the panel
+          // edge with margin:8px 0; this one lives inside the timeline's 12px
+          // padded wrapper, so the side margin is -12px to land on the same
+          // left edge and width.
+          if(note)out+='<div style="margin:8px -12px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+            +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">Trainer analysis</div>'
+            +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(note)+'</div>'
+            +'</div>';
         });
         out+='</div>';
       })();

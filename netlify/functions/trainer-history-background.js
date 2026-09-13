@@ -276,7 +276,8 @@ const INSTRUCTION =
   'and what the results were under them. For spells after the first, say what changed versus the ' +
   'previous trainer and whether results improved, held or fell away. For a spell with fewer than 3 runs, ' +
   'be honest that it is too early to call a pattern. No opinions about the future, no tips, no prices. ' +
-  'No markdown. Return ONLY a JSON array, one object per spell in the same order, each ' +
+  'No markdown. Always write numbers as digits (14 starts, 3 wins, 5 weeks) and percentages with the % sign (57%), never as words. ' +
+  'Return ONLY a JSON array, one object per spell in the same order, each ' +
   '{"trainer":"<name>","text":"<paragraph>"}.';
 
 function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
