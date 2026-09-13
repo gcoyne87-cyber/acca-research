@@ -18216,21 +18216,23 @@ function selectRacingSection(s){
   if(tmrwC) tmrwC.style.display="none";
   if(futureC) futureC.style.display="none";
   if(winnersC) winnersC.style.display="none";
-  if(picksC) picksC.style.display="none";
+  // Homepage picks (NAP/NB) stay on screen for racecards too — card CTAs,
+  // "Go to" buttons, trainer filters and race pills all land here and must
+  // not make the cards vanish. Hidden only for genuinely different sections.
+  if(picksC) picksC.style.display=(s==="racecards")?"":"none";
   if(nrPanel) nrPanel.style.display="none";
   if(myResearchC) myResearchC.style.display="none";
   if(resultsC) resultsC.style.display="none";
   var homeNRL=document.getElementById('home-nextrace-label');
   if(homeNRL) homeNRL.style.display='none';
   var carouselSec=document.getElementById("home-carousel-section");
-  // With an Edge Filter chip active, keep the DI carousel visible on
-  // 'racecards' too (e.g. after _activateEdgeFilterFromCta navigates here) —
-  // otherwise it collapses to hidden and the date strip below it becomes the
-  // first visible thing on the page, looking like it jumped to the top.
-  // No filter active: 'racecards' behaves exactly as before, unchanged.
-  if(carouselSec) carouselSec.style.display=(s==="home"||_horseHighlight||(s==="racecards"&&_edgeChipMode!=='trainer'))?"":"none";
+  // The Daily Intelligence carousel stays visible on the homepage and on
+  // 'racecards' unconditionally — every homepage tap that opens a race or a
+  // trainer filter routes through 'racecards', and the carousel must never
+  // vanish on interaction. Hidden only for genuinely different sections.
+  if(carouselSec) carouselSec.style.display=(s==="home"||s==="racecards")?"":"none";
   var homeResStrip=document.getElementById("home-res-strip");
-  if(homeResStrip) homeResStrip.style.display=(s==="home"&&window._homeResHasData)?"":"none";
+  if(homeResStrip) homeResStrip.style.display=((s==="home"||s==="racecards")&&window._homeResHasData)?"":"none";
   var hws=document.getElementById("home-winners-strip");
   if(hws) hws.style.display="none";
   var dpb=document.getElementById("racing-datepills-bar");
@@ -18241,9 +18243,9 @@ function selectRacingSection(s){
   if(homeStripBar) homeStripBar.style.display=((s==="home"||s==="racecards")&&!_ctaSuppressDateStrip)?"flex":"none";
   _ctaSuppressDateStrip=false;
   var picksSecTitle=document.getElementById("picks-section-title");
-  if(picksSecTitle) picksSecTitle.style.display=(s==="pickofday"||s==="home")?"none":"";
+  if(picksSecTitle) picksSecTitle.style.display=(s==="pickofday"||s==="home"||s==="racecards")?"none":"";
   var nrHomeWrap=document.getElementById("nr-home-wrap");
-  var picksSecSub=document.getElementById("picks-section-sub"); if(picksSecSub) picksSecSub.style.display=s==="home"?"none":"";
+  var picksSecSub=document.getElementById("picks-section-sub"); if(picksSecSub) picksSecSub.style.display=(s==="home"||s==="racecards")?"none":"";
   if(s==="home"){
     if(todayC) todayC.style.display="";
     var e8f=document.getElementById("racing-today-meetings");
@@ -18261,6 +18263,11 @@ function selectRacingSection(s){
     renderTodayMeetingsList();
     renderNextRaceSection();
   } else if(s==="racecards"){
+    // Arriving from Picks of the Day leaves _picksMode at 'full' — restore
+    // the homepage card layout so the NAP/NB block matches the home view.
+    if(_picksMode!=='home'){ _picksMode='home'; selectPicksDate("today"); }
+    var ppbRc=document.getElementById("picks-datepills-bar");
+    if(ppbRc) ppbRc.style.display="none";
     if(nrHomeWrap) nrHomeWrap.style.display="none";
     if(nrPanel) nrPanel.style.display="";
     if(homeNRL) homeNRL.style.display="";
