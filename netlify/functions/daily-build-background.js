@@ -2571,6 +2571,70 @@ exports.handler = async function(event) {
           raceIntelligence: (bigRaceCandidate.analysisEntry.strongestSelection && bigRaceCandidate.analysisEntry.strongestSelection.pullQuote) || bigRaceCandidate.analysisEntry.raceIntelligence,
           courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
         };
+        // Dedicated Big Race preview — a race-level briefing rather than the
+        // selection's pullQuote (which argues for one horse). Built exactly
+        // like the C&D+G card: empty system prompt, no search, 400 tokens,
+        // 25s ceiling, tokens into the accumulators. On any failure or empty
+        // response the initial raceIntelligence assignment above stands.
+        const BIG_RACE_CARD_TIMEOUT_MS = 25000;
+        let brcTimer = null;
+        try {
+          const brRunners = (bigRaceCandidate.race.runners || []).filter(function(r) { return !r.is_non_runner; });
+          const brRunnerLines = brRunners.map(function(r) {
+            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+            const sp = oddsArr
+              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+            const parts = [r.horse || r.name || 'Unknown'];
+            if (r.trainer) parts.push('trainer ' + r.trainer);
+            if (r.jockey) parts.push('jockey ' + r.jockey);
+            parts.push('price ' + sp);
+            if (r.form) parts.push('recent form ' + r.form);
+            return parts.join(', ');
+          });
+          const brDetails = [
+            'Race: ' + report.bigRace.raceName,
+            'Course: ' + report.bigRace.course,
+            'Time: ' + report.bigRace.time,
+            'Distance: ' + (report.bigRace.distance || 'unknown'),
+            'Going: ' + (report.bigRace.going || 'unknown'),
+            'Class/grade: ' + (report.bigRace.raceClass || 'unknown'),
+            'Prize: ' + (report.bigRace.prize || 'unknown'),
+            'Runners: ' + report.bigRace.runners
+          ].join('. ');
+          const bigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
+            ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
+            ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
+            ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+            ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
+            ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
+            ' Open with what the race is and the shape of the field.' +
+            ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
+            ' Note the key filter for the race today (going, trip or class).' +
+            ' Close by directing the reader to the full racecard on Racing Edge.' +
+            ' The race: ' + brDetails + '. The runners: ' + brRunnerLines.join('; ');
+          const brcResp = await Promise.race([
+            callClaude('', bigRacePrompt, 400, true),
+            new Promise(function(_, reject) {
+              brcTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_CARD_TIMEOUT_MS);
+            })
+          ]);
+          if (brcResp.text && brcResp.text.trim()) report.bigRace.raceIntelligence = brcResp.text.trim();
+          report.inputTokens += brcResp.inputTokens || 0;
+          report.outputTokens += brcResp.outputTokens || 0;
+          report.cacheReadTokens += brcResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += brcResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'bigrace-card', label: 'Big Race Preview',
+            inputTokens: brcResp.inputTokens || 0, outputTokens: brcResp.outputTokens || 0,
+            cacheReadTokens: brcResp.cacheReadTokens || 0, cacheWriteTokens: brcResp.cacheWriteTokens || 0
+          });
+        } catch (eBRC) {
+          console.log('[daily-build] bigRace preview: ' + eBRC.message);
+          report.errors.push('bigRace preview: ' + eBRC.message);
+        } finally {
+          if (brcTimer) clearTimeout(brcTimer);
+        }
         // Short display name for the card title — one small Claude call. Falls
         // back to the full raceName on any failure or empty response so the
         // card always has a title. Tokens roll into the report accumulators
