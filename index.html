@@ -15020,7 +15020,9 @@ function nrLoadForm(pfx,horseId,silent){
         out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
-        var _lastTrainer='';
+        var _lastTrainer='',_lastDate='';
+        // Same normalisation as the timeline's _normT (declared inside that IIFE, so not visible here).
+        var _normT2=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
         hist.forEach(function(h,_hi){
           if(_hi===6){
             out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
@@ -15032,10 +15034,10 @@ function nrLoadForm(pfx,horseId,silent){
           var _dp=h.date?String(h.date).split('-'):[];
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
           var _tr=h.trainer||'';
-          if(_tr&&_tr!==_lastTrainer&&_lastTrainer!==''){
-            out+='<tr><td colspan="7" style="padding:6px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_tr)+' — '+(h.date?h.date.slice(0,7).replace('-',' '):'')+'</div></td></tr>';
+          if(_tr&&_lastTrainer!==''&&_normT2(_tr)!==_normT2(_lastTrainer)){
+            out+='<tr><td colspan="7" style="padding:6px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_lastTrainer)+' — '+(function(){var q=String(_lastDate||'').split('-');return q.length===3?((_fMon[parseInt(q[1],10)-1]||'')+' '+q[0]):'';})()+'</div></td></tr>';
           }
-          _lastTrainer=_tr;
+          _lastTrainer=_tr;_lastDate=h.date||'';
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
           out+='<td style="padding:5px 3px 5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
           out+='<td style="padding:5px 12px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
