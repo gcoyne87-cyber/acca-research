@@ -80,11 +80,14 @@ function sanitize(r) {
   return out;
 }
 
-// Identity is date|horse, matching the client's own dedupeRecs/mergeRecs —
-// NOT the raw id field, because the same real pick carries different id
-// formats across eras (mkid vs signalPickId) and id-matching would duplicate
-// it. The id field itself is preserved on every record.
-function recKey(r) { return r.date + '|' + (r.horse || '').toLowerCase().trim(); }
+// Identity is date|type|normalised horse, matching the client's recKey
+// exactly — normHorse is the client's normName verbatim (country suffix
+// stripped, then everything but a-z0-9). NOT the raw id field, because the
+// same real pick carries different id formats across eras (mkid vs
+// signalPickId) and id-matching would duplicate it. The id field itself is
+// preserved on every record.
+function normHorse(s) { return String(s || '').toLowerCase().replace(/\s*\((ire|gb|fr|usa|ger|aus|nz|ity|spa|bel|den|swe|nor|cze|pol|hun|por|tur|chi|arg|bra|jap|hkg|uae|can|saf|ind)\)/g, '').replace(/[^a-z0-9]/g, ''); }
+function recKey(r) { return r.date + '|' + (r.type || '') + '|' + normHorse(r.horse); }
 
 // Additive merge. Rules: unknown key -> append; incoming has a result and
 // stored doesn't -> incoming wins (fields overlaid, stored fields incoming

@@ -2650,24 +2650,54 @@ window.addEventListener('load',function(){
     // since every getRecs() call now runs through this, and the next saveRecs()
     // call anywhere in the code persists the cleaned result). A resulted entry is
     // always kept over an unresulted one so a recorded W/L/2nd is never lost.
+    // Union primitive. Identity is date + type + normalised horse name. First
+    // occurrence is kept; a later copy replaces it only when it carries a
+    // result the kept one lacks, or upgrades an L to a P (2nd-place recheck).
+    // Nothing is ever dropped — a record only ever loses to a more complete
+    // copy of itself.
+    function recKey(r){ return (r.date||'')+'|'+(r.type||'')+'|'+normName(r.horse||''); }
     function dedupeRecs(recs){
       var keep={};
       var order=[];
       recs.forEach(function(r){
-        var key=(r.date||'')+'|'+(r.horse||'').toLowerCase().trim();
+        if(!r) return;
+        var key=recKey(r);
         var existing=keep[key];
         if(!existing){
           keep[key]=r;
           order.push(key);
         } else if(r.result && !existing.result){
           keep[key]=r;
+        } else if(existing.result==='L' && r.result==='P'){
+          keep[key]=r;
         }
       });
       return order.map(function(key){ return keep[key]; });
     }
+    function unionRecs(a,b){
+      var merged=dedupeRecs((a||[]).concat(b||[]));
+      merged.sort(function(x,y){
+        if(y.date>x.date) return 1;
+        if(y.date<x.date) return -1;
+        return (x.time||'').localeCompare(y.time||'');
+      });
+      return merged;
+    }
 
-    function getRecs(){ try{ return dedupeRecs(JSON.parse(localStorage.getItem(RK))||[]); }catch(e){ return []; } }
-    function saveRecs(r){ localStorage.setItem(RK,JSON.stringify(r)); }
+    // In-memory master copy of the record union. Every read after the first
+    // is served from here, so a localStorage quota failure can never roll the
+    // tracker back to a stale set; localStorage is a best-effort cache only.
+    var _ptMem=null;
+    function getRecs(){
+      if(_ptMem) return _ptMem;
+      try{ _ptMem=dedupeRecs(JSON.parse(localStorage.getItem(RK))||[]); }catch(e){ _ptMem=[]; }
+      return _ptMem;
+    }
+    function saveRecs(r){
+      _ptMem=r;
+      try{ localStorage.setItem(RK,JSON.stringify(r)); }
+      catch(e){ console.warn('[pt-redis] local save skipped — '+(e&&e.name)+': '+(e&&e.message)+' (in-memory union and Redis push unaffected)'); }
+    }
 
     function mkid(date,course,time,horse){
       return (date+course+time+horse).replace(/[^a-z0-9]/gi,'').toLowerCase();
@@ -2731,51 +2761,14 @@ window.addEventListener('load',function(){
       return /stable.whisper/i.test(type||'');
     }
 
+    // Pure union of what we hold and what the build produced. Keyed by
+    // date + type + normalised horse (recKey); a resulted copy beats an
+    // unresulted one. Never drops a record, never rewrites a stored result.
     function mergeRecs(news){
-      var recs=getRecs().filter(function(r){ return !isStableWhisper(r.type); });
-      // For today's date: remove any unresulted picks so fresh build replaces them cleanly
-      if(news.length){
-        var todayDate=news[0].date;
-        var MAIN_TYPES=['NAP','NB','Strongest'];
-        var INTEL_TYPES=['Tipster Consensus','Ground Edge','Course and Distance','Class Drop','Hot Yard','Intelligence','Trainer','Jockey Booking','AI Edge','Ground Alert','Intel 3','Intel 4','Intel 5','Intel 6','Intel 7','Intel 8','Intel 9','Intel 10'];
-        recs=recs.filter(function(r){
-          if(r.date!==todayDate) return true;
-          if(r.result&&r.result!=='') return true;
-          return MAIN_TYPES.indexOf(r.type)<0 && INTEL_TYPES.indexOf(r.type)<0;
-        });
-      }
-      // Enforced here directly, not just trusted from whatever id string a record
-      // happens to carry: the dedup key is horseName+date only. If a record with the
-      // same horse on the same date already exists, it is updated in place — its
-      // type/course/time/price/angle refreshed to the latest fetch, but its result/
-      // pos/sp (anything a human or syncResults has already set) is left untouched.
-      // A second copy of the same horse+date is never created, regardless of id.
-      function pickKey(r){ return (r.date||'')+'|'+(r.horse||'').toLowerCase().trim(); }
-      var byKey={};
-      recs.forEach(function(r){ byKey[pickKey(r)]=r; });
-      news.forEach(function(n){
-        var key=pickKey(n);
-        var existing=byKey[key];
-        if(existing){
-          existing.type=n.type;
-          existing.course=n.course;
-          existing.time=n.time;
-          existing.price=n.price;
-          if(n.angle&&!existing.angle) existing.angle=n.angle;
-          if(!existing.id) existing.id=n.id;
-        } else {
-          recs.push(n);
-          byKey[key]=n;
-        }
-      });
-      recs.sort(function(a,b){
-        if(b.date>a.date) return 1;
-        if(b.date<a.date) return -1;
-        return (a.time||'').localeCompare(b.time||'');
-      });
-      saveRecs(recs);
-      console.log('[pt-trace] mergeRecs: merged '+news.length+' news rec(s); ptRecs2 total now',recs.length); // TEMP TRACE — remove after verification
-      return recs;
+      var merged=unionRecs(getRecs(),news||[]);
+      saveRecs(merged);
+      console.log('[pt-trace] mergeRecs: union of '+(news||[]).length+' new rec(s); total now',merged.length); // TEMP TRACE — remove after verification
+      return merged;
     }
 
     // ---- Redis sync: tracker:recs via tracker-recs.js is the master copy; ----
@@ -2788,20 +2781,7 @@ window.addEventListener('load',function(){
     // Nothing in localStorage is ever cleared or overwritten destructively.
     function ptMergeFromRemote(remote){
       if(!Array.isArray(remote)||!remote.length) return getRecs();
-      var local=getRecs();
-      // Narrow L→P upgrade (2nd-place recheck), mirroring ptShow's own migration
-      var byKey={};
-      local.forEach(function(r){ byKey[(r.date||'')+'|'+(r.horse||'').toLowerCase().trim()]=r; });
-      remote.forEach(function(n){
-        var ex=byKey[(n.date||'')+'|'+(n.horse||'').toLowerCase().trim()];
-        if(ex&&ex.result==='L'&&n.result==='P'){ ex.result='P'; if(n.pos) ex.pos=n.pos; if(n.sp) ex.sp=n.sp; }
-      });
-      var merged=dedupeRecs(local.concat(remote));
-      merged.sort(function(a,b){
-        if(b.date>a.date) return 1;
-        if(b.date<a.date) return -1;
-        return (a.time||'').localeCompare(b.time||'');
-      });
+      var merged=unionRecs(getRecs(),remote);
       saveRecs(merged);
       return merged;
     }
@@ -2824,12 +2804,33 @@ window.addEventListener('load',function(){
     // these same records are re-sent on every unlock/fetch/sync, so a failed
     // or 409'd push self-heals on the next one.
     function ptPushToRedis(records){
-      if(window._ptMigrating) return; // migration owns the lock — auto-pushes pause, records re-send on the next fetch/sync
-      if(!Array.isArray(records)||!records.length) return;
-      fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:records})})
-        .then(function(r){ return r.json(); })
-        .then(function(res){ console.log('[pt-redis] pushed '+records.length+' record(s) — appended '+(res.appended||0)+', updated '+(res.updated||0)+', total in Redis '+(res.total!=null?res.total:'?')); })
+      if(window._ptMigrating) return Promise.resolve(); // migration owns the lock — auto-pushes pause, records re-send on the next fetch/sync
+      if(!Array.isArray(records)||!records.length) return Promise.resolve();
+      // The endpoint accepts 500 records per POST — send the union in
+      // sequential chunks so a full history never trips the batch cap.
+      var CHUNK=500, chunks=[];
+      for(var i=0;i<records.length;i+=CHUNK) chunks.push(records.slice(i,i+CHUNK));
+      var appended=0, updated=0, total=null;
+      return chunks.reduce(function(p,chunk){
+        return p.then(function(){
+          return fetch('/.netlify/functions/tracker-recs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records:chunk})})
+            .then(function(r){ return r.json(); })
+            .then(function(res){ appended+=(res.appended||0); updated+=(res.updated||0); if(res.total!=null) total=res.total; });
+        });
+      },Promise.resolve())
+        .then(function(){ console.log('[pt-redis] pushed '+records.length+' record(s) in '+chunks.length+' chunk(s) — appended '+appended+', updated '+updated+', total in Redis '+(total!=null?total:'?')); })
         .catch(function(e){ console.log('[pt-redis] push failed — '+(e&&e.message)+' (records retry on next fetch/sync)'); });
+    }
+
+    // One sync cycle, used on unlock and on every 60s tick: pull Redis, union
+    // with local, save (best-effort), fetch today's build so new picks land in
+    // the same union, then push that union ONCE. cb receives the in-memory
+    // union — never a re-read of localStorage.
+    function ptSyncCycle(cb){
+      var today=irishDateStr();
+      ptPullFromRedis(function(){
+        fetchToday(today,function(recs){ ptPushToRedis(recs); cb(recs); },{noPush:true});
+      });
     }
 
     // ONE-TIME migration — run window.ptMigrateToRedis() from the browser
@@ -2872,7 +2873,7 @@ window.addEventListener('load',function(){
       })(0);
     };
 
-    function fetchToday(date,cb){
+    function fetchToday(date,cb,opts){
       console.log('[pt-trace] fetchToday →',date); // TEMP TRACE — remove after verification
       fetch('/.netlify/functions/get-daily-build?date='+date)
         .then(function(r){ return r.json(); })
@@ -2937,9 +2938,30 @@ window.addEventListener('load',function(){
           pushPhase3((data.intelPicks||[])[2],'Intel 5');
           console.log('[pt-trace] fetchToday built',news.length,'rec(s) for',date); // TEMP TRACE — remove after verification
           var merged=mergeRecs(news);
-          // Share this date's post-merge records (including any results they
-          // already carry) so every other device rebuilds them from Redis.
-          if(news.length) ptPushToRedis(merged.filter(function(r){ return r.date===date; }));
+          // Superseded-pick prune, today only: a re-run build can change a
+          // pick, and a pure union would otherwise show both. A record for
+          // today with no result, and no counterpart in this build (same
+          // type + normalised horse), is dropped. Past dates and anything
+          // resulted are never touched. Trusted only when the build reports
+          // status 'done' AND produced picks — a loading/error/empty response
+          // must never empty the day.
+          if(data&&data.status==='done'&&news.length&&date===irishDateStr()){
+            var buildKeys={};
+            news.forEach(function(n){ buildKeys[(n.type||'')+'|'+normName(n.horse||'')]=true; });
+            var kept=[], removed=[];
+            merged.forEach(function(r){
+              var unresulted=!(r.result&&r.result!=='')&&!(r.pos&&r.pos!=='')&&!(r.sp&&r.sp!=='');
+              if(r.date===date&&unresulted&&!buildKeys[(r.type||'')+'|'+normName(r.horse||'')]) removed.push(r); else kept.push(r);
+            });
+            if(removed.length){
+              removed.forEach(function(r){ console.log('[pt-trace] fetchToday: removed superseded pick '+r.type+' — '+r.horse+' ('+date+')'); });
+              merged=kept;
+              saveRecs(merged);
+            }
+          }
+          // Share the union so every other device rebuilds from Redis. When
+          // called from ptSyncCycle the cycle pushes once at the end instead.
+          if(news.length&&!(opts&&opts.noPush)) ptPushToRedis(merged);
           cb(merged);
         })
         .catch(function(e){
@@ -3315,7 +3337,7 @@ window.addEventListener('load',function(){
           changed=true;
           changedRecs.push(r);
         });
-        if(changed){ saveRecs(recs); ptRender(recs); ptPushToRedis(changedRecs); }
+        if(changed){ saveRecs(recs); ptRender(recs); ptPushToRedis(recs); }
         if(status){
           status.textContent=changed?'Results updated ✓':'Up to date';
           setTimeout(function(){ status.style.display='none'; },2500);
@@ -3353,11 +3375,9 @@ window.addEventListener('load',function(){
       // Redis first: merge the shared master record set into the local cache
       // before anything renders, so every device starts from identical data.
       // A failed pull falls back to local-only — exactly the old behaviour.
-      ptPullFromRedis(function(){
-        fetchToday(today,function(recs){
-          console.log('[pt-trace] ptShow: today fetch merged — rec dates present:',Array.from(new Set(recs.map(function(r){return r.date;}))).sort().reverse().slice(0,10).join(', ')); // TEMP TRACE — remove after verification
-          ptRender(recs); syncResults(); ptBackfillMissedDates();
-        });
+      ptSyncCycle(function(recs){
+        console.log('[pt-trace] ptShow: sync cycle complete — rec dates present:',Array.from(new Set(recs.map(function(r){return r.date;}))).sort().reverse().slice(0,10).join(', ')); // TEMP TRACE — remove after verification
+        ptRender(recs); syncResults(); ptBackfillMissedDates();
       });
     }
 
@@ -3405,8 +3425,7 @@ window.addEventListener('load',function(){
     if(isAuth()){
       ptShow();
       setInterval(function(){
-        var today=irishDateStr();
-        fetchToday(today,function(recs){ ptRender(recs); syncResults(); });
+        ptSyncCycle(function(recs){ ptRender(recs); syncResults(); });
       },60000);
     }
   })();
@@ -15642,8 +15661,9 @@ function loadHistoricalSelections(){
       .then(function(r){return r.json();})
       .then(function(data){
         if(data&&data.status==='done'&&data.analyses&&data.analyses.length){
-          _ptAllSelByDate[date]=data.analyses;
-          try{localStorage.setItem('allsel:'+date,JSON.stringify(data.analyses));}catch(e){}
+          var _slimHist=_slimAnalyses(data.analyses);
+          _ptAllSelByDate[date]=_slimHist;
+          _storeAllSel(date,_slimHist);
           if(window._ptInjectAllSel) window._ptInjectAllSel();
         }
         fetchNext(dates);
@@ -16174,10 +16194,33 @@ function _normSelName(s){
 }
 // All Race Selections — persistent per-day storage and injection
 var _ptAllSelByDate={};
+// All Selections keeps only what _buildSelRows renders: the race label and the
+// five selection fields. The full analyses (runnerAnalysis for every runner,
+// pullQuote, raceIntelligence) live permanently in Redis daily:report:{date}
+// and never need to be in localStorage — they were ~96% of the 9.5MB that
+// filled the store. Every date is kept; only the shape changes.
+function _slimAnalyses(arr){
+  return (arr||[]).map(function(a){
+    var sel=a&&a.strongestSelection;
+    return {
+      race:(a&&a.race)||'',
+      pickRank:(a&&a.pickRank!=null)?a.pickRank:undefined,
+      strongestSelection:sel?{horseName:sel.horseName||'',odds:sel.odds||'',jockey:sel.jockey||'',trainer:sel.trainer||'',confidenceLevel:sel.confidenceLevel||''}:null
+    };
+  });
+}
+function _storeAllSel(date,slim){
+  try{ localStorage.setItem('allsel:'+date,JSON.stringify(slim)); }
+  catch(e){ console.warn('[pt-allsel] local save skipped for '+date+' — '+(e&&e.name)+' (rendering from memory)'); }
+}
+// Results lookups also held in memory so a full localStorage never blanks the
+// result column — _ptInjectAllSel reads here first, localStorage second.
+window._ptResMem={};
 // Non-runner exclusions keyed by date → array of normalised horse names
 var _selExclude={};
 
 // Load any previously saved days and exclusions from localStorage on startup
+var _allselBytesBefore=0,_allselBytesAfter=0;
 (function(){
   // Bootstrap known non-runners
   var _knownNR={'2026-06-17':['linwood']};
@@ -16192,7 +16235,14 @@ var _selExclude={};
       var _k=localStorage.key(_i);
       if(_k&&_k.indexOf('allsel:')===0){
         var _d=_k.replace('allsel:','');
-        try{_ptAllSelByDate[_d]=JSON.parse(localStorage.getItem(_k));}catch(e){}
+        try{
+          var _rawSel=localStorage.getItem(_k);
+          var _slimSel=_slimAnalyses(JSON.parse(_rawSel));
+          _ptAllSelByDate[_d]=_slimSel;
+          // One-time rewrite of a legacy full-size cache into the slim shape.
+          var _slimJson=JSON.stringify(_slimSel);
+          if(_rawSel&&_slimJson.length<_rawSel.length){ _allselBytesBefore+=_rawSel.length*2; _allselBytesAfter+=_slimJson.length*2; localStorage.setItem(_k,_slimJson); }
+        }catch(e){}
       }
       if(_k&&_k.indexOf('selexcl:')===0){
         var _ed=_k.replace('selexcl:','');
@@ -16201,6 +16251,7 @@ var _selExclude={};
       // Pre-load cached results — unused key skips silently
     }
   }catch(e){}
+  if(_allselBytesBefore) console.log('[pt-allsel] slimmed legacy caches: '+(_allselBytesBefore/1024/1024).toFixed(2)+'MB -> '+(_allselBytesAfter/1024/1024).toFixed(2)+'MB');
 })();
 
 function _fmtSelDate(d){
@@ -16306,6 +16357,8 @@ window._ptRQNext=function(){
       var _races=(data&&data.races)||[];
       console.log('[pt-trace] get-results ←',item.d,'lookup keys:',lk?Object.keys(lk).length:0,'partial:',_isPartial,(data&&data.error)?('error: '+data.error):''); // TEMP TRACE — remove after verification
       if(lk&&Object.keys(lk).length){
+        // Memory first — a full localStorage must never blank today's results.
+        window._ptResMem[item.d]={partial:_isPartial,lookup:lk,races:_races};
         try{
           // Quota guard: results:{date} caches are only needed while a date's
           // records are still being resulted — anything older than 3 days has
@@ -16389,8 +16442,10 @@ window._ptInjectAllSel=function(){
     // rate-limit fixes) — both suspect kinds trigger one refresh per session
     // for past dates, and the writer keeps whichever response has more entries.
     var cachedLookup=null, cachedSuspect=false, cachedRaces=null;
+    var _memRes=window._ptResMem&&window._ptResMem[date];
+    if(_memRes&&_memRes.lookup&&Object.keys(_memRes.lookup).length){ cachedLookup=_memRes.lookup; cachedSuspect=!!_memRes.partial; cachedRaces=_memRes.races||null; }
     try{
-      var _cr=localStorage.getItem('results:'+date);
+      var _cr=cachedLookup?null:localStorage.getItem('results:'+date);
       if(_cr){
         var _cp=JSON.parse(_cr);
         if(_cp && !Array.isArray(_cp.races)) _cp = null;
@@ -16456,8 +16511,9 @@ setInterval(function(){
 function renderAllSelections(analyses,date){
   if(!analyses||!analyses.length||!date) return;
   // Save to localStorage and in-memory store
-  _ptAllSelByDate[date]=analyses;
-  try{localStorage.setItem('allsel:'+date,JSON.stringify(analyses));}catch(e){}
+  var slim=_slimAnalyses(analyses);
+  _ptAllSelByDate[date]=slim;
+  _storeAllSel(date,slim);
   window._ptInjectAllSel();
 }
 
