@@ -13122,7 +13122,7 @@ function rcRaceDetailSingleHtml(m,selRace){
   if(selRace==null||selRace>=m.races.length) return '';
   var out='<div id="rcs-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var race=m.races[selRace];
-  var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
+  var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
   out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
   out+='</div>';
@@ -13561,7 +13561,7 @@ function rcRaceDetailHtml(m){
 
   var out='<div id="rc-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
 
-  var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS);
+  var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
   out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
 

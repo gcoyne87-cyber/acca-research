@@ -404,6 +404,7 @@ exports.handler = async function(event) {
               return; // no price update or movement tracking for a withdrawn horse
             }
             if (ru.horse_id && freshPriceMap.hasOwnProperty(ru.horse_id)) {
+              ru.nonRunner = false; // reinstated by the API — show it again
               ru.price = freshPriceMap[ru.horse_id];
               if (applyPriceMovement(ru, freshPriceMap[ru.horse_id], anchors)) anchorsDirty = true;
               todayUpdated++;
