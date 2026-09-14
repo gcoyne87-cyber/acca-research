@@ -12246,16 +12246,20 @@ function renderTrainerFilterMultiDay(el,isInitial){
     return;
   }
 
-  // Two-line tabs: day label on top (active/inactive/disabled treatment
-  // unchanged), matched-race count beneath. Vertical padding trimmed to fit
-  // the second line; horizontal padding, colours and weights as before.
-  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:7px 16px 6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
-  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:7px 16px 6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
-  var disabledStyle='background:none;color:#ccd1dc;border:none;border-bottom:2px solid transparent;padding:7px 16px 6px;font-size:13px;font-weight:500;cursor:default;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
+  // Two-line tabs styled exactly like the plain date strip (_DAY_TAB_ACTIVE /
+  // _DAY_TAB_INACTIVE, same container background and border). The only
+  // difference is the bottom padding, trimmed so the count line fits with
+  // the top line in the same place. Disabled = inactive, lighter, no pointer.
+  var _twoLine=';padding:9px 16px 6px;text-align:center';
+  var activeStyle=_DAY_TAB_ACTIVE+_twoLine;
+  var inactiveStyle=_DAY_TAB_INACTIVE+_twoLine;
+  var disabledStyle=_DAY_TAB_INACTIVE.replace('color:#9aa3b5','color:#ccd1dc').replace('cursor:pointer','cursor:default')+_twoLine;
 
-  out+='<div style="display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7">';
+  out+='<div style="display:flex;background:#f5f7fb;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
   _visibleDayKeys.forEach(function(k){
-    var label=_tfDayLabels[k]||k;
+    // Same label text as the plain strip: _tfDayDates[0] is tomorrow, so the
+    // day offset is index+1; 'today' is offset 0.
+    var label=k==='today'?_dayTabLabel(new Date(),0):_dayTabLabel(new Date(k+'T12:00:00'),_tfDayDates.indexOf(k)+1);
     var count=dayMatches[k].length;
     var isActive=k===_tfSelectedDay;
     var style=count===0?disabledStyle:(isActive?activeStyle:inactiveStyle);
@@ -12862,11 +12866,23 @@ function _rcSetRacecardsHeading(){
   if(s) s.textContent='Race analysis and form guide for '+(tm?"tomorrow's":"today's")+' meetings';
 }
 
+// Day-tab styles and label rule shared by the plain date strips (home and
+// Cards tab) and the filtered view's day tabs, so the three rows are
+// visually identical. One implementation of each.
+var _DAY_TAB_ACTIVE='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+var _DAY_TAB_INACTIVE='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+// i is the day offset from today: 0 Today, 1 Tomorrow, otherwise "Wed 16th".
+// 11th-13th are 'th' despite ending 1/2/3.
+function _dayTabLabel(d,i){
+  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var dayNum=d.getDate();
+  var ordSfx=(dayNum%100>=11&&dayNum%100<=13)?'th':(dayNum%10===1?'st':dayNum%10===2?'nd':dayNum%10===3?'rd':'th');
+  return i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()]+' '+dayNum+ordSfx;
+}
 function buildDateStrip(){
   var now=new Date();
-  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
-  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var activeStyle=_DAY_TAB_ACTIVE;
+  var inactiveStyle=_DAY_TAB_INACTIVE;
   var homeHtml='',cardsHtml='';
   for(var i=0;i<7;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
@@ -12874,10 +12890,8 @@ function buildDateStrip(){
     var ds=y+'-'+mo+'-'+dy;
     var dateVal=i===0?'today':i===1?'tomorrow':ds;
     // Future pills: day name + date with ordinal suffix ("Sun 8th") so a week
-    // of pills is unambiguous. 11th-13th are 'th' despite ending 1/2/3.
-    var dayNum=d.getDate();
-    var ordSfx=(dayNum%100>=11&&dayNum%100<=13)?'th':(dayNum%10===1?'st':dayNum%10===2?'nd':dayNum%10===3?'rd':'th');
-    var label=i===0?'Today':i===1?'Tomorrow':dayNames[d.getDay()]+' '+dayNum+ordSfx;
+    // of pills is unambiguous — _dayTabLabel, shared with the filtered view.
+    var label=_dayTabLabel(d,i);
     // Home strip highlights the actual current _homeRcDay (may now default to
     // Tomorrow after evening racing); cards strip is untouched — still i===0,
     // matching _cardsDay's own separate, unchanged default.
