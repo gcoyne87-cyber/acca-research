@@ -15567,6 +15567,7 @@ function renderAiEdgeCarousel(){
 var AI_INTELLIGENCE=[];
 var INTEL_PICKS=[];
 var BIG_RACE=null;
+var BIG_RACE_TOMORROW=null;  // report.bigRaceTomorrow — shown only when today's Big Race card is hidden/absent
 var CANDG_CARD=null;
 var CANDG_COUNT=0;
 var HOT_YARD=null;
@@ -15713,6 +15714,7 @@ function loadDailyBuild(){
       // tell "06:00 the morning after" from "pre-race on its own morning".
       window._intelPicksDate=data.date||'';
       BIG_RACE=data.bigRace||null;
+      BIG_RACE_TOMORROW=data.bigRaceTomorrow||null;
       CANDG_CARD=data.candgCard||null;
       CANDG_COUNT=data.candgHorsesCount||0;
       HOT_YARD=data.hotYard||null;
@@ -15738,18 +15740,6 @@ function loadDailyBuild(){
       });
       if(intelItems.length){
         AI_INTELLIGENCE=intelItems;
-        if(!window._aiIntelligenceRefreshTimer){
-          window._aiIntelligenceRefreshTimer=setInterval(function(){
-            var _beforeLen=AI_INTELLIGENCE.length;
-            AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
-              var _now = irishDateStr();
-              return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination,item.date);
-            });
-            var _clockNow=new Date();
-            var _justAfterMidnight=_clockNow.getHours()===0 && _clockNow.getMinutes()<5;
-            if(AI_INTELLIGENCE.length!==_beforeLen || _justAfterMidnight) renderAIIntelligence();
-          },300000);
-        }
       } else if(INTEL_PICKS.length){
         // Intelligence paused (empty) but intelPicks present — the carousel
         // renders from those; renderAIIntelligence prefers INTEL_PICKS itself.
@@ -15775,6 +15765,27 @@ function loadDailyBuild(){
             }
           },5*60*1000);
         }
+      }
+      // Signal-card expiry timer — was created only when real intelligence
+      // cards existed (never, while generation is paused); now always, since
+      // it also watches today's Big Race card, which hides 15 minutes after
+      // its off time (_bigRaceTodayExpired) and hands over to tomorrow's card.
+      // Re-renders only when something actually changed, or just after
+      // midnight (when the held report's bigRaceTomorrow becomes today's).
+      if(!window._aiIntelligenceRefreshTimer){
+        window._bigRaceExpiredShown=_bigRaceTodayExpired();
+        window._aiIntelligenceRefreshTimer=setInterval(function(){
+          var _beforeLen=AI_INTELLIGENCE.length;
+          AI_INTELLIGENCE=AI_INTELLIGENCE.filter(function(item){
+            var _now = irishDateStr();
+            return (item.date && item.date > _now)?true:!_ctaRaceTimePassed(item.ctaDestination,item.date);
+          });
+          var _clockNow=new Date();
+          var _justAfterMidnight=_clockNow.getHours()===0 && _clockNow.getMinutes()<5;
+          var _brExpired=_bigRaceTodayExpired();
+          var _brChanged=_brExpired!==window._bigRaceExpiredShown;
+          if(AI_INTELLIGENCE.length!==_beforeLen || _justAfterMidnight || _brChanged) renderAIIntelligence();
+        },300000);
       }
       // Always render once here regardless of which branch above matched (or
       // neither) — BIG_RACE/CANDG_CARD are assigned unconditionally above and
@@ -15923,6 +15934,30 @@ function highlightHorse(name){
   renderTomorrowMeetingsList();
 }
 
+// Today's Big Race card hides once now is more than 15 minutes past its off
+// time. The off time is HH:MM on the report's own racing date
+// (window._intelPicksDate, stamped from data.date): a held report from
+// yesterday is therefore always expired, which is what lets its
+// bigRaceTomorrow stand in as today's card after midnight. Shared by
+// renderAIIntelligence and the 5-minute signal-card timer.
+function _bigRaceTodayExpired(){
+  if(!BIG_RACE||!BIG_RACE.time) return false;
+  var _reportDate=window._intelPicksDate||'';
+  var _today=irishDateStr();
+  if(_reportDate&&_reportDate<_today) return true;
+  var m=String(BIG_RACE.time).match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return false;
+  var n=new Date();
+  var off=new Date(n.getFullYear(),n.getMonth(),n.getDate(),parseInt(m[1],10),parseInt(m[2],10),0);
+  return n.getTime()>off.getTime()+15*60*1000;
+}
+// "Tue 15 Sep" for the time/venue line of a dated Big Race card.
+function _bigRaceDateLabel(ds){
+  var d=new Date(String(ds||'')+'T12:00:00');
+  if(isNaN(d.getTime())) return '';
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
+}
 function renderAIIntelligence(){
   var _ldNow=new Date();
   var _todayStr = irishDateStr(_ldNow);
@@ -15980,7 +16015,9 @@ function renderAIIntelligence(){
   // out of the shared item shape above and appended as its own special item
   // (isBigRace:true) instead. It still rides the same _items array so the
   // dot indicator and scroll-snap index below stay in sync automatically.
-  if(BIG_RACE&&BIG_RACE.raceIntelligence){
+  var _showTodayBig=!!(BIG_RACE&&BIG_RACE.raceIntelligence)&&!_bigRaceTodayExpired();
+  window._bigRaceExpiredShown=_bigRaceTodayExpired();
+  if(_showTodayBig){
     _items=_items.concat([{
       isBigRace:true,
       signalType:'BIG RACE OF THE DAY',
@@ -16027,6 +16064,34 @@ function renderAIIntelligence(){
       winners7d:HOT_YARD.winners7d||0,
       runners7d:HOT_YARD.runners7d||0,
       intelligenceText:escHtml(HOT_YARD_CARD||'')
+    }]);
+  }
+
+  // Tomorrow's Big Race — only when today's Big Race card is hidden (15 min
+  // past its off) or absent, never alongside it, and always the last card.
+  // After midnight the held report is yesterday's build, so its
+  // bigRaceTomorrow IS today's race: it is then labelled and dated as today's
+  // Big Race of the Day, with a today route, until the new build replaces
+  // the report. Same item shape and markup as today's card (isBigRace).
+  if(!_showTodayBig&&BIG_RACE_TOMORROW&&BIG_RACE_TOMORROW.raceIntelligence){
+    var _tmDate=BIG_RACE_TOMORROW.date||'';
+    var _tmIsToday=!!(_tmDate&&_tmDate<=_todayStr);
+    _items=_items.concat([{
+      isBigRace:true,
+      signalType:_tmIsToday?'BIG RACE OF THE DAY':"TOMORROW'S BIG RACE OF THE DAY",
+      sigColor:'#d4af37',
+      raceName:BIG_RACE_TOMORROW.raceName||'',
+      raceNameShort:BIG_RACE_TOMORROW.raceNameShort||BIG_RACE_TOMORROW.raceName||'',
+      course:BIG_RACE_TOMORROW.course||'',
+      time:BIG_RACE_TOMORROW.time||'',
+      dateLabel:_bigRaceDateLabel(_tmIsToday?_todayStr:_tmDate),
+      prize:BIG_RACE_TOMORROW.prize||'',
+      runners:BIG_RACE_TOMORROW.runners||0,
+      distance:BIG_RACE_TOMORROW.distance||'',
+      going:_goingClean(BIG_RACE_TOMORROW.going||''),
+      raceClass:BIG_RACE_TOMORROW.raceClass||'',
+      intelligenceText:escHtml(BIG_RACE_TOMORROW.raceIntelligence||''),
+      ctaDestination:(_tmIsToday?'race:':'tomorrowrace:')+(BIG_RACE_TOMORROW.course||'')+':'+(BIG_RACE_TOMORROW.time||'')
     }]);
   }
 
@@ -16090,7 +16155,7 @@ function renderAIIntelligence(){
             if(_grm){_gr=_grm[0].trim();_rn=_rn.slice(0,_rn.length-_grm[0].length).trim();}
             return '<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_rn+(_gr?'<span style="font-size:14px;font-weight:400;color:#fff"> '+_gr+'</span>':'')+'</div>';
           })()
-          +'<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">'+escHtml((item.time+' '+item.course).trim())+'</div>'
+          +'<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">'+escHtml((item.time+' '+item.course).trim())+(item.dateLabel?' <span style="font-weight:500;color:rgba(255,255,255,0.7)">&middot; '+escHtml(item.dateLabel)+'</span>':'')+'</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+escHtml([_nrAbDist(item.distance), _goingClean(item.going), item.runners?(item.runners+' runners'):''].filter(Boolean).join(' · '))+'</div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'

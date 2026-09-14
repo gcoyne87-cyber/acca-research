@@ -2683,6 +2683,157 @@ exports.handler = async function(event) {
       report.errors.push('bigRace: ' + e.message);
     }
 
+    // 4.55 Tomorrow's Big Race of the Day — the highest-prize race on
+    // tomorrow's cached card (racecards:{tomorrow}, the Redis meetings shape
+    // fetch-future-cards-background.js writes at 23:00, so it is present at
+    // this build). No analysis requirement — tomorrow isn't analysed yet.
+    // Fields map onto the same names report.bigRace uses; same preview and
+    // short-name calls, ceilings and token accounting, with their own callLog
+    // types (bigrace-tomorrow-card / bigrace-tomorrow-name). Left undefined
+    // when tomorrow's card is missing or holds no race with a parseable prize.
+    // report.bigRace above is not touched.
+    try {
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const tmCard = await redisGet('racecards:' + tomorrowStr);
+      if (tmCard && Array.isArray(tmCard.meetings) && tmCard.meetings.length) {
+        // Same prize rules as today's block (its helpers are scoped to that try).
+        const parsePrizeAmountT = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+        const hasMultiplePrizeValuesT = s => {
+          const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+          const groups = noThousandsCommas.match(/\d+/g) || [];
+          return groups.length > 1;
+        };
+        let tmCandidate = null;
+        let tmTop = -1;
+        tmCard.meetings.forEach(function(m) {
+          (m.races || []).forEach(function(race) {
+            if (hasMultiplePrizeValuesT(race.prize)) return;
+            const amt = parsePrizeAmountT(race.prize);
+            if (amt > tmTop) { tmTop = amt; tmCandidate = { meeting: m, race: race }; }
+          });
+        });
+        if (tmCandidate) {
+          const tmM = tmCandidate.meeting, tmR = tmCandidate.race;
+          const tmRunners = (tmR.runners || []).filter(function(r) { return !r.nonRunner; });
+          report.bigRaceTomorrow = {
+            date: tomorrowStr,
+            course: tmM.name || '',
+            time: tmR.t || '',
+            raceName: (function(){
+              var n=String(tmR.name||'');
+              n=n.replace(/\s*\(GBB Race\)/gi,'');
+              n=n.replace(/\s*\(GBB\)\s*/gi,'');
+              n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
+              return n.trim();
+            })(),
+            prize: tmR.prize || '',
+            runners: tmRunners.length || tmR.r || 0,
+            distance: tmR.dist || '',
+            going: tmR.going || tmM.going || '',
+            raceClass: tmR.class || '',
+            raceIntelligence: '',
+            courseId: tmM.id || tmM.name || ''
+          };
+          // Preview — same call, ceiling and accounting as today's bigrace-card;
+          // "today" in the prompt becomes "tomorrow". Runner lines come from
+          // the cached card's price/form fields (no odds arrays on this shape).
+          const TM_BIG_RACE_CARD_TIMEOUT_MS = 25000;
+          let tbrcTimer = null;
+          try {
+            const tmRunnerLines = tmRunners.map(function(r) {
+              const parts = [r.name || 'Unknown'];
+              if (r.trainer) parts.push('trainer ' + r.trainer);
+              if (r.jockey) parts.push('jockey ' + r.jockey);
+              parts.push('price ' + (r.price || 'SP'));
+              if (r.form) parts.push('recent form ' + r.form);
+              return parts.join(', ');
+            });
+            const tmDetails = [
+              'Race: ' + report.bigRaceTomorrow.raceName,
+              'Course: ' + report.bigRaceTomorrow.course,
+              'Time: ' + report.bigRaceTomorrow.time,
+              'Distance: ' + (report.bigRaceTomorrow.distance || 'unknown'),
+              'Going: ' + (report.bigRaceTomorrow.going || 'unknown'),
+              'Class/grade: ' + (report.bigRaceTomorrow.raceClass || 'unknown'),
+              'Prize: ' + (report.bigRaceTomorrow.prize || 'unknown'),
+              'Runners: ' + report.bigRaceTomorrow.runners
+            ].join('. ');
+            const tmBigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
+              ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
+              ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
+              ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+              ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
+              ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
+              ' Open with what the race is and the shape of the field.' +
+              ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
+              ' Note the key filter for the race tomorrow (going, trip or class).' +
+              ' Close by directing the reader to the full racecard on Racing Edge.' +
+              ' The race: ' + tmDetails + '. The runners: ' + tmRunnerLines.join('; ');
+            const tbrcResp = await Promise.race([
+              callClaude('', tmBigRacePrompt, 400, true),
+              new Promise(function(_, reject) {
+                tbrcTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_CARD_TIMEOUT_MS);
+              })
+            ]);
+            if (tbrcResp.text && tbrcResp.text.trim()) report.bigRaceTomorrow.raceIntelligence = tbrcResp.text.trim();
+            report.inputTokens += tbrcResp.inputTokens || 0;
+            report.outputTokens += tbrcResp.outputTokens || 0;
+            report.cacheReadTokens += tbrcResp.cacheReadTokens || 0;
+            report.cacheWriteTokens += tbrcResp.cacheWriteTokens || 0;
+            report.callLog.push({
+              type: 'bigrace-tomorrow-card', label: 'Tomorrow Big Race Preview',
+              inputTokens: tbrcResp.inputTokens || 0, outputTokens: tbrcResp.outputTokens || 0,
+              cacheReadTokens: tbrcResp.cacheReadTokens || 0, cacheWriteTokens: tbrcResp.cacheWriteTokens || 0
+            });
+          } catch (eTBRC) {
+            console.log('[daily-build] bigRaceTomorrow preview: ' + eTBRC.message);
+            report.errors.push('bigRaceTomorrow preview: ' + eTBRC.message);
+          } finally {
+            if (tbrcTimer) clearTimeout(tbrcTimer);
+          }
+          // Short display name — same call and ceiling as today's bigrace-name.
+          report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
+          const TM_BIG_RACE_NAME_TIMEOUT_MS = 20000;
+          let tbrnTimer = null;
+          try {
+            const tmShortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
+              ' Keep the key identity words — drop sponsor names.' +
+              ' For Group/Grade/Listed races keep the grade in' +
+              ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
+              ' Return only the shortened name, nothing else.' +
+              ' Race name: ' + report.bigRaceTomorrow.raceName;
+            const tmShortResp = await Promise.race([
+              callClaude('', tmShortNamePrompt, 60, true),
+              new Promise(function(_, reject) {
+                tbrnTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_NAME_TIMEOUT_MS);
+              })
+            ]);
+            const tmShortText = (tmShortResp.text || '').trim();
+            if (tmShortText) report.bigRaceTomorrow.raceNameShort = tmShortText;
+            report.inputTokens += tmShortResp.inputTokens || 0;
+            report.outputTokens += tmShortResp.outputTokens || 0;
+            report.cacheReadTokens += tmShortResp.cacheReadTokens || 0;
+            report.cacheWriteTokens += tmShortResp.cacheWriteTokens || 0;
+            report.callLog.push({
+              type: 'bigrace-tomorrow-name', label: 'Tomorrow Big Race Short Name',
+              inputTokens: tmShortResp.inputTokens || 0, outputTokens: tmShortResp.outputTokens || 0,
+              cacheReadTokens: tmShortResp.cacheReadTokens || 0, cacheWriteTokens: tmShortResp.cacheWriteTokens || 0
+            });
+          } catch (eTShort) {
+            console.log('[daily-build] bigRaceTomorrow raceNameShort: ' + eTShort.message);
+            report.errors.push('bigRaceTomorrow raceNameShort: ' + eTShort.message);
+            report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
+          } finally {
+            if (tbrnTimer) clearTimeout(tbrnTimer);
+          }
+        }
+      } else {
+        console.log('[daily-build] bigRaceTomorrow: no racecards:' + tomorrowStr + ' — card skipped');
+      }
+    } catch (e) {
+      report.errors.push('bigRaceTomorrow: ' + e.message);
+    }
+
     // 4.6 C&D+G horses — every runner flagged isCandDGoing on today's cached
     // racecard. That flag (plus cdgWinGoing/cdgWinDate) is written directly
     // onto racecards:{date} by refresh-prices-background.js's hourly recheck

@@ -119,6 +119,7 @@ exports.handler = async function(event) {
         intelPicks,
         valuePicks,
         bigRace: report.bigRace || null,
+        bigRaceTomorrow: report.bigRaceTomorrow || null,
         candgCard: report.candgCard || null,
         candgHorsesCount: (report.candgHorses || []).length,
         hotYard: report.hotYard || null,
