@@ -15191,8 +15191,8 @@ function nrLoadForm(pfx,horseId,silent){
 
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
-        out+='<div style="font-size:9px;font-weight:700;color:#0b1628;padding:6px 12px 1px">Form Summary</div>';
-        out+='<div style="font-size:10px;color:#9aa3b5;padding:0 12px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
+        // Same style as the Going preference label (15139), run count folded in after it in a lighter grey.
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:6px 12px 4px">Form summary'+(hist.length?'<span style="color:#b0b7c6"> &middot; '+hist.length+' runs</span>':'')+'</div>';
         out+=_renderFormSections(_fsum,'card');
       }
 
