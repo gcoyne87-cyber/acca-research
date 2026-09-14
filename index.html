@@ -353,6 +353,8 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
 .date-nav{display:flex;align-items:stretch;background:var(--white);border:.5px solid #ebebeb;border-radius:12px;overflow:hidden;margin-bottom:10px;overflow-x:auto;scrollbar-width:none}
 
 .date-nav::-webkit-scrollbar{display:none}
+/* per-horse form table: scrollable, no visible bar (see nrLoadForm / nrLoadProfile) */
+.nrh-form-scroll::-webkit-scrollbar{display:none}
 
 .date-arrow{display:none}
 
@@ -14878,7 +14880,7 @@ function nrLoadProfile(pfx,horseId){
         if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
         out+='</div>';
         out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
-        out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.cur?'<span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span>':'')+'</div>';
+        out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.cur?'<span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span>':'')+'</div>';
         out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(it.sub)+'</div>';
         if(it.note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(it.note)+'</div>';
         if(it.cur&&_thReason==='too-few-runs')out+='<div style="margin-top:4px;font-size:10px;color:#9ca3af">Fewer than three career runs — too early to assess a pattern.</div>';
@@ -14917,7 +14919,7 @@ function nrLoadProfile(pfx,horseId){
       var formHtml='';
       if(runsDesc.length){
         formHtml+='<div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:4px 14px 4px">Form · '+runsDesc.length+' runs</div>';
-        formHtml+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;max-width:100%;border-collapse:collapse;font-size:11px">';
+        formHtml+='<div class="nrh-form-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none"><table style="width:100%;max-width:100%;border-collapse:collapse;font-size:11px">';
         formHtml+='<thead><tr style="border-bottom:2px solid #e4e8f0"><th style="'+TH+'">Date</th><th style="'+TH+'">Course</th><th style="'+TH+'">Dist</th><th style="'+TH+'">Gng</th><th style="'+TH+';text-align:center">Pos</th><th style="'+TH+';text-align:right">SP</th><th style="'+TH+'">Jockey</th><th style="'+TH+';text-align:right">OR</th></tr></thead><tbody>';
         runsDesc.forEach(function(x){
           var r=x.race,m=x.me;
@@ -15177,7 +15179,7 @@ function nrLoadForm(pfx,horseId,silent){
         var _thS2='text-align:left;padding:4px 3px 4px 12px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
         out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:5px 12px 4px">Form · '+hist.length+' runs</div>';
-        out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
+        out+='<div class="nrh-form-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
         out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th><th style="'+_thS2+';text-align:right">OR</th></tr></thead><tbody>';
         var _lastTrainer='',_lastDate='';
@@ -15185,7 +15187,6 @@ function nrLoadForm(pfx,horseId,silent){
         var _normT2=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
         hist.forEach(function(h,_hi){
           if(_hi===6){
-            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="8" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
             out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
           }
           var posStr=String(h.position||h.pos||'-');
@@ -15210,6 +15211,10 @@ function nrLoadForm(pfx,horseId,silent){
           out+='</tr>';
         });
         out+='</tbody></table></div>';
+        // View more / Show less lives OUTSIDE the horizontally-scrolling table container, in
+        // normal flow beneath it, so it never drifts with the columns; left-aligned to the
+        // panel's 12px content edge. nrFmExpand / nrFmCollapse rewrite this div in place.
+        if(hist.length>6)out+='<div id="nrh-fm-'+pfx+'" style="padding:8px 12px;text-align:left"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></div>';
       }
 
       // 4b. Trainer History timeline
@@ -15251,7 +15256,7 @@ function nrLoadForm(pfx,horseId,silent){
           if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
           out+='</div>';
           out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
-          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
+          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
           out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
           if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
           out+='</div></div>';
@@ -15275,24 +15280,24 @@ function nrLoadForm(pfx,horseId,silent){
       if(_pft3)_pft3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load form data.</div>';
     });
 }
+// The control (#nrh-fm-{pfx}) is a div in normal flow beneath the table, not a table
+// row, so expand/collapse only toggle the hidden tbody and rewrite the div's text.
 function nrFmExpand(pfx,el){
   var xTbody=document.getElementById('nrh-fmx-'+pfx);
   var btnRow=document.getElementById('nrh-fm-'+pfx);
   if(xTbody) xTbody.style.display='';
-  if(btnRow&&xTbody){
-    xTbody.appendChild(btnRow);
-    btnRow.innerHTML='<td colspan="8" style="padding:8px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
+  if(btnRow){
+    btnRow.innerHTML='<span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span>';
   }
 }
 function nrFmCollapse(pfx){
   var xTbody=document.getElementById('nrh-fmx-'+pfx);
   var btnRow=document.getElementById('nrh-fm-'+pfx);
   if(xTbody) xTbody.style.display='none';
-  if(btnRow&&xTbody&&xTbody.parentNode){
-    xTbody.parentNode.insertBefore(btnRow,xTbody);
+  if(btnRow&&xTbody){
     var remaining=xTbody.querySelectorAll('tr').length;
     var label=remaining===1?'run':'runs';
-    btnRow.innerHTML='<td colspan="8" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
+    btnRow.innerHTML='<span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span>';
   }
 }
 function _tipsPillState(btn,active){
