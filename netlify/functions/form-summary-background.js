@@ -211,10 +211,15 @@ function apiPost(hostname, path, headers, body) {
       let d = ''; res.on('data', c => d += c);
       res.on('end', () => {
         if (res.statusCode === 429) {
-          reject(new Error('429: rate limited by ' + hostname + path));
+          reject(new Error('429: rate limited by ' + hostname + path + ' ' + d.slice(0, 300)));
           return;
         }
-        try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('Parse')); }
+        try {
+          const parsed = JSON.parse(d);
+          // Non-200 bodies carry their HTTP status so callers can record it.
+          if (parsed && typeof parsed === 'object' && res.statusCode !== 200) parsed.__httpStatus = res.statusCode;
+          resolve(parsed);
+        } catch(e) { reject(new Error('Parse (HTTP ' + res.statusCode + '): ' + d.slice(0, 300))); }
       });
     });
     req.on('error', reject); req.setTimeout(290000); req.write(b); req.end();
@@ -538,7 +543,10 @@ async function condenseOne(existing) {
   // summary untouched for the next run. Never treated as a parse failure.
   if (!resp || resp.type === 'error' || !Array.isArray(resp.content)) {
     const msg = (resp && resp.error && (resp.error.message || resp.error.type)) || 'no content in reply';
-    return { fields: null, apiError: 'API: ' + msg, inputTokens: 0, outputTokens: 0, truncated: false };
+    return { fields: null, apiError: 'API ' + ((resp && resp.__httpStatus) || '?') + ': ' + msg,
+             apiStatus: (resp && resp.__httpStatus) || null,
+             apiBody: JSON.stringify((resp && (resp.error || resp)) || null).slice(0, 300),
+             inputTokens: 0, outputTokens: 0, truncated: false };
   }
   const usage = resp.usage || {};
   const text = (resp.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
@@ -598,6 +606,9 @@ async function runCondense(headers, startTime, DATE, hop) {
   } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
   const counts = { total: 0, condensed: 0, alreadyV2: 0, noSummary: 0, unusable: 0, failed: 0, apiFailed: 0 };
+  // Last API-level failure this run saw — written onto the completion
+  // marker so it can be read without function logs.
+  let lastApiError = null;
   const tokens = { input: 0, output: 0 };
   let timedOut = false;
 
@@ -642,12 +653,16 @@ async function runCondense(headers, startTime, DATE, hop) {
         if (!r) {
           // Request threw (429 after its retry, network) — failed, key untouched.
           counts.failed++; counts.apiFailed++;
-          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + (err && err.message) + ' — key left untouched for retry');
+          const _m = String((err && err.message) || '');
+          const _st = _m.match(/\b(\d{3})\b/);
+          lastApiError = { status: _st ? parseInt(_st[1], 10) : null, body: _m.slice(0, 300), horse: item.horseName, at: new Date().toISOString() };
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + _m + ' — key left untouched for retry');
           return;
         }
         if (r.apiError) {
           // Anthropic returned an error body — failed, key untouched.
           counts.failed++; counts.apiFailed++;
+          lastApiError = { status: r.apiStatus || null, body: r.apiBody || null, horse: item.horseName, at: new Date().toISOString() };
           console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + r.apiError + ' — key left untouched for retry');
           return;
         }
@@ -702,7 +717,8 @@ async function runCondense(headers, startTime, DATE, hop) {
       tokens: tokens,
       elapsedSec: Math.round((Date.now() - startTime) / 1000),
       timedOut: timedOut,
-      hop: hop
+      hop: hop,
+      lastApiError: lastApiError
     };
     try { await redisSet(completeKey, summary); } catch (ce) {}
     console.log('[form-summary] CONDENSE DONE', JSON.stringify(summary));

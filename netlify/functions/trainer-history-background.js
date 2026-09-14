@@ -159,7 +159,11 @@ async function callClaude(systemPrompt, userMessage, maxTokens) {
     outputTokens: usage.output_tokens || 0,
     apiError: resp && resp.type === 'error'
       ? 'API ' + (resp.__httpStatus || '?') + ': ' + ((resp.error && (resp.error.message || resp.error.type)) || 'unknown error')
-      : null
+      : null,
+    // Raw detail for the completion marker's lastApiError: HTTP status and
+    // the first 300 chars of the error body.
+    apiStatus: (resp && resp.type === 'error') ? (resp.__httpStatus || null) : null,
+    apiBody: (resp && resp.type === 'error') ? JSON.stringify(resp.error || resp).slice(0, 300) : null
   };
 }
 
@@ -466,6 +470,9 @@ exports.handler = async function(event) {
   let timedOut = false;
   const counts = { total: 0, generated: 0, skipped: 0, noResults: 0, tooFew: 0, parseFailed: 0, apiFailed: 0, errors: 0 };
   const tokens = { input: 0, output: 0 };
+  // Last API-level failure this run saw — written onto the completion
+  // marker so it can be read without function logs.
+  let lastApiError = null;
 
   try {
     // ── Runners for the target date ──
@@ -567,7 +574,7 @@ exports.handler = async function(event) {
           const resp = await callClaude(SYSTEM_PROMPT, userMessage, 900);
           tokens.input += resp.inputTokens;
           tokens.output += resp.outputTokens;
-          if (resp.apiError) { lastErr = resp.apiError; lastKind = 'api'; console.log('[trainer-history] ' + horseName + ': ' + resp.apiError + (attempt === 0 ? ' — retrying once' : '')); continue; }
+          if (resp.apiError) { lastErr = resp.apiError; lastKind = 'api'; lastApiError = { status: resp.apiStatus, body: resp.apiBody, horse: horseName, at: new Date().toISOString() }; console.log('[trainer-history] ' + horseName + ': ' + resp.apiError + (attempt === 0 ? ' — retrying once' : '')); continue; }
           const arr = parseSpellArray(resp.text);
           if (arr && arr.length === spells.length) { parsed = arr; }
           else { lastErr = 'parse-failed (got ' + (arr ? arr.length : 'no array') + ', expected ' + spells.length + ')'; lastKind = 'parse'; console.log('[trainer-history] ' + horseName + ': ' + lastErr + (attempt === 0 ? ' — retrying once' : '')); }
@@ -613,7 +620,8 @@ exports.handler = async function(event) {
       tokens: tokens,
       elapsedSec: Math.round((Date.now() - startTime) / 1000),
       timedOut: timedOut,
-      hop: hop
+      hop: hop,
+      lastApiError: lastApiError
     };
     try { await redisSet('trainer-history:complete:' + DATE, summary); } catch (ce) {}
     console.log('[trainer-history] DONE', JSON.stringify(summary));

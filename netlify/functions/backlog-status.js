@@ -112,12 +112,18 @@ async function dateStatus(date) {
 
     const thRun = await redisGetJson('trainer-history:complete:' + date);
     const cdRun = await redisGetJson('form-summary-condense:complete:' + date);
-    row.trainerHistoryRun = isObj(thRun) ? { status: thRun.status || '?', completedAt: thRun.completedAt || null, hop: thRun.hop, counts: thRun.counts || null } : null;
-    row.condenseRun = isObj(cdRun) ? { status: cdRun.status || '?', completedAt: cdRun.completedAt || null, hop: cdRun.hop, counts: cdRun.counts || null } : null;
+    row.trainerHistoryRun = isObj(thRun) ? { status: thRun.status || '?', completedAt: thRun.completedAt || null, hop: thRun.hop, counts: thRun.counts || null, lastApiError: thRun.lastApiError || null } : null;
+    row.condenseRun = isObj(cdRun) ? { status: cdRun.status || '?', completedAt: cdRun.completedAt || null, hop: cdRun.hop, counts: cdRun.counts || null, lastApiError: cdRun.lastApiError || null } : null;
   } catch (e) {
     row.error = e.message;
   }
   return row;
+}
+
+// One-line rendering of a marker's lastApiError for the table.
+function fmtApiErr(e) {
+  if (!e) return '';
+  return 'HTTP ' + (e.status || '?') + ' at ' + (e.at || '?') + (e.horse ? ' (' + e.horse + ')' : '') + ': ' + (e.body || '');
 }
 
 function pad(s, w, right) {
@@ -150,6 +156,8 @@ function renderTable(rows) {
       r.condenseRun ? r.condenseRun.status : '-'
     ];
     lines.push(cols.map(function(c, i) { return pad(vals[i], c[1], c[2]); }).join('  ') + (r.error ? '  ERROR: ' + r.error : ''));
+    if (r.trainerHistoryRun && r.trainerHistoryRun.lastApiError) lines.push('            TH last API error: ' + fmtApiErr(r.trainerHistoryRun.lastApiError));
+    if (r.condenseRun && r.condenseRun.lastApiError) lines.push('            Condense last API error: ' + fmtApiErr(r.condenseRun.lastApiError));
   });
   const totals = ['TOTAL', tot.horses, tot.fv2, tot.fold, tot.fnone, tot.tv2, tot.told, tot.tfew, tot.tnr, tot.tpf, tot.tmiss, '', ''];
   lines.push(cols.map(function(c) { return new Array(c[1] + 1).join('-'); }).join('  '));
