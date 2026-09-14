@@ -142,6 +142,7 @@ async function lookupHistory(horse_id, targetDate, today) {
         pos: runner.position || '-',
         ran: (race.runners || []).length || 0,
         sp: runner.sp || '',
+        or: runner.or || '',
         jockey: runner.jockey || '',
         race_class: race.class || race.race_class || '',
         trainer: runner.trainer || '',

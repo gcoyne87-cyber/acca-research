@@ -14925,7 +14925,7 @@ function nrLoadProfile(pfx,horseId){
           var pCol=pInt===1?'#1e9e6b':(pInt===2||pInt===3)?'#b7860b':'#0D1B3E';
           formHtml+='<tr style="border-bottom:0.5px solid #f8f9fb">'
             +'<td style="padding:4px 3px 4px 14px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(fDate(r.date))+'</td>'
-            +'<td style="padding:4px 3px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+escHtml(abC(r.course))+'</td>'
+            +'<td style="padding:4px 3px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+_nrCourseCellHtml(r.course)+'</td>'
             +'<td style="padding:4px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abD(r.dist))+'</td>'
             +'<td style="padding:4px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abG(r.going))+'</td>'
             +'<td style="padding:4px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(String(m.position||'-'))+'</span>'+(x.ran?'<span style="font-size:10px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>'
@@ -14948,6 +14948,24 @@ function nrLoadProfile(pfx,horseId){
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
     });
+}
+// Course cell for the per-horse form tables. Every trailing bracketed
+// qualifier — (AW), (IRE), (FR), (July) — is split off and rendered as a
+// small muted suffix, and the 10-character test applies to the base name
+// only. Bases over 10 characters use the agreed short form; any other long
+// base falls back to an apostrophe truncation of the same shape.
+var _NR_COURSE_ABBR={'chelmsford city':'Chelmsford','wolverhampton':"Wolverh'ton",'bangor-on-dee':'Bangor','leopardstown':"Leop'stown",'market rasen':'Mkt Rasen','newton abbot':'N. Abbot','bellewstown':"Bellews'n",'downpatrick':"Downp'rick",'epsom downs':'Epsom','gowran park':'Gowran','musselburgh':"Mussel'gh",'punchestown':"Punch'town"};
+function _nrCourseParts(name){
+  var s=String(name||'').trim(),quals=[],m;
+  while((m=s.match(/\s*\(([^)]*)\)\s*$/))){quals.unshift(m[1]);s=s.slice(0,s.length-m[0].length).trim();}
+  var base=s;
+  if(base.length>10){var k=base.toLowerCase();base=_NR_COURSE_ABBR[k]||(base.slice(0,8)+"'"+base.slice(-2));}
+  return {base:base,quals:quals};
+}
+function _nrAbCourse(name){var p=_nrCourseParts(name);return p.base+(p.quals.length?' ('+p.quals.join(') (')+')':'');}
+function _nrCourseCellHtml(name){
+  var p=_nrCourseParts(name);
+  return escHtml(p.base)+(p.quals.length?'<span style="font-size:8px;font-weight:400;color:#6b7280"> ('+escHtml(p.quals.join(') ('))+')</span>':'');
 }
 function _nrAbJockey(n){
   var s=String(n||'').replace(/\(\d+\)/g,'').replace(/\s+/g,' ').trim();
@@ -15161,13 +15179,13 @@ function nrLoadForm(pfx,horseId,silent){
         out+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:5px 12px 4px">Form · '+hist.length+' runs</div>';
         out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
-        out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th></tr></thead><tbody>';
+        out+='<thead><tr><th style="'+_thS2+'">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+'">Jockey</th><th style="'+_thS2+';text-align:right">OR</th></tr></thead><tbody>';
         var _lastTrainer='',_lastDate='';
         // Same normalisation as the timeline's _normT (declared inside that IIFE, so not visible here).
         var _normT2=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
         hist.forEach(function(h,_hi){
           if(_hi===6){
-            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
+            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="8" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
             out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
           }
           var posStr=String(h.position||h.pos||'-');
@@ -15177,17 +15195,18 @@ function nrLoadForm(pfx,horseId,silent){
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
           var _tr=h.trainer||'';
           if(_tr&&_lastTrainer!==''&&_normT2(_tr)!==_normT2(_lastTrainer)){
-            out+='<tr><td colspan="7" style="padding:5px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_lastTrainer)+' — '+(function(){var q=String(_lastDate||'').split('-');return q.length===3?((_fMon[parseInt(q[1],10)-1]||'')+' '+q[0]):'';})()+'</div></td></tr>';
+            out+='<tr><td colspan="8" style="padding:5px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_lastTrainer)+' — '+(function(){var q=String(_lastDate||'').split('-');return q.length===3?((_fMon[parseInt(q[1],10)-1]||'')+' '+q[0]):'';})()+'</div></td></tr>';
           }
           _lastTrainer=_tr;_lastDate=h.date||'';
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
           out+='<td style="padding:4px 3px 4px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
-          out+='<td style="padding:4px 12px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
-          out+='<td style="padding:4px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
-          out+='<td style="padding:4px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:4px 12px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:10px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-          out+='<td style="padding:4px 12px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-          out+='<td style="padding:4px 12px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<td style="padding:4px 8px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+_nrCourseCellHtml(h.course||'')+'</td>';
+          out+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
+          out+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
+          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:10px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:4px 8px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
+          out+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<td style="padding:4px 12px 4px 8px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.or||'–')+'</td>';
           out+='</tr>';
         });
         out+='</tbody></table></div>';
@@ -15262,7 +15281,7 @@ function nrFmExpand(pfx,el){
   if(xTbody) xTbody.style.display='';
   if(btnRow&&xTbody){
     xTbody.appendChild(btnRow);
-    btnRow.innerHTML='<td colspan="7" style="padding:8px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
+    btnRow.innerHTML='<td colspan="8" style="padding:8px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
   }
 }
 function nrFmCollapse(pfx){
@@ -15273,7 +15292,7 @@ function nrFmCollapse(pfx){
     xTbody.parentNode.insertBefore(btnRow,xTbody);
     var remaining=xTbody.querySelectorAll('tr').length;
     var label=remaining===1?'run':'runs';
-    btnRow.innerHTML='<td colspan="7" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
+    btnRow.innerHTML='<td colspan="8" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
   }
 }
 function _tipsPillState(btn,active){
