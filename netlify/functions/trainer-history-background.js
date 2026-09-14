@@ -231,7 +231,7 @@ function computeSpells(results, horseId) {
     // background.js fetchHorseHistory); race_class kept as a fallback.
     const cls = race.class || race.race_class || '';
     if (cls && cur.classes.indexOf(cls) === -1) cur.classes.push(cls);
-    cur.positions.push(pos || '-');
+    cur.positions.push((pos || '-') + ' of ' + ((race.runners || []).length || '?'));
     if (race.course) cur.courseSet[race.course] = true;
     if (cur.lastDate) {
       const gap = daysBetween(cur.lastDate, race.date);
@@ -271,25 +271,37 @@ function computeSpells(results, horseId) {
 const SYSTEM_PROMPT = 'You are an expert horse racing form analyst writing for Racing Edge. Output strictly valid JSON.';
 
 const INSTRUCTION =
-  'Write one paragraph per trainer spell, 45-70 words each, in plain factual prose, third person. ' +
-  'Describe what that trainer did with the horse — trip range, ground, spacing between runs, class — ' +
-  'and what the results were under them. For spells after the first, say what changed versus the ' +
-  'previous trainer and whether results improved, held or fell away. For a spell with fewer than 3 runs, ' +
-  'be honest that it is too early to call a pattern. No opinions about the future, no tips, no prices. ' +
-  'No markdown. Always write numbers as digits (14 starts, 3 wins, 5 weeks) and percentages with the % sign (57%), never as words. ' +
+  'You are writing a Trainer Analysis paragraph for each trainer spell in a horse\'s career, for Racing Edge. ' +
+  'You receive the spells in chronological order with computed figures for each: date range, run count, trip range, ' +
+  'going types, courses, class range, average days between runs, wins, places, win rate, win-or-place rate — plus the ' +
+  'same figures for the previous spell where one exists. Each paragraph answers one question: what did this trainer ' +
+  'do with the horse, and did it work? Lead with the change — trip up or down, schedule tightened or loosened, class ' +
+  'raised or dropped, new ground or courses tried, or \'kept the same approach\' if nothing changed. Then give the ' +
+  'evidence: the key figures for this spell against the previous spell. Close with the verdict in plain words: ' +
+  'improvement, decline, or too early to call. Rules: 45–65 words per paragraph; a single-run spell can be shorter. ' +
+  'Numbers as digits (14 starts, 3 wins) and percentages with the % sign (57%). Abbreviate months (Apr 2021). ' +
+  'The current trainer\'s spell is \'since Mon YYYY\' with no end date. Finishing positions as \'3rd of 7\', never \'3/7\'. ' +
+  'Do not open with the horse\'s name or \'began her career under\'; the reader already sees the trainer\'s name and dates. ' +
+  'Do not repeat the horse\'s name in every paragraph. Compare to the previous spell by the previous trainer\'s surname ' +
+  '(e.g. \'up from 11% under Dace\'). For the first spell, describe how the horse was started rather than comparing. ' +
+  'For a single run, say it is too early to call a pattern and draw no conclusions. No opinions about today\'s race, ' +
+  'no tips, no prices, no markdown. ' +
   'Return ONLY a JSON array, one object per spell in the same order, each ' +
   '{"trainer":"<name>","text":"<paragraph>"}.';
 
 function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
 function fmtF(v) { return v == null ? '?' : (v + 'f'); }
 function fmtDelta(n, unit) { if (n == null) return 'n/a'; return (n > 0 ? '+' : '') + n + unit; }
+function fmtGoings(s) { return Object.keys(s.goings).map(function(g) { return g + ' ' + s.goings[g]; }).join(', ') || 'unknown'; }
 
 function buildUserMessage(horseName, spells) {
   const lines = ['Horse: ' + horseName, ''];
   spells.forEach(function(s, i) {
-    const goingStr = Object.keys(s.goings).map(function(g) { return g + ' ' + s.goings[g]; }).join(', ') || 'unknown';
+    const goingStr = fmtGoings(s);
     lines.push('Spell ' + (i + 1) + ': ' + s.trainer);
-    lines.push('  Period: ' + s.from + ' to ' + s.to);
+    // The last spell is the current trainer's — flagged so the prompt's
+    // "since Mon YYYY, no end date" rule has something to key off.
+    lines.push('  Period: ' + s.from + ' to ' + s.to + (i === spells.length - 1 ? ' (current trainer — spell ongoing, no end date)' : ''));
     lines.push('  Runs: ' + s.runs + ' | Wins: ' + s.wins + ' | Places (2nd/3rd): ' + s.places
       + ' | Win rate: ' + pct(s.wins, s.runs) + '% | Win-or-place rate: ' + pct(s.wins + s.places, s.runs) + '%');
     lines.push('  Trip range: ' + fmtF(s.minDistF) + ' to ' + fmtF(s.maxDistF));
@@ -299,12 +311,24 @@ function buildUserMessage(horseName, spells) {
       + ', max gap ' + (s.maxGapDays == null ? 'n/a' : s.maxGapDays + ' days')
       + ', ' + s.runsPerMonth + ' runs per month');
     lines.push('  Distinct courses: ' + s.courses);
-    lines.push('  Finishing positions in order: ' + s.positions.join(', '));
+    lines.push('  Finishing positions in order (position of field size): ' + s.positions.join(', '));
     if (i > 0) {
       const p = spells[i - 1];
       const dMin = (s.minDistF != null && p.minDistF != null) ? round1(s.minDistF - p.minDistF) : null;
       const dMax = (s.maxDistF != null && p.maxDistF != null) ? round1(s.maxDistF - p.maxDistF) : null;
       const dGap = (s.avgGapDays != null && p.avgGapDays != null) ? round1(s.avgGapDays - p.avgGapDays) : null;
+      // The previous spell's full figure set, not just the deltas below, so
+      // the paragraph can quote either side of the comparison.
+      lines.push('  Previous spell (' + p.trainer + ') figures: ' + p.from + ' to ' + p.to
+        + ' | Runs: ' + p.runs + ' | Wins: ' + p.wins + ' | Places (2nd/3rd): ' + p.places
+        + ' | Win rate: ' + pct(p.wins, p.runs) + '% | Win-or-place rate: ' + pct(p.wins + p.places, p.runs) + '%'
+        + ' | Trip range: ' + fmtF(p.minDistF) + ' to ' + fmtF(p.maxDistF)
+        + ' | Going (runs): ' + fmtGoings(p)
+        + ' | Classes: ' + (p.classes.length ? p.classes.join(', ') : 'unknown')
+        + ' | Spacing: avg gap ' + (p.avgGapDays == null ? 'n/a' : p.avgGapDays + ' days')
+        + ', max gap ' + (p.maxGapDays == null ? 'n/a' : p.maxGapDays + ' days')
+        + ', ' + p.runsPerMonth + ' runs per month'
+        + ' | Distinct courses: ' + p.courses);
       lines.push('  Versus previous spell: min trip ' + fmtDelta(dMin, 'f') + ', max trip ' + fmtDelta(dMax, 'f')
         + ', avg gap ' + fmtDelta(dGap, ' days')
         + ', win rate ' + pct(p.wins, p.runs) + '% -> ' + pct(s.wins, s.runs) + '%'
@@ -373,7 +397,13 @@ exports.handler = async function(event) {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   const isScheduled = !event.httpMethod;
   const qs = (event && event.queryStringParameters) || {};
-  const DATE = (qs.date && /^\d{4}-\d{2}-\d{2}$/.test(qs.date)) ? qs.date : '2026-09-13';
+  // ?date=YYYY-MM-DD is required — the 2026-09-13 trial default is gone and
+  // nothing schedules this job, so every run names its own date.
+  const DATE = (qs.date && /^\d{4}-\d{2}-\d{2}$/.test(qs.date)) ? qs.date : null;
+  if (!DATE) {
+    console.log('[trainer-history] refused — ?date=YYYY-MM-DD is required (got ' + JSON.stringify(qs.date || null) + ')');
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'date required: pass ?date=YYYY-MM-DD' }) };
+  }
   // Self-chain hop counter — a partial run re-invokes itself via the test twin
   // with hop+1 until the day is complete or the cap (8) is reached.
   const hop = Math.max(0, parseInt(qs.hop, 10) || 0);
@@ -460,9 +490,11 @@ exports.handler = async function(event) {
       const profileKey = 'horse:profile:v2:' + id;
 
       try {
-        // Skip if already generated within the last 7 days.
+        // Skip only if generated within the last 7 days AND written in the
+        // current style (styleVersion 2) — entries from before the style
+        // change (12/13 Sep 2026) lack the flag and regenerate once.
         const existing = await redisGet(thKey);
-        if (existing && existing.generatedAt) {
+        if (existing && existing.generatedAt && existing.styleVersion === 2) {
           const ageMs = Date.now() - new Date(existing.generatedAt).getTime();
           if (ageMs >= 0 && ageMs < 7 * 86400000) {
             counts.skipped++;
@@ -488,7 +520,7 @@ exports.handler = async function(event) {
         if (!results || !Array.isArray(results.results)) {
           counts.noResults++;
           console.log('[trainer-history] ' + horseName + ' (' + id + '): no results — stored no-results marker');
-          await redisSetEx(thKey, { horseName: horseName, spells: [], reason: 'no-results', generatedAt: new Date().toISOString(), date: DATE }, 604800);
+          await redisSetEx(thKey, { horseName: horseName, spells: [], reason: 'no-results', styleVersion: 2, generatedAt: new Date().toISOString(), date: DATE }, 604800);
           continue;
         }
 
@@ -498,7 +530,7 @@ exports.handler = async function(event) {
         if (totalRuns < 3) {
           counts.tooFew++;
           console.log('[trainer-history] ' + horseName + ' (' + id + '): ' + totalRuns + ' run(s) — too few, stats only');
-          await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'too-few-runs', generatedAt: new Date().toISOString(), date: DATE }, 604800);
+          await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'too-few-runs', styleVersion: 2, generatedAt: new Date().toISOString(), date: DATE }, 604800);
           continue;
         }
 
@@ -518,12 +550,13 @@ exports.handler = async function(event) {
 
         if (!parsed) {
           counts.parseFailed++;
-          await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'parse-failed', error: lastErr || null, generatedAt: new Date().toISOString(), date: DATE }, 604800);
+          await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'parse-failed', error: lastErr || null, styleVersion: 2, generatedAt: new Date().toISOString(), date: DATE }, 604800);
           continue;
         }
 
         const stored = {
           horseName: horseName,
+          styleVersion: 2,
           generatedAt: new Date().toISOString(),
           date: DATE,
           spells: spells.map(function(s, i) {

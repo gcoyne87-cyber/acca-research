@@ -221,6 +221,36 @@ function apiPost(hostname, path, headers, body) {
   });
 }
 
+// ── Glance-level style (styleVersion 2) ──────────────────────────────────────
+// Shared by the main generation prompt in callClaude() and by condense mode
+// below, which rewrites already-stored paragraphs into this style. Key Angle
+// is not governed by these rules — its format line stays as it was.
+const STYLE_RULES =
+  'Never invent facts. Never use yards in distances — write 2m4f not 2m4f110y, strip leading zero miles ' +
+  '(6f not 0m6f). If the form says little, say so honestly — never pad. ' +
+  'Never use: should go close, respected, one to watch, cannot be discounted, each-way claims, ' +
+  'if in the mood, hard to assess, eye-catching, promising, interesting, capable of better. ' +
+  'Glance-level, not an essay. Roughly 35–45 words per section. Keep every fact (dates, courses, ' +
+  'distances, going, positions); cut connective filler and adjectives that carry no data. Finishing ' +
+  'positions always \'3rd of 7\', \'9th of 11\' — never fractions like \'3/7\'. Use \'Best run:\' and ' +
+  '\'Worst:\' as lead-ins where a best/worst is stated. Abbreviate going: Gd To Firm, Gd To Soft, Std, ' +
+  'Std To Slow, Yld, To Hvy. Use (x3) for repeat counts. Numbers as digits. No opinions on today\'s race. ' +
+  'If fewer than 3 runs exist, keep each section to 2 sentences maximum and say the form is limited.';
+
+const STYLE_EXAMPLES =
+  'Target style — four example sections:\n' +
+  'RECENT_FORM: 6 runs, no wins, bottom half throughout. Best run: 3rd of 7 at Salisbury, 30 Jun (1m1f, Gd To Firm). Others: 4th, 4th, 6th, 8th, 9th. Last run 22 Aug, Lingfield (AW), 1m5f Std, finished 4th of 6 — losing run continues since Sep 2025.\n' +
+  'GOING: Run on Standard, Gd To Firm (x3), Gd To Soft, Std To Slow. Best run: 3rd of 7 on Gd To Firm at Salisbury. Worst: 9th of 11 on Std To Slow at Kempton, and 8th of 14 on Gd To Soft at Windsor. No clear going preference.\n' +
+  'TRIP: 1m to 1m5f tried, no wins at any trip. Best run: 3rd of 7 over 1m1f. Last run stepped up to 1m5f, finished 4th of 6. Sole 1m run (Kempton, Sep 2025) was also the worst finish, 9th of 11 — shorter trips haven\'t suited either.\n' +
+  'TRACK: Run at Lingfield (AW), Chepstow, Salisbury (x2), Windsor, Kempton (AW). Only placing above 4th: 3rd of 7 at Salisbury, 30 Jun. Kempton (AW) was the worst result, 9th of 11 in Sep 2025 — no positive form there today.';
+
+// Matches "HORSE: <name>" followed by the five labelled sections
+// (RECENT_FORM / GOING / TRIP / TRACK / KEY_ANGLE), the last section running
+// until the next HORSE: marker or end of text. The one parser for both the
+// main prompt's output and condense mode's (wrapped into the same shape
+// before parsing). Global flag — reset lastIndex before each use.
+const SUMMARY_BLOCK_RE = /HORSE:\s*(.+?)\s*\nRECENT_FORM:\s*([\s\S]*?)\nGOING:\s*([\s\S]*?)\nTRIP:\s*([\s\S]*?)\nTRACK:\s*([\s\S]*?)\nKEY_ANGLE:\s*([\s\S]*?)(?=\nHORSE:|$)/g;
+
 // Accepts up to 10 runners ({ horse_id, horseName, course, time, date,
 // formHistory }) from getFormHistory()'s output. Runners with no form history
 // are skipped before the call — sending an empty/absent history section would
@@ -245,14 +275,10 @@ async function callClaude(runners) {
   }).join('\n\n');
 
   const userMessage = 'For each horse below, write a structured form analysis based solely on its ' +
-    'race history. Do not reference today\'s going or today\'s race. Never invent facts. Never use ' +
-    'yards in distances — write 2m4f not 2m4f110y, strip leading zero miles (6f not 0m6f). If the ' +
-    'form says little, say so honestly — never pad.\n\n' +
+    'race history.\n\n' +
     'Rules every section must follow:\n\n' +
-    'Cite specific facts — date, course, distance, going, finishing position. No vague generalisations.\n' +
-    'Never use: should go close, respected, one to watch, cannot be discounted, each-way claims, ' +
-    'if in the mood, hard to assess, eye-catching, promising, interesting, capable of better.\n' +
-    'If fewer than 3 runs exist, keep each section to 2 sentences maximum and say the form is limited.\n\n' +
+    STYLE_RULES + '\n\n' +
+    STYLE_EXAMPLES + '\n\n' +
     'Return in this exact format for each horse, nothing else:\n' +
     'HORSE: [horse name]\n' +
     'RECENT_FORM: [paragraph — how have the last 6 runs gone, any trend improving declining or inconsistent]\n' +
@@ -283,11 +309,10 @@ async function callClaude(runners) {
   const truncated = resp.stop_reason === 'max_tokens';
   if (truncated) console.warn('[form-summary] batch truncated at max_tokens — ' + usable.map(function(r) { return r.horseName || r.horse_id; }).join(', '));
 
-  // Matches "HORSE: <name>" followed by the five labelled sections
-  // (RECENT_FORM / GOING / TRIP / TRACK / KEY_ANGLE), the last section running
-  // until the next HORSE: marker or end of text.
+  // SUMMARY_BLOCK_RE (module level) — shared with condense mode.
   const summaries = [];
-  const blockRe = /HORSE:\s*(.+?)\s*\nRECENT_FORM:\s*([\s\S]*?)\nGOING:\s*([\s\S]*?)\nTRIP:\s*([\s\S]*?)\nTRACK:\s*([\s\S]*?)\nKEY_ANGLE:\s*([\s\S]*?)(?=\nHORSE:|$)/g;
+  const blockRe = SUMMARY_BLOCK_RE;
+  blockRe.lastIndex = 0;
   let match;
   while ((match = blockRe.exec(text)) !== null) {
     const parsedName = match[1].trim();
@@ -362,7 +387,7 @@ async function storeResults(summaries) {
 
   for (const item of (summaries || [])) {
     try {
-      await redisSet('form-summary:' + item.horse_id, { horseName: item.horseName, summary: item.recentForm, recentForm: item.recentForm, going: item.going, trip: item.trip, track: item.track, keyAngle: item.keyAngle, generatedAt: new Date().toISOString() });
+      await redisSet('form-summary:' + item.horse_id, { horseName: item.horseName, summary: item.recentForm, recentForm: item.recentForm, going: item.going, trip: item.trip, track: item.track, keyAngle: item.keyAngle, styleVersion: 2, generatedAt: new Date().toISOString() });
       stored++;
     } catch (e) {
       failed++;
@@ -468,6 +493,217 @@ async function sendEmail(summary) {
   }
 }
 
+// ── Condense mode (styleVersion 2 rewrite of stored summaries) ──────────────
+// Manual only: ?condense=1&date=YYYY-MM-DD through the test twin — the
+// scheduled trigger never passes condense, and the handler ignores it on a
+// scheduled invocation regardless. For every horse on that date's card whose
+// stored form-summary lacks styleVersion 2, one small Claude call rewrites the
+// four stored paragraphs (Recent Form / Going / Trip / Track) into the
+// glance-level style. Input is the stored text only — no form history is
+// fetched, and Key Angle is neither sent nor rewritten. The four fields are
+// written back on the same key with every other field kept (keyAngle,
+// horseName, generatedAt — deliberately NOT refreshed, so the main job's
+// staleness check still sees the true generation day) plus styleVersion: 2
+// and condensedAt. Own lock and completion keys
+// (form-summary-condense:{lock|complete}:{date}); a partial run self-chains
+// through the test twin with hop+1, capped like trainer-history.
+const CONDENSE_TIMEOUT_MS = 780 * 1000;
+const CONDENSE_HOP_CAP = 8;
+const CONDENSE_BATCH = 5;
+
+// One horse: the four stored paragraphs in, four rewritten paragraphs out
+// (fields null when the response could not be parsed).
+async function condenseOne(existing) {
+  const source =
+    'RECENT_FORM: ' + String(existing.recentForm || '').trim() + '\n' +
+    'GOING: ' + String(existing.going || '').trim() + '\n' +
+    'TRIP: ' + String(existing.trip || '').trim() + '\n' +
+    'TRACK: ' + String(existing.track || '').trim();
+  const userMessage = STYLE_RULES + '\n\n' + STYLE_EXAMPLES + '\n\n' +
+    'Rewrite these four sections into the target style. Keep every fact; add nothing not in the source. ' +
+    'Return the same labelled block: RECENT_FORM: GOING: TRIP: TRACK:\n\n' + source;
+
+  const resp = await apiPost('api.anthropic.com', '/v1/messages', {
+    'x-api-key': ANTHROPIC_API_KEY,
+    'anthropic-version': '2023-06-01'
+  }, {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
+    system: 'You are an expert horse racing analyst.',
+    messages: [{ role: 'user', content: userMessage }]
+  });
+
+  const usage = resp.usage || {};
+  const text = (resp.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
+  // Wrap into the shape SUMMARY_BLOCK_RE expects: any preamble dropped, a
+  // HORSE: line above, a KEY_ANGLE: terminator below (its capture is ignored —
+  // the stored keyAngle is never touched).
+  const idx = text.indexOf('RECENT_FORM:');
+  const body = (idx >= 0 ? text.slice(idx) : text).trim();
+  const wrapped = 'HORSE: ' + (existing.horseName || 'horse') + '\n' + body + '\nKEY_ANGLE: -';
+  SUMMARY_BLOCK_RE.lastIndex = 0;
+  const m = SUMMARY_BLOCK_RE.exec(wrapped);
+  SUMMARY_BLOCK_RE.lastIndex = 0;
+  const out = m ? { recentForm: m[2].trim(), going: m[3].trim(), trip: m[4].trim(), track: m[5].trim() } : null;
+  const ok = !!(out && out.recentForm && out.going && out.trip && out.track);
+  return {
+    fields: ok ? out : null,
+    inputTokens: usage.input_tokens || 0,
+    outputTokens: usage.output_tokens || 0,
+    truncated: resp.stop_reason === 'max_tokens'
+  };
+}
+
+async function runCondense(headers, startTime, DATE, hop) {
+  const LOCK_WINDOW_MS = 800 * 1000;
+  const lockKey = 'form-summary-condense:lock:' + DATE;
+  const completeKey = 'form-summary-condense:complete:' + DATE;
+  console.log('[form-summary] CONDENSE START', new Date().toISOString(), 'date:', DATE, 'hop:', hop);
+
+  try {
+    const existingLock = await redisGet(lockKey);
+    if (existingLock && existingLock.startedAt) {
+      const lockAgeMs = Date.now() - new Date(existingLock.startedAt).getTime();
+      if (lockAgeMs >= 0 && lockAgeMs < LOCK_WINDOW_MS) {
+        console.log('[form-summary] condense already in progress (started ' + Math.round(lockAgeMs / 1000) + 's ago) — standing down.');
+        return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'condense already in progress', date: DATE, lockStartedAt: existingLock.startedAt }) };
+      }
+    }
+    await redisSet(lockKey, { startedAt: new Date().toISOString(), hop: hop });
+  } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
+
+  const counts = { total: 0, condensed: 0, alreadyV2: 0, noSummary: 0, unusable: 0, failed: 0 };
+  const tokens = { input: 0, output: 0 };
+  let timedOut = false;
+
+  try {
+    // Horses on that date's card, deduped by horse_id — the same read
+    // readRacecards() does, for one date.
+    const card = await redisGet('racecards:' + DATE);
+    const horses = [];
+    const seen = new Set();
+    if (card && Array.isArray(card.meetings)) {
+      card.meetings.forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(r) {
+            if (!r.horse_id || seen.has(r.horse_id)) return;
+            seen.add(r.horse_id);
+            horses.push({ horse_id: r.horse_id, horseName: r.name || '' });
+          });
+        });
+      });
+    }
+    counts.total = horses.length;
+    console.log('[form-summary] condense: ' + horses.length + ' horses on ' + DATE);
+
+    // Eligible horses are rewritten in small concurrent groups; one 429 retry
+    // per horse, as generateBatch() does per batch.
+    let group = [];
+    async function condenseGroup() {
+      if (!group.length) return;
+      const g = group;
+      group = [];
+      await Promise.all(g.map(async function(item) {
+        let r = null, err = null;
+        try {
+          r = await condenseOne(item.existing);
+        } catch (e) {
+          err = e;
+          if (e.message && e.message.indexOf('429') !== -1) {
+            await sleep(5000);
+            try { r = await condenseOne(item.existing); err = null; } catch (e2) { err = e2; }
+          }
+        }
+        if (!r) {
+          counts.failed++;
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + (err && err.message));
+          return;
+        }
+        tokens.input += r.inputTokens;
+        tokens.output += r.outputTokens;
+        if (!r.fields) {
+          counts.failed++;
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — unparseable response' + (r.truncated ? ' (truncated at max_tokens)' : ''));
+          return;
+        }
+        try {
+          await redisSet('form-summary:' + item.horse_id, Object.assign({}, item.existing, {
+            summary: r.fields.recentForm,
+            recentForm: r.fields.recentForm,
+            going: r.fields.going,
+            trip: r.fields.trip,
+            track: r.fields.track,
+            styleVersion: 2,
+            condensedAt: new Date().toISOString()
+          }));
+          counts.condensed++;
+        } catch (we) {
+          counts.failed++;
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — write failed: ' + we.message);
+        }
+      }));
+    }
+
+    for (const h of horses) {
+      if (Date.now() - startTime > CONDENSE_TIMEOUT_MS) {
+        timedOut = true;
+        console.log('[form-summary] condense approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — stopping with ' + counts.condensed + ' condensed so far; next hop continues');
+        break;
+      }
+      const existing = await redisGet('form-summary:' + h.horse_id);
+      if (!existing) { counts.noSummary++; continue; }
+      if (typeof existing !== 'object') { counts.unusable++; continue; } // legacy plain text — the main job replaces it
+      if (existing.styleVersion === 2) { counts.alreadyV2++; continue; }
+      if (!existing.recentForm || !existing.going || !existing.trip || !existing.track) { counts.unusable++; continue; }
+      group.push({ horse_id: h.horse_id, horseName: h.horseName || existing.horseName || h.horse_id, existing: existing });
+      if (group.length >= CONDENSE_BATCH) await condenseGroup();
+    }
+    if (!timedOut && group.length && Date.now() - startTime <= CONDENSE_TIMEOUT_MS) {
+      await condenseGroup();
+    }
+
+    const summary = {
+      status: timedOut ? 'partial' : 'complete',
+      date: DATE,
+      completedAt: new Date().toISOString(),
+      counts: counts,
+      tokens: tokens,
+      elapsedSec: Math.round((Date.now() - startTime) / 1000),
+      timedOut: timedOut,
+      hop: hop
+    };
+    try { await redisSet(completeKey, summary); } catch (ce) {}
+    console.log('[form-summary] CONDENSE DONE', JSON.stringify(summary));
+    try { await redisSet(lockKey, null); } catch (ue) {}
+
+    // Self-chain: a partial run hands the remaining horses to a fresh
+    // invocation via the test twin (lock already released above).
+    if (timedOut && hop < CONDENSE_HOP_CAP) {
+      try {
+        await new Promise(function(resolve){
+          const req = https.request({
+            hostname: 'superlative-flan-93dfc4.netlify.app',
+            path: '/.netlify/functions/form-summary-test-background?condense=1&date=' + DATE + '&hop=' + (hop + 1),
+            method: 'POST',
+            headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
+          }, function(res){ res.resume(); res.on('end', resolve); });
+          req.on('error', function(){ resolve(); });
+          req.setTimeout(10000, function(){ req.destroy(); resolve(); });
+          req.end();
+        });
+        console.log('[form-summary] condense partial — self-chained hop ' + (hop + 1));
+      } catch (e) {}
+    } else if (timedOut) {
+      console.log('[form-summary] condense hop cap reached — not chaining');
+    }
+    return { statusCode: 200, headers, body: JSON.stringify(summary) };
+  } catch (e) {
+    console.log('[form-summary] CONDENSE ERROR', e.message);
+    try { await redisSet(lockKey, null); } catch (ue) {}
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message, date: DATE, counts: counts, tokens: tokens, elapsedSec: Math.round((Date.now() - startTime) / 1000) }) };
+  }
+}
+
 exports.handler = async function(event) {
   const startTime = Date.now();
   console.log('[form-summary] START', new Date().toISOString(), 'scheduled:', !event.httpMethod);
@@ -501,6 +737,19 @@ exports.handler = async function(event) {
     if (secret !== process.env.BUILD_SECRET) {
       return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
     }
+  }
+
+  // Condense mode — manual only (?condense=1&date=YYYY-MM-DD[&hop=N] via the
+  // test twin). A scheduled invocation never reaches this: the trigger passes
+  // no params, and isScheduled short-circuits it regardless. Has its own
+  // lock/complete keys, so the main lock below is not taken.
+  if (!isScheduled && event.queryStringParameters && event.queryStringParameters.condense === '1') {
+    const condenseDate = event.queryStringParameters.date;
+    if (!condenseDate || !/^\d{4}-\d{2}-\d{2}$/.test(condenseDate)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'condense mode needs ?date=YYYY-MM-DD' }) };
+    }
+    const condenseHop = Math.max(0, parseInt(event.queryStringParameters.hop, 10) || 0);
+    return runCondense(headers, startTime, condenseDate, condenseHop);
   }
 
   // In-progress lock — without this, re-triggering (manually, or a scheduled
