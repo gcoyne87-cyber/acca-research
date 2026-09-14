@@ -11719,7 +11719,7 @@ function _renderFormSections(s,part){
     if(!s.recentForm) return '';
     var _uid='nrfs'+Math.random().toString(36).slice(2,7);
     var _tab=function(id,label,active){
-      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:13px;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:11px 12px 9px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
+      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:9px;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:11px 12px 9px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
     };
     var _pane=function(id,label,text,active){
       if(!text) return '';
@@ -14563,9 +14563,9 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
       return '<div style="display:flex;gap:18px;padding:8px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
         +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
+        +'style="font-size:9px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:6px;cursor:pointer;white-space:nowrap">Form</div>'
         +'<div id="nrh-tab-se-'+pfx+'" onclick="nrLoadEdge(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:12px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
+        +'style="font-size:9px;font-weight:600;color:#9ca3af;border-bottom:2px solid transparent;padding-bottom:6px;cursor:pointer;white-space:nowrap">Race Analysis</div>'
         +'</div>';
     })()
   +'</div>'
@@ -14855,7 +14855,7 @@ function nrLoadProfile(pfx,horseId){
       }
       var _thBox=function(text){
         if(!text)return '';
-        return '<div style="margin-top:6px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:6px 8px"><div style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:11px;color:#374151;line-height:1.55">'+escHtml(_thTidy(text))+'</div></div>';
+        return '<div style="margin-top:6px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:6px 8px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:12px;color:#374151;line-height:1.55">'+escHtml(_thTidy(text))+'</div></div>';
       };
       var _thFor=function(name,from){ return _thMap[norm(name)+'|'+String(from||'')]||''; };
       var _prevItems=[];
@@ -14911,7 +14911,7 @@ function nrLoadProfile(pfx,horseId){
       var TH='text-align:left;padding:4px 3px 4px 14px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
       var formHtml='';
       if(runsDesc.length){
-        formHtml+='<div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px 4px">Form · '+runsDesc.length+' runs</div>';
+        formHtml+='<div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px 4px">Form · '+runsDesc.length+' runs</div>';
         formHtml+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;max-width:100%;border-collapse:collapse;font-size:11px">';
         formHtml+='<thead><tr style="border-bottom:2px solid #e4e8f0"><th style="'+TH+'">Date</th><th style="'+TH+'">Course</th><th style="'+TH+'">Dist</th><th style="'+TH+'">Gng</th><th style="'+TH+';text-align:center">Pos</th><th style="'+TH+';text-align:right">SP</th><th style="'+TH+'">Jockey</th><th style="'+TH+';text-align:right">OR</th></tr></thead><tbody>';
         runsDesc.forEach(function(x){
@@ -14920,10 +14920,10 @@ function nrLoadProfile(pfx,horseId){
           var pCol=pInt===1?'#1e9e6b':(pInt===2||pInt===3)?'#b7860b':'#0D1B3E';
           formHtml+='<tr style="border-bottom:0.5px solid #f8f9fb">'
             +'<td style="padding:5px 3px 5px 14px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(fDate(r.date))+'</td>'
-            +'<td style="padding:5px 3px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(abC(r.course))+'</td>'
+            +'<td style="padding:5px 3px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+escHtml(abC(r.course))+'</td>'
             +'<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abD(r.dist))+'</td>'
             +'<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abG(r.going))+'</td>'
-            +'<td style="padding:5px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(String(m.position||'-'))+'</span>'+(x.ran?'<span style="font-size:9px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>'
+            +'<td style="padding:5px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(String(m.position||'-'))+'</span>'+(x.ran?'<span style="font-size:10px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>'
             +'<td style="padding:5px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.sp||'–')+'</td>'
             +'<td style="padding:5px 3px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(abJ(m.jockey))+'</td>'
             +'<td style="padding:5px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.or||'–')+'</td>'
@@ -15191,7 +15191,7 @@ function nrLoadForm(pfx,horseId,silent){
 
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
-        out+='<div style="font-size:13px;font-weight:700;color:#0b1628;padding:12px 12px 1px">Form Summary</div>';
+        out+='<div style="font-size:9px;font-weight:700;color:#0b1628;padding:12px 12px 1px">Form Summary</div>';
         out+='<div style="font-size:10px;color:#9aa3b5;padding:0 12px 4px">'+(hist.length?hist.length+' runs':'')+'</div>';
         out+=_renderFormSections(_fsum,'card');
       }
@@ -15210,7 +15210,7 @@ function nrLoadForm(pfx,horseId,silent){
         var _normT2=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
         hist.forEach(function(h,_hi){
           if(_hi===6){
-            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
+            out+='<tr id="nrh-fm-'+pfx+'"><td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-6)+' more '+((hist.length-6)===1?'run':'runs')+' ▼</span></td></tr>';
             out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
           }
           var posStr=String(h.position||h.pos||'-');
@@ -15225,10 +15225,10 @@ function nrLoadForm(pfx,horseId,silent){
           _lastTrainer=_tr;_lastDate=h.date||'';
           out+='<tr style="border-bottom:0.5px solid #f8f9fb">';
           out+='<td style="padding:5px 3px 5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
-          out+='<td style="padding:5px 12px;font-weight:600;color:#0b1628;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
+          out+='<td style="padding:5px 12px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+escHtml(_abC2(h.course||''))+'</td>';
           out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
           out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:5px 12px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:5px 12px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:10px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
           out+='<td style="padding:5px 12px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
           out+='<td style="padding:5px 12px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
           out+='</tr>';
@@ -15258,7 +15258,7 @@ function nrFmExpand(pfx,el){
   if(xTbody) xTbody.style.display='';
   if(btnRow&&xTbody){
     xTbody.appendChild(btnRow);
-    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
+    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center;border-top:0.5px solid #f0f2f5"><span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span></td>';
   }
 }
 function nrFmCollapse(pfx){
@@ -15269,7 +15269,7 @@ function nrFmCollapse(pfx){
     xTbody.parentNode.insertBefore(btnRow,xTbody);
     var remaining=xTbody.querySelectorAll('tr').length;
     var label=remaining===1?'run':'runs';
-    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
+    btnRow.innerHTML='<td colspan="7" style="padding:10px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span></td>';
   }
 }
 function _tipsPillState(btn,active){
