@@ -5652,7 +5652,6 @@ function unlockCorkAnalysis(){
          complementary unit: tap a popular trainer or search for any trainer,
          both lead to the same runner view. Sits above the Racecards section. -->
     <div id="trainer-form-section" style="padding:8px 14px 6px"></div>
-    <div id="popular-trainers-section" style="padding:8px 14px 6px;display:none"></div>
     <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
         <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
@@ -5673,7 +5672,9 @@ function unlockCorkAnalysis(){
          The row visuals are painted by _renderEdgeChips by id. -->
     <div id="rc-filter-panel" style="display:none;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:0 14px 12px">
       <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by trainer</div>
-      <div style="position:relative;margin-bottom:14px"><input id="rc-trainer-search" type="text" placeholder="Enter trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value,'rc-trainer-search-dropdown')" onkeydown="if(event.key==='Enter'){setTrainerFilter(this.value);_rcFilterClose();}" style="width:100%;height:36px;border:1px solid #e5e7eb;border-radius:8px;padding:0 10px;font-size:14px;box-sizing:border-box;font-family:inherit"><div id="rc-trainer-search-dropdown" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);z-index:100;max-height:220px;overflow-y:auto;display:none"></div></div>
+      <div id="rc-trainer-chips-label" style="font-size:11px;color:#9ca3af;margin-bottom:6px">Popular today</div>
+      <div id="rc-trainer-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f1f1f1;-webkit-overflow-scrolling:touch"></div>
+      <div style="position:relative;margin-bottom:14px"><input id="rc-trainer-search" type="text" placeholder="Or enter any trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value,'rc-trainer-search-dropdown')" onkeydown="if(event.key==='Enter'){setTrainerFilter(this.value);_rcFilterClose();}" style="width:100%;height:36px;border:1px solid #e5e7eb;border-radius:8px;padding:0 10px;font-size:14px;box-sizing:border-box;font-family:inherit"><div id="rc-trainer-search-dropdown" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);z-index:100;max-height:220px;overflow-y:auto;display:none"></div></div>
       <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by edge</div>
       <div id="edge-filter-chips">
         <div id="edge-row-cd" onclick="_toggleEdgeRow('cd')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
@@ -11502,7 +11503,7 @@ function loadRacecards(){
       if(_trainerFilter){ renderTodayMeetingsList(); }
       else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
       else{ renderTodayMeetingsList(); }
-      _renderPopularTrainers();
+      _renderRcTrainerChips();
       var inline=document.getElementById('racing-inline-meeting');
       if(inline&&inline.style.maxHeight&&inline.style.maxHeight!=='0px') renderInlineMeeting();
       // Build Next Race section from live data
@@ -11546,7 +11547,7 @@ function loadRacecards(){
         // Re-evaluates the Popular Trainers evening switch each tick — flips
         // to "Tomorrow's Trainers" once today's last race is off, and back on
         // the midnight refetch (which re-renders via loadRacecards anyway).
-        _renderPopularTrainers();
+        _renderRcTrainerChips();
         var inl=document.getElementById('racing-inline-meeting');
         if(inl&&inl.style.maxHeight&&inl.style.maxHeight!=='0px') renderInlineMeeting();
         setTimeout(_nrRestorePanels,0);
@@ -11560,7 +11561,7 @@ function loadRacecards(){
       if(!data.meetings||!data.meetings.length) return;
       TM_MEETINGS=data.meetings;
       window._tmRealDataLoaded=true;
-      _renderPopularTrainers();
+      _renderRcTrainerChips();
       tmActiveVenue=TM_MEETINGS[0].id;
       tmOpenMeeting='';
       tmOpenRace={};
@@ -12456,6 +12457,52 @@ function _renderPopularTrainers(){
   el.innerHTML=out;
   el.style.display='';
   _initPtCarousel();
+}
+
+// ── Filter-panel trainer chips ──────────────────────────────────────────────
+// The same data as the (retired) Popular Trainers carousel — the same
+// _buildPopularTrainers array and the same _popularTrainersTomorrowMode flag —
+// rendered as a compact chip row inside #rc-filter-panel. Each chip is the
+// carousel tile's tap (setTrainerFilter) plus closing the panel.
+function _rcTrainerAbbr(name){
+  // First initial + surname. Titles are skipped for the initial, a trailing
+  // "Bt"/"Jnr" style suffix is dropped, and lowercase surname particles
+  // (De Bromhead, van der …) stay attached to the surname.
+  var t=String(name||'').trim().split(/\s+/).filter(Boolean);
+  var TITLES={mr:1,mrs:1,ms:1,miss:1,sir:1,dr:1,lady:1,lord:1};
+  var SUFFIX={bt:1,jnr:1,jr:1,snr:1,sr:1};
+  var PARTICLES={de:1,da:1,di:1,du:1,del:1,della:1,van:1,von:1,der:1,le:1,la:1};
+  while(t.length>1&&SUFFIX[t[t.length-1].toLowerCase().replace(/\./g,'')]) t.pop();
+  var first=0;
+  while(first<t.length-1&&TITLES[t[first].toLowerCase().replace(/\./g,'')]) first++;
+  if(t.length-first<2) return t.slice(first).join(' ');
+  var sIdx=t.length-1;
+  while(sIdx-1>first&&PARTICLES[t[sIdx-1].toLowerCase()]) sIdx--;
+  return t[first].charAt(0).toUpperCase()+' '+t.slice(sIdx).join(' ');
+}
+function _renderRcTrainerChips(){
+  var row=document.getElementById('rc-trainer-chips');
+  var lbl=document.getElementById('rc-trainer-chips-label');
+  if(!row) return;
+  var _tmMode=_popularTrainersTomorrowMode();
+  var trainers=_buildPopularTrainers();
+  if(!trainers.length){
+    row.innerHTML='';
+    row.style.display='none';
+    if(lbl) lbl.style.display='none';
+    return;
+  }
+  if(lbl){ lbl.textContent=_tmMode?'Popular tomorrow':'Popular today'; lbl.style.display=''; }
+  var out='';
+  trainers.forEach(function(t){
+    var tEsc=t.name.replace(/'/g,"\\'");
+    out+='<div onclick="setTrainerFilter(\''+tEsc+'\');_rcFilterClose();" style="flex-shrink:0;white-space:nowrap;padding:6px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;text-align:left;cursor:pointer">'
+      +'<div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(_rcTrainerAbbr(t.name))+'</div>'
+      +'<div style="font-size:10px;color:#1e9e6b;font-weight:700;text-align:left">'+t.count+(t.count===1?' runner':' runners')+'</div>'
+      +'</div>';
+  });
+  row.innerHTML=out;
+  row.style.display='flex';
 }
 
 // ── Popular Trainers conveyor carousel ─────────────────────────────────────
