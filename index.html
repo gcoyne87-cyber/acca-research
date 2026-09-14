@@ -14853,10 +14853,6 @@ function nrLoadProfile(pfx,horseId){
       if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
         data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_thMap[norm(s.trainer)+'|'+String(s.from||'')]=s.text; });
       }
-      var _thBox=function(text){
-        if(!text)return '';
-        return '<div style="margin-top:4px;background:#f8f9fb;border-left:2px solid #d4af37;border-radius:0 6px 6px 0;padding:5px 8px"><div style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Trainer Analysis</div><div style="font-size:12px;color:#374151;line-height:1.55">'+escHtml(_thTidy(text))+'</div></div>';
-      };
       var _thFor=function(name,from){ return _thMap[norm(name)+'|'+String(from||'')]||''; };
       var _prevItems=[];
       if(Array.isArray(p.previousTrainers)&&p.previousTrainers.length){
@@ -14870,14 +14866,24 @@ function nrLoadProfile(pfx,horseId){
       }
       out+='<div style="padding:4px 14px">';
       out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Trainer history</div>';
-      out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#1e9e6b;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(currentTrainer||'—')+' <span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span></div>'+(t14?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">14d form: '+escHtml(t14.replace(/\s*last 14d$/,''))+'</div>':'')
-        +_thBox(_thFor(currentTrainer,hist.length?hist[hist.length-1].from:''))
-        +(_thReason==='too-few-runs'?'<div style="margin-top:4px;font-size:10px;color:#9ca3af">Fewer than three career runs — too early to assess a pattern.</div>':'')
-        +'</div></div>';
-      _prevItems.forEach(function(it){
-        out+='<div style="display:flex;gap:8px;margin-bottom:8px"><div style="width:9px;height:9px;border-radius:50%;background:#d1d5db;margin-top:2px;flex-shrink:0"></div><div><div style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.sub?'<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(it.sub)+'</div>':'')
-          +_thBox(_thFor(it.name,it.from))
-          +'</div></div>';
+      // Connected timeline, current trainer first: each dot is joined to the
+      // next entry by a 2px line (omitted on the last entry). The analysis
+      // text sits directly in the flow — no box, no label.
+      var _thItems=[{name:currentTrainer||'—',cur:true,sub:(t14?'14d form: '+t14.replace(/\s*last 14d$/,''):''),note:_thFor(currentTrainer,hist.length?hist[hist.length-1].from:'')}]
+        .concat(_prevItems.map(function(it){return {name:it.name,cur:false,sub:it.sub||'',note:_thFor(it.name,it.from)};}));
+      _thItems.forEach(function(it,i){
+        var last=i===_thItems.length-1;
+        out+='<div style="display:flex;gap:10px">';
+        out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
+        out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(it.cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
+        if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
+        out+='</div>';
+        out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
+        out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.cur?'<span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span>':'')+'</div>';
+        out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(it.sub)+'</div>';
+        if(it.note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(it.note)+'</div>';
+        if(it.cur&&_thReason==='too-few-runs')out+='<div style="margin-top:4px;font-size:10px;color:#9ca3af">Fewer than three career runs — too early to assess a pattern.</div>';
+        out+='</div></div>';
       });
       out+='</div>';
       if(tot.r>0){
@@ -15168,23 +15174,22 @@ function nrLoadForm(pfx,horseId,silent){
         out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Trainer history</div>';
         _per.forEach(function(p,i){
           var cur=i===0;
+          var last=i===_per.length-1;
           var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
           var note=_thTidy(_notes[_normT(p.name)]||'');
-          out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:'+(i===_per.length-1?'0':'10px')+'">';
-          out+='<div style="width:9px;height:9px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';margin-top:3px;flex-shrink:0"></div>';
-          out+='<div style="flex:1;min-width:0">';
-          out+='<div><span style="font-size:12px;font-weight:600;color:'+(cur?'#0b1628':'#4b5563')+'">'+escHtml(p.name)+'</span>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
-          out+='<div style="font-size:10px;color:#9ca3af;margin-top:1px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
+          // Connected timeline: each dot is joined to the next entry by a 2px
+          // line (omitted on the last entry — nothing to connect to). The
+          // analysis text sits directly in the flow: no box, no label.
+          out+='<div style="display:flex;gap:10px">';
+          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
+          out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
+          if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
+          out+='</div>';
+          out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
+          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
+          out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
+          if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
           out+='</div></div>';
-          // Trainer analysis row — same container/label/value styles as the Key
-          // Angle box (_renderFormSections 'key'). That box sits at the panel
-          // edge with margin:8px 0; this one lives inside the timeline's 12px
-          // padded wrapper, so the side margin is -12px to land on the same
-          // left edge and width.
-          if(note)out+='<div style="margin:4px -12px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
-            +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Trainer analysis</div>'
-            +'<div style="font-size:12px;color:#1a202c;line-height:1.6">'+escHtml(note)+'</div>'
-            +'</div>';
         });
         out+='</div>';
       })();
