@@ -200,7 +200,7 @@ function mapRacecards(apiData) {
         flag: (reg === 'IRE' || reg === 'IE') ? 'IE' : 'GB',
         name: race.course || rawId,
         hand: 'LH',
-        going: race.going || race.going_detailed || '',
+        going: stripGoingStick(race.going || race.going_detailed || ''),
         feature: false,
         nextMins: 0,
         insights: [],
@@ -220,7 +220,7 @@ function mapRacecards(apiData) {
       r: runners.length || (race.field_size || 0),
       name: race.race_name || '',
       dist: race.distance || '',
-      going: race.going || race.going_detailed || '',
+      going: stripGoingStick(race.going || race.going_detailed || ''),
       class: race.race_class || '',
       prize: race.prize || '',
       type: race.type || '',
@@ -287,6 +287,18 @@ function redisSet(key, value) {
 // available client-side at render time, so tags must be decided here. First
 // tag: isCandDWinner. To add the next tag: add its rule in computeRunnerTags()
 // below and a badge check in index.html's runnerRow — nothing else changes.
+
+// Strips the clerk's GoingStick reading from a going (or race-name) string:
+// any "(GoingStick: 7.7)" parenthetical and any bare "GoingStick: 7.7"
+// fragment, then trailing separators. Applied at every write of going /
+// going_detailed so the reading never reaches the cached card.
+function stripGoingStick(s) {
+  return String(s || '')
+    .replace(/\s*\([^)]*going\s*stick[^)]*\)/gi, '')
+    .replace(/[\s,;:\-]*\bgoing\s*stick\b[^,)]*/gi, '')
+    .replace(/[\s,;:\-]+$/, '')
+    .trim();
+}
 
 function stripParens(s) {
   return (s || '').replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();

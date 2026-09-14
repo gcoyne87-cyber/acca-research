@@ -144,6 +144,18 @@ function milesFurlongs(distStr) {
 // remaining "in places" / "goingstick" / "aw" noise words that can appear
 // without a comma. Two going strings are treated as the same ground only when
 // their normalised forms match exactly.
+// Strips the clerk's GoingStick reading from a going (or race-name) string:
+// any "(GoingStick: 7.7)" parenthetical and any bare "GoingStick: 7.7"
+// fragment, then trailing separators. Applied at every write of going /
+// going_detailed so the reading never reaches the cached card.
+function stripGoingStick(s) {
+  return String(s || '')
+    .replace(/\s*\([^)]*going\s*stick[^)]*\)/gi, '')
+    .replace(/[\s,;:\-]*\bgoing\s*stick\b[^,)]*/gi, '')
+    .replace(/[\s,;:\-]+$/, '')
+    .trim();
+}
+
 function normaliseGoing(str) {
   return String(str || '')
     .toLowerCase()
@@ -379,9 +391,9 @@ exports.handler = async function(event) {
         if (!mid) return;
         const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
         const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
-        const display = race.going_detailed || race.going || '';
+        const display = stripGoingStick(race.going_detailed || race.going || '');
         if (display && !freshGoingByMeeting[mid]) freshGoingByMeeting[mid] = display;
-        if (display) freshGoingByRace[mid + '|' + t] = { going: display, going_detailed: race.going_detailed || '' };
+        if (display) freshGoingByRace[mid + '|' + t] = { going: display, going_detailed: stripGoingStick(race.going_detailed || '') };
       });
 
       // Day's anchor prices — first price seen per horse, plus sticky
@@ -469,9 +481,9 @@ exports.handler = async function(event) {
         if (!mid) return;
         const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
         const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
-        const display = race.going_detailed || race.going || '';
+        const display = stripGoingStick(race.going_detailed || race.going || '');
         if (display && !freshGoingByMeetingTomorrow[mid]) freshGoingByMeetingTomorrow[mid] = display;
-        if (display) freshGoingByRaceTomorrow[mid + '|' + t] = { going: display, going_detailed: race.going_detailed || '' };
+        if (display) freshGoingByRaceTomorrow[mid + '|' + t] = { going: display, going_detailed: stripGoingStick(race.going_detailed || '') };
       });
 
       // Tomorrow gets its own anchor map under its own date key — "the day"

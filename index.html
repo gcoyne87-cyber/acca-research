@@ -3537,7 +3537,7 @@ function mrAddSingleRace(ctx,r){
   document.querySelectorAll('#mr-dynamic-list [id^="mr-chev-"]').forEach(function(c){c.style.transform='rotate(0deg)';});
   document.querySelectorAll('#mr-dynamic-list [id^="mr-hdr-"]').forEach(function(h){h.className='mr-hdr rnd';});
   var raceLabel=_safeHtml((ctx.raceName||'').replace(new RegExp('^'+(ctx.meetingName||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*','i'),'').trim());
-  var subtitle=raceLabel+(ctx.going?' &middot; '+_safeHtml(ctx.going):'');
+  var subtitle=raceLabel+(ctx.going?' &middot; '+_safeHtml(_goingClean(ctx.going)):'');
   var wrap=document.createElement('div');
   wrap.className='mr-wrap';
   wrap.innerHTML='<div class="mr-hdr top" id="mr-hdr-'+uid+'" onclick="mrDynT(\''+uid+'\')">'
@@ -8164,11 +8164,20 @@ function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 // "GOOD TO SOFT (GoingStick: 6.8)". Strips everything from "(GoingStick"
 // onwards (plus any trailing comma/space) for display only; storage and
 // fetching are untouched.
+// The one GoingStick stripper on the client — mirrors stripGoingStick in
+// racecards.js / refresh-prices-background.js: removes any "(GoingStick: 7.7)"
+// parenthetical and any bare "GoingStick 7.7" fragment, then trailing
+// separators. Case is left alone; used directly on race headers and race
+// names, and by _cleanGoing below before it title-cases.
+function _goingClean(s){
+  return String(s||'')
+    .replace(/\s*\([^)]*going\s*stick[^)]*\)/gi,'')
+    .replace(/[\s,;:\-]*\bgoing\s*stick\b[^,)]*/gi,'')
+    .replace(/[\s,;:\-]+$/,'')
+    .trim();
+}
 function _cleanGoing(s){
-  var g=String(s||'');
-  var i=g.indexOf('(GoingStick');
-  if(i>-1) g=g.substring(0,i);
-  g=g.replace(/[\s,]+$/,'');
+  var g=_goingClean(s);
   // Title-case the whole string so the clerk's ALL-CAPS segments never
   // display shouty ("GOOD TO SOFT" -> "Good To Soft").
   return g.toLowerCase().replace(/\b[a-z]/g,function(c){return c.toUpperCase();});
@@ -12282,7 +12291,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
     var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
     if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-    out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
+    out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_goingClean(selMeeting.going))+' &middot; '+sr.r+' runners</div>';
     out+=_raceTabsHtml(selMeeting.id,sr.t,selMeeting.name);
     var _tfTabKey=selMeeting.id+'-'+sr.t;
     if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
@@ -13105,7 +13114,7 @@ function renderTodayMeetingsList(isInitial){
         out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
         var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
         if(_srcp) out2+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
-        out2+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(selMeeting.going)+' &middot; '+sr.r+' runners</div>';
+        out2+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_goingClean(selMeeting.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(selMeeting.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
         if(_ha && _ha.raceIntelligence){
           out2+='<div style="font-size:11px;color:#1e9e6b;font-style:italic;line-height:1.5;margin:4px 0 6px;padding:0 0 6px">'+escHtml(_ha.raceIntelligence)+'</div>';
@@ -13189,7 +13198,7 @@ function renderTodayMeetingsList(isInitial){
           out+='<div style="border-top:1px solid #f0f2f7">';
           out+='<div style="padding:10px 14px 4px">';
           out+='<div style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(race.t)+'</div>';
-          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+' &middot; '+escHtml(_nrAbDist(race.dist))+'</div>';
+          out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:2px">'+escHtml(_goingClean(race.name||''))+' &middot; '+escHtml(_nrAbDist(race.dist))+'</div>';
           var _rcp=(race.class||'')+(race.class&&race.prize?' · ':'')+(race.prize||'');
           if(_rcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:4px">'+escHtml(_rcp)+'</div>';
           out+='</div>';
@@ -13871,7 +13880,7 @@ function _old_unused_renderRacingMeetings(){
 
         detailHtml='<div class="rc-race-detail">'
 
-          +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+'</div>'
+          +'<div class="rc-race-title">'+escHtml(race.t)+' '+escHtml(_goingClean(race.name||''))+'</div>'
 
           +'<div class="rc-race-sub">'+escHtml(race.dist)+' &middot; '+race.r+' runners</div>'
 
@@ -15916,7 +15925,7 @@ function renderAIIntelligence(){
       prize:BIG_RACE.prize||'',
       runners:BIG_RACE.runners||0,
       distance:BIG_RACE.distance||'',
-      going:BIG_RACE.going||'',
+      going:_goingClean(BIG_RACE.going||''),
       raceClass:BIG_RACE.raceClass||'',
       intelligenceText:escHtml(BIG_RACE.raceIntelligence||''),
       ctaDestination:'race:'+(BIG_RACE.course||'')+':'+(BIG_RACE.time||'')
@@ -16015,7 +16024,7 @@ function renderAIIntelligence(){
             return '<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_rn+(_gr?'<span style="font-size:14px;font-weight:400;color:#fff"> '+_gr+'</span>':'')+'</div>';
           })()
           +'<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">'+escHtml((item.time+' '+item.course).trim())+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+escHtml([_nrAbDist(item.distance), item.going, item.runners?(item.runners+' runners'):''].filter(Boolean).join(' · '))+'</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+escHtml([_nrAbDist(item.distance), _goingClean(item.going), item.runners?(item.runners+' runners'):''].filter(Boolean).join(' · '))+'</div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
@@ -17899,7 +17908,7 @@ function renderResultsPage(){
         // race-level race.prize never fires), formatted via _fmtPrize with
         // the venue's currency.
         html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
-        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml((race.name||'').replace(/\s*\(Going Stick[^)]*\)/gi,'').replace(/\bGoing Stick\b[^,]*/gi,'').trim())+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
+        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_goingClean(race.name||''))+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
         var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
         var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
         if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
@@ -19388,7 +19397,7 @@ function _rcAnalyseRun(mid,type){
     var singleSteps=['Scanning race intelligence database…','Analysing the runners…','Initialising AI race model…','Running proprietary edge detection model…','Detecting angles the market may have missed…','Compiling full race intelligence report…'];
     var perStep2=TOTAL/singleSteps.length;
     var raceLabel=race.name.replace(new RegExp('^'+m.name+'\\s*','i'),'').trim();
-    _aiSetCount(type+' — '+m.name,raceLabel+(race.dist?' · '+race.dist:''),(m.going?m.going+' · ':'')+race.r+' runners');
+    _aiSetCount(type+' — '+m.name,raceLabel+(race.dist?' · '+race.dist:''),(m.going?_goingClean(m.going)+' · ':'')+race.r+' runners');
     _aiSetStep(singleSteps[0]);
     _aiStartTicker();
     singleSteps.forEach(function(step,si){
@@ -19773,8 +19782,8 @@ function _generateFormSummary(runner, todayRace) {
       var tg = todayRace.going.toLowerCase(), bg2 = bestGoing.toLowerCase();
       var tgBase = tg.split('/')[0].split(' ')[0], bgBase = bg2.split('/')[0].split(' ')[0];
       var goingMatch = tg.indexOf(bgBase) !== -1 || bg2.indexOf(tgBase) !== -1;
-      if (goingMatch) ctxParts.push('going ('+todayRace.going+') matches best surface ✓');
-      else ctxParts.push('going ('+todayRace.going+') is off preferred '+bestGoing+' ✗');
+      if (goingMatch) ctxParts.push('going ('+_goingClean(todayRace.going)+') matches best surface ✓');
+      else ctxParts.push('going ('+_goingClean(todayRace.going)+') is off preferred '+bestGoing+' ✗');
     }
     if (todayRace.dist) {
       var dWins = h.filter(function(r){return r.dist===todayRace.dist&&r.pos===1;}).length;
