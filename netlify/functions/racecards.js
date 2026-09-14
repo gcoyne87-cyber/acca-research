@@ -84,12 +84,15 @@ function extractPrice(oddsArr, bookmaker) {
   const match = oddsArr.find(function(o) {
     return (o.bookmaker || '').toLowerCase() === bk;
   });
-  if (match && match.fractional) return match.fractional;
+  // The API spells even money 'evn'; every parser downstream understands 'EVS',
+  // so it is normalised here, the moment it enters the card.
+  if (match && match.fractional) return /^evn$/i.test(match.fractional) ? 'EVS' : match.fractional;
   // fall back to first non-exchange bookmaker
   const fallback = oddsArr.find(function(o) {
     return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange');
   });
-  return (fallback && fallback.fractional) || 'SP';
+  const frac = fallback && fallback.fractional;
+  return frac ? (/^evn$/i.test(frac) ? 'EVS' : frac) : 'SP';
 }
 
 function mapRunner(r, idx) {

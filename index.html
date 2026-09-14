@@ -14251,7 +14251,7 @@ function nrFormHtml(form){
 function _priceToDecimal(price){
   if(!price||price==='SP') return 9999;
   var priceStr=String(price).trim();
-  if(priceStr.toUpperCase()==='EVN'||priceStr.toUpperCase()==='EVENS') return 1;
+  if(/^(evn|evens|evs)$/i.test(priceStr)) return 1; // fractional units: evens is 1, not 2
   var parts=priceStr.split('/');
   if(parts.length===2){
     var n=parseFloat(parts[0]),d=parseFloat(parts[1]);
