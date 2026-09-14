@@ -392,6 +392,24 @@ async function fetchProfileAndResults(horseId) {
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 
+// Mails the backlog table (backlog-status?email=1) so a finished date shows
+// up in the inbox — fire-and-forget, capped at 10s, never fails the run.
+function notifyBacklogStatus() {
+  return new Promise(function(resolve){
+    try {
+      const req = https.request({
+        hostname: 'superlative-flan-93dfc4.netlify.app',
+        path: '/.netlify/functions/backlog-status?email=1',
+        method: 'GET',
+        headers: { 'x-build-secret': process.env.BUILD_SECRET || '' }
+      }, function(res){ res.resume(); res.on('end', resolve); });
+      req.on('error', function(){ resolve(); });
+      req.setTimeout(10000, function(){ req.destroy(); resolve(); });
+      req.end();
+    } catch (e) { resolve(); }
+  });
+}
+
 exports.handler = async function(event) {
   const startTime = Date.now();
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
@@ -608,6 +626,9 @@ exports.handler = async function(event) {
       } catch (e) {}
     } else if (timedOut) {
       console.log('[trainer-history] hop cap reached — not chaining');
+    } else {
+      // Day finished (status complete) — mail the backlog table.
+      await notifyBacklogStatus();
     }
     return { statusCode: 200, headers, body: JSON.stringify(summary) };
   } catch (e) {
