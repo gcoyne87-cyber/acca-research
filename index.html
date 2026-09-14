@@ -11488,7 +11488,7 @@ function loadRacecards(){
       var titleEl=document.getElementById('today-racecards-title');
       if(titleEl) titleEl.style.display='';
       var homeStripBar=document.getElementById('home-date-strip-bar');
-      if(homeStripBar){homeStripBar.style.display='';homeStripBar.style.display='flex';}
+      if(homeStripBar){homeStripBar.style.display=(_trainerFilter||_edgeChipMode!=='trainer')?'none':'flex';}
       // Check today's actual last race off time now that real data has
       // arrived — never if the user already picked a tab themselves.
       // Re-paints the strip so the correct pill is active, then routes the
@@ -11941,6 +11941,7 @@ function clearTrainerFilter(){
   var clr=document.getElementById('trainer-search-clear');
   if(clr) clr.style.display='none';
   _rcFilterBadge();
+  _syncHomeDateStrip();
   var _cardsTmrwC=document.getElementById('racing-tomorrow-content');
   var _cardsFutureC=document.getElementById('racing-future-content');
   var _onCardsTomorrow=_cardsTmrwC&&_cardsTmrwC.style.display!=='none';
@@ -12146,11 +12147,23 @@ function _selectEdgeChip(mode){
   }
 }
 
+// The plain Today/Tomorrow/… day tabs (#home-date-strip-bar) and the filtered
+// view's own day tabs must never both be on screen. Hidden while any filter
+// (trainer or edge) is active; re-shown when it clears, but only if the home
+// racecards section is the one on screen.
+function _syncHomeDateStrip(){
+  var bar=document.getElementById('home-date-strip-bar');
+  if(!bar) return;
+  if(_trainerFilter||_edgeChipMode!=='trainer'){ bar.style.display='none'; return; }
+  var todayC=document.getElementById('racing-today-content');
+  if(todayC&&todayC.style.display!=='none') bar.style.display='flex';
+}
 function clearEdgeFilter(){
   _edgeChipMode='trainer';
   _tfSelectedDay=null;
   _tfRaceSel={};
   _renderEdgeChips();
+  _syncHomeDateStrip();
   // Same instant in-memory restore as _selectEdgeChip('trainer') above — no
   // fetch, no placeholder flash; the racecards reappear from RC_MEETINGS /
   // TM_MEETINGS immediately.
@@ -12174,6 +12187,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
   // 'cd'/'ground'): same rendering below, fed by _tfMatchesForDayEdge and an
   // "Edge: ..." chip/clearEdgeFilter() instead — added, not substituted.
   var _isEdge=!_trainerFilter&&_edgeChipMode!=='trainer';
+  _syncHomeDateStrip(); // the filtered view carries its own day tabs — hide the plain row
   var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':(_edgeChipMode==='cdg'?'Edge: C&D+G':'Edge: Ground')));
   var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':(_edgeChipMode==='cdg'?'C&D+G runners':'Ground specialists')));
   var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
@@ -12232,9 +12246,12 @@ function renderTrainerFilterMultiDay(el,isInitial){
     return;
   }
 
-  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap';
-  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap';
-  var disabledStyle='background:none;color:#ccd1dc;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:default;font-family:inherit;white-space:nowrap';
+  // Two-line tabs: day label on top (active/inactive/disabled treatment
+  // unchanged), matched-race count beneath. Vertical padding trimmed to fit
+  // the second line; horizontal padding, colours and weights as before.
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:7px 16px 6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:7px 16px 6px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
+  var disabledStyle='background:none;color:#ccd1dc;border:none;border-bottom:2px solid transparent;padding:7px 16px 6px;font-size:13px;font-weight:500;cursor:default;font-family:inherit;white-space:nowrap;text-align:center;line-height:1.2';
 
   out+='<div style="display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid #f0f2f7">';
   _visibleDayKeys.forEach(function(k){
@@ -12243,7 +12260,11 @@ function renderTrainerFilterMultiDay(el,isInitial){
     var isActive=k===_tfSelectedDay;
     var style=count===0?disabledStyle:(isActive?activeStyle:inactiveStyle);
     var onclick=count===0?'':' onclick="_tfSelectDay(\''+k+'\')"';
-    out+='<button'+onclick+' style="'+style+'">'+escHtml(label)+' ('+count+')</button>';
+    // Count line: green on the selected day, disabled grey on a zero day,
+    // inactive grey otherwise. The count is matched RACES for that day
+    // (dayMatches holds one entry per race), so the unit is races.
+    var countCol=count===0?'#ccd1dc':(isActive?'#1e9e6b':'#9ca3af');
+    out+='<button'+onclick+' style="'+style+'"><div>'+escHtml(label)+'</div><div style="font-size:11px;font-weight:600;color:'+countCol+';margin-top:2px">'+count+(count===1?' race':' races')+'</div></button>';
   });
   out+='</div>';
 
@@ -18388,7 +18409,7 @@ function selectRacingSection(s){
   var tdRcTitle=document.getElementById("today-racecards-title");
   if(tdRcTitle) tdRcTitle.style.display=((s==="home"||s==="racecards")&&RC_MEETINGS.length)?"":"none";
   var homeStripBar=document.getElementById("home-date-strip-bar");
-  if(homeStripBar) homeStripBar.style.display=((s==="home"||s==="racecards")&&!_ctaSuppressDateStrip)?"flex":"none";
+  if(homeStripBar) homeStripBar.style.display=((s==="home"||s==="racecards")&&!_ctaSuppressDateStrip&&!_trainerFilter&&_edgeChipMode==='trainer')?"flex":"none";
   _ctaSuppressDateStrip=false;
   var picksSecTitle=document.getElementById("picks-section-title");
   if(picksSecTitle) picksSecTitle.style.display=(s==="pickofday"||s==="home"||s==="racecards")?"none":"";
