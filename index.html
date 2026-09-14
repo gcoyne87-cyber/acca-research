@@ -15146,53 +15146,6 @@ function nrLoadForm(pfx,horseId,silent){
         }
       }
 
-      // 4b. Trainer History timeline
-      (function(){
-        var _runs=hist.filter(function(h){return h.trainer&&h.date;}).slice();
-        _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
-        if(!_runs.length)return;
-        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
-        var _per=[];
-        _runs.forEach(function(h){
-          var _t=String(h.trainer).trim();
-          var _last=_per[_per.length-1];
-          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
-          else _per.push({name:_t,from:h.date,to:h.date,runs:1});
-        });
-        var _cardTr=(_ru2&&_ru2.trainer)?String(_ru2.trainer).trim():'';
-        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
-        _per.reverse();
-        var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _notes={};
-        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
-          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
-        }
-        out+='<div style="padding:4px 12px;border-bottom:0.5px solid #f0f2f5">';
-        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Trainer history</div>';
-        _per.forEach(function(p,i){
-          var cur=i===0;
-          var last=i===_per.length-1;
-          var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
-          var note=_thTidy(_notes[_normT(p.name)]||'');
-          // Connected timeline: each dot is joined to the next entry by a 2px
-          // line (omitted on the last entry — nothing to connect to). The
-          // analysis text sits directly in the flow: no box, no label.
-          out+='<div style="display:flex;gap:10px">';
-          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
-          out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
-          if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
-          out+='</div>';
-          out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
-          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
-          out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
-          if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
-          out+='</div></div>';
-        });
-        out+='</div>';
-      })();
-
       // 5. Form Summary heading + run count
       if(_fsum&&_fsum.recentForm){
         // Same style as the Going preference label (15139), run count folded in after it in a lighter grey.
@@ -15239,6 +15192,53 @@ function nrLoadForm(pfx,horseId,silent){
         });
         out+='</tbody></table></div>';
       }
+
+      // 4b. Trainer History timeline
+      (function(){
+        var _runs=hist.filter(function(h){return h.trainer&&h.date;}).slice();
+        _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
+        if(!_runs.length)return;
+        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+        var _per=[];
+        _runs.forEach(function(h){
+          var _t=String(h.trainer).trim();
+          var _last=_per[_per.length-1];
+          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
+          else _per.push({name:_t,from:h.date,to:h.date,runs:1});
+        });
+        var _cardTr=(_ru2&&_ru2.trainer)?String(_ru2.trainer).trim():'';
+        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
+        _per.reverse();
+        var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
+        var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
+        var _notes={};
+        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
+          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
+        }
+        out+='<div style="padding:4px 12px;border-bottom:0.5px solid #f0f2f5">';
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Trainer history</div>';
+        _per.forEach(function(p,i){
+          var cur=i===0;
+          var last=i===_per.length-1;
+          var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
+          var note=_thTidy(_notes[_normT(p.name)]||'');
+          // Connected timeline: each dot is joined to the next entry by a 2px
+          // line (omitted on the last entry — nothing to connect to). The
+          // analysis text sits directly in the flow: no box, no label.
+          out+='<div style="display:flex;gap:10px">';
+          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
+          out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
+          if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
+          out+='</div>';
+          out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
+          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
+          out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
+          if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
+          out+='</div></div>';
+        });
+        out+='</div>';
+      })();
 
       if(!out) out='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form data available.</div>';
 
