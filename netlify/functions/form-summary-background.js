@@ -533,6 +533,13 @@ async function condenseOne(existing) {
     messages: [{ role: 'user', content: userMessage }]
   });
 
+  // API-level failure (any 4xx/5xx body — credit balance, 429, 529, …):
+  // surfaced as apiError so the caller counts it and leaves the stored
+  // summary untouched for the next run. Never treated as a parse failure.
+  if (!resp || resp.type === 'error' || !Array.isArray(resp.content)) {
+    const msg = (resp && resp.error && (resp.error.message || resp.error.type)) || 'no content in reply';
+    return { fields: null, apiError: 'API: ' + msg, inputTokens: 0, outputTokens: 0, truncated: false };
+  }
   const usage = resp.usage || {};
   const text = (resp.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
   // Wrap into the shape SUMMARY_BLOCK_RE expects: any preamble dropped, a
@@ -590,7 +597,7 @@ async function runCondense(headers, startTime, DATE, hop) {
     await redisSet(lockKey, { startedAt: new Date().toISOString(), hop: hop });
   } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
-  const counts = { total: 0, condensed: 0, alreadyV2: 0, noSummary: 0, unusable: 0, failed: 0 };
+  const counts = { total: 0, condensed: 0, alreadyV2: 0, noSummary: 0, unusable: 0, failed: 0, apiFailed: 0 };
   const tokens = { input: 0, output: 0 };
   let timedOut = false;
 
@@ -633,8 +640,15 @@ async function runCondense(headers, startTime, DATE, hop) {
           }
         }
         if (!r) {
-          counts.failed++;
-          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + (err && err.message));
+          // Request threw (429 after its retry, network) — failed, key untouched.
+          counts.failed++; counts.apiFailed++;
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + (err && err.message) + ' — key left untouched for retry');
+          return;
+        }
+        if (r.apiError) {
+          // Anthropic returned an error body — failed, key untouched.
+          counts.failed++; counts.apiFailed++;
+          console.log('[form-summary] condense: ' + item.horseName + ' (' + item.horse_id + ') — ' + r.apiError + ' — key left untouched for retry');
           return;
         }
         tokens.input += r.inputTokens;

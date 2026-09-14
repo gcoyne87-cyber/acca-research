@@ -464,7 +464,7 @@ exports.handler = async function(event) {
 
   const TIMEOUT_MS = 780 * 1000;
   let timedOut = false;
-  const counts = { total: 0, generated: 0, skipped: 0, noResults: 0, tooFew: 0, parseFailed: 0, errors: 0 };
+  const counts = { total: 0, generated: 0, skipped: 0, noResults: 0, tooFew: 0, parseFailed: 0, apiFailed: 0, errors: 0 };
   const tokens = { input: 0, output: 0 };
 
   try {
@@ -553,22 +553,34 @@ exports.handler = async function(event) {
         }
 
         // Claude — one call, one retry on a bad parse or length mismatch.
+        // lastKind records what the final failed attempt was: 'api' (any
+        // 4xx/5xx from Anthropic — credit balance, 429, 529, …) or 'parse'
+        // (a successful reply that was not a usable JSON array). Only a
+        // parse failure may write the parse-failed marker. An API failure,
+        // or running out of time budget before a reply, leaves the key
+        // untouched so the next run simply retries the horse — on
+        // 2026-09-14 a credit-balance 400 wrote 272 seven-day markers.
         const userMessage = buildUserMessage(horseName, spells);
-        let parsed = null, lastErr = null;
+        let parsed = null, lastErr = null, lastKind = null;
         for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
           if (Date.now() - startTime > TIMEOUT_MS) break;
           const resp = await callClaude(SYSTEM_PROMPT, userMessage, 900);
           tokens.input += resp.inputTokens;
           tokens.output += resp.outputTokens;
-          if (resp.apiError) { lastErr = resp.apiError; console.log('[trainer-history] ' + horseName + ': ' + resp.apiError + (attempt === 0 ? ' — retrying once' : '')); continue; }
+          if (resp.apiError) { lastErr = resp.apiError; lastKind = 'api'; console.log('[trainer-history] ' + horseName + ': ' + resp.apiError + (attempt === 0 ? ' — retrying once' : '')); continue; }
           const arr = parseSpellArray(resp.text);
           if (arr && arr.length === spells.length) { parsed = arr; }
-          else { lastErr = 'parse-failed (got ' + (arr ? arr.length : 'no array') + ', expected ' + spells.length + ')'; console.log('[trainer-history] ' + horseName + ': ' + lastErr + (attempt === 0 ? ' — retrying once' : '')); }
+          else { lastErr = 'parse-failed (got ' + (arr ? arr.length : 'no array') + ', expected ' + spells.length + ')'; lastKind = 'parse'; console.log('[trainer-history] ' + horseName + ': ' + lastErr + (attempt === 0 ? ' — retrying once' : '')); }
         }
 
         if (!parsed) {
-          counts.parseFailed++;
-          await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'parse-failed', error: lastErr || null, styleVersion: 2, generatedAt: new Date().toISOString(), date: DATE }, 604800);
+          if (lastKind === 'parse') {
+            counts.parseFailed++;
+            await redisSetEx(thKey, { horseName: horseName, spells: statsOnly(spells), reason: 'parse-failed', error: lastErr || null, styleVersion: 2, generatedAt: new Date().toISOString(), date: DATE }, 604800);
+          } else {
+            counts.apiFailed++;
+            console.log('[trainer-history] ' + horseName + ' (' + id + '): ' + (lastErr || 'no reply within time budget') + ' — key left untouched for retry');
+          }
           continue;
         }
 
