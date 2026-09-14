@@ -11537,6 +11537,12 @@ function loadRacecards(){
           loadRacecards();
           return;
         }
+        // Latest Results strip refresh — runs first and in its own try/catch
+        // so a throw anywhere else in this tick (list render, chips, panels)
+        // can never stop the strip re-checking today, and vice versa.
+        try{
+          if(typeof _fetchHomeResults==='function'){var _hw=_getResWindow();var _hn=new Date();if(_hw&&_hn>=_hw.start&&_hn<=_hw.end)_fetchHomeResults();}
+        }catch(_hrErr){}
         // Mid-session evening auto-switch: a page left open through the last
         // race used to degrade to "0 meetings" over a blank list — the on-load
         // auto-switch only runs when loadRacecards resolves. When today's live
@@ -11552,7 +11558,6 @@ function loadRacecards(){
           buildDateStrip();
         }
         _renderCurrentHomeList();
-        if(typeof _fetchHomeResults==='function'){var _w=_getResWindow();var _n=new Date();if(_w&&_n>=_w.start&&_n<=_w.end)_fetchHomeResults();}
         // Re-evaluates the Popular Trainers evening switch each tick — flips
         // to "Tomorrow's Trainers" once today's last race is off, and back on
         // the midnight refetch (which re-renders via loadRacecards anyway).
@@ -17698,7 +17703,10 @@ var _homeRes={
   loadedDate:null,  // 'today' | 'yesterday' — which racing date data holds
   interval:null,    // the strip's 90s polling interval reference
   startTimer:null,  // one-shot delay until the first race's off time
-  retryTimer:null   // retry while RC_MEETINGS isn't loaded yet
+  retryTimer:null,  // retry while RC_MEETINGS isn't loaded yet
+  retryFetchTimer:null, // single 20s retry after a FAILED today request (never stacked)
+  loadedFor:null,   // the calendar date 'today' data was rendered for
+  failLogged:false  // one console line per failure streak, reset on success
 };
 
 // Fetches the strip's data: today first; if today has no finished runners yet
@@ -17720,28 +17728,52 @@ function _fetchHomeResults(){
   }
   function getDay(dateStr){
     // Shares any in-flight fetch for the same date with the Results page —
-    // see _sharedResultsFetch.
+    // see _sharedResultsFetch. Returns null on ANY failure (network error,
+    // non-JSON, server {error}) and an array — possibly empty — only on a
+    // genuine reply, so the caller can tell "request failed" from "no
+    // results yet". Before this, both came back as [] and one failed today
+    // request flipped the strip to yesterday's (always-cached) card.
     return _sharedResultsFetch(dateStr)
-      .then(function(data){ return (data&&!data.error&&data.venues)||[]; })
-      .catch(function(){ return []; });
+      .then(function(data){ return (data&&!data.error&&Array.isArray(data.venues))?data.venues:null; })
+      .catch(function(){ return null; });
+  }
+  // A failed request is not evidence of anything: leave the strip exactly
+  // as it is (today's cards if already rendered, otherwise whatever is
+  // showing), log once per failure streak, and retry once in 20s. One
+  // timer only — a retry already pending is left alone, never stacked.
+  function retryLater(which){
+    if(!_homeRes.failLogged){
+      _homeRes.failLogged=true;
+      console.warn('[RacingEdge] Latest Results: '+which+' results request failed — keeping current strip, retrying in 20s');
+    }
+    if(_homeRes.retryFetchTimer) return;
+    _homeRes.retryFetchTimer=setTimeout(function(){ _homeRes.retryFetchTimer=null; _fetchHomeResults(); },20000);
   }
   var today=irishDateStr();
   var todayVenues=await getDay(today);
+  if(todayVenues===null){ retryLater('today'); return; }
+  _homeRes.failLogged=false;
   if(hasFinished(todayVenues)){
     _homeRes.data=todayVenues;
     _homeRes.loadedDate='today';
+    _homeRes.loadedFor=today;
     renderHomeResultsStrip();
     return;
   }
+  // Today genuinely has nothing finished yet. Once today HAS rendered, it is
+  // never replaced by yesterday again that day (loadedFor guards the case of
+  // a page left open past midnight, when 'today' means a different date).
+  if(_homeRes.loadedDate==='today'&&_homeRes.loadedFor===today) return;
   var yday=irishDateStr(new Date(Date.now()-86400000));
   var ydayVenues=await getDay(yday);
+  if(ydayVenues===null){ retryLater('yesterday'); return; }
   if(hasFinished(ydayVenues)){
     _homeRes.data=ydayVenues;
     _homeRes.loadedDate='yesterday';
     renderHomeResultsStrip();
     return;
   }
-  // Both days empty or failed — hide silently.
+  // Both days genuinely empty — hide silently.
   window._homeResHasData=false;
   var wrap=document.getElementById('home-res-strip');
   if(wrap) wrap.style.display='none';
@@ -17846,12 +17878,14 @@ function _startHomeResultsPolling(){
     return;
   }
   function tick(){
+    // Window null (RC_MEETINGS swapped to another day, or empty) or already
+    // past: skip this tick but keep the interval alive. The window is
+    // re-evaluated every tick, so polling resumes by itself once today's
+    // card is back in RC_MEETINGS — previously the interval cleared itself
+    // here and nothing short of a racecard reload ever restarted it.
     var w=_getResWindow();
     var n=new Date();
-    if(!w||n>w.end){
-      if(_homeRes.interval){ clearInterval(_homeRes.interval); _homeRes.interval=null; }
-      return;
-    }
+    if(!w||n>w.end) return;
     _fetchHomeResults();
   }
   if(now<win.start){
