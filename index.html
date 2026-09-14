@@ -11724,12 +11724,11 @@ function _renderFormSections(s,part){
     var _pane=function(id,label,text,active){
       if(!text) return '';
       return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
-        +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">'+label+'</div>'
         +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+_esc(text)+'</div>'
         +'</div>';
     };
     var tabs='<div style="display:flex;border-bottom:2px solid #f0f2f5">'
-      +_tab('r','Recent',true)
+      +_tab('r','Recent Form',true)
       +(s.going?_tab('g','Going',false):'')
       +(s.trip?_tab('t','Trip',false):'')
       +(s.track?_tab('k','Track',false):'')
