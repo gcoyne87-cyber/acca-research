@@ -23,6 +23,10 @@ on:
         description: 'Force a fresh build even if daily:report/intelligence/lock already show one for today (use when today''s report is a stale/partial leftover, e.g. from a mid-run API failure)'
         type: boolean
         default: false
+      diagnose:
+        description: 'Print today''s raw daily:report, build:lock and build:crash from Redis (errors, startedAt/completedAt, lock age) without triggering anything'
+        type: boolean
+        default: false
 
 jobs:
   safety-net:
@@ -144,6 +148,29 @@ jobs:
         if: github.event.inputs.force == 'true'
         run: |
           echo "::warning::force=true — bypassing the stand-down check regardless of today's report/intelligence/lock state (items=${{ steps.check.outputs.items }}, intelItems=${{ steps.check.outputs.intelItems }}, lockActive=${{ steps.check.outputs.lockActive }})."
+
+      - name: Diagnose — dump today's raw report/lock/crash state
+        if: github.event.inputs.diagnose == 'true'
+        env:
+          UPSTASH_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: |
+          set -euo pipefail
+          TODAY=$(date -u +%Y-%m-%d)
+          fetch_redis() {
+            curl -s -H "Authorization: Bearer $UPSTASH_TOKEN" "$UPSTASH_URL/get/$1"
+          }
+          echo "== build:lock:$TODAY =="
+          fetch_redis "build%3Alock%3A$TODAY" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(d);console.log(r.result?JSON.stringify(JSON.parse(r.result),null,2):"(absent)");}catch(e){console.log("(unparseable) "+d.slice(0,300));}})'
+          echo
+          echo "== build:crash:$TODAY =="
+          fetch_redis "build%3Acrash%3A$TODAY" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(d);console.log(r.result?JSON.stringify(JSON.parse(r.result),null,2):"(absent)");}catch(e){console.log("(unparseable) "+d.slice(0,300));}})'
+          echo
+          echo "== debug:build-heartbeat:$TODAY =="
+          fetch_redis "debug%3Abuild-heartbeat%3A$TODAY" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(d);console.log(r.result?JSON.stringify(JSON.parse(r.result),null,2):"(absent)");}catch(e){console.log("(unparseable) "+d.slice(0,300));}})'
+          echo
+          echo "== daily:report:$TODAY (summary fields only) =="
+          fetch_redis "daily%3Areport%3A$TODAY" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const r=JSON.parse(d);if(!r.result){console.log("(absent)");return;}const rep=JSON.parse(r.result);console.log(JSON.stringify({startedAt:rep.startedAt,completedAt:rep.completedAt,meetings:rep.meetings,totalRaces:rep.totalRaces,upcomingRaces:rep.upcomingRaces,racesAnalysed:rep.racesAnalysed,analysesLength:(rep.analyses||[]).length,intelligenceItems:rep.intelligenceItems,costUSD:rep.costUSD,errors:rep.errors,warnings:rep.warnings},null,2));}catch(e){console.log("(unparseable) "+d.slice(0,300));}})'
 
       - name: Trigger fallback build — no report found and no build in progress
         if: steps.check.outputs.standDown != 'true'
