@@ -10,7 +10,17 @@ const https = require('https');
 // (scheduled:false, isTest:true, 2026-08-05 and 2026-08-07). This function
 // carries the schedule instead and hands off to the background function for
 // the real 5-15 minute run.
-module.exports.config = { schedule: '*/15 * * * *' };
+//
+// 05:00 / 07:00 / 09:00 UTC — 3x/day, restored 2026-09-15. The 2026-09-11
+// rewrite that introduced this trigger shim set the cron to '*/15 * * * *'
+// (96 runs/day); each run scans all runners across the next 5 days and
+// generates a Claude batch for anything unsummarised, so at that cadence a
+// backlog that never fully drains inside one run's 780s budget just times
+// out and restarts every 15 minutes, all day, every day — the run that
+// exhausted the Anthropic budget on 2026-09-14/15. 5/7/9 UTC was the
+// deliberately-chosen cadence before that rewrite (see commit 7758333) and
+// is restored here; form-summary-watchdog still checks at 09:30 UTC.
+module.exports.config = { schedule: '0 5,7,9 * * *' };
 
 function triggerRun() {
   return new Promise((resolve, reject) => {

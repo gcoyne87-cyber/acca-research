@@ -17,7 +17,12 @@ name: Daily Build Safety Net
 on:
   schedule:
     - cron: '40 9 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force a fresh build even if daily:report/intelligence/lock already show one for today (use when today''s report is a stale/partial leftover, e.g. from a mid-run API failure)'
+        type: boolean
+        default: false
 
 jobs:
   safety-net:
@@ -116,7 +121,9 @@ jobs:
           echo "items=$ITEMS" >> "$GITHUB_OUTPUT"
           echo "intelItems=$INTEL_ITEMS" >> "$GITHUB_OUTPUT"
           echo "lockActive=$LOCK_ACTIVE" >> "$GITHUB_OUTPUT"
-          if [ "$ITEMS" -gt 0 ] || [ "$INTEL_ITEMS" -gt 0 ] || [ "$LOCK_ACTIVE" = "true" ]; then
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "standDown=false" >> "$GITHUB_OUTPUT"
+          elif [ "$ITEMS" -gt 0 ] || [ "$INTEL_ITEMS" -gt 0 ] || [ "$LOCK_ACTIVE" = "true" ]; then
             echo "standDown=true" >> "$GITHUB_OUTPUT"
           else
             echo "standDown=false" >> "$GITHUB_OUTPUT"
@@ -132,6 +139,11 @@ jobs:
           else
             echo "build:lock:${{ steps.check.outputs.today }} shows a build already in progress — standing down to avoid a duplicate."
           fi
+
+      - name: Note forced override
+        if: github.event.inputs.force == 'true'
+        run: |
+          echo "::warning::force=true — bypassing the stand-down check regardless of today's report/intelligence/lock state (items=${{ steps.check.outputs.items }}, intelItems=${{ steps.check.outputs.intelItems }}, lockActive=${{ steps.check.outputs.lockActive }})."
 
       - name: Trigger fallback build — no report found and no build in progress
         if: steps.check.outputs.standDown != 'true'
