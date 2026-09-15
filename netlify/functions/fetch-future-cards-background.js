@@ -11,8 +11,17 @@ const AUTH = Buffer.from((USERNAME || '') + ':' + (PASSWORD || '')).toString('ba
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// Hard wall-clock ceiling on every Racing API request. Without it a hung
+// request never rejected: Promise.allSettled waited on it forever, the whole
+// sweep sat until Netlify killed the function, and neither the run record nor
+// the "Racecards" email was ever written (2026-09-14 23:00, and again on a
+// manual fire the next night). Same Promise.race pattern as the Claude calls;
+// the timer also destroys the socket so an abandoned request cannot keep the
+// function alive after the race has been lost.
+const API_TIMEOUT_MS = 20000;
 function apiGet(path) {
-  return new Promise((resolve, reject) => {
+  let req = null, timer = null;
+  const raw = new Promise((resolve, reject) => {
     const options = {
       hostname: BASE_URL,
       path: path,
@@ -22,7 +31,7 @@ function apiGet(path) {
         'Accept': 'application/json'
       }
     };
-    const req = https.request(options, (res) => {
+    req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -44,6 +53,14 @@ function apiGet(path) {
     req.on('error', reject);
     req.end();
   });
+  const ceiling = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error('Racing API timed out after ' + (API_TIMEOUT_MS / 1000) + 's: ' + path);
+      try { if (req) req.destroy(err); } catch (e) {}
+      reject(err);
+    }, API_TIMEOUT_MS);
+  });
+  return Promise.race([raw, ceiling]).finally(() => { if (timer) clearTimeout(timer); });
 }
 
 function sleep(ms) {
@@ -318,12 +335,20 @@ exports.handler = async function(event) {
   try {
     const dates = [];
     const base = new Date();
+    // Manual single-day refetch: ?date=YYYY-MM-DD (via the trigger twin, which
+    // carries the secret check) rewrites just that card — including today's,
+    // which the nightly day+1..+7 sweep never touches. Absent: the sweep as before.
+    const qsDate = event && event.queryStringParameters && event.queryStringParameters.date;
+    if (qsDate && /^\d{4}-\d{2}-\d{2}$/.test(qsDate)) {
+      dates.push(qsDate);
+    } else {
     for (var i = 1; i <= 7; i++) {
       const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
       const y = d.getFullYear();
       const mo = String(d.getMonth() + 1).padStart(2, '0');
       const dy = String(d.getDate()).padStart(2, '0');
       dates.push(y + '-' + mo + '-' + dy);
+    }
     }
 
     // Fetch + store in small batches with a delay between batches, mirroring the

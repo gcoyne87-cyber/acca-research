@@ -355,6 +355,7 @@ exports.handler = async function(event) {
   await redisSetEx(lockKey, { ts: Date.now() }, 120);
 
   let todayUpdated = 0;
+  let todayJockeyUpdated = 0;
   let todayError = null;
 
   try {
@@ -370,12 +371,18 @@ exports.handler = async function(event) {
       // lists them (is_non_runner / number 'NR') with no odds, so without this
       // they stayed in the cached card priced 'SP' and sorted to the bottom.
       const freshNrSet = {};
+      // Jockey / trainer safety net: the 23:00 card is built before late rider
+      // bookings (Irish meetings especially), so the fresh values fill in here
+      // within the hour instead of waiting for the next full rebuild.
+      const freshJockeyMap = {}, freshTrainerMap = {};
       freshData.racecards.forEach(function(race) {
         (race.runners || []).forEach(function(r) {
           if (!r.horse_id) return;
           if (r.is_non_runner || String(r.number) === 'NR') freshNrSet[r.horse_id] = true;
           const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
           freshPriceMap[r.horse_id] = extractPrice(oddsArr, 'Boyle Sports');
+          if (r.jockey) freshJockeyMap[r.horse_id] = String(r.jockey).trim();
+          if (r.trainer) freshTrainerMap[r.horse_id] = String(r.trainer).trim();
         });
       });
 
@@ -423,6 +430,9 @@ exports.handler = async function(event) {
               ru.price = freshPriceMap[ru.horse_id];
               if (applyPriceMovement(ru, freshPriceMap[ru.horse_id], anchors)) anchorsDirty = true;
               todayUpdated++;
+              // Non-empty and different only — never blank a stored name.
+              if (freshJockeyMap[ru.horse_id] && freshJockeyMap[ru.horse_id] !== ru.jockey) { ru.jockey = freshJockeyMap[ru.horse_id]; todayJockeyUpdated++; }
+              if (freshTrainerMap[ru.horse_id] && freshTrainerMap[ru.horse_id] !== ru.trainer) ru.trainer = freshTrainerMap[ru.horse_id];
             }
           });
         });
@@ -457,6 +467,7 @@ exports.handler = async function(event) {
   const tomorrow = tmrw.getFullYear() + '-' + String(tmrw.getMonth() + 1).padStart(2, '0') + '-' + String(tmrw.getDate()).padStart(2, '0');
 
   let tomorrowUpdated = 0;
+  let tomorrowJockeyUpdated = 0;
   let tomorrowError = null;
 
   try {
@@ -468,11 +479,15 @@ exports.handler = async function(event) {
     } else if (freshDataTomorrow && freshDataTomorrow.racecards && freshDataTomorrow.racecards.length) {
       // Build a horse_id -> fresh price lookup from the raw Racing API response
       const freshPriceMapTomorrow = {};
+      // Same jockey / trainer safety net as today's block.
+      const freshJockeyMapTomorrow = {}, freshTrainerMapTomorrow = {};
       freshDataTomorrow.racecards.forEach(function(race) {
         (race.runners || []).forEach(function(r) {
           if (!r.horse_id) return;
           const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
           freshPriceMapTomorrow[r.horse_id] = extractPrice(oddsArr, 'Boyle Sports');
+          if (r.jockey) freshJockeyMapTomorrow[r.horse_id] = String(r.jockey).trim();
+          if (r.trainer) freshTrainerMapTomorrow[r.horse_id] = String(r.trainer).trim();
         });
       });
 
@@ -505,9 +520,12 @@ exports.handler = async function(event) {
           if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshPriceMapTomorrow.hasOwnProperty(ru.horse_id)) {
+              if (ru.nonRunner === true) return; // withdrawn — leave it alone, as today's block does
               ru.price = freshPriceMapTomorrow[ru.horse_id];
               if (applyPriceMovement(ru, freshPriceMapTomorrow[ru.horse_id], anchorsTomorrow)) anchorsTomorrowDirty = true;
               tomorrowUpdated++;
+              if (freshJockeyMapTomorrow[ru.horse_id] && freshJockeyMapTomorrow[ru.horse_id] !== ru.jockey) { ru.jockey = freshJockeyMapTomorrow[ru.horse_id]; tomorrowJockeyUpdated++; }
+              if (freshTrainerMapTomorrow[ru.horse_id] && freshTrainerMapTomorrow[ru.horse_id] !== ru.trainer) ru.trainer = freshTrainerMapTomorrow[ru.horse_id];
             }
           });
         });
@@ -527,12 +545,14 @@ exports.handler = async function(event) {
     await sendErrorEmail('tomorrow (' + tomorrow + ')', e);
   }
 
-  console.log('[refresh-prices-background] tomorrowUpdated:', tomorrowUpdated);
+  console.log('[refresh-prices-background] tomorrowUpdated:', tomorrowUpdated, 'jockeys filled today/tomorrow:', todayJockeyUpdated, tomorrowJockeyUpdated);
 
   const logKey = 'price-refresh-log:' + today + ':' + new Date().getUTCHours();
   await redisSet(logKey, {
     todayUpdated: todayUpdated,
     tomorrowUpdated: tomorrowUpdated,
+    todayJockeyUpdated: todayJockeyUpdated,
+    tomorrowJockeyUpdated: tomorrowJockeyUpdated,
     timestamp: new Date().toISOString(),
     errors: [todayError, tomorrowError].filter(Boolean)
   });
