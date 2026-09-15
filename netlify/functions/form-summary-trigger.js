@@ -10,7 +10,10 @@ const https = require('https');
 // (scheduled:false, isTest:true, 2026-08-05 and 2026-08-07). This function
 // carries the schedule instead and hands off to the background function for
 // the real 5-15 minute run.
-module.exports.config = { schedule: '*/15 * * * *' };
+//
+// Cadence: three fixed slots a day at 04:00, 06:00 and 08:00 UTC
+// (05:00, 07:00, 09:00 Irish summer time) — replaces the old */15 polling.
+module.exports.config = { schedule: '0 4,6,8 * * *' };
 
 function triggerRun() {
   return new Promise((resolve, reject) => {
