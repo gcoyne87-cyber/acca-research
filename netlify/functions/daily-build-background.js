@@ -941,7 +941,15 @@ ${runners}
 
 Return ONLY the JSON object.`;
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, false, 1);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount, apiError } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, false, 1);
+  // An Anthropic error response (bad key, zero credit, 429, 529, ...) has no
+  // content, so text is '' and parseJson('') silently returns null — the race
+  // then reports ok:false with NO entry in report.errors, indistinguishable
+  // from "the model just didn't return usable JSON". Surfacing apiError here
+  // is what let the 2026-09-15 zero-credit outage hide behind a clean-looking
+  // "0 errors, 0/38 analysed" report. Thrown (not returned) so the existing
+  // per-race catch in the handler's batch loop records it in report.errors.
+  if (apiError) throw new Error(apiError);
   const result = parseJson(text);
   // Enforce the 120-125 word pullQuote ceiling: condense via a second call
   // when over, sentence-trim if the condense itself overshoots or fails. The
