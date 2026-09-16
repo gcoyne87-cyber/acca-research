@@ -17947,7 +17947,7 @@ function _buildResultCard(item,pickMap,bulked){
   var html='';
   html+='<div style="flex-shrink:0;width:'+(bulked?260:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
   // Header: time · venue
-  html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
+  html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
   html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
 
   // Bulked (Results page) only: race name + a distance/class/prize/going meta
@@ -17956,7 +17956,7 @@ function _buildResultCard(item,pickMap,bulked){
   // item's flag, _cleanGoing) — blank fields just don't join in, no dangling
   // " · ". Homepage strip never sets bulked, so its markup is untouched.
   if(bulked){
-    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#5a6378;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.name)+'</div>';
+    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#5a6378;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.name)+'</div>';
     var _metaParts=[];
     var _dist=_nrAbDist(race.dist||'');
     if(_dist) _metaParts.push(_dist);
@@ -17965,11 +17965,11 @@ function _buildResultCard(item,pickMap,bulked){
     if(_prize) _metaParts.push(_prize);
     var _going=_cleanGoing(race.going);
     if(_going) _metaParts.push(_going);
-    if(_metaParts.length) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:9px">'+escHtml(_metaParts.join(' · '))+'</div>';
+    if(_metaParts.length) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">'+escHtml(_metaParts.join(' · '))+'</div>';
   }
 
   // Divider
-  html+='<div style="height:1px;background:#f0f2f7;margin-bottom:9px"></div>';
+  html+='<div style="height:1px;background:#f0f2f7;margin-bottom:7px"></div>';
   // Top 4 rows
   top4.forEach(function(r){
     var p=parseInt(r.pos);
@@ -18006,7 +18006,7 @@ function _buildResultCard(item,pickMap,bulked){
       _favParts.push(escHtml(r.horse)+(r.sp?' '+escHtml(r.sp)+'F':'')+' ('+_ord+')');
     });
     if(_favParts.length) _footerLines.push('Fav: <b style="color:#0b1628">'+_favParts.join(', ')+'</b>');
-    if(_footerLines.length) html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f2f7;font-size:10px;color:#9aa3b5;line-height:1.6">'+_footerLines.join('<br>')+'</div>';
+    if(_footerLines.length) html+='<div style="margin-top:5px;padding-top:5px;border-top:1px solid #f0f2f7;font-size:10px;color:#9aa3b5;line-height:1.45">'+_footerLines.join('<br>')+'</div>';
   }
 
   html+='</div>';
