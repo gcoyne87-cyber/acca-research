@@ -18186,7 +18186,7 @@ function renderFullResultsPage(){
   _resData.forEach(function(v){
     var vcid=v.courseId||_normCourse(v.course);
     var act=vcid===_resFullVenue;
-    tabsHtml+='<button onclick="_selectFullResultsVenue(\''+escHtml(vcid)+'\')" style="flex-shrink:0;padding:8px 14px;border-radius:99px;border:1.5px solid '+(act?'#0D1B3E':'#e8eaf0')+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#0D1B3E':'transparent')+';color:'+(act?'#fff':'#9aa3b5')+';cursor:pointer;font-family:inherit;white-space:nowrap">'+(v.flag||'🇬🇧')+' '+escHtml(v.course)+'</button>';
+    tabsHtml+='<button onclick="_selectFullResultsVenue(\''+escHtml(vcid)+'\')" style="flex-shrink:0;padding:8px 14px;border-radius:99px;border:1.5px solid '+(act?'#1e9e6b':'#e8eaf0')+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#1e9e6b':'transparent')+';color:'+(act?'#fff':'#9aa3b5')+';cursor:pointer;font-family:inherit;white-space:nowrap">'+(v.flag||'🇬🇧')+' '+escHtml(v.course)+'</button>';
   });
   tabsEl.innerHTML=tabsHtml;
 
@@ -18211,7 +18211,7 @@ function renderFullResultsPage(){
 // (nrSilk's optional size param), fr_-prefixed ids (own namespace, distinct
 // from runnerRow's rc/tf and the old accordion's res_ scheme).
 function _buildFullResultsRaceHtml(venue,cid,race,pickMap){
-  var html='<div style="padding:8px 14px 6px;border-top:1px solid #f0f2f7">';
+  var html='<div style="background:#fff;border-radius:12px;border:0.5px solid #e6e9ef;margin:8px 14px;padding:10px 14px 8px">';
 
   // Race header — exact recovered structure/styling (meeting · time bold,
   // race name · dist, class · prize, going · N runners).
