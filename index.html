@@ -6397,9 +6397,6 @@ function unlockCorkAnalysis(){
     <div class="slip-ret-box"><div class="slip-ret-lbl">Profit</div><div class="slip-ret-val" id="sr-profit">—</div></div>
     <div class="slip-ret-box"><div class="slip-ret-lbl">Odds</div><div class="slip-ret-val" id="sr-odds">—</div></div>
   </div>
-  <div class="slip-cta-wrap" id="slip-cta-wrap" style="display:none">
-    <button class="slip-place-btn">Place Bet &rarr;</button>
-  </div>
 </div>
 
 <!-- Betslip trigger bar -->
@@ -11659,7 +11656,7 @@ function _buildInlineAnalysisHtml(a, m, race){
       +'</div>'
       +'<div style="font-size:10px;color:#9aa3b5;margin-bottom:8px">'+escHtml(sel.jockey||'')+(sel.trainer?' &middot; '+escHtml(sel.trainer):'')+(sel.formFigures?' &middot; '+escHtml(sel.formFigures):'')+'</div>'
       +(inlinePara?'<p style="font-size:12px;color:#5a6478;line-height:1.6;margin:0 0 12px">'+inlinePara+'</p>':'')
-      +'<button onclick="nrAddToSlip(\''+escHtml(sel.horseName)+'\',\''+escHtml(sel.odds||'SP')+'\')" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add to My Slip</button>'
+      +'<button onclick="nrAddToSlip(\''+escHtml(sel.horseName)+'\',\''+escHtml(sel.odds||'SP')+'\',\''+escHtml(m.name)+'\',\''+escHtml(race.t)+'\')" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Selection</button>'
       +'</div>'
       +'</div>';
   }
@@ -13532,7 +13529,7 @@ function _buildTipsTabHtml(a){
     +'</div>'
     +'<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(sel.jockey||'')+(sel.trainer?' &middot; '+escHtml(sel.trainer):'')+(sel.formFigures?' &middot; '+escHtml(sel.formFigures):'')+'</div>'
     +(sel.pullQuote?'<div style="font-size:13px;color:#5a6478;line-height:1.6;margin-bottom:10px">'+escHtml(sel.pullQuote)+'</div>':'')
-    +'<button onclick="nrAddToSlip(\''+escHtml(sel.horseName).replace(/'/g,"\\'")+'\',\''+escHtml(sel.odds||'SP')+'\')" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add to Slip</button>'
+    +'<button onclick="nrAddToSlip(\''+escHtml(sel.horseName).replace(/'/g,"\\'")+'\',\''+escHtml(sel.odds||'SP')+'\')" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Selection</button>'
     +'</div></div>';
   if(a.horsesToWatch&&a.horsesToWatch.length){
     a.horsesToWatch.forEach(function(h){
@@ -16240,7 +16237,7 @@ function renderAIIntelligence(){
         +'</div>'
         +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px">'
-          +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(_displayPrice||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add to Slip</button>':'')
+          +(item.horseName?'<button onclick="nrAddToSlip(\''+item.horseName.replace(/'/g,"\\'")+'\',\''+(_displayPrice||'SP')+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add Selection</button>':'')
           +'<button class="ai-cta-light" onclick="highlightHorse(\''+item.horseName.replace(/'/g,"\\'")+'\');selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> '+item.ctaLabel+'</button>'
           +((item.signalType==='Course and Distance'||item.signalType==='Ground Edge')?'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\''+(item.signalType==='Course and Distance'?'cd':'ground')+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View all horses</button>':'')
         +'</div>'
@@ -16349,7 +16346,7 @@ function renderTomorrowPicks(){
         +'<div style="font-size:11px;color:rgba(255,255,255,0.72);line-height:1.45;font-weight:450">'+researchHtml+'</div>'
       +'</div>'
       +'<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:10px">'
-        +'<button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\')">+ Add to My Slip</button>'
+        +'<button style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(p.detail.split(' ')[0])+'\')">+ Add Selection</button>'
         +(courseName?'<button class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px" onclick="tmViewMeetingCard(\''+courseId+'\',\''+escHtml(p.detail.split(' ')[0])+'\')"><span>&#x2756;</span> Go to '+escHtml(p.detail.split(' · ')[0]||'Race')+'</button>':'')
       +'</div>'
       +'</div>';
@@ -16828,7 +16825,7 @@ function renderRacingPicks(){
             +'<div id="tips-fe-'+i+'" style="display:none"></div>'
             +'<div id="tips-ee-'+i+'" style="display:none"></div>'
           +'</div>'
-          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
+          +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds)+'\',\''+escHtml(courseName)+'\',\''+escHtml(fullPickTime)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add Selection</button>'
           +(courseName?'<button onclick="highlightHorse(\''+p.horse.replace(/'/g,"\\'")+'\');selectRacingSection(\'race:'+courseName+':'+fullPickTime+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+fullCourseTimeLabel+' &rarr;</button>':'')
         +'</div>'
       +'</div>'
@@ -16902,7 +16899,7 @@ function renderHomeSelections(el){
             })()
             +'<div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:12px">'+metaLine+'</div>'
             +(p.summary?'<p style="font-size:12px;color:#fff;line-height:1.75;margin:0 0 14px">'+escHtml(p.summary)+'</p>':'<div style="margin-bottom:14px"></div>')
-            +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds||'')+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add to My Slip</button>'
+            +'<button onclick="nrAddToSlip(\''+escHtml(p.horse)+'\',\''+escHtml(p.odds||'')+'\',\''+escHtml(gi.course)+'\',\''+escHtml(gi.time)+'\')" style="width:100%;background:#1e9e6b;color:#fff;border:none;border-radius:99px;padding:11px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;-webkit-font-smoothing:antialiased;transform:translateZ(0)">+ Add Selection</button>'
             +(gi.course?'<button onclick="highlightHorse(\''+p.horse.replace(/'/g,"\\'")+'\');selectRacingSection(\'race:'+gi.course+':'+gi.time+'\')" class="ai-cta-light" style="width:100%;padding:11px 10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><span>&#x2756;</span> Go to '+escHtml(gi.course)+' '+escHtml(gi.time)+' &rarr;</button>':'')
           +'</div>'
         +'</div>'
@@ -19775,6 +19772,7 @@ function _populateRaceAnalysis() {
   var rcTitle = document.getElementById('ra-racecard-title');
   var rcSub1 = document.getElementById('ra-racecard-sub1');
   var rcSub2 = document.getElementById('ra-racecard-sub2');
+  var _raVenue = '', _raTime = '';
   if (_aiCtx && _aiCtx.m) {
     var m = _aiCtx.m;
     var raceTime = _aiCtx.type || '';
@@ -19786,6 +19784,7 @@ function _populateRaceAnalysis() {
     if (rcTitle) rcTitle.textContent = (m.name||'') + ' · ' + raceTime;
     if (rcSub1) rcSub1.textContent = raceLbl + (rc.dist?' · '+rc.dist:'');
     if (rcSub2) rcSub2.textContent = _cleanGoing(m.going) + (rc.r?' · '+rc.r+' runners':'');
+    _raVenue = m.name || ''; _raTime = raceTime;
   } else if (_aiRacePayload) {
     var p = _aiRacePayload;
     if (hdrTitle) hdrTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
@@ -19793,6 +19792,7 @@ function _populateRaceAnalysis() {
     if (rcTitle) rcTitle.textContent = (p.meetingName||'') + ' · ' + (p.time||'');
     if (rcSub1) rcSub1.textContent = (p.raceName||'');
     if (rcSub2) rcSub2.textContent = _cleanGoing(p.going) + (p.runners?' · '+p.runners.length+' runners':'');
+    _raVenue = p.meetingName || ''; _raTime = p.time || '';
   }
 
   var intel = document.getElementById('ra-intelligence-text');
@@ -19808,17 +19808,19 @@ function _populateRaceAnalysis() {
     var imgEl = document.getElementById('img-'+(_aiRaceCourseId||'cork')) || document.getElementById('img-cork');
     if (imgEl && imgEl.getAttribute("src")) verdictBg.src = imgEl.getAttribute("src");
   }
-  if (r.strongestSelection) _renderSelectionCard(r.strongestSelection);
+  if (r.strongestSelection) _renderSelectionCard(r.strongestSelection, _raVenue, _raTime);
   _updateRunnerLabels(r);
   if (_aiRacePayload) mrAddSingleRace(_aiRacePayload, r);
   setTimeout(_initRunnersCollapsible,50);
 }
 
-function _renderSelectionCard(sel) {
+function _renderSelectionCard(sel, venue, time) {
   var card = document.getElementById('ra-selection-card');
   if (!card) return;
   var horseName = _safeHtml(sel.horseName || '');
   var odds = _safeHtml(sel.odds || '');
+  var raVenue = _safeHtml(venue || '');
+  var raTime = _safeHtml(time || '');
   var jockey = _safeHtml(sel.jockey || '');
   var trainer = _safeHtml(sel.trainer || '');
   var form = _safeHtml(sel.formFigures || '');
@@ -19845,7 +19847,7 @@ function _renderSelectionCard(sel) {
     +'<button data-hname="'+horseName+'" onclick="var d=document.getElementById(\'ra-fac-det\');var open=d.style.display!==\'none\';if(!open&&!d.dataset.loaded){d.innerHTML=_selHistCarousel(this.dataset.hname);d.dataset.loaded=\'1\';}d.style.display=open?\'none\':\'block\';" style="background:none;border:none;padding:0;color:#10b981;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;letter-spacing:.01em">FORM EDGE <svg style="width:10px;height:10px;stroke:#10b981;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>'
     +'<div id="ra-fac-det" style="display:none;margin-top:8px"></div>'
     +'</div>'
-    +'<button data-hname="'+horseName+'" data-odds="'+odds+'" onclick="nrAddToSlip(this.dataset.hname,this.dataset.odds)" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add to My Slip</button>'
+    +'<button data-hname="'+horseName+'" data-odds="'+odds+'" data-venue="'+raVenue+'" data-time="'+raTime+'" onclick="nrAddToSlip(this.dataset.hname,this.dataset.odds,this.dataset.venue,this.dataset.time)" style="width:100%;background:#0D1B3E;color:#d4af37;border:1.5px solid #d4af37;border-radius:99px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.01em">+ Add Selection</button>'
     +'</div>';
 }
 
