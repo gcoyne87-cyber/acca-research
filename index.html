@@ -11542,11 +11542,13 @@ function loadRacecards(){
         _rcSetRacecardsHeading();
       }
       buildDateStrip();
-      // An active trainer filter must never be overwritten by the auto-switch
-      // render — renderTodayMeetingsList routes to the filter view itself.
-      if(_trainerFilter){ renderTodayMeetingsList(); }
-      else if(_homeRcDay==='tomorrow'){ renderTomorrowMeetingsList(document.getElementById('today-meetings-list')); }
-      else{ renderTodayMeetingsList(); }
+      // Routes through the shared dispatcher instead of a narrow inline
+      // today/tomorrow/trainer-filter check — _renderCurrentHomeList()
+      // already covers all of those plus any future date (Fri/Sat/Sun),
+      // which this handler previously fell through to a bare
+      // renderTodayMeetingsList() for, stomping renderFutureDateContent()'s
+      // own render with a static "not available yet" placeholder.
+      _renderCurrentHomeList();
       _renderRcTrainerChips();
       var inline=document.getElementById('racing-inline-meeting');
       if(inline&&inline.style.maxHeight&&inline.style.maxHeight!=='0px') renderInlineMeeting();
