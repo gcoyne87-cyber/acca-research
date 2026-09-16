@@ -6376,7 +6376,7 @@ function unlockCorkAnalysis(){
 
 <!-- Betslip bottom sheet -->
 <div class="slip-sheet" id="slip-panel">
-  <div class="slip-sheet-handle"></div>
+  <div class="slip-sheet-handle" onclick="toggleSlip()" style="cursor:pointer"></div>
   <div class="slip-sheet-head">
     <span class="slip-sheet-title" id="slip-sheet-title">My Slip</span>
     <button class="slip-sheet-clear" onclick="clearSlip()">Clear all</button>
@@ -8225,6 +8225,27 @@ function _resSilkFor(horseName,idx){
 
 function toggleSlip(){slipOpen=!slipOpen;var s=document.getElementById('slip-panel');var o=document.getElementById('slip-overlay');if(s)s.classList.toggle('open',slipOpen);if(o)o.classList.toggle('open',slipOpen);}
 function slipAdjStake(d){stake=Math.max(5,Math.min(500,stake+d));var el=document.getElementById('slip-stake-amt');if(el)el.textContent='£'+stake;renderSlip();}
+function _slipAttachSwipe(){
+  var el=document.getElementById('slip-panel');
+  if(!el) return;
+  var sx=0,sy=0,dy=0,dragging=false;
+  el.addEventListener('touchstart',function(e){
+    var t=e.target,inLegs=false;
+    while(t&&t!==el){if(t.id==='slip-legs-container'){inLegs=true;break;}t=t.parentElement;}
+    dragging=!inLegs;
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;dy=0;
+  },{passive:true});
+  el.addEventListener('touchmove',function(e){
+    if(!dragging) return;
+    dy=e.touches[0].clientY-sy;
+    if(Math.abs(e.touches[0].clientX-sx)>Math.abs(dy)) dragging=false;
+  },{passive:true});
+  el.addEventListener('touchend',function(){
+    if(!dragging) return;
+    dragging=false;
+    if(dy>70&&slipOpen) toggleSlip();
+  },{passive:true});
+}
 
 function addToSlip(btn){
 
@@ -10763,6 +10784,8 @@ window.addEventListener('DOMContentLoaded',function(){
 
   initSlider();
 
+  _slipAttachSwipe();
+
   renderLeaderboard();
 
   // removed: auto-reset to racing home after 30s was bouncing user back to homepage
@@ -13218,7 +13241,8 @@ function renderTodayMeetingsList(isInitial){
         out+='<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">';
         out+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(m.name)+' &middot; '+escHtml(sr.t)+'</div>';
         out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(sr.name)+' &middot; '+escHtml(_nrAbDist(sr.dist))+'</div>';
-        var _srcp=(sr.class||'')+(sr.class&&sr.prize?' · ':'')+(sr.prize||'');
+        var _srPrize=_fmtPrize(sr.prize,m.flag);
+        var _srcp=(sr.class||'')+(sr.class&&_srPrize?' · ':'')+_srPrize;
         if(_srcp) out+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_srcp)+'</div>';
         out+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_cleanGoing(m.going))+' &middot; '+sr.r+' runners</div>';
         var _hk=(m.name+' '+sr.t).toLowerCase().trim(),_ha=_cachedRaceAnalyses[_hk];
@@ -18074,7 +18098,7 @@ function renderResultsPage(){
 
       // Race detail
       if(race){
-        html+='<div style="padding:10px 14px 14px;border-top:1px solid #f0f2f7">';
+        html+='<div style="padding:10px 14px 6px;border-top:1px solid #f0f2f7">';
 
         // Header block — identical structure and style to the racecard race
         // header (meeting · time bold, race name · dist, class · prize,
@@ -18083,7 +18107,7 @@ function renderResultsPage(){
         // race-level race.prize never fires), formatted via _fmtPrize with
         // the venue's currency.
         html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
-        if(race.name||race.dist) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_goingClean(race.name||''))+(race.name&&race.dist?' &middot; ':'')+escHtml(_nrAbDist(race.dist||''))+'</div>';
+        html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+' &middot; '+escHtml(_nrAbDist(race.dist||''))+'</div>';
         var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
         var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
         if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
