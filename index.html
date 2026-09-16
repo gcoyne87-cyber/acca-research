@@ -5952,6 +5952,19 @@ function unlockCorkAnalysis(){
       </div>
       <div id="res-date-bar" style="display:flex;background:#f5f7fb;border-bottom:1px solid #e8eaf0;overflow-x:auto;scrollbar-width:none;padding:0 6px"></div>
       <div id="res-body"></div>
+      <!-- FULL RESULTS VIEW — per-venue detailed results (race header, full
+           finisher list, horse profile panels, results footer), reached via
+           "View Full Results" on a venue heading in res-body above. Sits
+           below the same res-date-bar; toggles visibility with res-body,
+           never with the date bar itself. -->
+      <div id="res-full-view" style="display:none">
+        <div onclick="_closeFullResults()" style="display:flex;align-items:center;gap:6px;padding:10px 14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1B3E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <span style="font-size:13px;font-weight:700;color:#0D1B3E">Back to Results</span>
+        </div>
+        <div id="res-full-tabs" style="position:sticky;top:48px;z-index:20;display:flex;gap:7px;overflow-x:auto;background:#f5f7fb;border-bottom:1px solid #e8eaf0;padding:0 12px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+        <div id="res-full-races"></div>
+      </div>
       <!-- Detailed results: heading + date bar (Today / Yesterday / two prior
            day names). Pills rendered by _renderResDateBar; selection loads
            that date's results into res-body below. The Latest Results feed
@@ -14310,8 +14323,10 @@ function nrShowLoading(){
   // insights now appear inline in runner rows
 }
 
-function nrSilk(s){
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="24" viewBox="0 0 26 32">'
+function nrSilk(s,size){
+  var w=size||20;
+  var h=Math.round(w*1.2);
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 26 32">'
     +'<path d="M3 9L23 9L24 30L2 30Z" fill="'+s.body+'"/>'
     +'<path d="M0 9L7 5L7 16L0 20Z" fill="'+s.sleeve+'"/>'
     +'<path d="M26 9L19 5L19 16L26 20Z" fill="'+s.sleeve+'"/>'
@@ -17122,6 +17137,12 @@ var _resOpenVenue=null;
 var _resOpenRace={};
 var _resLoadedDate=null;
 var _resApiCache={};
+// Full Results view — per-venue detailed drill-down reached from a venue
+// heading's "View Full Results" CTA in renderResultsPage(). null = closed
+// (showing the snapshot cards in res-body); otherwise the active venue's
+// courseId, shown in res-full-view alongside a sticky tab bar of every
+// other venue racing on the currently loaded date.
+var _resFullVenue=null;
 // One in-flight get-results page fetch per date — every caller (the Results
 // page and the homepage Latest Results strip) shares the same promise, so
 // duplicate simultaneous Racing API sweeps can never fire (the 429 cause)
@@ -18064,6 +18085,7 @@ function renderResultsPage(){
 
   var _pickMap=_pickMapForDate(_resLoadedDate||irishDateStr());
   _resData.forEach(function(venue,vi){
+    var cid=venue.courseId||_normCourse(venue.course);
     var races=venue.races||[];
     var racesWithResults=races.filter(function(r){ return r.runners&&r.runners.length; });
 
@@ -18082,6 +18104,7 @@ function renderResultsPage(){
     html+='<div style="display:flex;align-items:center;padding:8px 14px">';
     html+='<span style="font-size:15px;margin-right:10px;flex-shrink:0">'+(venue.flag||'🇬🇧')+'</span>';
     html+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;flex:1;line-height:1.1">'+escHtml(venue.course)+'</div>';
+    html+='<span onclick="_openFullResults(\''+escHtml(cid)+'\')" style="font-size:12px;font-weight:700;color:#1e9e6b;cursor:pointer;white-space:nowrap;flex-shrink:0">View Full Results &rarr;</span>';
     html+='</div>';
 
     // Horizontally-scrolling row of result cards — one per race with a
@@ -18101,6 +18124,9 @@ function renderResultsPage(){
   html+='</div>';
   body.innerHTML=html;
   renderResultsFeed();
+  // Keep an open Full Results view in sync with this same date/poll refresh
+  // — no-ops internally if res-full-view isn't currently displayed.
+  renderFullResultsPage();
   // The innerHTML rebuild above resets every pill row's horizontal scroll to
   // 0. Restore each bar to exactly where the user left it (captured at the
   // top of this function) — never scroll to the tapped pill, so the bar
@@ -18108,6 +18134,193 @@ function renderResultsPage(){
   _restorePillScrolls(_pillSave);
   // Re-open any horse profile panel the rebuild destroyed.
   setTimeout(_nrRestorePanels,0);
+}
+
+// ── FULL RESULTS VIEW ────────────────────────────────────────────────────────
+// Per-venue detailed drill-down, reached from a venue heading's "View Full
+// Results" CTA above. Reuses _resData/_resLoadedDate as-is (no separate
+// fetch) — just a different, richer rendering of the same data, scoped to
+// one venue at a time via a sticky tab bar.
+
+function _openFullResults(courseId){
+  _resFullVenue=courseId;
+  var body=document.getElementById('res-body');
+  var full=document.getElementById('res-full-view');
+  if(body) body.style.display='none';
+  if(full) full.style.display='';
+  renderFullResultsPage();
+  if(full) full.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function _closeFullResults(){
+  _resFullVenue=null;
+  var body=document.getElementById('res-body');
+  var full=document.getElementById('res-full-view');
+  if(full) full.style.display='none';
+  if(body) body.style.display='';
+}
+
+function _selectFullResultsVenue(courseId){
+  _resFullVenue=courseId;
+  renderFullResultsPage();
+}
+
+function renderFullResultsPage(){
+  var full=document.getElementById('res-full-view');
+  if(!full||full.style.display==='none') return; // not open — nothing to refresh
+  var tabsEl=document.getElementById('res-full-tabs');
+  var racesEl=document.getElementById('res-full-races');
+  if(!tabsEl||!racesEl) return;
+  if(!_resData||!_resData.length){
+    tabsEl.innerHTML='';
+    racesEl.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:13px">No races found.</div>';
+    return;
+  }
+
+  // Keep the previously active venue selected if it still exists in the
+  // (possibly refreshed/date-changed) data; otherwise default to the first.
+  var stillThere=_resData.some(function(v){ return (v.courseId||_normCourse(v.course))===_resFullVenue; });
+  if(!stillThere) _resFullVenue=_resData[0]?(_resData[0].courseId||_normCourse(_resData[0].course)):null;
+
+  var tabsHtml='';
+  _resData.forEach(function(v){
+    var vcid=v.courseId||_normCourse(v.course);
+    var act=vcid===_resFullVenue;
+    tabsHtml+='<button onclick="_selectFullResultsVenue(\''+escHtml(vcid)+'\')" style="flex-shrink:0;padding:8px 14px;border-radius:99px;border:1.5px solid '+(act?'#0D1B3E':'#e8eaf0')+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#0D1B3E':'transparent')+';color:'+(act?'#fff':'#9aa3b5')+';cursor:pointer;font-family:inherit;white-space:nowrap">'+(v.flag||'🇬🇧')+' '+escHtml(v.course)+'</button>';
+  });
+  tabsEl.innerHTML=tabsHtml;
+
+  var venue=_resData.find(function(v){ return (v.courseId||_normCourse(v.course))===_resFullVenue; });
+  if(!venue){ racesEl.innerHTML=''; return; }
+  var cid=_resFullVenue;
+  var pickMap=_pickMapForDate(_resLoadedDate||irishDateStr());
+  var races=venue.races||[];
+  var html='';
+  races.forEach(function(race){
+    html+=_buildFullResultsRaceHtml(venue,cid,race,pickMap);
+  });
+  racesEl.innerHTML=html||'<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:13px">No races found.</div>';
+  // Re-open any horse profile panel this rebuild destroyed.
+  setTimeout(_nrRestorePanels,0);
+}
+
+// Builds one race's full block — recovered pre-card-rebuild markup (race
+// header, full finisher list, per-horse profile panel wrapper, results
+// footer), spacing tightened for a multi-race single-venue scroll: row
+// padding 7px 0 -> 5px 0, footer padding/line-height reduced, silks smaller
+// (nrSilk's optional size param), fr_-prefixed ids (own namespace, distinct
+// from runnerRow's rc/tf and the old accordion's res_ scheme).
+function _buildFullResultsRaceHtml(venue,cid,race,pickMap){
+  var html='<div style="padding:8px 14px 6px;border-top:1px solid #f0f2f7">';
+
+  // Race header — exact recovered structure/styling (meeting · time bold,
+  // race name · dist, class · prize, going · N runners).
+  html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
+  html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+' &middot; '+escHtml(_nrAbDist(race.dist||''))+'</div>';
+  var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
+  var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
+  if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
+  var _rgoing=_cleanGoing(race.going);
+  var _rruns=race.ran||((race.runners||[]).length||'');
+  if(_rgoing||_rruns) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_rgoing)+(_rgoing&&_rruns?' &middot; ':'')+(_rruns?_rruns+' runners':'')+'</div>';
+
+  var runners=race.runners||[];
+  function ordN(p){var n=parseInt(p,10);if(!n)return String(p||'-');var v=n%100;var s=(v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');return n+s;}
+  var fieldRunners=runners.filter(function(r){return r.pos&&String(r.pos).trim();});
+  var winner=runners.find(function(r){return r.pos==='1';});
+  var favNames=_resFavNames(runners);
+
+  if(!fieldRunners.length){
+    html+='<div style="font-size:13px;color:#9aa3b5;padding:4px 0 8px">'+(_raceIsFinished(race.time)?'Result not yet available':'Race not yet run')+'</div>';
+  } else {
+    fieldRunners.forEach(function(r,ri){
+      var p=parseInt(r.pos);
+      var isW=p===1;
+      var ord=ordN(r.pos);
+      // fr_ pfx — own namespace, unique per venue/race/row (same nrh- id
+      // scheme runnerRow uses, so nrLoadProfile/nrTogglePanel/_nrRestorePanels
+      // all work unchanged on these rows).
+      var rpfx='fr_'+String(cid)+'_'+String(race.time||'').replace(/[^0-9]/g,'')+'_'+ri;
+      html+='<div style="display:flex;align-items:center;padding:5px 0;'+(_resTrainerRowMatch(r)?'background:#ecfdf5;':'')+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
+      html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0">'+ord+'</span>';
+      html+='<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-right:9px">'
+        +(r.draw?'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+escHtml(String(r.draw))+'</span>':'')
+        +nrSilk(_resSilkFor(r.horse,ri),16)
+      +'</div>';
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap">'
+        +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
+        +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
+        +_edgeTagChips(r,8)
+        +_pickPill(r.horse,pickMap,9)
+      +'</div>';
+      if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
+      if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';
+      if(r.wt||r.or) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+(r.wt?escHtml(String(r.wt)):'')+(r.wt&&r.or?' &middot; ':'')+(r.or?'OR '+escHtml(String(r.or)):'')+'</div>';
+      if(r.age) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(String(r.age))+'</div>';
+      html+='</div>';
+      if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:#0D1B3E;flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
+      html+='</div>';
+      // Hidden profile panel wrapper — same nrh- structure runnerRow builds
+      // (profile panel only; no Form/Analysis panels here).
+      if(r.horse_id){
+        html+='<div id="nrh-'+rpfx+'" data-horsename="'+escHtml(r.horse)+'" data-horseid="'+escHtml(r.horse_id||'')+'" style="display:none">'
+          +'<div id="nrh-pe-'+rpfx+'" style="display:none;padding:6px 6px 8px">'
+            +'<div id="nrh-pai-'+rpfx+'"></div>'
+            +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
+            +'<div id="nrh-pmeta-'+rpfx+'" style="padding:0 6px"></div>'
+            +'<div id="nrh-pft-'+rpfx+'"></div>'
+            +'<div id="nrh-cpft-'+rpfx+'"></div>'
+            +'<div id="nrh-pcareer-'+rpfx+'" style="padding:0"></div>'
+          +'</div>'
+        +'</div>';
+      }
+    });
+    // Footer — tightened padding/line-height vs. the recovered version.
+    html+='<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f0f2f7;font-size:11px;color:#9aa3b5;line-height:1.4">';
+    if(race.ran) html+='<span style="color:#0D1B3E;font-weight:600">'+race.ran+' ran</span>';
+    if(race.distances) html+=' · Distances: '+escHtml(race.distances);
+    if(race.winning_time||race.total_sp) html+='<br>';
+    if(race.winning_time) html+='Time: <span style="color:#0D1B3E">'+escHtml(race.winning_time)+'</span>';
+    if(race.winning_time&&race.total_sp) html+=' · ';
+    if(race.total_sp) html+='Total SP: <span style="color:#0D1B3E">'+escHtml(race.total_sp)+'</span>';
+    if(winner&&winner.jockey) html+='<br>Winning jockey: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.jockey)+'</span>';
+    if(winner&&winner.trainer) html+='<br>Winning trainer: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.trainer)+'</span>';
+    var _fPrize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
+    if(_fPrize) html+='<br>Prize: <span style="color:#0D1B3E">'+escHtml(_fPrize)+'</span>';
+    (function(){
+      function spDec(r){
+        if(typeof r.sp_dec==='number'&&isFinite(r.sp_dec)&&r.sp_dec>1) return r.sp_dec;
+        var s=String(r.sp||'').trim();
+        if(!s||s==='SP') return null;
+        if(/^evs$|^evens$/i.test(s)) return 2;
+        var q=s.split('/');
+        if(q.length===2){var n=parseFloat(q[0]),dd=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(dd)&&dd>0)return n/dd+1;}
+        var f=parseFloat(s);
+        return (!isNaN(f)&&f>1)?f:null;
+      }
+      function ordP(p){var n=parseInt(p,10);if(!n)return p||'-';return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');}
+      var best=null;
+      runners.forEach(function(r){
+        var d=spDec(r);
+        if(d===null) return;
+        if(!best||d<best.dec-1e-9){best={dec:d,list:[r]};}
+        else if(Math.abs(d-best.dec)<1e-9){best.list.push(r);}
+      });
+      if(!best) return;
+      var favTxt=best.list.map(function(r){
+        return escHtml(r.horse)+(r.sp?' '+escHtml(r.sp):'')+' ('+escHtml(ordP(r.pos))+')';
+      }).join(', ');
+      html+='<br>Fav: <span style="color:#0D1B3E;font-weight:600">'+favTxt+'</span>';
+    })();
+    if(race.non_runners&&race.non_runners.length){
+      html+='<br>NR: <span style="color:#0D1B3E">'+race.non_runners.map(function(n){return escHtml(n);}).join(', ')+'</span>';
+    }
+    html+='</div>';
+  }
+
+  html+='</div>';
+  return html;
 }
 
 function toggleResVenue(courseId){
