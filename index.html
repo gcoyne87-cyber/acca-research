@@ -18241,7 +18241,7 @@ function renderFullResultsPage(){
   _resData.forEach(function(v){
     var vcid=v.courseId||_normCourse(v.course);
     var act=vcid===_resFullVenue;
-    tabsHtml+='<button onclick="_selectFullResultsVenue(\''+escHtml(vcid)+'\')" style="flex-shrink:0;padding:8px 14px;border-radius:99px;border:1.5px solid '+(act?'#1e9e6b':'#e8eaf0')+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#1e9e6b':'transparent')+';color:'+(act?'#fff':'#9aa3b5')+';cursor:pointer;font-family:inherit;white-space:nowrap">'+(v.flag||'🇬🇧')+' '+escHtml(v.course)+'</button>';
+    tabsHtml+='<button onclick="_selectFullResultsVenue(\''+escHtml(vcid)+'\')" style="flex-shrink:0;padding:8px 14px;border-radius:99px;border:1.5px solid '+(act?'#1e9e6b':'#e8eaf0')+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#1e9e6b':'transparent')+';color:'+(act?'#fff':'#9aa3b5')+';cursor:pointer;font-family:inherit;white-space:nowrap"><span style="font-size:9px;font-weight:600;color:'+(act?'rgba(255,255,255,0.7)':'#9aa3b5')+';margin-right:4px">'+escHtml(v.flag||'🇬🇧')+'</span>'+escHtml(v.course)+'</button>';
   });
   tabsEl.innerHTML=tabsHtml;
 
@@ -18793,8 +18793,10 @@ function selectRacingSection(s){
     },50);
   } else if(s==="results"){
     if(resultsC) resultsC.style.display="";
-    // Only refetch if a race has finished since we last loaded — otherwise serve from cache instantly
-    if(_newRaceFinishedSinceLastFetch()){
+    // Only refetch if a race has finished since we last loaded — otherwise serve from cache instantly.
+    // Also floored at 20s since the last fetch (below the 90s poll interval) so
+    // back-to-back tab taps can't force a refetch every single time.
+    if(_newRaceFinishedSinceLastFetch() && (Date.now()-_resLastFetchMs)>20000){
       var _resToday=irishDateStr();
       delete _resApiCache[_resToday];
       _resApiFetching=false;
