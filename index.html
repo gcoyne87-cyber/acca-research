@@ -12724,7 +12724,7 @@ function renderTrainerFormTable(trainers){
     +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
     +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
   +'</div>'
-  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 4px;padding-left:13px">In-form yards — tap any trainer to see their runners today</div>';
+  +'<div style="font-size:12px;color:#9aa3b5;margin:3px 0 8px;padding-left:13px">In-form yards — tap any trainer to see their runners today</div>';
   if(!trainers||!trainers.length){
     el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
     return;
@@ -16945,7 +16945,13 @@ function renderHomeSelections(el){
       +'</div>'
     +'</div>';
   }).join('');
-  el.innerHTML=header+'<div style="margin:6px 0 8px;display:flex;flex-direction:column;gap:10px">'+items+'</div>';
+  // -4px top margin cancels out the 10px flex `gap` #racing-picks-container
+  // itself carries (shared with the full Picks-of-the-Day view, where that
+  // gap spaces the individual pick cards apart — left untouched here since
+  // changing it would also remove spacing on that other view). Net effect:
+  // 2px (subtitle) + 10px (container's flex gap) + -4px (this) = 8px, matching
+  // every other homepage section's subtitle-to-content gap.
+  el.innerHTML=header+'<div style="margin:-4px 0 8px;display:flex;flex-direction:column;gap:10px">'+items+'</div>';
 }
 function homePickToggle(i){
   var panel=document.getElementById('home-pick-panel-'+i);
