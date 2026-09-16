@@ -17912,6 +17912,42 @@ function _fetchHomeResults(){
   return p;
 }
 
+// Shared 240px result-card builder — used by the homepage Latest Results
+// strip (renderHomeResultsStrip) and the Results page's per-venue card rows
+// (renderResultsPage). One {venue, flag, race} item + the date's pickMap in,
+// one card's HTML out — top 4 finishers only, no footer stats, no profile
+// panels (see renderResultsPage for the fuller per-race view, deferred).
+function _buildResultCard(item,pickMap){
+  var race=item.race;
+  var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
+  if(!top4.length) return '';
+  var favNames=_resFavNames(race.runners);
+  var ordinals=['1st','2nd','3rd','4th'];
+  var html='';
+  html+='<div style="flex-shrink:0;width:240px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+  // Header: time · venue
+  html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
+  html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
+  // Divider
+  html+='<div style="height:1px;background:#f0f2f7;margin-bottom:9px"></div>';
+  // Top 4 rows
+  top4.forEach(function(r){
+    var p=parseInt(r.pos);
+    var isW=p===1;
+    var ord=ordinals[p-1]||r.pos;
+    html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
+    html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
+    html+='<div style="flex:1;min-width:0">';
+    html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
+    if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
+    html+='</div>';
+    if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
 // Renders all finished races from _homeRes.data, most recent first, using the
 // exact card markup of the Results page feed above (renderResultsFeed).
 // Visibility: shown only on the home section AND only when at least one
@@ -17940,36 +17976,9 @@ function renderHomeResultsStrip(){
     racesWithResults.sort(function(a,b){
       return (b.race.time||'').localeCompare(a.race.time||'');
     });
-    var ordinals=['1st','2nd','3rd','4th'];
     var html='';
     racesWithResults.forEach(function(item){
-      var race=item.race;
-      var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
-      if(!top4.length) return;
-      var winner=top4[0];
-      var favNames=_resFavNames(race.runners);
-
-      html+='<div style="flex-shrink:0;width:240px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
-      // Header: time · venue
-      html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
-      html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
-      // Divider
-      html+='<div style="height:1px;background:#f0f2f7;margin-bottom:9px"></div>';
-      // Top 4 rows
-      top4.forEach(function(r){
-        var p=parseInt(r.pos);
-        var isW=p===1;
-        var ord=ordinals[p-1]||r.pos;
-        html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
-        html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
-        html+='<div style="flex:1;min-width:0">';
-        html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,_pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
-        if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
-        html+='</div>';
-        if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
-        html+='</div>';
-      });
-      html+='</div>';
+      html+=_buildResultCard(item,_pickMap);
     });
 
     feed.innerHTML=html;
@@ -18055,175 +18064,34 @@ function renderResultsPage(){
 
   var _pickMap=_pickMapForDate(_resLoadedDate||irishDateStr());
   _resData.forEach(function(venue,vi){
-    var cid=venue.courseId||_normCourse(venue.course);
-    var isOpen=_resOpenVenue===cid;
-    var openIdx=_resOpenRace[cid]||0;
     var races=venue.races||[];
+    var racesWithResults=races.filter(function(r){ return r.runners&&r.runners.length; });
 
-    // Filter to races where the trainer had a runner — pills keep their
-    // original indices so selectResRace stays valid; if the open race isn't
-    // a match, open the first matching one instead.
-    var _rtfIdx=null;
+    // Trainer filter: keep only races where the trainer had a runner; a venue
+    // with nothing matching is skipped entirely — same behaviour as before.
     if(_resTrainerFilter){
-      _rtfIdx=[];
-      races.forEach(function(r,ri){ if((r.runners||[]).some(_resTrainerRowMatch)) _rtfIdx.push(ri); });
-      if(!_rtfIdx.length) return;
-      _rtfMatchedVenues++;
-      if(_rtfIdx.indexOf(openIdx)===-1) openIdx=_rtfIdx[0];
+      racesWithResults=racesWithResults.filter(function(r){ return (r.runners||[]).some(_resTrainerRowMatch); });
     }
+    if(!racesWithResults.length) return;
+    if(_resTrainerFilter) _rtfMatchedVenues++;
 
     html+='<div style="border-bottom:1px solid #f0f2f7">';
 
-    // Venue row
-    html+='<div onclick="toggleResVenue(\''+escHtml(cid)+'\')" style="display:flex;align-items:center;padding:11px 14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent">';
+    // Venue heading — flag + name, same styling as the old accordion row
+    // (chevron/toggle removed — every venue's cards are always visible).
+    html+='<div style="display:flex;align-items:center;padding:11px 14px">';
     html+='<span style="font-size:15px;margin-right:10px;flex-shrink:0">'+(venue.flag||'🇬🇧')+'</span>';
     html+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;flex:1;line-height:1.1">'+escHtml(venue.course)+'</div>';
-    html+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s;flex-shrink:0"></div>';
     html+='</div>';
 
-    if(isOpen){
-      var race=races[openIdx]||null;
+    // Horizontally-scrolling row of result cards — one per race with a
+    // result, same 240px card the homepage Latest Results strip uses.
+    html+='<div style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+    racesWithResults.forEach(function(race){
+      html+=_buildResultCard({venue:venue.course,flag:venue.flag||'🇬🇧',race:race},_pickMap);
+    });
+    html+='</div>';
 
-      // Time pills — matches homepage racecard pill style
-      html+='<div id="res-pills-'+escHtml(cid)+'" style="display:flex;gap:7px;overflow-x:auto;padding:8px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px solid #f0f2f7">';
-      races.forEach(function(r,ri){
-        if(_rtfIdx&&_rtfIdx.indexOf(ri)===-1) return; // filtered out
-        var act=ri===openIdx;
-        var hasResult=r.runners&&r.runners.length;
-        html+='<button onclick="selectResRace(\''+escHtml(cid)+'\','+ri+')" style="flex-shrink:0;padding:6px 14px;border-radius:99px;border:1.5px solid '+(act?'#0D1B3E':(hasResult?'#1e9e6b':'#e8eaf0'))+';font-size:13px;font-weight:'+(act?'700':'500')+';background:'+(act?'#0D1B3E':'transparent')+';color:'+(act?'#fff':(hasResult?'#1e9e6b':'#9aa3b5'))+';cursor:pointer;font-family:inherit;white-space:nowrap">'+escHtml(r.time)+'</button>';
-      });
-      html+='</div>';
-
-      // Race detail
-      if(race){
-        html+='<div style="padding:10px 14px 6px;border-top:1px solid #f0f2f7">';
-
-        // Header block — identical structure and style to the racecard race
-        // header (meeting · time bold, race name · dist, class · prize,
-        // going · N runners). winner_prize is the field the API actually
-        // populates (per-runner prize lifted onto the race by get-results;
-        // race-level race.prize never fires), formatted via _fmtPrize with
-        // the venue's currency.
-        html+='<div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:1px">'+escHtml(venue.course)+' &middot; '+escHtml(race.time||'')+'</div>';
-        html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(race.name||'')+' &middot; '+escHtml(_nrAbDist(race.dist||''))+'</div>';
-        var _rprize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
-        var _rcp=(race.cls||'')+(race.cls&&_rprize?' · ':'')+_rprize;
-        if(_rcp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:1px">'+escHtml(_rcp)+'</div>';
-        var _rgoing=_cleanGoing(race.going);
-        var _rruns=race.ran||((race.runners||[]).length||'');
-        if(_rgoing||_rruns) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:8px">'+escHtml(_rgoing)+(_rgoing&&_rruns?' &middot; ':'')+(_rruns?_rruns+' runners':'')+'</div>';
-
-        var runners=race.runners||[];
-        // Full field — every runner with a recorded position, in the server's
-        // order (numeric positions ascending, non-finishers like PU/F after).
-        // Proper ordinals for any field size (5th, 11th, 21st, ...); a
-        // non-numeric position shows as-is.
-        function ordN(p){var n=parseInt(p,10);if(!n)return String(p||'-');var v=n%100;var s=(v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');return n+s;}
-        var fieldRunners=runners.filter(function(r){return r.pos&&String(r.pos).trim();});
-        var winner=runners.find(function(r){return r.pos==='1';});
-        var favNames=_resFavNames(runners);
-
-        if(!fieldRunners.length){
-          html+='<div style="font-size:13px;color:#9aa3b5;padding:4px 0 8px">'+(_raceIsFinished(race.time)?'Result not yet available':'Race not yet run')+'</div>';
-        } else {
-          fieldRunners.forEach(function(r,ri){
-            var p=parseInt(r.pos);
-            var isW=p===1;
-            var ord=ordN(r.pos);
-            // Profile panel pfx — unique per venue/race/row, same nrh- id
-            // scheme as runnerRow so nrLoadProfile/nrTogglePanel/_nrRestorePanels
-            // all work unchanged on results rows.
-            var rpfx='res_'+String(cid)+'_'+String(race.time||'').replace(/[^0-9]/g,'')+'_'+ri;
-            var _rHid=escHtml(r.horse_id||'').replace(/'/g,"\\'");
-            // Row: position | silk column (draw small above silk, vertically
-            // centred across both text lines via the row's align-items:center)
-            // | horse + jockey·trainer | SP. The raw draw prefix inline with
-            // the horse name is gone — the silk column replaces it.
-            html+='<div style="display:flex;align-items:center;padding:7px 0;'+(_resTrainerRowMatch(r)?'background:#ecfdf5;':'')+(ri<fieldRunners.length-1?'border-bottom:1px solid #f5f6f8':'')+'">';
-            html+='<span style="width:36px;font-size:13px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0">'+ord+'</span>';
-            html+='<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-right:9px">'
-              +(r.draw?'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+escHtml(String(r.draw))+'</span>':'')
-              +nrSilk(_resSilkFor(r.horse,ri))
-            +'</div>';
-            html+='<div style="flex:1;min-width:0">';
-            html+='<div style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap">'
-              +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(r.horse)+'</span>'
-              +(r.horse_id?'<span id="nrh-arr-'+rpfx+'" onclick="nrLoadProfile(\''+rpfx+'\',\''+escHtml(r.horse_id||'').replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'')
-              +_edgeTagChips(r,8)
-              +_pickPill(r.horse,_pickMap,9)
-            +'</div>';
-            if(r.jockey) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.jockey)+'</div>';
-            if(r.trainer) html+='<div style="font-size:11px;color:#9aa3b5;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(r.trainer)+'</div>';
-            if(r.wt||r.or) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">'+(r.wt?escHtml(String(r.wt)):'')+(r.wt&&r.or?' &middot; ':'')+(r.or?'OR '+escHtml(String(r.or)):'')+'</div>';
-            if(r.age) html+='<div style="font-size:10px;color:#9aa3b5;margin-top:1px">Age '+escHtml(String(r.age))+'</div>';
-            html+='</div>';
-            if(r.sp) html+='<span style="font-size:14px;font-weight:700;color:#0D1B3E;flex-shrink:0;margin-left:10px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
-            html+='</div>';
-            // Hidden profile panel wrapper — the same nrh- structure runnerRow
-            // builds (profile panel only; no Form/Analysis panels here).
-            if(r.horse_id){
-              html+='<div id="nrh-'+rpfx+'" data-horsename="'+escHtml(r.horse)+'" data-horseid="'+escHtml(r.horse_id||'')+'" style="display:none">'
-                +'<div id="nrh-pe-'+rpfx+'" style="display:none;padding:6px 6px 8px">'
-                  +'<div id="nrh-pai-'+rpfx+'"></div>'
-                  +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
-                  +'<div id="nrh-pmeta-'+rpfx+'" style="padding:0 6px"></div>'
-                  +'<div id="nrh-pft-'+rpfx+'"></div>'
-                  +'<div id="nrh-cpft-'+rpfx+'"></div>'
-                  +'<div id="nrh-pcareer-'+rpfx+'" style="padding:0"></div>'
-                +'</div>'
-              +'</div>';
-            }
-          });
-          // Footer
-          html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid #f0f2f7;font-size:12px;color:#9aa3b5;line-height:1.5">';
-          if(race.ran) html+='<span style="color:#0D1B3E;font-weight:600">'+race.ran+' ran</span>';
-          if(race.distances) html+=' · Distances: '+escHtml(race.distances);
-          if(race.winning_time||race.total_sp) html+='<br>';
-          if(race.winning_time) html+='Time: <span style="color:#0D1B3E">'+escHtml(race.winning_time)+'</span>';
-          if(race.winning_time&&race.total_sp) html+=' · ';
-          if(race.total_sp) html+='Total SP: <span style="color:#0D1B3E">'+escHtml(race.total_sp)+'</span>';
-          if(winner&&winner.jockey) html+='<br>Winning jockey: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.jockey)+'</span>';
-          if(winner&&winner.trainer) html+='<br>Winning trainer: <span style="color:#0D1B3E;font-weight:600">'+escHtml(winner.trainer)+'</span>';
-          // Off time / winner's prize / favourite. The favourite is derived —
-          // the results API has no fav flag — as the runner(s) with the lowest
-          // decimal SP: sp_dec straight from the server when present, falling
-          // back to parsing the fractional sp string for cached pre-sp_dec
-          // responses. Joint favourites (same lowest price) all listed.
-          var _fPrize=_fmtPrize(race.winner_prize||race.prize,venue.flag);
-          if(_fPrize) html+='<br>Prize: <span style="color:#0D1B3E">'+escHtml(_fPrize)+'</span>';
-          (function(){
-            function spDec(r){
-              if(typeof r.sp_dec==='number'&&isFinite(r.sp_dec)&&r.sp_dec>1) return r.sp_dec;
-              var s=String(r.sp||'').trim();
-              if(!s||s==='SP') return null;
-              if(/^evs$|^evens$/i.test(s)) return 2;
-              var q=s.split('/');
-              if(q.length===2){var n=parseFloat(q[0]),dd=parseFloat(q[1]);if(!isNaN(n)&&!isNaN(dd)&&dd>0)return n/dd+1;}
-              var f=parseFloat(s);
-              return (!isNaN(f)&&f>1)?f:null;
-            }
-            function ordP(p){var n=parseInt(p,10);if(!n)return p||'-';return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');}
-            var best=null;
-            runners.forEach(function(r){
-              var d=spDec(r);
-              if(d===null) return;
-              if(!best||d<best.dec-1e-9){best={dec:d,list:[r]};}
-              else if(Math.abs(d-best.dec)<1e-9){best.list.push(r);}
-            });
-            if(!best) return;
-            var favTxt=best.list.map(function(r){
-              return escHtml(r.horse)+(r.sp?' '+escHtml(r.sp):'')+' ('+escHtml(ordP(r.pos))+')';
-            }).join(', ');
-            html+='<br>Fav: <span style="color:#0D1B3E;font-weight:600">'+favTxt+'</span>';
-          })();
-          if(race.non_runners&&race.non_runners.length){
-            html+='<br>NR: <span style="color:#0D1B3E">'+race.non_runners.map(function(n){return escHtml(n);}).join(', ')+'</span>';
-          }
-          html+='</div>';
-        }
-        html+='</div>';
-      }
-    }
     html+='</div>';
   });
 
