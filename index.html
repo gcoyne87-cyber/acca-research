@@ -18050,7 +18050,7 @@ function renderResultsPage(){
     return;
   }
 
-  var html='<div style="background:#fff">';
+  var html='<div style="background:#f5f7fb">';
 
   // Results trainer filter: green chip when active; venues with no matching
   // race are skipped entirely; matched-venue count drives the empty message.
@@ -18079,14 +18079,14 @@ function renderResultsPage(){
 
     // Venue heading — flag + name, same styling as the old accordion row
     // (chevron/toggle removed — every venue's cards are always visible).
-    html+='<div style="display:flex;align-items:center;padding:11px 14px">';
+    html+='<div style="display:flex;align-items:center;padding:8px 14px">';
     html+='<span style="font-size:15px;margin-right:10px;flex-shrink:0">'+(venue.flag||'🇬🇧')+'</span>';
     html+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;flex:1;line-height:1.1">'+escHtml(venue.course)+'</div>';
     html+='</div>';
 
     // Horizontally-scrolling row of result cards — one per race with a
     // result, same 240px card the homepage Latest Results strip uses.
-    html+='<div style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+    html+='<div style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
     racesWithResults.forEach(function(race){
       html+=_buildResultCard({venue:venue.course,flag:venue.flag||'🇬🇧',race:race},_pickMap);
     });
