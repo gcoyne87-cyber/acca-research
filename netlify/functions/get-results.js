@@ -84,8 +84,8 @@ function normaliseCourse(s) {
 
 function courseFlag(region) {
   const r = (region || '').toUpperCase();
-  if (r === 'IRE' || r === 'IE') return '🇮🇪';
-  return '🇬🇧';
+  if (r === 'IRE' || r === 'IE') return 'IE';
+  return 'GB';
 }
 
 function isGbIre(region) {
