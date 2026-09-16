@@ -11577,6 +11577,7 @@ function loadRacecards(){
       if(!data.meetings||!data.meetings.length) return;
       TM_MEETINGS=data.meetings;
       window._tmRealDataLoaded=true;
+      if(_homeRcDay==='tomorrow'){ _renderCurrentHomeList(); }
       _renderRcTrainerChips();
       tmActiveVenue=TM_MEETINGS[0].id;
       tmOpenMeeting='';
@@ -14502,6 +14503,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
       +'<div id="nrh-pmeta-'+pfx+'" style="padding:0 6px"></div>'
       +'<div id="nrh-pft-'+pfx+'"></div>'
+      +'<div id="nrh-cpft-'+pfx+'"></div>'
       +'<div id="nrh-pcareer-'+pfx+'" style="padding:0"></div>'
       +'<div onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" style="text-align:center;padding:10px 0 4px;cursor:pointer;font-size:12px;font-weight:700;color:#0D1B3E">&#9650; Close</div>'
     +'</div>'
@@ -14682,32 +14684,15 @@ function nrLoadEdge(pfx,horseId){
 }
 
 var _nrProfileCache={};
-function _nrProfileForm(pfx,horseId){
-  var fe=document.getElementById('nrh-fe-'+pfx);
-  var meta=document.getElementById('nrh-pmeta-'+pfx);
-  if(fe&&meta){
-    var h='';
-    for(var i=0;i<fe.children.length;i++){
-      var ch=fe.children[i];
-      if(ch.id!=='nrh-ft-'+pfx)h+=ch.outerHTML;
-    }
-    meta.innerHTML=h;
-  }
-  var pft=document.getElementById('nrh-pft-'+pfx);
-  var ft=document.getElementById('nrh-ft-'+pfx);
-  if(pft&&ft&&!pft.innerHTML)pft.innerHTML=ft.innerHTML;
-  nrLoadForm(pfx,horseId,true);
-}
 function nrLoadProfile(pfx,horseId){
-  if(!horseId){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
+  if(!horseId){nrTogglePanel(pfx,'pe');return;}
   var c=_nrProfileCache[horseId];
   var tDiv=document.getElementById('nrh-pai-'+pfx);
-  if(c&&c.html){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);if(tDiv)tDiv.innerHTML=c.html;var pc0=document.getElementById('nrh-pcareer-'+pfx);if(pc0)pc0.innerHTML=c.formHtml||'';return;}
-  if(c==='err'){nrTogglePanel(pfx,'pe');_nrProfileForm(pfx,horseId);return;}
+  if(c&&c.html){nrTogglePanel(pfx,'pe');if(tDiv)tDiv.innerHTML=c.html;var pf0=document.getElementById('nrh-cpft-'+pfx);if(pf0)pf0.innerHTML=c.pftHtml||'';return;}
+  if(c==='err'){nrTogglePanel(pfx,'pe');return;}
   if(c==='retry'){delete _nrProfileCache[horseId];}
   if(c==='loading')return;
   nrTogglePanel(pfx,'pe');
-  _nrProfileForm(pfx,horseId);
   if(tDiv)tDiv.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Loading profile…</div>';
   _nrProfileCache[horseId]='loading';
   fetch('/.netlify/functions/get-horse-profile?horse_id='+encodeURIComponent(horseId))
@@ -14732,9 +14717,9 @@ function nrLoadProfile(pfx,horseId){
         if(/^aw$|all.?weather|poly|tapeta|fibresand|dirt|sand/.test(s)||/poly|tapeta|fibresand/.test(g))return 'aw';
         return 'flat';
       };
-      var cats={flat:{label:'Flat turf',r:0,w:0,pl:0,pr:0},aw:{label:'All-weather',r:0,w:0,pl:0,pr:0},jumps:{label:'Jumps',r:0,w:0,pl:0,pr:0}};
-      var tot={r:0,w:0,pl:0,pr:0};
-      var owner='',hist=[],lastTrainer=null,lastDate=null;
+      var cats={flat:{label:'Flat turf',r:0,w:0,p2:0,p3:0,pr:0},aw:{label:'All-weather',r:0,w:0,p2:0,p3:0,pr:0},jumps:{label:'Jumps',r:0,w:0,p2:0,p3:0,pr:0}};
+      var tot={r:0,w:0,p2:0,p3:0,pr:0};
+      var owner='',hist=[],lastTrainer=null,lastDate=null,runsDesc=[];
       races.forEach(function(race){
         var me=null,rs=race.runners||[];
         for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
@@ -14742,7 +14727,9 @@ function nrLoadProfile(pfx,horseId){
         var c=cats[bucketOf(race)];
         var posN=parseInt(me.position,10);
         c.r++;tot.r++;
-        if(posN===1){c.w++;tot.w++;}else if(posN===2||posN===3){c.pl++;tot.pl++;}
+        if(posN===1){c.w++;tot.w++;}
+        else if(posN===2){c.p2++;tot.p2++;}
+        else if(posN===3){c.p3++;tot.p3++;}
         if(me.prize){
           var s=String(me.prize).trim();
           var n=parseFloat(s.replace(/[^0-9.]/g,''));
@@ -14755,7 +14742,9 @@ function nrLoadProfile(pfx,horseId){
           lastTrainer=me.trainer;
         }
         lastDate=race.date;
+        runsDesc.push({race:race,me:me,ran:rs.length>1?rs.length:null});
       });
+      runsDesc.reverse();
       var currentTrainer=hist.length?hist[hist.length-1].name:'';
       var CMAP={b:'Bay',ch:'Chestnut',gr:'Grey',br:'Brown',bl:'Black',ro:'Roan',bb:'Brown','b/br':'Bay/brown','br/b':'Brown/bay','gr/ro':'Grey/roan','ch/ro':'Chestnut/roan','b/ro':'Bay/roan',wh:'White',pal:'Palomino',dun:'Dun'};
       var colour=CMAP[String(p.colour||'').toLowerCase()]||(p.colour?String(p.colour):'');
@@ -14786,17 +14775,20 @@ function nrLoadProfile(pfx,horseId){
       if(hist.length>1)prevLine=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
       var recLine=tot.r?tot.r+' runs · '+tot.w+' wins · '+Math.round(100*tot.w/tot.r)+'%':'';
       var out='<div style="font-size:11px;color:#1a202c;line-height:1.6">';
-      // Stat strip — five cells on the pale green band. ru is the live
-      // racecard runner (hoisted above) for OR and days since last run.
-      var _cell=function(label,value){return '<div style="flex:1;padding:9px 0 9px 14px"><div style="font-size:8px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;font-weight:600;color:#374151">'+value+'</div></div>';};
-      var _prizeStr=money(tot.pr, currentSym);
       out+='<div style="font-size:11px;color:#9ca3af;padding:4px 14px 0">'+escHtml([colour,sex].filter(Boolean).join(' ').toLowerCase())+(p.dob?' · foaled '+escHtml(fmtD(p.dob)):'')+'</div>';
-      out+='<div style="display:flex;background:#f0fdf4;margin:0">';
-      out+=_cell('Age',age?escHtml(age)+'yo':'—');
-      out+=_cell('Rating',(ru&&ru.or)?'OR '+escHtml(String(ru.or)):'—');
-      out+=_cell('Last run',(ru&&ru.lastRun)?escHtml(String(ru.lastRun))+'d ago':'—');
-      out+=_cell('Record',tot.r?(tot.r+' · '+tot.w+'W · '+tot.pl+'P'):'—');
-      out+=_cell('Prize',_prizeStr?'<span style="color:#b8860b">'+escHtml(_prizeStr)+'</span>':'—');
+      // Stat bar — navy band, silk left then OR/RPR/Runs/Wins/Prize in
+      // white/green text. ru is the live racecard runner (hoisted above);
+      // silk reuses nrSilk() exactly as runnerRow() does.
+      var _navCell=function(label,value,accent){return '<div style="flex:1;padding:9px 0 9px 10px"><div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div><div style="font-size:13px;font-weight:700;color:'+(accent?'#34d399':'#fff')+'">'+value+'</div></div>';};
+      var _profSilk=(ru&&ru.silk)?nrSilk(ru.silk):'';
+      var _prizeStr=money(tot.pr, currentSym);
+      out+='<div style="display:flex;align-items:center;background:#0D1B3E;margin:0;padding:9px 0 9px 14px;gap:8px">';
+      out+='<div style="flex-shrink:0;display:flex;align-items:center">'+_profSilk+'</div>';
+      out+=_navCell('OR',(ru&&ru.or)?escHtml(String(ru.or)):'—');
+      out+=_navCell('RPR',(ru&&ru.rpr)?escHtml(String(ru.rpr)):'—');
+      out+=_navCell('Runs',tot.r?String(tot.r):'—');
+      out+=_navCell('Wins',tot.r?String(tot.w):'—');
+      out+=_navCell('Prize',_prizeStr?escHtml(_prizeStr):'—',true);
       out+='</div>';
       // Connection rows.
       out+='<div style="padding:4px 14px;border-bottom:0.5px solid #f0f2f5">';
@@ -14808,85 +14800,7 @@ function nrLoadProfile(pfx,horseId){
          +fld('Damsire',p.damsire)
          +fld('Previously',prevLine);
       out+='</div>';
-      // Going breakdown — built from the same results history the career
-      // record uses: race.going plus this horse's own finishing position.
-      // First word of the going only, so "Good To Soft" buckets under Good.
-      var goingMap={};
-      races.forEach(function(race){
-        var me=null,rs=race.runners||[];
-        for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
-        if(!me)return;
-        var g=String(race.going||'').split(' ')[0]||'Unknown';
-        if(!goingMap[g]) goingMap[g]={runs:0,wins:0,places:0};
-        goingMap[g].runs++;
-        var pos=parseInt(me.position,10);
-        if(pos===1) goingMap[g].wins++;
-        if(pos<=3&&pos>0) goingMap[g].places++;
-      });
-      var goingKeys=Object.keys(goingMap).sort(function(a,b){return goingMap[b].wins-goingMap[a].wins||(goingMap[b].wins+goingMap[b].places)-(goingMap[a].wins+goingMap[a].places);});
-      if(goingKeys.length){
-        out+='<div style="padding:4px 14px;border-bottom:0.5px solid #f0f2f5">';
-        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Placed runs by going</div>';
-        goingKeys.slice(0,4).forEach(function(g){
-          var gd=goingMap[g];
-          var winPct=gd.runs>0?gd.wins/gd.runs:0;
-          var placePct=gd.runs>0?gd.places/gd.runs:0;
-          out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">';
-          out+='<span style="font-size:11px;color:#0b1628;width:72px;flex-shrink:0">'+escHtml(g)+'</span>';
-          out+='<div style="flex:1;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;display:flex">';
-          out+='<div style="height:5px;background:#1e9e6b;width:'+Math.round(winPct*100)+'%"></div>';
-          out+='<div style="height:5px;background:#c9a84c;width:'+Math.round((placePct-winPct)*100)+'%"></div>';
-          out+='</div>';
-          out+='<span style="font-size:10px;color:#9ca3af;width:72px;text-align:right;flex-shrink:0">'+gd.wins+'W · '+gd.places+'P · '+gd.runs+' runs</span>';
-          out+='</div>';
-        });
-        out+='<div style="display:flex;gap:10px;margin-top:4px">';
-        out+='<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#9ca3af"><span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;display:inline-block"></span>Win</span>';
-        out+='<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#9ca3af"><span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;display:inline-block"></span>Placed</span>';
-        out+='</div>';
-        out+='</div>';
-      }
-      // Trainer timeline. Prefer an explicit previousTrainers array on the
-      // profile if the API ever supplies one; otherwise use hist, the
-      // trainer-change list already derived from the results above (the
-      // same source prevLine is built from), one dot per past trainer.
-      var _thMap={},_thReason=(data.trainerHistory&&data.trainerHistory.reason)||'';
-      if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
-        data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_thMap[norm(s.trainer)+'|'+String(s.from||'')]=s.text; });
-      }
-      var _thFor=function(name,from){ return _thMap[norm(name)+'|'+String(from||'')]||''; };
-      var _prevItems=[];
-      if(Array.isArray(p.previousTrainers)&&p.previousTrainers.length){
-        p.previousTrainers.forEach(function(t){
-          var n=(t&&(t.name||t.trainer))||(typeof t==='string'?t:'');
-          if(!n)return;
-          _prevItems.push({name:n,sub:(t&&t.from?String(t.from).slice(0,4):'')+(t&&t.to?'–'+yr(t.to):'')});
-        });
-      }else if(hist.length>1){
-        hist.slice(0,-1).reverse().forEach(function(t){_prevItems.push({name:t.name,from:t.from,sub:(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')});});
-      }
-      out+='<div style="padding:4px 14px">';
-      out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Trainer history</div>';
-      // Connected timeline, current trainer first: each dot is joined to the
-      // next entry by a 2px line (omitted on the last entry). The analysis
-      // text sits directly in the flow — no box, no label.
-      var _thItems=[{name:currentTrainer||'—',cur:true,sub:(t14?'14d form: '+t14.replace(/\s*last 14d$/,''):''),note:_thFor(currentTrainer,hist.length?hist[hist.length-1].from:'')}]
-        .concat(_prevItems.map(function(it){return {name:it.name,cur:false,sub:it.sub||'',note:_thFor(it.name,it.from)};}));
-      _thItems.forEach(function(it,i){
-        var last=i===_thItems.length-1;
-        out+='<div style="display:flex;gap:10px">';
-        out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
-        out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(it.cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
-        if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
-        out+='</div>';
-        out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
-        out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(it.name)+'</div>'+(it.cur?'<span style="font-size:9px;font-weight:700;background:#f0fdf4;color:#1e9e6b;border-radius:3px;padding:1px 5px">Current</span>':'')+'</div>';
-        out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(it.sub)+'</div>';
-        if(it.note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(it.note)+'</div>';
-        if(it.cur&&_thReason==='too-few-runs')out+='<div style="margin-top:4px;font-size:10px;color:#9ca3af">Fewer than three career runs — too early to assess a pattern.</div>';
-        out+='</div></div>';
-      });
-      out+='</div>';
+      // Career record — surface breakdown, Wins split into 2nds/3rds.
       if(tot.r>0){
         out+='<div style="padding:4px 14px">';
         var th='text-align:right;padding:4px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#f8f9fb;border-bottom:1px solid #f0f2f5',
@@ -14894,53 +14808,108 @@ function nrLoadProfile(pfx,horseId){
             tdT=td.replace('#374151','#0b1628'),tdlT=tdl.replace('#374151','#0b1628');
         out+='<div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;margin-bottom:1px;margin-top:4px">Career record</div>';
         out+='<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px"><thead><tr style="border-bottom:2px solid #e4e8f0">'
-          +'<th style="'+th+';text-align:left">Surface</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">Places</th><th style="'+th+'">Win %</th><th style="'+th+'">Prize</th></tr></thead><tbody>';
+          +'<th style="'+th+';text-align:left">Surface</th><th style="'+th+'">Runs</th><th style="'+th+'">Wins</th><th style="'+th+'">2nds</th><th style="'+th+'">3rds</th><th style="'+th+'">Win %</th></tr></thead><tbody>';
         ['flat','aw','jumps'].forEach(function(k){var c=cats[k];if(!c.r)return;
-          out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.pl+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td><td style="'+td+'">'+escHtml(money(c.pr, currentSym)||'—')+'</td></tr>';});
-        out+='<tr style="font-weight:700;border-top:1px solid #e3e6ee"><td style="'+tdlT+'">Total</td><td style="'+tdT+'">'+tot.r+'</td><td style="'+tdT+'">'+tot.w+'</td><td style="'+tdT+'">'+tot.pl+'</td><td style="'+tdT+'">'+Math.round(100*tot.w/tot.r)+'%</td><td style="'+tdT+'">'+escHtml(money(tot.pr, currentSym)||'—')+'</td></tr>';
+          out+='<tr><td style="'+tdl+'">'+c.label+'</td><td style="'+td+'">'+c.r+'</td><td style="'+td+'">'+c.w+'</td><td style="'+td+'">'+c.p2+'</td><td style="'+td+'">'+c.p3+'</td><td style="'+td+'">'+Math.round(100*c.w/c.r)+'%</td></tr>';});
+        out+='<tr style="font-weight:700;border-top:1px solid #e3e6ee"><td style="'+tdlT+'">Total</td><td style="'+tdT+'">'+tot.r+'</td><td style="'+tdT+'">'+tot.w+'</td><td style="'+tdT+'">'+tot.p2+'</td><td style="'+tdT+'">'+tot.p3+'</td><td style="'+tdT+'">'+Math.round(100*tot.w/tot.r)+'%</td></tr>';
         out+='</tbody></table>';
         out+='</div>';
       }
+      // Trainer history timeline — same connected-dot rendering nrLoadForm
+      // uses for the Form tab, fed by this function's own runsDesc (instead
+      // of nrLoadForm's flat `hist`) and the same data.trainerHistory.spells
+      // payload nrLoadForm reads. nrLoadForm itself is untouched.
+      (function(){
+        var _runs=runsDesc.map(function(x){return {trainer:x.me.trainer,date:x.race.date};}).filter(function(h){return h.trainer&&h.date;});
+        _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
+        if(!_runs.length)return;
+        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+        var _per=[];
+        _runs.forEach(function(h){
+          var _t=String(h.trainer).trim();
+          var _last=_per[_per.length-1];
+          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
+          else _per.push({name:_t,from:h.date,to:h.date,runs:1});
+        });
+        var _cardTr=(ru&&ru.trainer)?String(ru.trainer).trim():'';
+        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
+        _per.reverse();
+        var _my=function(d){var pp=String(d||'').split('-');return pp.length>=2?(MON[parseInt(pp[1],10)-1]||'')+' '+pp[0]:'';};
+        var _dmy=function(d){var pp=String(d||'').split('-');return pp.length===3?parseInt(pp[2],10)+' '+(MON[parseInt(pp[1],10)-1]||'')+' '+pp[0]:'';};
+        var _notes={};
+        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
+          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
+        }
+        out+='<div style="padding:4px 14px;border-bottom:0.5px solid #f0f2f5">';
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Trainer history</div>';
+        _per.forEach(function(pp,i){
+          var cur=i===0;
+          var last=i===_per.length-1;
+          var dateStr=cur?(pp.from?'Since '+_dmy(pp.from):'No runs yet'):(_my(pp.from)+' – '+_my(pp.to));
+          var note=_thTidy(_notes[_normT(pp.name)]||'');
+          out+='<div style="display:flex;gap:10px">';
+          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0">';
+          out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(cur?'#1e9e6b':'#d1d5db')+';flex-shrink:0"></div>';
+          if(!last)out+='<div style="width:2px;flex:1;background:#e5e7eb;margin-top:2px"></div>';
+          out+='</div>';
+          out+='<div style="padding-bottom:'+(last?'2px':'14px')+'">';
+          out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(pp.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
+          out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(pp.runs?' · '+pp.runs+(pp.runs===1?' run':' runs'):'')+'</div>';
+          if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
+          out+='</div></div>';
+        });
+        out+='</div>';
+      })();
       out+='</div>';
-      var runsDesc=[];
-      races.forEach(function(race){
-        var me=null,rs=race.runners||[];
-        for(var i=0;i<rs.length;i++){if(rs[i].horse_id===horseId){me=rs[i];break;}}
-        if(me)runsDesc.push({race:race,me:me,ran:rs.length>1?rs.length:null});
-      });
-      runsDesc.reverse();
+      // Full form table — same rendering nrLoadForm uses for the Form tab,
+      // plus alternating row shading (odd rows #f5f7fb, even rows #eff1f5).
+      // Rendered separately into nrh-pft-{pfx}, not concatenated into `out`.
       var _fMon2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       var fDate=function(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||''));return m?(m[3]+' '+_fMon2[parseInt(m[2],10)-1]+" '"+m[1].slice(2)):String(d||'');};
+      var joinDate=function(d){var q=String(d||'').split('-');return q.length===3?((_fMon2[parseInt(q[1],10)-1]||'')+' '+q[0]):'';};
       var abG=typeof _nrAbGoing==='function'?_nrAbGoing:function(x){return x||'';};
       var abD=typeof _nrAbDist==='function'?_nrAbDist:function(x){return x||'';};
       var abC=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
       var abJ=typeof _nrAbJockey==='function'?_nrAbJockey:function(x){return x||'';};
-      var TH='text-align:left;padding:4px 3px 4px 14px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
-      var formHtml='';
+      var TH='text-align:left;padding:4px 3px 4px 12px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
+      var pftHtml='';
       if(runsDesc.length){
-        formHtml+='<div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:4px 14px 4px">Form · '+runsDesc.length+' runs</div>';
-        formHtml+='<div class="nrh-form-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none"><table style="width:100%;max-width:100%;border-collapse:collapse;font-size:11px">';
-        formHtml+='<thead><tr style="border-bottom:2px solid #e4e8f0"><th style="'+TH+'">Date</th><th style="'+TH+'">Course</th><th style="'+TH+'">Dist</th><th style="'+TH+'">Gng</th><th style="'+TH+';text-align:center">Pos</th><th style="'+TH+';text-align:right">SP</th><th style="'+TH+'">Jockey</th><th style="'+TH+';text-align:right">OR</th></tr></thead><tbody>';
-        runsDesc.forEach(function(x){
+        pftHtml+='<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;padding:5px 12px 4px">Form · '+runsDesc.length+' runs</div>';
+        pftHtml+='<div class="nrh-form-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+        pftHtml+='<thead><tr><th style="'+TH+'">Date</th><th style="'+TH+'">Course</th><th style="'+TH+'">Dist</th><th style="'+TH+'">Gng</th><th style="'+TH+';text-align:center">Pos</th><th style="'+TH+';text-align:right">SP</th><th style="'+TH+'">Jockey</th><th style="'+TH+';text-align:right">OR</th></tr></thead><tbody>';
+        var _lastTrainerP='',_lastDateP='';
+        var _normTP=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+        runsDesc.forEach(function(x,_hi){
+          if(_hi===6){
+            pftHtml+='</tbody><tbody id="nrh-cpfmx-'+pfx+'" style="display:none">';
+          }
           var r=x.race,m=x.me;
-          var pInt=parseInt(m.position,10);
-          var pCol=pInt===1?'#1e9e6b':(pInt===2||pInt===3)?'#b7860b':'#0D1B3E';
-          formHtml+='<tr style="border-bottom:0.5px solid #f8f9fb">'
-            +'<td style="padding:4px 3px 4px 14px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(fDate(r.date))+'</td>'
-            +'<td style="padding:4px 3px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+_nrCourseCellHtml(r.course)+'</td>'
-            +'<td style="padding:4px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abD(r.dist))+'</td>'
-            +'<td style="padding:4px 3px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abG(r.going))+'</td>'
-            +'<td style="padding:4px 3px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(String(m.position||'-'))+'</span>'+(x.ran?'<span style="font-size:10px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>'
-            +'<td style="padding:4px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.sp||'–')+'</td>'
-            +'<td style="padding:4px 3px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(abJ(m.jockey))+'</td>'
-            +'<td style="padding:4px 3px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.or||'–')+'</td>'
-            +'</tr>';
+          var posStr=String(m.position||'-');
+          var pN=parseInt(posStr,10);
+          var pCol=pN===1?'#1e9e6b':pN===2||pN===3?'#b7860b':'#0D1B3E';
+          var _tr=m.trainer||'';
+          if(_tr&&_lastTrainerP!==''&&_normTP(_tr)!==_normTP(_lastTrainerP)){
+            pftHtml+='<tr><td colspan="8" style="padding:5px 12px;background:#fef9ec"><div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;color:#92710a">&#8593; Joined '+escHtml(_lastTrainerP)+' — '+joinDate(_lastDateP)+'</div></td></tr>';
+          }
+          _lastTrainerP=_tr;_lastDateP=r.date||'';
+          var _rowBg=(_hi%2===0)?'#f5f7fb':'#eff1f5';
+          pftHtml+='<tr style="background:'+_rowBg+';border-bottom:0.5px solid #e5e7eb">';
+          pftHtml+='<td style="padding:4px 3px 4px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(fDate(r.date))+'</td>';
+          pftHtml+='<td style="padding:4px 8px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap">'+_nrCourseCellHtml(r.course||'')+'</td>';
+          pftHtml+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abD(r.dist||''))+'</td>';
+          pftHtml+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(abG(r.going||''))+'</td>';
+          pftHtml+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(x.ran?'<span style="font-size:10px;color:#b0b7c6">/'+x.ran+'</span>':'')+'</td>';
+          pftHtml+='<td style="padding:4px 8px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.sp||'–')+'</td>';
+          pftHtml+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis">'+escHtml(abJ(m.jockey||''))+'</td>';
+          pftHtml+='<td style="padding:4px 12px 4px 8px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(m.or||'–')+'</td>';
+          pftHtml+='</tr>';
         });
-        formHtml+='</tbody></table></div>';
+        pftHtml+='</tbody></table></div>';
+        if(runsDesc.length>6)pftHtml+='<div id="nrh-cpfm-'+pfx+'" style="padding:8px 12px;text-align:left"><span onclick="nrPfmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(runsDesc.length-6)+' more '+((runsDesc.length-6)===1?'run':'runs')+' ▼</span></div>';
       }
-      var pc=document.getElementById('nrh-pcareer-'+pfx);
-      if(pc)pc.innerHTML=formHtml;
-      _nrProfileCache[horseId]={html:out,formHtml:formHtml};
+      var pf=document.getElementById('nrh-cpft-'+pfx);
+      if(pf)pf.innerHTML=pftHtml;
+      _nrProfileCache[horseId]={html:out,pftHtml:pftHtml};
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML=out;
     })
@@ -15298,6 +15267,27 @@ function nrFmCollapse(pfx){
     var remaining=xTbody.querySelectorAll('tr').length;
     var label=remaining===1?'run':'runs';
     btnRow.innerHTML='<span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span>';
+  }
+}
+// Chevron-panel twin of nrFmExpand/nrFmCollapse above, with its own
+// nrh-pfmx-/nrh-pfm-{pfx} ids so it never collides with the Form tab's copy
+// of the same ids inside nrh-ft-{pfx} on the same horse row.
+function nrPfmExpand(pfx,el){
+  var xTbody=document.getElementById('nrh-cpfmx-'+pfx);
+  var btnRow=document.getElementById('nrh-cpfm-'+pfx);
+  if(xTbody) xTbody.style.display='';
+  if(btnRow){
+    btnRow.innerHTML='<span onclick="nrPfmCollapse(\''+pfx+'\')" style="font-size:10px;font-weight:600;color:#9ca3af;cursor:pointer">Show less ▲</span>';
+  }
+}
+function nrPfmCollapse(pfx){
+  var xTbody=document.getElementById('nrh-cpfmx-'+pfx);
+  var btnRow=document.getElementById('nrh-cpfm-'+pfx);
+  if(xTbody) xTbody.style.display='none';
+  if(btnRow&&xTbody){
+    var remaining=xTbody.querySelectorAll('tr').length;
+    var label=remaining===1?'run':'runs';
+    btnRow.innerHTML='<span onclick="nrPfmExpand(\''+pfx+'\',this)" style="font-size:10px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+label+' ▼</span>';
   }
 }
 function _tipsPillState(btn,active){
@@ -18160,6 +18150,7 @@ function renderResultsPage(){
                   +'<div style="border-top:1px solid #e3e6ee;margin:10px 0 6px"></div>'
                   +'<div id="nrh-pmeta-'+rpfx+'" style="padding:0 6px"></div>'
                   +'<div id="nrh-pft-'+rpfx+'"></div>'
+                  +'<div id="nrh-cpft-'+rpfx+'"></div>'
                   +'<div id="nrh-pcareer-'+rpfx+'" style="padding:0"></div>'
                 +'</div>'
               +'</div>';
