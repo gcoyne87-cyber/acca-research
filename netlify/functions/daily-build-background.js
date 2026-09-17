@@ -15,7 +15,7 @@ const PRICE_IN          = 3    / 1_000_000;  // $3/M input tokens
 const PRICE_OUT         = 15   / 1_000_000;  // $15/M output tokens
 const PRICE_CACHE_WRITE = 3.75 / 1_000_000;  // $3.75/M cache write tokens
 const PRICE_CACHE_READ  = 0.30 / 1_000_000;  // $0.30/M cache read tokens
-const PRICE_WEB_SEARCH  = 0.10;               // $0.10 per search (actual Anthropic billing)
+const PRICE_WEB_SEARCH  = 0.01;               // $0.01 per search ($10 per 1,000)
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
