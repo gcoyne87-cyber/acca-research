@@ -5653,7 +5653,7 @@ function unlockCorkAnalysis(){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:1px">
         <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
         <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
-        <button id="rc-filter-btn" onclick="_rcFilterToggle()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #c9a84c;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;color:#0b1628;cursor:pointer;margin:-8px 0 -8px auto;flex-shrink:0;font-family:inherit">
+        <button id="rc-filter-btn" onclick="_rcFilterToggle()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #c9a84c;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;color:#0b1628;cursor:pointer;margin:-4px 0 -4px 0;flex-shrink:0;font-family:inherit">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg>
           <span>Filter</span>
           <span id="rc-filter-badge" style="display:none;background:#c9a84c;color:#fff;border-radius:10px;min-width:16px;height:16px;font-size:10px;font-weight:700;align-items:center;justify-content:center;padding:0 4px">1</span>
@@ -12754,8 +12754,8 @@ function renderTrainerFormTable(trainers){
     el.innerHTML=header+toggleHtml+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No trainers with 5+ runners in the last '+win+' days today</div>';
     return;
   }
-  var hasMore=allRows.length>5;
-  var visibleCount=_trainerFormExpanded?allRows.length:Math.min(5,allRows.length);
+  var hasMore=allRows.length>8;
+  var visibleCount=_trainerFormExpanded?allRows.length:Math.min(8,allRows.length);
   var rows=allRows.slice(0,visibleCount);
   var colHeadStyle='font-size:9px;font-weight:700;color:#9aa3b5;text-transform:uppercase;letter-spacing:.03em';
   var out=header+toggleHtml+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
@@ -12791,7 +12791,7 @@ function renderTrainerFormTable(trainers){
       else if(diff<-3) trendHtml='<span style="color:#ef4444;font-weight:800">↓</span>';
     }
     var isLastVisible=(i===rows.length-1)&&!hasMore;
-    out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:9px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
+    out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
     out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(winsVal))+'</div>';
@@ -17994,11 +17994,15 @@ function _buildResultCard(item,pickMap,bulked){
   // Divider
   html+='<div style="height:1px;background:#f0f2f7;margin-bottom:7px"></div>';
   // Top 4 rows
-  top4.forEach(function(r){
+  top4.forEach(function(r,idx){
     var p=parseInt(r.pos);
     var isW=p===1;
     var ord=ordinals[p-1]||r.pos;
-    html+='<div style="display:flex;align-items:flex-start;margin-bottom:7px">';
+    // Compact (homepage) card only: strip the last row's trailing margin —
+    // the bulked card's footer below relies on consistent row spacing
+    // leading into it, so its last row keeps the 7px.
+    var isLastRow=(idx===top4.length-1)&&!bulked;
+    html+='<div style="display:flex;align-items:flex-start;margin-bottom:'+(isLastRow?'0':'7px')+'">';
     html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
     html+='<div style="flex:1;min-width:0">';
     html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
