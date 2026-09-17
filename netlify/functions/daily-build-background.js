@@ -203,12 +203,6 @@ DECIMAL PRECISION IS MANDATORY: Use one decimal place. Do I have 3 strong factor
 DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
 
 ---
-WEB SEARCH — run exactly 1 search:
-1. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
-
-DO NOT search for: tipster picks, market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. This search is specifically for horse-level news and health that the racecard cannot provide.
-
----
 NH-SPECIFIC ANGLES TO LOOK FOR:
 
 FORM & CAMPAIGN:
@@ -314,12 +308,6 @@ IMPORTANT: A Group 1 with 10 evenly-matched top-class fillies is LOW — score 3
 DECIMAL PRECISION IS MANDATORY: Use one decimal place. 3 strong factors but one concern? Score 6.8, not 7. Tipster signal AND market move AND trainer quote AND form all aligned? Score 7.6, not 7. Total standout — one horse the rest cannot live with? Score 8.3, not 8. A round number means you did not think hard enough. The decimal is where your genuine assessment lives.
 
 DEBUTANTS (no past results): if your leading selection has no race history, cap confidenceScore at 6.0 maximum regardless of market or trainer signals. You cannot verify the horse's ability and the market always backs its own. State clearly in pullQuote that the horse is unproven.
-
----
-WEB SEARCH — run exactly 1 search:
-1. "[name of your leading selection] [current year]" — recent news, health concerns, trainer quotes, notable absences or fitness questions about this specific horse. This search exists to surface what the form data cannot tell you: illness history, time off, stable confidence, trainer interview quotes.
-
-DO NOT search for: tipster picks, market moves, form figures, going definitions, OR ratings, distance info, jockey bookings — all in the data provided. This search is specifically for horse-level news and health that the racecard cannot provide.
 
 ---
 FLAT-SPECIFIC ANGLES TO LOOK FOR:
@@ -926,7 +914,7 @@ async function analyseRace(race, NH, tipsterContext) {
     ? `\nTIPSTER CONSENSUS (from morning intelligence sweep):\n${tipsterContext}\n`
     : '';
 
-  const msg = `Analyse this ${NH ? 'National Hunt' : 'flat'} race. Full Racing API form history is provided for each runner. You MUST run your 1 web search for horse-level news on your leading selection only — search "[name of leading selection] [current year]" for recent news, health concerns or trainer quotes.
+  const msg = `Analyse this ${NH ? 'National Hunt' : 'flat'} race. Full Racing API form history is provided for each runner.
 
 Meeting: ${race.course}
 Date: ${date}
@@ -941,7 +929,7 @@ ${runners}
 
 Return ONLY the JSON object.`;
 
-  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, false, 1);
+  const { text, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchCount } = await callClaude(NH ? NH_PROMPT : FLAT_PROMPT, msg, 6000, true);
   const result = parseJson(text);
   // Enforce the 120-125 word pullQuote ceiling: condense via a second call
   // when over, sentence-trim if the condense itself overshoots or fails. The
@@ -3265,9 +3253,6 @@ exports.handler = async function(event) {
           return 'Signal ' + (i + 1) + ' ' + signalType + ': ERROR: ' + intelligenceFailMsg;
         }
         const count = (report.intelligence || []).filter(function(item) { return item.signalType === signalType; }).length;
-        if (count === 0 && signalType === 'Tipster Consensus' && report.webSearchCount === 0) {
-          return 'Signal ' + (i + 1) + ' ' + signalType + ': No web search fired — possible web search tool failure';
-        }
         return 'Signal ' + (i + 1) + ' ' + signalType + ': ' + (count > 0 ? count + ' card(s) produced' : 'No edge found');
       });
 
