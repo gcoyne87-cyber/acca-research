@@ -5649,7 +5649,7 @@ function unlockCorkAnalysis(){
       <div style="font-size:12px;color:#9aa3b5;margin-top:4px;padding-left:13px">Select a venue to analyse all races with AI</div>
     </div>
 
-    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 6px">
+    <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:8px 14px 4px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
         <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
         <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
@@ -12884,8 +12884,8 @@ function selectHomeRcDay(d){
   _homeRcDay=d;
   _rcDayUserChosen=true;
   _trainerFilterSelected=null;
-  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
-  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:5px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   document.querySelectorAll('#home-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
@@ -12937,7 +12937,12 @@ function buildDateStrip(){
     // Home strip highlights the actual current _homeRcDay (may now default to
     // Tomorrow after evening racing); cards strip is untouched — still i===0,
     // matching _cardsDay's own separate, unchanged default.
-    var homeStyle=dateVal===_homeRcDay?activeStyle:inactiveStyle;
+    // Home strip only: tighter vertical padding (appended last so it wins over
+    // the shared constant's 9px). The Cards-tab strip keeps 9px to stay level
+    // with the .subbtn rows beside it in the sticky topnav subbar; the
+    // filtered view's tabs set their own via _twoLine. selectHomeRcDay's
+    // tap re-style carries the same 5px so a tap can't snap it back.
+    var homeStyle=(dateVal===_homeRcDay?activeStyle:inactiveStyle)+';padding:5px 16px';
     var cardsStyle=i===0?activeStyle:inactiveStyle;
     // After the evening AUTO-switch to tomorrow (never on a manual choice),
     // today's racing is done — a tappable Today pill leading to an emptied
