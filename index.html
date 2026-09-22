@@ -14820,17 +14820,14 @@ function nrLoadProfile(pfx,horseId){
       if(hist.length>1)prevLine=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
       var recLine=tot.r?tot.r+' runs · '+tot.w+' wins · '+Math.round(100*tot.w/tot.r)+'%':'';
       var out='<div style="font-size:11px;color:#1a202c;line-height:1.6">';
-      // Header — silk (when ru resolved one) + colour/sex/foaled line +
-      // breeding line, replacing the old standalone colour/sex line.
-      // Sire/Dam/Damsire folded in here and dropped from the connection
-      // rows below (Trainer/Owner/Breeder/Previously only, there).
-      var _breedBase=[p.sire,p.dam].filter(Boolean).join(' — ');
-      var _breedLine=_breedBase+(p.damsire?(_breedBase?' ':'')+'('+p.damsire+')':'');
+      // Header — silk (when ru resolved one) + colour/sex/foaled line,
+      // replacing the old standalone colour/sex line. Sire/Dam/Damsire
+      // stay in the connection rows below (breeding-line experiment
+      // reverted — see connection rows).
       out+='<div style="display:flex;gap:10px;padding:8px 14px 4px;align-items:center">';
       if(ru&&ru.silk)out+=nrSilk(ru.silk);
       out+='<div>';
       out+='<div style="font-size:11px;color:#9ca3af">'+escHtml([colour,sex].filter(Boolean).join(' ').toLowerCase())+(p.dob?' · foaled '+escHtml(fmtD(p.dob)):'')+'</div>';
-      if(_breedLine)out+='<div style="font-size:11px;color:#374151">'+escHtml(_breedLine)+'</div>';
       out+='</div>';
       out+='</div>';
       // Stat strip — same gold band as the Form tab's own gold strip:
@@ -14859,6 +14856,9 @@ function nrLoadProfile(pfx,horseId){
       out+=fld('Trainer',currentTrainer,t14)
          +fld('Owner',owner)
          +fld('Breeder',p.breeder)
+         +fld('Sire',p.sire)
+         +fld('Dam',p.dam)
+         +fld('Damsire',p.damsire)
          +fld('Previously',prevLine);
       out+='</div>';
       // Career record — surface breakdown, Wins split into 2nds/3rds.
