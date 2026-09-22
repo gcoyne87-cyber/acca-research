@@ -3,7 +3,7 @@
 // HTTP, x-build-secret protected (header or ?secret=). For today .. today+5
 // (Europe/Dublin) it reads racecards:{date}, counts the distinct horses, and
 // for each horse checks:
-//   form-summary:{id}          styleVersion 2 / older summary / none
+//   form-summary:{id}          styleVersion 3 / older summary / none
 //   horse:trainer-history:{id} styleVersion 2 analysis / older analysis /
 //                              too-few-runs / no-results / parse-failed / none
 // plus the two completion markers, trainer-history:complete:{date} and
@@ -94,8 +94,8 @@ async function dateStatus(date) {
     const fs = ids.length ? await redisMgetJson(ids.map(function(id) { return 'form-summary:' + id; })) : [];
     fs.forEach(function(v) {
       if (v === null) row.formSummary.none++;
-      else if (isObj(v) && v.styleVersion === 2) row.formSummary.v2++;
-      else row.formSummary.older++;   // pre-style-2 object, or a legacy plain-text value
+      else if (isObj(v) && v.styleVersion === 3) row.formSummary.v2++;
+      else row.formSummary.older++;   // pre-style-3 object (incl. styleVersion 2), or a legacy plain-text value
     });
 
     const th = ids.length ? await redisMgetJson(ids.map(function(id) { return 'horse:trainer-history:' + id; })) : [];
@@ -163,7 +163,7 @@ function renderTable(rows) {
   lines.push(cols.map(function(c) { return new Array(c[1] + 1).join('-'); }).join('  '));
   lines.push(cols.map(function(c, i) { return pad(totals[i], c[1], c[2]); }).join('  '));
   lines.push('');
-  lines.push('FS = form-summary:{id}: v2 = glance-level style (styleVersion 2), old = earlier summary, none = no summary.');
+  lines.push('FS = form-summary:{id}: v2 = glance-level style (styleVersion 3), old = earlier summary, none = no summary.');
   lines.push('TH = horse:trainer-history:{id}: v2 = change-and-verdict analysis, old = 12/13 Sep trial analysis, too-few / no-res / parse-f = markers, none = no entry.');
   lines.push('TH run / Condense = trainer-history:complete:{date} and form-summary-condense:complete:{date} status (complete, partial, no-card, or - when never run).');
   return lines.join('\n');

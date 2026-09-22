@@ -226,7 +226,7 @@ function apiPost(hostname, path, headers, body) {
   });
 }
 
-// ── Glance-level style (styleVersion 2) ──────────────────────────────────────
+// ── Glance-level style (styleVersion 3) ──────────────────────────────────────
 // Shared by the main generation prompt in callClaude() and by condense mode
 // below, which rewrites already-stored paragraphs into this style. Key Angle
 // is not governed by these rules — its format line stays as it was.
@@ -235,7 +235,7 @@ const STYLE_RULES =
   '(6f not 0m6f). If the form says little, say so honestly — never pad. ' +
   'Never use: should go close, respected, one to watch, cannot be discounted, each-way claims, ' +
   'if in the mood, hard to assess, eye-catching, promising, interesting, capable of better. ' +
-  'Glance-level, not an essay. Roughly 35–45 words per section. Keep every fact (dates, courses, ' +
+  'Glance-level, not an essay. 25–35 words per section — never exceed 35. Keep every fact (dates, courses, ' +
   'distances, going, positions); cut connective filler and adjectives that carry no data. Finishing ' +
   'positions always \'3rd of 7\', \'9th of 11\' — never fractions like \'3/7\'. Use \'Best run:\' and ' +
   '\'Worst:\' as lead-ins where a best/worst is stated. Abbreviate going: Gd To Firm, Gd To Soft, Std, ' +
@@ -244,10 +244,10 @@ const STYLE_RULES =
 
 const STYLE_EXAMPLES =
   'Target style — four example sections:\n' +
-  'RECENT_FORM: 6 runs, no wins, bottom half throughout. Best run: 3rd of 7 at Salisbury, 30 Jun (1m1f, Gd To Firm). Others: 4th, 4th, 6th, 8th, 9th. Last run 22 Aug, Lingfield (AW), 1m5f Std, finished 4th of 6 — losing run continues since Sep 2025.\n' +
-  'GOING: Run on Standard, Gd To Firm (x3), Gd To Soft, Std To Slow. Best run: 3rd of 7 on Gd To Firm at Salisbury. Worst: 9th of 11 on Std To Slow at Kempton, and 8th of 14 on Gd To Soft at Windsor. No clear going preference.\n' +
-  'TRIP: 1m to 1m5f tried, no wins at any trip. Best run: 3rd of 7 over 1m1f. Last run stepped up to 1m5f, finished 4th of 6. Sole 1m run (Kempton, Sep 2025) was also the worst finish, 9th of 11 — shorter trips haven\'t suited either.\n' +
-  'TRACK: Run at Lingfield (AW), Chepstow, Salisbury (x2), Windsor, Kempton (AW). Only placing above 4th: 3rd of 7 at Salisbury, 30 Jun. Kempton (AW) was the worst result, 9th of 11 in Sep 2025 — no positive form there today.';
+  'RECENT_FORM: 6 runs, no wins, bottom half throughout. Best run: 3rd of 7 at Salisbury, 30 Jun (1m1f, Gd To Firm). Last run 22 Aug, Lingfield (AW), 1m5f Std, 4th of 6.\n' +
+  'GOING: Run on Std, Gd To Firm (x3), Gd To Soft, Std To Slow. Best run: 3rd of 7 on Gd To Firm, Salisbury. Worst: 9th of 11 on Std To Slow, Kempton. No clear preference.\n' +
+  'TRIP: 1m to 1m5f tried, no wins at any trip. Best run: 3rd of 7 over 1m1f. Last run stepped up to 1m5f, 4th of 6. Worst: 9th of 11 over 1m, Kempton, Sep 2025.\n' +
+  'TRACK: Run at Lingfield (AW), Chepstow, Salisbury (x2), Windsor, Kempton (AW). Best run: 3rd of 7 at Salisbury, 30 Jun. Worst: 9th of 11 at Kempton (AW), Sep 2025.';
 
 // Matches "HORSE: <name>" followed by the five labelled sections
 // (RECENT_FORM / GOING / TRIP / TRACK / KEY_ANGLE), the last section running
@@ -392,7 +392,7 @@ async function storeResults(summaries) {
 
   for (const item of (summaries || [])) {
     try {
-      await redisSet('form-summary:' + item.horse_id, { horseName: item.horseName, summary: item.recentForm, recentForm: item.recentForm, going: item.going, trip: item.trip, track: item.track, keyAngle: item.keyAngle, styleVersion: 2, generatedAt: new Date().toISOString() });
+      await redisSet('form-summary:' + item.horse_id, { horseName: item.horseName, summary: item.recentForm, recentForm: item.recentForm, going: item.going, trip: item.trip, track: item.track, keyAngle: item.keyAngle, styleVersion: 3, generatedAt: new Date().toISOString() });
       stored++;
     } catch (e) {
       failed++;
@@ -498,17 +498,17 @@ async function sendEmail(summary) {
   }
 }
 
-// ── Condense mode (styleVersion 2 rewrite of stored summaries) ──────────────
+// ── Condense mode (styleVersion 3 rewrite of stored summaries) ──────────────
 // Manual only: ?condense=1&date=YYYY-MM-DD through the test twin — the
 // scheduled trigger never passes condense, and the handler ignores it on a
 // scheduled invocation regardless. For every horse on that date's card whose
-// stored form-summary lacks styleVersion 2, one small Claude call rewrites the
+// stored form-summary lacks styleVersion 3, one small Claude call rewrites the
 // four stored paragraphs (Recent Form / Going / Trip / Track) into the
 // glance-level style. Input is the stored text only — no form history is
 // fetched, and Key Angle is neither sent nor rewritten. The four fields are
 // written back on the same key with every other field kept (keyAngle,
 // horseName, generatedAt — deliberately NOT refreshed, so the main job's
-// staleness check still sees the true generation day) plus styleVersion: 2
+// staleness check still sees the true generation day) plus styleVersion: 3
 // and condensedAt. Own lock and completion keys
 // (form-summary-condense:{lock|complete}:{date}); a partial run self-chains
 // through the test twin with hop+1, capped like trainer-history.
@@ -605,7 +605,7 @@ async function runCondense(headers, startTime, DATE, hop) {
     await redisSet(lockKey, { startedAt: new Date().toISOString(), hop: hop });
   } catch (lockErr) { /* lock check/write failure must never block the run itself */ }
 
-  const counts = { total: 0, condensed: 0, alreadyV2: 0, noSummary: 0, unusable: 0, failed: 0, apiFailed: 0 };
+  const counts = { total: 0, condensed: 0, alreadyV3: 0, noSummary: 0, unusable: 0, failed: 0, apiFailed: 0 };
   // Last API-level failure this run saw — written onto the completion
   // marker so it can be read without function logs.
   let lastApiError = null;
@@ -680,7 +680,7 @@ async function runCondense(headers, startTime, DATE, hop) {
             going: r.fields.going,
             trip: r.fields.trip,
             track: r.fields.track,
-            styleVersion: 2,
+            styleVersion: 3,
             condensedAt: new Date().toISOString()
           }));
           counts.condensed++;
@@ -700,7 +700,7 @@ async function runCondense(headers, startTime, DATE, hop) {
       const existing = await redisGet('form-summary:' + h.horse_id);
       if (!existing) { counts.noSummary++; continue; }
       if (typeof existing !== 'object') { counts.unusable++; continue; } // legacy plain text — the main job replaces it
-      if (existing.styleVersion === 2) { counts.alreadyV2++; continue; }
+      if (existing.styleVersion === 3) { counts.alreadyV3++; continue; }
       if (!existing.recentForm || !existing.going || !existing.trip || !existing.track) { counts.unusable++; continue; }
       group.push({ horse_id: h.horse_id, horseName: h.horseName || existing.horseName || h.horse_id, existing: existing });
       if (group.length >= CONDENSE_BATCH) await condenseGroup();
