@@ -11755,29 +11755,21 @@ function _renderFormSections(s,part){
   }
   if(part==='card'){
     if(!s.recentForm) return '';
-    var _uid='nrfs'+Math.random().toString(36).slice(2,7);
-    var _tab=function(id,label,active){
-      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.04em;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:8px 12px 6px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
-    };
-    var _pane=function(id,label,text,active){
+    // Three stacked boxes (Recent Form / Going / Trip & Track). Each box is the
+    // same card component the old tabbed pane used — border, radius, background,
+    // padding unchanged — with a green 9px label (Key Angle label style) above
+    // the text. A box only renders when its text exists.
+    var _box=function(label,text){
       if(!text) return '';
-      return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
+      return '<div style="margin:6px 0px 5px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+        +'<div style="font-size:9px;font-weight:700;color:#1e9e6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">'+label+'</div>'
         +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+_esc(text)+'</div>'
         +'</div>';
     };
-    var tabs='<div style="display:flex;border-bottom:2px solid #f0f2f5">'
-      +_tab('r','Recent Form',true)
-      +(s.going?_tab('g','Going',false):'')
-      +(s.trip?_tab('t','Trip',false):'')
-      +(s.track?_tab('k','Track',false):'')
-      +'</div>';
-    var panes='<div style="margin:6px 0px 5px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
-      +_pane('r','Recent Form',s.recentForm,true)
-      +_pane('g','Going',s.going,false)
-      +_pane('t','Trip',s.trip,false)
-      +_pane('k','Track',s.track,false)
-      +'</div>';
-    return tabs+panes;
+    var _tt=[s.trip,s.track].filter(Boolean).join(' ');
+    return _box('Recent Form',s.recentForm)
+      +_box('Going',s.going)
+      +_box('Trip &amp; Track',_tt);
   }
   return '';
 }
@@ -15174,6 +15166,13 @@ function nrLoadForm(pfx,horseId,silent){
         // Same style as the Going preference label (15139), run count folded in after it in a lighter grey.
         out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:6px 12px 4px">Form summary'+(hist.length?'<span style="color:#b0b7c6"> &middot; '+hist.length+' runs</span>':'')+'</div>';
         out+=_renderFormSections(_fsum,'card');
+      } else {
+        // No stored summary yet — same heading and the same card component, with
+        // muted italic placeholder text, so every horse shows the template shape.
+        out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;padding:6px 12px 4px">Form summary'+(hist.length?'<span style="color:#b0b7c6"> &middot; '+hist.length+' runs</span>':'')+'</div>';
+        out+='<div style="margin:6px 0px 5px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">'
+          +'<div style="font-size:12px;color:#9ca3af;font-style:italic;line-height:1.55">Form summary coming soon.</div>'
+          +'</div>';
       }
 
       // 5. Form table with trainer-change gold dividers
@@ -15262,6 +15261,7 @@ function nrLoadForm(pfx,horseId,silent){
           out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
           out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
           if(note)out+='<div style="font-size:12px;line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
+          else out+='<div style="font-size:12px;line-height:1.4;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
           out+='</div></div>';
         });
         out+='</div>';
