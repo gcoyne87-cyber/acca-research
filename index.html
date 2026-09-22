@@ -14820,28 +14820,45 @@ function nrLoadProfile(pfx,horseId){
       if(hist.length>1)prevLine=hist.slice(0,-1).reverse().map(function(t){return t.name+' ('+(t.from?t.from.slice(0,4):'')+(t.to?'–'+yr(t.to):'')+')';}).join(', ');
       var recLine=tot.r?tot.r+' runs · '+tot.w+' wins · '+Math.round(100*tot.w/tot.r)+'%':'';
       var out='<div style="font-size:11px;color:#1a202c;line-height:1.6">';
-      out+='<div style="font-size:11px;color:#9ca3af;padding:4px 14px 0">'+escHtml([colour,sex].filter(Boolean).join(' ').toLowerCase())+(p.dob?' · foaled '+escHtml(fmtD(p.dob)):'')+'</div>';
-      // Stat strip — same green band as the Form tab (nrLoadForm, "1. Stat
-      // strip" section): Age/Rating/Last run/Record/Prize, identical
-      // colours and layout. ru is the live racecard runner (hoisted above);
-      // tot/_prizeStr are this function's own already-computed totals.
+      // Header — silk (when ru resolved one) + colour/sex/foaled line +
+      // breeding line, replacing the old standalone colour/sex line.
+      // Sire/Dam/Damsire folded in here and dropped from the connection
+      // rows below (Trainer/Owner/Breeder/Previously only, there).
+      var _breedBase=[p.sire,p.dam].filter(Boolean).join(' — ');
+      var _breedLine=_breedBase+(p.damsire?(_breedBase?' ':'')+'('+p.damsire+')':'');
+      out+='<div style="display:flex;gap:10px;padding:8px 14px 4px;align-items:center">';
+      if(ru&&ru.silk)out+=nrSilk(ru.silk);
+      out+='<div>';
+      out+='<div style="font-size:11px;color:#9ca3af">'+escHtml([colour,sex].filter(Boolean).join(' ').toLowerCase())+(p.dob?' · foaled '+escHtml(fmtD(p.dob)):'')+'</div>';
+      if(_breedLine)out+='<div style="font-size:11px;color:#374151">'+escHtml(_breedLine)+'</div>';
+      out+='</div>';
+      out+='</div>';
+      // Stat strip — same gold band as the Form tab's own gold strip:
+      // Age/Rating/Last run/Record/Prize, identical colours and layout. ru
+      // is the live racecard runner (hoisted above); tot/_prizeStr are this
+      // function's own already-computed totals.
       var _prizeStr=money(tot.pr, currentSym);
-      out+='<div style="display:flex;background:#f0fdf4;border-bottom:0.5px solid #d1fae5">';
-      var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
+      out+='<div style="display:flex;background:#fffbeb;border-bottom:0.5px solid #d4af37">';
+      var _sc=function(label,val){return '<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#8a6d1a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:11px;font-weight:600;color:#0b1628">'+val+'</div></div>';};
       out+=_sc('Age',(ru&&ru.age)?escHtml(String(ru.age))+'yo':'—');
       out+=_sc('Rating',(ru&&ru.or)?'OR '+escHtml(String(ru.or)):'—');
       out+=_sc('Last run',(ru&&ru.lastRun)?escHtml(String(ru.lastRun))+'d ago':'—');
       out+=_sc('Record',tot.r?(tot.r+'·'+tot.w+'W·'+(tot.p2+tot.p3)+'P'):'—');
-      out+='<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+(_prizeStr?escHtml(_prizeStr):'—')+'</div></div>';
+      out+='<div style="flex:1;padding:8px 0 8px 12px"><div style="font-size:8px;font-weight:600;color:#8a6d1a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Prize</div><div style="font-size:11px;font-weight:600;color:#b8860b">'+(_prizeStr?escHtml(_prizeStr):'—')+'</div></div>';
+      out+='</div>';
+      // Horse Summary — placeholder, filled in later by the engine (hence
+      // the nrh-hsum id).
+      out+='<div id="nrh-hsum-'+pfx+'" style="padding:8px 14px;border-bottom:0.5px solid #f0f2f5">';
+      out+='<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Horse Summary</div>';
+      out+='<div style="border:1px solid #d4af37;border-radius:8px;background:#fff;padding:8px 10px">';
+      out+='<div style="font-size:11px;color:#9ca3af;font-style:italic">Career summary coming soon.</div>';
+      out+='</div>';
       out+='</div>';
       // Connection rows.
       out+='<div style="padding:4px 14px;border-bottom:0.5px solid #f0f2f5">';
       out+=fld('Trainer',currentTrainer,t14)
          +fld('Owner',owner)
          +fld('Breeder',p.breeder)
-         +fld('Sire',p.sire)
-         +fld('Dam',p.dam)
-         +fld('Damsire',p.damsire)
          +fld('Previously',prevLine);
       out+='</div>';
       // Career record — surface breakdown, Wins split into 2nds/3rds.
