@@ -11754,28 +11754,30 @@ function _renderFormSections(s,part){
       +'</div>';
   }
   if(part==='card'){
-    if(!s.recentForm) return '';
+    // Always four tabs and four panes, whatever is stored: a tab whose text is
+    // missing shows the placeholder inside the same flush pane, so the strip
+    // never disappears and the layout is identical for every horse.
     var _uid='nrfs'+Math.random().toString(36).slice(2,7);
     var _tab=function(id,label,active){
-      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.04em;font-weight:'+(active?'700':'600')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:3px solid '+(active?'#1e9e6b':'transparent')+';padding:8px 12px 6px;margin-bottom:-2px;cursor:pointer">'+label+'</div>';
+      return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:11px;font-weight:'+(active?'600':'500')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:2px solid '+(active?'#1e9e6b':'transparent')+';padding:8px 4px 6px;margin-bottom:-1px;cursor:pointer;white-space:nowrap">'+label+'</div>';
     };
-    var _pane=function(id,label,text,active){
-      if(!text) return '';
+    var _pane=function(id,text,active){
       return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
-        +'<div style="font-size:12px;color:#1a202c;line-height:1.55">'+_esc(text)+'</div>'
+        +(text?'<div style="font-size:13px;color:#374151;line-height:1.5">'+_esc(text)+'</div>'
+               :'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">Form summary coming soon.</div>')
         +'</div>';
     };
-    var tabs='<div style="display:flex;border-bottom:2px solid #d9efe4">'
-      +_tab('r','Recent Form',true)
-      +(s.going?_tab('g','Going',false):'')
-      +(s.trip?_tab('t','Trip',false):'')
-      +(s.track?_tab('k','Track',false):'')
+    var tabs='<div style="display:flex;border-bottom:1px solid #d9efe4">'
+      +_tab('r','Recent form',true)
+      +_tab('g','Going',false)
+      +_tab('t','Trip',false)
+      +_tab('k','Track',false)
       +'</div>';
     var panes='<div style="margin:6px 0px 5px;padding:10px 12px;background:#fff;border-top:0.5px solid #d9efe4;border-bottom:0.5px solid #d9efe4">'
-      +_pane('r','Recent Form',s.recentForm,true)
-      +_pane('g','Going',s.going,false)
-      +_pane('t','Trip',s.trip,false)
-      +_pane('k','Track',s.track,false)
+      +_pane('r',s.recentForm,true)
+      +_pane('g',s.going,false)
+      +_pane('t',s.trip,false)
+      +_pane('k',s.track,false)
       +'</div>';
     return tabs+panes;
   }
@@ -11789,8 +11791,8 @@ function _nrFsShow(uid,id){
     if(!tab||!pane)return;
     var active=x===id;
     tab.style.color=active?'#1e9e6b':'#9ca3af';
-    tab.style.fontWeight=active?'700':'600';
-    tab.style.borderBottom=active?'3px solid #1e9e6b':'3px solid transparent';
+    tab.style.fontWeight=active?'600':'500';
+    tab.style.borderBottom=active?'2px solid #1e9e6b':'2px solid transparent';
     pane.style.display=active?'block':'none';
   });
 }
@@ -15058,10 +15060,10 @@ function nrLoadForm(pfx,horseId,silent){
       })();
       if(!_ru2){var _w2=document.getElementById('nrh-'+pfx);if(_w2&&(_w2.dataset.age||_w2.dataset.or||_w2.dataset.lastrun))_ru2={age:_w2.dataset.age,or:_w2.dataset.or,lastRun:_w2.dataset.lastrun};}
       out+='<div style="display:flex;gap:12px;background:#f3f9f6;padding:9px 12px">';
-      var _sc=function(label,val,opts){opts=opts||{};return '<div style="flex:'+(opts.flex||'1')+';min-width:0"><div style="font-size:9px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div><div style="font-size:'+(opts.vs||'12px')+';font-weight:600;color:'+(opts.color||'#0b1628')+';white-space:nowrap">'+val+'</div></div>';};
-      out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age))+'yo':'—');
+      var _sc=function(label,val,opts){opts=opts||{};return '<div style="flex:'+(opts.flex||'1')+';min-width:0;text-align:center"><div style="font-size:9px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">'+label+'</div><div style="font-size:'+(opts.vs||'12px')+';font-weight:600;color:'+(opts.color||'#0b1628')+';white-space:nowrap">'+val+'</div></div>';};
+      out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age)):'—');
       out+=_sc('OR',(_ru2&&_ru2.or)?escHtml(String(_ru2.or)):'—');
-      out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d ago':'—');
+      out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d':'—');
       var _recRuns=hist.length,_recW=0;
       hist.forEach(function(h){if(parseInt(String(h.position||h.pos||''),10)===1)_recW++;});
       out+=_sc('Record',_recRuns?_recRuns+(_recRuns===1?' run, ':' runs, ')+_recW+(_recW===1?' win':' wins'):'—',{flex:'1.6',vs:'10px'});
@@ -15071,29 +15073,23 @@ function nrLoadForm(pfx,horseId,silent){
       out+=_sc('Prize',_przStr,{color:'#b8860b'});
       out+='</div>';
 
-      // 4. Form Summary — header + tabbed card (or placeholder card when no summary is stored)
+      // 4. Form Summary — header, four-tab strip and flush pane (always rendered)
       out+='<div style="padding:10px 12px 0">';
       out+=_shdr('Form Summary',hist.length?'· '+hist.length+' runs':'');
-      if(_fsum&&_fsum.recentForm){
-        out+=_renderFormSections(_fsum,'card');
-      } else {
-        // No stored summary yet — same header and the standard card, with muted
-        // italic placeholder text, so every horse shows the template shape.
-        out+='<div style="margin:6px 0px 5px;padding:8px 12px;background:#ffffff;border:0.5px solid #d9efe4;border-radius:8px">'
-          +'<div style="font-size:12px;color:#9ca3af;font-style:italic;line-height:1.55">Form summary coming soon.</div>'
-          +'</div>';
-      }
+      // The four-tab strip and the flush pane render for every horse; any tab whose
+      // text is missing shows the placeholder inside the same pane.
+      out+=_renderFormSections(_fsum||{},'card');
       out+='</div>';
 
-      // 5. Form table with trainer-change gold dividers
+      // 5. Form table — run rows only, first 8 visible
       if(hist.length){
         var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var _thS2='text-align:left;padding:4px 8px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
         // Header sits on the wash; the table below is a full-bleed white band (no inset,
         // no radius, no side borders) with 12px first/last cell padding to align content.
-        out+='<div style="padding:10px 12px 5px">'+_shdr('Form Table',hist.length>8?'· last 8 of '+hist.length:'· '+hist.length+' runs')+'</div>';
-        out+='<div style="background:#ffffff;border-top:0.5px solid #d9efe4;border-bottom:0.5px solid #d9efe4">';
+        out+='<div style="padding:10px 12px 5px">'+_shdr('Form Table')+'</div>';
+        out+='<div style="background:#ffffff;border-top:0.5px solid #d9efe4">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">';
         out+='<colgroup><col style="width:16%"><col style="width:22%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:16%"></colgroup>';
         out+='<thead><tr><th style="'+_thS2+';padding-left:12px">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+';padding-right:12px">Jockey</th></tr></thead><tbody>';
@@ -15106,20 +15102,20 @@ function nrLoadForm(pfx,horseId,silent){
           var pCol=p===1?'#1e9e6b':p===2||p===3?'#b7860b':'#0D1B3E';
           var _dp=h.date?String(h.date).split('-'):[];
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
-          out+='<tr style="border-top:0.5px solid #f0f2f5">';
-          out+='<td style="padding:4px 8px 4px 12px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(ds)+'</td>';
-          out+='<td style="padding:4px 8px;font-weight:600;color:#0b1628;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_nrCourseCellHtml(h.course||'')+'</td>';
-          out+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
-          out+='<td style="padding:4px 8px;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:10px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-          out+='<td style="padding:4px 8px;text-align:right;color:#6b7280;font-size:10px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-          out+='<td style="padding:4px 12px 4px 8px;color:#6b7280;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<tr style="border-top:1px solid #f0f2f5">';
+          out+='<td style="padding:4px 8px 4px 12px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(ds)+'</td>';
+          out+='<td style="padding:4px 8px;font-weight:600;color:#0b1628;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_nrCourseCellHtml(h.course||'')+'</td>';
+          out+='<td style="padding:4px 8px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
+          out+='<td style="padding:4px 8px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
+          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:11px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:11px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:4px 8px;text-align:right;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
+          out+='<td style="padding:4px 12px 4px 8px;color:#6b7280;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
           out+='</tr>';
         });
         out+='</tbody></table></div>';
         // View more / Show fewer lives OUTSIDE the table band, centred on the panel, in
         // normal flow beneath it. nrFmExpand / nrFmCollapse rewrite this div in place.
-        if(hist.length>8)out+='<div id="nrh-fm-'+pfx+'" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:11px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+(hist.length-8)+' more '+((hist.length-8)===1?'race':'races')+'</span></div>';
+        if(hist.length>8)out+='<div id="nrh-fm-'+pfx+'" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:500;color:#1e9e6b;cursor:pointer">View '+(hist.length-8)+' more '+((hist.length-8)===1?'race':'races')+'</span></div>';
       }
 
       // 6. Trainer History timeline
@@ -15151,29 +15147,38 @@ function nrLoadForm(pfx,horseId,silent){
         // text), spell 2 in a hairline card (12px), spells 3+ as a single line each
         // (bold name, muted dates, 11px text). The dot/connector timeline runs down
         // the left of all tiers.
+        // Date label per spell: 'since Aug 2025' for the current spell, 'Mar–Aug 2025'
+        // for a past one (year shown once when both ends share it).
+        var _span=function(p,cur){
+          if(cur) return p.from?'since '+_my(p.from):'no runs yet';
+          var a=String(p.from||'').split('-'),b=String(p.to||'').split('-');
+          var am=a.length>=2?(_mon[parseInt(a[1],10)-1]||''):'',bm=b.length>=2?(_mon[parseInt(b[1],10)-1]||''):'';
+          if(a[0]&&a[0]===b[0]) return (am===bm?am:am+'–'+bm)+' '+a[0];
+          return _my(p.from)+'–'+_my(p.to);
+        };
         _per.forEach(function(p,i){
           var cur=i===0;
           var last=i===_per.length-1;
           var tier=i===0?1:i===1?2:3;
-          var dateStr=cur?(p.from?'Since '+_dmy(p.from):'No runs yet'):(_my(p.from)+' – '+_my(p.to));
+          var dateStr=_span(p,cur);
           var note=_thTidy(_notes[_normT(p.name)]||'');
           var dot=cur?'#1e9e6b':'#cbd5e1';
           out+='<div style="display:flex;gap:10px">';
-          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0;padding-top:'+(tier===3?'4px':'10px')+'">';
+          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0;padding-top:'+(tier===3?'4px':'12px')+'">';
           out+='<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></div>';
-          if(!last)out+='<div style="width:2px;flex:1;background:#d9efe4;margin-top:2px"></div>';
+          if(!last)out+='<div style="width:1px;flex:1;background:#d9efe4;margin-top:2px"></div>';
           out+='</div>';
           out+='<div style="flex:1;min-width:0;padding-bottom:'+(last?'2px':(tier===3?'6px':'10px'))+'">';
           if(tier===3){
-            out+='<div style="font-size:11px;line-height:1.4;color:#334155"><span style="font-weight:700;color:#0b1628">'+escHtml(p.name)+'</span><span style="color:#9ca3af"> · '+escHtml(dateStr)+'</span>'+(note?' '+escHtml(note):'')+'</div>';
+            out+='<div style="font-size:11px;line-height:1.5;color:#6b7280"><span style="font-weight:700;color:#0b1628">'+escHtml(p.name)+'</span><span style="color:#9ca3af"> · '+escHtml(dateStr)+'</span>'+(note?' '+escHtml(note):'')+'</div>';
           } else {
             var cardB=tier===1?'1px solid #1e9e6b':'0.5px solid #d9efe4';
+            var cardP=tier===1?'10px 12px':'8px 12px';
             var txtS=tier===1?'13px':'12px';
-            out+='<div style="background:#ffffff;border:'+cardB+';border-radius:8px;padding:8px 10px">';
-            out+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:11px;font-weight:700;color:#0b1628">'+escHtml(p.name)+'</div>'+(cur?'<span style="display:inline-block;font-size:9px;font-weight:600;color:#1e9e6b;background:#f0fdf4;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle">Current</span>':'')+'</div>';
-            out+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px">'+escHtml(dateStr)+(p.runs?' · '+p.runs+(p.runs===1?' run':' runs'):'')+'</div>';
-            if(note)out+='<div style="font-size:'+txtS+';line-height:1.4;color:#334155">'+escHtml(note)+'</div>';
-            else out+='<div style="font-size:'+txtS+';line-height:1.4;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
+            out+='<div style="background:#ffffff;border:'+cardB+';border-radius:8px;padding:'+cardP+'">';
+            out+='<div style="font-size:10px;font-weight:600;color:#0b1628;margin-bottom:4px">'+escHtml(p.name)+'<span style="color:#9ca3af;font-weight:400"> · '+escHtml(dateStr)+'</span></div>';
+            if(note)out+='<div style="font-size:'+txtS+';line-height:1.5;color:#374151">'+escHtml(note)+'</div>';
+            else out+='<div style="font-size:'+txtS+';line-height:1.5;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
             out+='</div>';
           }
           out+='</div></div>';
@@ -15204,7 +15209,7 @@ function nrFmExpand(pfx,el){
   var btnRow=document.getElementById('nrh-fm-'+pfx);
   if(xTbody) xTbody.style.display='';
   if(btnRow){
-    btnRow.innerHTML='<span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:11px;font-weight:600;color:#9ca3af;cursor:pointer">Show fewer races</span>';
+    btnRow.innerHTML='<span onclick="nrFmCollapse(\''+pfx+'\')" style="font-size:12px;font-weight:500;color:#1e9e6b;cursor:pointer">Show fewer races</span>';
   }
 }
 function nrFmCollapse(pfx){
@@ -15213,7 +15218,7 @@ function nrFmCollapse(pfx){
   if(xTbody) xTbody.style.display='none';
   if(btnRow&&xTbody){
     var remaining=xTbody.querySelectorAll('tr').length;
-    btnRow.innerHTML='<span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:11px;font-weight:600;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+(remaining===1?'race':'races')+'</span>';
+    btnRow.innerHTML='<span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:500;color:#1e9e6b;cursor:pointer">View '+remaining+' more '+(remaining===1?'race':'races')+'</span>';
   }
 }
 // Chevron-panel twin of nrFmExpand/nrFmCollapse above, with its own
