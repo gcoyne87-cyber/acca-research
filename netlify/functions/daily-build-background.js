@@ -2996,26 +2996,38 @@ exports.handler = async function(event) {
       const GL_CARD_TIMEOUT_MS = 25000;
       let glTimer = null;
       try {
+        // Distance for the copy: leading zero miles and trailing yards dropped
+        // ('0m6f212y' -> '6f', '1m6f0y' -> '1m6f'), the same convention the
+        // form-summary style rules enforce, so the model never reads yards aloud.
+        const glDist = function(d) { return String(d || '').replace(/^0m/, '').replace(/\d+y$/, '').replace(/(\d+)m0f$/, '$1m') || String(d || ''); };
+        const glTotal = report.groundLoverHorses.length;
+        const glOpening = glTotal + (glTotal === 1 ? ' Ground Lover qualifier has been identified today' : ' Ground Lover qualifiers have been identified today');
         const venueLine = Object.keys(glVenues).map(function(v) { return v + ' (' + glVenues[v].going + '): ' + glVenues[v].count + (glVenues[v].count === 1 ? ' qualifier' : ' qualifiers'); }).join('; ');
         const horseLines = report.groundLoverHorses.map(function(h) {
-          return h.horseName + ' — ' + h.course + ' ' + h.time + ', ' + h.dist + ', ' + h.fieldSize + ' runners, today\'s going ' + h.todayGoing
+          return h.horseName + ' — ' + h.course + ' ' + h.time + ', ' + glDist(h.dist) + ', field of ' + h.fieldSize + ' runners, today\'s going ' + h.todayGoing
             + (h.winDate ? ', won on ' + h.winGoing + ' at ' + h.winCourse + ' on ' + h.winDate : ', has won on this going in its last six runs')
-            + (h.ewProfile ? ' [Yielding, 16+ field — each-way profile]' : '');
+            + (h.ewProfile ? ' [EACH-WAY PROFILE: yes]' : ' [each-way profile: no]');
         });
         const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
-          ' headers, no bullet points. Do not begin with a label, heading or title —' +
-          ' start directly with the first sentence. 105 to 110 words exactly. Count' +
-          ' carefully. No tipster language. No opinions. No prices or odds.' +
+          ' headers, no bullet points. Do not begin with a label, heading or title.' +
+          ' 105 to 110 words exactly. Count carefully. No tipster language. No' +
+          ' opinions. No prices or odds.' +
           ' A Ground Lover is a horse that has already won on exactly today\'s official' +
           ' going within its last six runs, on a day of genuine give underfoot.' +
-          ' Open with the total number of qualifiers, then go venue by venue: name the' +
-          ' venue, today\'s official going there, and how many qualifiers have been' +
-          ' identified at it. Then name as many of the qualifying horses as the word' +
-          ' count allows, each with the course, date and going of the win that' +
-          ' qualifies it. Where a horse is marked each-way profile, say it runs on' +
-          ' Yielding in a big field, the profile with the strongest record. Close on' +
-          ' the qualifier whose qualifying win is the most recent.' + NO_SITE_CTA +
+          ' There are exactly ' + glTotal + ' qualifiers today. Your first sentence must' +
+          ' begin with these exact words: "' + glOpening + '". Never state, infer or repeat' +
+          ' any other number as a qualifier count. A field size is the number of' +
+          ' runners in a race and must never be described as a number of qualifiers.' +
+          ' Then go venue by venue: name the venue, today\'s official going there, and' +
+          ' how many of the ' + glTotal + ' qualifiers run there. Then name as many of the' +
+          ' qualifying horses as the word count allows, each with the course, date' +
+          ' and going of the win that qualifies it.' +
+          ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
+          ' going is Yielding and its field has 16 or more runners. Only a horse' +
+          ' carrying that mark may be described as an each-way profile; never say it,' +
+          ' or anything like it, of a horse marked no, whatever its field size.' +
+          ' Close on the qualifier whose qualifying win is the most recent.' + NO_SITE_CTA +
           ' Today\'s venues: ' + venueLine + '. The horses are: ' + horseLines.join('; ');
         const glResp = await Promise.race([
           callClaude('', glPrompt, 400, true),
@@ -3023,7 +3035,14 @@ exports.handler = async function(event) {
             glTimer = setTimeout(function() { reject(new Error('timed out after ' + (GL_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, GL_CARD_TIMEOUT_MS);
           })
         ]);
-        if (glResp.text && glResp.text.trim()) report.groundLoverCard = stripSiteCta(glResp.text);
+        if (glResp.text && glResp.text.trim()) {
+          // Strip any site pointer, then trim to the 110-word cap on a sentence
+          // boundary with the same helper the pull quotes use (the model overshot
+          // to 124 words on the first live run).
+          let glText = stripSiteCta(glResp.text);
+          if (pullQuoteWordCount(glText) > 110) glText = trimPullQuoteToSentence(glText);
+          report.groundLoverCard = glText;
+        }
         report.inputTokens += glResp.inputTokens || 0;
         report.outputTokens += glResp.outputTokens || 0;
         report.cacheReadTokens += glResp.cacheReadTokens || 0;
