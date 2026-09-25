@@ -13426,6 +13426,7 @@ function rcTabSelect(mid,time,mname,tab){
   var _fe=document.getElementById('racing-future-content');
   if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
   if(typeof nrRenderCard==='function') nrRenderCard();
+  if(typeof renderRcSingleList==='function') renderRcSingleList();
 }
 // Inline per-horse analysis toggle — keyed mid+'-'+time like _rcTabState.
 // Tapping Analysis no longer swaps in a separate view; it toggles the
@@ -13449,6 +13450,7 @@ function rcToggleHorseAnalysis(mid,time,mname){
   var _fe=document.getElementById('racing-future-content');
   if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
   if(typeof nrRenderCard==='function') nrRenderCard();
+  if(typeof renderRcSingleList==='function') renderRcSingleList();
 }
 function _inlineHorseAnalysisHtml(mid,time,mname,horseName){
   if(!_rcHorseAnalysisOpen[mid+'-'+time]) return '';
@@ -13476,6 +13478,7 @@ function rcToggleVerdict(mid,time,mname){
   var _fe=document.getElementById('racing-future-content');
   if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
   if(typeof nrRenderCard==='function') nrRenderCard();
+  if(typeof renderRcSingleList==='function') renderRcSingleList();
 }
 // Future data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
@@ -13493,21 +13496,28 @@ function _verdictBlockHtml(mid,time,mname,ru){
   }
   var vText=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
   var tag=(v&&typeof v==='object'&&v.tag&&v.tag.label&&v.tag.text)?v.tag:null;
-  var lr=(ru.lastRun!=null&&String(ru.lastRun)!=='')?parseInt(ru.lastRun,10):NaN;
-  var lrStr=isNaN(lr)?'—':(lr+(lr===1?' day ago':' days ago'));
-  var t14=ru.trainer14||{};
-  var t14Str=(t14.runs>0)?(t14.wins||0)+'-'+t14.runs+' ('+(t14.pct||0)+'%)':'—';
-  var tile=function(label,val){return '<div style="flex:1;min-width:0;text-align:center"><div style="font-size:9px;text-transform:uppercase;color:#9ca3af;letter-spacing:0.04em;margin-bottom:2px">'+label+'</div><div style="font-size:12px;font-weight:600;color:#0b1628;white-space:nowrap">'+val+'</div></div>';};
-  var h='<div style="border-top:0.5px solid #f0f2f5">';
-  h+='<div style="display:flex;background:#f5f7fb;padding:8px 12px">'+tile('Last run',escHtml(lrStr))+tile('Trainer, 14d',escHtml(t14Str))+'</div>';
-  h+='<div style="padding:10px 12px 0">'+_shdr('Race Verdict')+'</div>';
-  if(tag){
-    h+='<div style="margin:0 12px 10px;display:flex;align-items:baseline;gap:7px;background:#fff;border:1px solid #1e9e6b;border-radius:12px;padding:8px 12px;font-size:11px;line-height:1.4">'
-      +'<span style="font-weight:700;color:#0b1628">'+escHtml(tag.label)+'</span>'
-      +'<span style="color:#0f6e56">— '+escHtml(tag.text)+'</span>'
-      +'</div>';
+  // Icon by tag type (ti-flame / ti-map-pin / ti-droplet), drawn inline since no
+  // icon font is loaded on the page. Rendered only when a tag is present AND
+  // there is verdict text; the placeholder state never shows an icon.
+  var _tiPath={
+    'ti-flame':'<path d="M12 12c2 -2.96 0 -7 -1 -8c0 3.038 -1.773 4.741 -3 6c-1.226 1.26 -2 3.24 -2 5a6 6 0 1 0 12 0c0 -1.532 -1.056 -3.94 -2 -5c-1.786 3 -2.791 3 -4 2z"/>',
+    'ti-map-pin':'<path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/>',
+    'ti-droplet':'<path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z"/>'
+  };
+  var _tiFor=function(t){
+    var k=String((t&&(t.type||t.label))||'').toLowerCase();
+    if(/going|ground|soft|heavy|yield|rain|wet/.test(k)) return 'ti-droplet';
+    if(/course|distance|track|c&d|\bcd\b|trip/.test(k)) return 'ti-map-pin';
+    return 'ti-flame';
+  };
+  var icon='';
+  if(vText&&tag){
+    var _cls=_tiFor(tag);
+    icon='<svg class="ti '+_cls+'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1e9e6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px">'+_tiPath[_cls]+'</svg>';
   }
-  h+='<div style="padding:0 12px 12px;font-size:13px;line-height:1.5;font-style:italic;color:'+(vText?'#0b1628':'#9ca3af')+'">'+(vText?escHtml(vText):'Race verdict coming soon.')+'</div>';
+  var h='<div style="border-top:0.5px solid #f0f2f5;padding:10px 12px 12px;display:flex;align-items:flex-start;gap:8px">';
+  h+=icon;
+  h+='<div style="flex:1;min-width:0;font-size:13px;line-height:1.5;font-style:italic;color:'+(vText?'#0b1628':'#9ca3af')+'">'+(vText?escHtml(vText):'Race verdict coming soon.')+'</div>';
   h+='</div>';
   return h;
 }
@@ -13728,11 +13738,16 @@ function _raceTabsHtml(mid,time,mname){
   var btn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var btnOn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#0D1B3E;border:1.5px solid #0D1B3E;border-radius:99px;font-size:12px;font-weight:700;color:#d4af37;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var me=mid.replace(/'/g,"\\'"); var te=time.replace(/'/g,"\\'"); var ne=(mname||'').replace(/'/g,"\\'");
+  // Both pills share one two-state style computed fresh from their own state on
+  // every render: open = green fill, white text; closed = white, grey text, hairline.
+  var pBase='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;';
+  var pOn=pBase+'background:#1e9e6b;border:1px solid #1e9e6b;color:#fff';
+  var pOff=pBase+'background:#fff;border:1px solid #d9efe4;color:#6b7280';
   var vOn=!!_rcVerdictOpen[key];
-  var vBtn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;'+(vOn?'background:#1e9e6b;border:1px solid #1e9e6b;color:#fff':'background:#fff;border:1px solid #d9efe4;color:#6b7280');
+  var vBtn=vOn?pOn:pOff;
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
     +'<button style="'+vBtn+'" onclick="rcToggleVerdict(\''+me+'\',\''+te+'\',\''+ne+'\')"><span>Verdict</span></button>'
-    +'<button style="'+(active==='tips'?btnOn:btn)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
+    +'<button style="'+(active==='tips'?pOn:pOff)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
     +'</div>';
   if(active==='analysis'){
     var ck=(mname+' '+time).toLowerCase().trim();
