@@ -872,6 +872,24 @@ function trimPullQuoteToSentence(q) {
   return out || String(q || '').trim().split(/\s+/).slice(0, 110).join(' ');
 }
 
+// Every card is read on Racing Edge itself, so a sentence that points the
+// reader at the site, a racecard or a runner list is filler in place of
+// analysis. NO_SITE_CTA is appended to each card prompt; stripSiteCta() then
+// removes any such sentence that still slips through, keeping the rest as
+// written. Applied to the Hot Yard, Big Race (today and tomorrow) and
+// Course/Distance/Going cards.
+const NO_SITE_CTA = ' The reader is already on Racing Edge: never mention Racing Edge, the site, the app, a racecard, a runner list, or where anything can be viewed, and never close with a pointer or call to action. Every sentence must be about the named horses, the trainer or the race itself.';
+function stripSiteCta(text) {
+  const t = String(text || '').trim();
+  if (!t) return t;
+  const sentences = t.match(/[^.!?]*[.!?]+(?:['")\]]*)?/g) || [t];
+  const kept = sentences.filter(function(s) {
+    return !/racing edge|view (?:the )?full|full (?:race ?card|runner list|list of)|head over|available (?:to view|on)|view (?:now|it|them)|check (?:the|out)/i.test(s);
+  });
+  const out = kept.join(' ').replace(/\s+/g, ' ').trim();
+  return out || t;
+}
+
 // Second-pass condenser: the prompts ask for ~105 words but the model has a
 // history of ignoring the ceiling (every quote on 2026-08-31 came back
 // 159-236 words). One extra small call — same model, no web search — rewrites
@@ -2404,8 +2422,8 @@ exports.handler = async function(event) {
           ' No opinions, no predictions. No prices or odds.' +
           ' Cover the trainer\'s recent form stats, the winning' +
           ' venues, today\'s declared runners with course and time,' +
-          ' and close by directing the reader to view the full runner' +
-          ' list on Racing Edge.' +
+          ' and close on the declared runner or runners with the' +
+          ' strongest case today, stated in specific terms.' + NO_SITE_CTA +
           ' The data: Trainer: ' + hotYardTop.trainerName + '.' +
           ' Last 7 days: ' + hotYardTop.runners7d + ' runners, ' +
           hotYardTop.winners7d + ' winners, ' +
@@ -2429,7 +2447,7 @@ exports.handler = async function(event) {
               hyTimer = setTimeout(function() { reject(new Error('timed out after ' + (HOT_YARD_CALL_TIMEOUT_MS / 1000) + 's — skipped')); }, HOT_YARD_CALL_TIMEOUT_MS);
             })
           ]);
-          if (hyResp.text && hyResp.text.trim()) report.hotYardCard = hyResp.text.trim();
+          if (hyResp.text && hyResp.text.trim()) report.hotYardCard = stripSiteCta(hyResp.text);
           report.inputTokens += hyResp.inputTokens || 0;
           report.outputTokens += hyResp.outputTokens || 0;
           report.cacheReadTokens += hyResp.cacheReadTokens || 0;
@@ -2599,7 +2617,7 @@ exports.handler = async function(event) {
             ' Open with what the race is and the shape of the field.' +
             ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
             ' Note the key filter for the race today (going, trip or class).' +
-            ' Close by directing the reader to the full racecard on Racing Edge.' +
+            ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
             ' The race: ' + brDetails + '. The runners: ' + brRunnerLines.join('; ');
           const brcResp = await Promise.race([
             callClaude('', bigRacePrompt, 400, true),
@@ -2607,7 +2625,7 @@ exports.handler = async function(event) {
               brcTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_CARD_TIMEOUT_MS);
             })
           ]);
-          if (brcResp.text && brcResp.text.trim()) report.bigRace.raceIntelligence = brcResp.text.trim();
+          if (brcResp.text && brcResp.text.trim()) report.bigRace.raceIntelligence = stripSiteCta(brcResp.text);
           report.inputTokens += brcResp.inputTokens || 0;
           report.outputTokens += brcResp.outputTokens || 0;
           report.cacheReadTokens += brcResp.cacheReadTokens || 0;
@@ -2755,7 +2773,7 @@ exports.handler = async function(event) {
               ' Open with what the race is and the shape of the field.' +
               ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
               ' Note the key filter for the race tomorrow (going, trip or class).' +
-              ' Close by directing the reader to the full racecard on Racing Edge.' +
+              ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
               ' The race: ' + tmDetails + '. The runners: ' + tmRunnerLines.join('; ');
             const tbrcResp = await Promise.race([
               callClaude('', tmBigRacePrompt, 400, true),
@@ -2763,7 +2781,7 @@ exports.handler = async function(event) {
                 tbrcTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_CARD_TIMEOUT_MS);
               })
             ]);
-            if (tbrcResp.text && tbrcResp.text.trim()) report.bigRaceTomorrow.raceIntelligence = tbrcResp.text.trim();
+            if (tbrcResp.text && tbrcResp.text.trim()) report.bigRaceTomorrow.raceIntelligence = stripSiteCta(tbrcResp.text);
             report.inputTokens += tbrcResp.inputTokens || 0;
             report.outputTokens += tbrcResp.outputTokens || 0;
             report.cacheReadTokens += tbrcResp.cacheReadTokens || 0;
@@ -2886,10 +2904,12 @@ exports.handler = async function(event) {
           ' sentence. 105 to 110 words exactly. Count carefully.' +
           ' No tipster language. No opinions. No prices or odds.' +
           ' Open with the total number of qualifiers and the venues' +
-          ' they run at today. Name the two or three most interesting' +
-          ' qualifiers with their course, distance and going — one' +
-          ' short factual sentence each. Close by directing the reader' +
-          ' to view the full qualifying runner list on Racing Edge.' +
+          ' they run at today. Then work through the named qualifiers' +
+          ' themselves, as many as the word count allows, giving each' +
+          ' horse its course, distance and going record in specific' +
+          ' terms — no generalities, no summarising the list. Close on' +
+          ' the qualifier with the strongest combined course, distance' +
+          ' and going case.' + NO_SITE_CTA +
           ' The horses are: ' + candgHorseLines.join('; ');
 
         const candgResp = await Promise.race([
@@ -2899,7 +2919,7 @@ exports.handler = async function(event) {
           })
         ]);
         if (candgResp.text && candgResp.text.trim()) {
-          report.candgCard = candgResp.text.trim();
+          report.candgCard = stripSiteCta(candgResp.text);
         }
         report.inputTokens += candgResp.inputTokens || 0;
         report.outputTokens += candgResp.outputTokens || 0;
@@ -2916,6 +2936,109 @@ exports.handler = async function(event) {
         report.candgCard = null;
       } finally {
         if (candgTimer) clearTimeout(candgTimer);
+      }
+    }
+
+    // 4.8 Ground Lover card — every runner on today's card that has WON on
+    // exactly today's official going within its last six runs, on a day whose
+    // going is Yielding / Yielding To Soft / Soft / Soft To Heavy / Heavy (never
+    // Good To Soft or faster). The rule lives in racecards.js computeRunnerTags
+    // (isGroundLover) and is applied here by calling its exported
+    // enrichRunnerTags on today's stored card — the same call get-results.js
+    // makes — so the card and the racecard chip can never disagree. The tag
+    // is never persisted, so this is recomputed each build. Qualifiers are
+    // grouped by venue for the copy; Yielding qualifiers in 16+ fields are
+    // flagged as the each-way profile (the site's best-performing subset).
+    report.groundLoverHorses = [];
+    report.groundLoverCard = null;
+    const glVenues = {};
+    try {
+      const glCards = await redisGet('racecards:' + today);
+      const glMeetings = (glCards && Array.isArray(glCards.meetings)) ? glCards.meetings : [];
+      if (glMeetings.length) {
+        try { await require('./racecards.js').enrichRunnerTags(glMeetings, today); } catch (eTag) { report.errors.push('groundLover tags: ' + eTag.message); }
+        const glPrimary = function(g) { return String(g || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim(); };
+        for (const m of glMeetings) {
+          for (const race of (m.races || [])) {
+            const fieldSize = (race.runners || []).filter(function(r) { return !r.is_non_runner; }).length;
+            for (const ru of (race.runners || [])) {
+              if (!ru.isGroundLover) continue;
+              // The qualifying win: most recent of the last six runs that was a
+              // win on exactly today's going (same rule computeRunnerTags applied).
+              let win = null;
+              try {
+                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
+                const dayKey = glPrimary(race.going);
+                (Array.isArray(hist) ? hist.slice(0, 6) : []).some(function(h) {
+                  if (String(h.pos) !== '1' || glPrimary(h.going) !== dayKey) return false;
+                  win = { date: h.date || '', course: h.course || '', going: h.going || '', dist: h.dist || '' }; return true;
+                });
+              } catch (eH) { /* a missing history just leaves the win detail blank */ }
+              const goingKey = glPrimary(race.going);
+              const ewProfile = /^yielding/.test(goingKey) && fieldSize >= 16;
+              report.groundLoverHorses.push({
+                horseName: ru.name || '', course: m.name || '', time: race.t || '', dist: race.dist || '',
+                todayGoing: race.going || '', fieldSize: fieldSize, ewProfile: ewProfile,
+                winDate: win ? win.date : '', winCourse: win ? win.course : '', winGoing: win ? win.going : ''
+              });
+              const vk = m.name || 'Unknown';
+              if (!glVenues[vk]) glVenues[vk] = { going: race.going || '', count: 0 };
+              glVenues[vk].count++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      report.errors.push('groundLoverHorses: ' + e.message);
+    }
+
+    if (report.groundLoverHorses.length) {
+      const GL_CARD_TIMEOUT_MS = 25000;
+      let glTimer = null;
+      try {
+        const venueLine = Object.keys(glVenues).map(function(v) { return v + ' (' + glVenues[v].going + '): ' + glVenues[v].count + (glVenues[v].count === 1 ? ' qualifier' : ' qualifiers'); }).join('; ');
+        const horseLines = report.groundLoverHorses.map(function(h) {
+          return h.horseName + ' — ' + h.course + ' ' + h.time + ', ' + h.dist + ', ' + h.fieldSize + ' runners, today\'s going ' + h.todayGoing
+            + (h.winDate ? ', won on ' + h.winGoing + ' at ' + h.winCourse + ' on ' + h.winDate : ', has won on this going in its last six runs')
+            + (h.ewProfile ? ' [Yielding, 16+ field — each-way profile]' : '');
+        });
+        const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
+          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
+          ' headers, no bullet points. Do not begin with a label, heading or title —' +
+          ' start directly with the first sentence. 105 to 110 words exactly. Count' +
+          ' carefully. No tipster language. No opinions. No prices or odds.' +
+          ' A Ground Lover is a horse that has already won on exactly today\'s official' +
+          ' going within its last six runs, on a day of genuine give underfoot.' +
+          ' Open with the total number of qualifiers, then go venue by venue: name the' +
+          ' venue, today\'s official going there, and how many qualifiers have been' +
+          ' identified at it. Then name as many of the qualifying horses as the word' +
+          ' count allows, each with the course, date and going of the win that' +
+          ' qualifies it. Where a horse is marked each-way profile, say it runs on' +
+          ' Yielding in a big field, the profile with the strongest record. Close on' +
+          ' the qualifier whose qualifying win is the most recent.' + NO_SITE_CTA +
+          ' Today\'s venues: ' + venueLine + '. The horses are: ' + horseLines.join('; ');
+        const glResp = await Promise.race([
+          callClaude('', glPrompt, 400, true),
+          new Promise(function(_, reject) {
+            glTimer = setTimeout(function() { reject(new Error('timed out after ' + (GL_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, GL_CARD_TIMEOUT_MS);
+          })
+        ]);
+        if (glResp.text && glResp.text.trim()) report.groundLoverCard = stripSiteCta(glResp.text);
+        report.inputTokens += glResp.inputTokens || 0;
+        report.outputTokens += glResp.outputTokens || 0;
+        report.cacheReadTokens += glResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += glResp.cacheWriteTokens || 0;
+        report.callLog.push({
+          type: 'groundlover-card', label: 'Ground Lover Intel Card',
+          inputTokens: glResp.inputTokens || 0, outputTokens: glResp.outputTokens || 0,
+          cacheReadTokens: glResp.cacheReadTokens || 0, cacheWriteTokens: glResp.cacheWriteTokens || 0
+        });
+      } catch (e) {
+        console.log('[daily-build] groundLoverCard: ' + e.message);
+        report.errors.push('groundLoverCard: ' + e.message);
+        report.groundLoverCard = null;
+      } finally {
+        if (glTimer) clearTimeout(glTimer);
       }
     }
 

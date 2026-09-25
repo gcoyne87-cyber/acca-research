@@ -15647,6 +15647,9 @@ var BIG_RACE=null;
 var BIG_RACE_TOMORROW=null;  // report.bigRaceTomorrow — shown only when today's Big Race card is hidden/absent
 var CANDG_CARD=null;
 var CANDG_COUNT=0;
+var GROUND_CARD=null;
+var GROUND_COUNT=0;
+var GROUND_HORSES=[];
 var HOT_YARD=null;
 var HOT_YARD_CARD=null;
 var _horseEdgeFlags={};  // { "horse name lower": { draw:true, class:true, jockey:true, trainer:true } }
@@ -15794,6 +15797,9 @@ function loadDailyBuild(){
       BIG_RACE_TOMORROW=data.bigRaceTomorrow||null;
       CANDG_CARD=data.candgCard||null;
       CANDG_COUNT=data.candgHorsesCount||0;
+      GROUND_CARD=data.groundLoverCard||null;
+      GROUND_COUNT=data.groundLoverHorsesCount||0;
+      GROUND_HORSES=data.groundLoverHorses||[];
       HOT_YARD=data.hotYard||null;
       HOT_YARD_CARD=data.hotYardCard||null;
 
@@ -16125,6 +16131,24 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // Ground Lover — data-summary card like C&D+G (isGroundLover:true): horses
+  // that have won on exactly today's going in their last six runs, on a
+  // Yielding/Soft/Heavy day. Only appended when the build produced card copy;
+  // groundLoverCard stays null on a fast-ground day or a failed AI call.
+  if(GROUND_CARD){
+    var _glVen={};
+    (GROUND_HORSES||[]).forEach(function(h){var k=h.course||'';if(!_glVen[k])_glVen[k]={going:h.todayGoing||'',n:0};_glVen[k].n++;});
+    var _glVenLabel=Object.keys(_glVen).map(function(k){return escHtml(k)+' &middot; '+escHtml(_glVen[k].going)+' ('+_glVen[k].n+')';}).join(' &nbsp;|&nbsp; ');
+    _items=_items.concat([{
+      isGroundLover:true,
+      signalType:'GROUND LOVER',
+      sigColor:'#0ea5e9',
+      countLabel:GROUND_COUNT+' horse'+(GROUND_COUNT===1?'':'s'),
+      venuesLabel:_glVenLabel,
+      intelligenceText:escHtml(GROUND_CARD||'')
+    }]);
+  }
+
   // Hot Yard — trainer-level data card, same special-item pattern as Big Race
   // and C&D+G (isHotYardCard:true). Only appended when the build produced
   // card copy — hotYardCard stays null when no yard met the Hot Yard criteria
@@ -16210,6 +16234,28 @@ function renderAIIntelligence(){
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
             +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'cdg\')" style="width:100%;padding:11px"><span>&#x2756;</span> View C&amp;D+G Runners &rarr;</button>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }
+    if(item.isGroundLover){
+      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 14px rgba(13,27,62,0.25);display:flex;flex-direction:column">'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
+          +'<div style="min-height:104px">'
+          +'<div style="display:flex;align-items:center;justify-content:flex-start;min-height:28px;margin-bottom:0px">'
+            +'<div style="display:flex;align-items:center;gap:6px">'
+              +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+            +'</div>'
+          +'</div>'
+          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ground Lovers</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Winners on exactly today\'s going in their last six runs</div>'
+          +(item.venuesLabel?'<div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:8px">'+item.venuesLabel+'</div>':'')
+          +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:8px">'
+            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'ground\')" style="width:100%;padding:11px"><span>&#x2756;</span> View Ground Lover Runners &rarr;</button>'
           +'</div>'
         +'</div>'
       +'</div>';
