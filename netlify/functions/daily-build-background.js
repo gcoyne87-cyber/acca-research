@@ -3001,6 +3001,7 @@ exports.handler = async function(event) {
         // form-summary style rules enforce, so the model never reads yards aloud.
         const glDist = function(d) { return String(d || '').replace(/^0m/, '').replace(/\d+y$/, '').replace(/(\d+)m0f$/, '$1m') || String(d || ''); };
         const glTotal = report.groundLoverHorses.length;
+        const glEwCount = report.groundLoverHorses.filter(function(h) { return h.ewProfile; }).length;
         const glOpening = glTotal + (glTotal === 1 ? ' Ground Lover qualifier has been identified today' : ' Ground Lover qualifiers have been identified today');
         const venueLine = Object.keys(glVenues).map(function(v) { return v + ' (' + glVenues[v].going + '): ' + glVenues[v].count + (glVenues[v].count === 1 ? ' qualifier' : ' qualifiers'); }).join('; ');
         const horseLines = report.groundLoverHorses.map(function(h) {
@@ -3011,7 +3012,7 @@ exports.handler = async function(event) {
         const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
           ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' 105 to 110 words exactly. Count carefully. No tipster language. No' +
+          ' 95 to 105 words exactly. Count carefully. No tipster language. No' +
           ' opinions. No prices or odds.' +
           ' A Ground Lover is a horse that has already won on exactly today\'s official' +
           ' going within its last six runs, on a day of genuine give underfoot.' +
@@ -3020,14 +3021,26 @@ exports.handler = async function(event) {
           ' any other number as a qualifier count. A field size is the number of' +
           ' runners in a race and must never be described as a number of qualifiers.' +
           ' Then go venue by venue: name the venue, today\'s official going there, and' +
-          ' how many of the ' + glTotal + ' qualifiers run there. Then name as many of the' +
-          ' qualifying horses as the word count allows, each with the course, date' +
-          ' and going of the win that qualifies it.' +
-          ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
-          ' going is Yielding and its field has 16 or more runners. Only a horse' +
-          ' carrying that mark may be described as an each-way profile; never say it,' +
-          ' or anything like it, of a horse marked no, whatever its field size.' +
-          ' Close on the qualifier whose qualifying win is the most recent.' + NO_SITE_CTA +
+          ' how many of the ' + glTotal + ' qualifiers run there.' +
+          (glTotal <= 6
+            ? ' There are ' + glTotal + ' qualifiers, so every one of them must be named with' +
+              ' the course, date and going of the win that qualifies it: none may be left' +
+              ' out, because the card states the total and the reader will count. Budget' +
+              ' roughly 20 words per horse after the opening and venue sentences; write' +
+              ' tightly rather than padding, and never spend words on anything that would' +
+              ' push a horse out.'
+            : ' Then name as many of the qualifying horses as the word count allows, each' +
+              ' with the course, date and going of the win that qualifies it.') +
+          ' For the horse whose qualifying win is the most recent, note that within its' +
+          ' own sentence; do not reorder the horses around it.' +
+          (glEwCount > 0
+            ? ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
+              ' going is Yielding and its field has 16 or more runners. The words each-way' +
+              ' may be used only about a horse carrying that mark, and never, in any form,' +
+              ' positive or negative, about any other horse.'
+            : ' No horse today carries the each-way profile mark, so the words each-way,' +
+              ' or any reference to an each-way profile, must not appear anywhere in the' +
+              ' output, not even to say a horse lacks one.') + NO_SITE_CTA +
           ' Today\'s venues: ' + venueLine + '. The horses are: ' + horseLines.join('; ');
         const glResp = await Promise.race([
           callClaude('', glPrompt, 400, true),
