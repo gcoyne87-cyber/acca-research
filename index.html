@@ -12371,7 +12371,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
       var runnersForRace=_sortByPrice((sr.runners&&sr.runners.length)?sr.runners:[]);
       var favNames=_rcFavNames(runnersForRace);
-      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_inlineHorseAnalysisHtml(selMeeting.id,sr.t,selMeeting.name,r.name),!!favNames[r.name]);}).join('')+'</div>';
+      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_runnerExtraHtml(selMeeting.id,sr.t,selMeeting.name,r),!!favNames[r.name]);}).join('')+'</div>';
     }
     out+='</div>';
   }
@@ -13326,7 +13326,7 @@ function rcRaceDetailSingleHtml(m,selRace){
   var race=m.races[selRace];
   var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
@@ -13458,6 +13458,64 @@ function _inlineHorseAnalysisHtml(mid,time,mname,horseName){
   var hit=(a.runnerAnalysis||[]).filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0];
   if(!hit||!hit.analysis) return '';
   return '<div style="font-size:11px;color:#5a6478;line-height:1.5;padding:6px 10px;background:#f0f7f4;border-radius:6px;margin:4px 12px 6px;">'+escHtml(hit.analysis)+'</div>';
+}
+
+// Race Verdict — per-race open/closed state, keyed mid+'-'+time like
+// _rcTabState and debounced the same way, but independent of it: opening
+// Verdict never touches the Tips state and vice versa. When open, every
+// runner row in the race renders _verdictBlockHtml beneath its content.
+var _rcVerdictOpen={};
+function rcToggleVerdict(mid,time,mname){
+  var now=Date.now();
+  if(now-_rcTabLastMs<350) return;
+  _rcTabLastMs=now;
+  var key=mid+'-'+time;
+  _rcVerdictOpen[key]=!_rcVerdictOpen[key];
+  _renderCurrentHomeList();
+  if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
+  var _fe=document.getElementById('racing-future-content');
+  if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
+  if(typeof nrRenderCard==='function') nrRenderCard();
+}
+// Future data shape, read from the cached race analysis entry for this runner:
+//   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
+// (a bare string is accepted as the text). Nothing writes it yet, so today the
+// tag bubble never renders and the text slot shows its placeholder. The old
+// runnerAnalysis[i].analysis text is deliberately NOT used here.
+function _verdictBlockHtml(mid,time,mname,ru){
+  if(!_rcVerdictOpen[mid+'-'+time]) return '';
+  var v=null;
+  var a=_cachedRaceAnalyses[((mname||'')+' '+(time||'')).toLowerCase().trim()];
+  if(a&&Array.isArray(a.runnerAnalysis)){
+    var target=(ru.name||'').toLowerCase().trim();
+    var hit=a.runnerAnalysis.filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0];
+    if(hit&&hit.verdict) v=hit.verdict;
+  }
+  var vText=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
+  var tag=(v&&typeof v==='object'&&v.tag&&v.tag.label&&v.tag.text)?v.tag:null;
+  var lr=(ru.lastRun!=null&&String(ru.lastRun)!=='')?parseInt(ru.lastRun,10):NaN;
+  var lrStr=isNaN(lr)?'—':(lr+(lr===1?' day ago':' days ago'));
+  var t14=ru.trainer14||{};
+  var t14Str=(t14.runs>0)?(t14.wins||0)+'-'+t14.runs+' ('+(t14.pct||0)+'%)':'—';
+  var tile=function(label,val){return '<div style="flex:1;min-width:0;text-align:center"><div style="font-size:9px;text-transform:uppercase;color:#9ca3af;letter-spacing:0.04em;margin-bottom:2px">'+label+'</div><div style="font-size:12px;font-weight:600;color:#0b1628;white-space:nowrap">'+val+'</div></div>';};
+  var h='<div style="border-top:0.5px solid #f0f2f5">';
+  h+='<div style="display:flex;background:#f5f7fb;padding:8px 12px">'+tile('Last run',escHtml(lrStr))+tile('Trainer, 14d',escHtml(t14Str))+'</div>';
+  h+='<div style="padding:10px 12px 0">'+_shdr('Race Verdict')+'</div>';
+  if(tag){
+    h+='<div style="margin:0 12px 10px;display:flex;align-items:baseline;gap:7px;background:#fff;border:1px solid #1e9e6b;border-radius:12px;padding:8px 12px;font-size:11px;line-height:1.4">'
+      +'<span style="font-weight:700;color:#0b1628">'+escHtml(tag.label)+'</span>'
+      +'<span style="color:#0f6e56">— '+escHtml(tag.text)+'</span>'
+      +'</div>';
+  }
+  h+='<div style="padding:0 12px 12px;font-size:13px;line-height:1.5;font-style:italic;color:'+(vText?'#0b1628':'#9ca3af')+'">'+(vText?escHtml(vText):'Race verdict coming soon.')+'</div>';
+  h+='</div>';
+  return h;
+}
+// Everything a runner row carries beneath its content: the inline analysis
+// text (existing) followed by the race verdict block (when that race's Verdict
+// is open). One helper so every runnerRow call site renders both identically.
+function _runnerExtraHtml(mid,time,mname,ru){
+  return _inlineHorseAnalysisHtml(mid,time,mname,ru.name)+'<!--nrv-->'+_verdictBlockHtml(mid,time,mname,ru);
 }
 function _buildAnalysisTabHtml(a){
   if(!a) return '<div style="padding:16px 14px;text-align:center;color:#9aa3b5;font-size:13px">No analysis yet — run the daily build first.</div>';
@@ -13670,7 +13728,10 @@ function _raceTabsHtml(mid,time,mname){
   var btn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#fff;border:1.5px solid #d4af37;border-radius:99px;font-size:12px;font-weight:700;color:#0D1B3E;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var btnOn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;background:#0D1B3E;border:1.5px solid #0D1B3E;border-radius:99px;font-size:12px;font-weight:700;color:#d4af37;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent';
   var me=mid.replace(/'/g,"\\'"); var te=time.replace(/'/g,"\\'"); var ne=(mname||'').replace(/'/g,"\\'");
+  var vOn=!!_rcVerdictOpen[key];
+  var vBtn='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;'+(vOn?'background:#1e9e6b;border:1px solid #1e9e6b;color:#fff':'background:#fff;border:1px solid #d9efe4;color:#6b7280');
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
+    +'<button style="'+vBtn+'" onclick="rcToggleVerdict(\''+me+'\',\''+te+'\',\''+ne+'\')"><span>Verdict</span></button>'
     +'<button style="'+(active==='tips'?btnOn:btn)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
     +'</div>';
   if(active==='analysis'){
@@ -13765,7 +13826,7 @@ function rcRaceDetailHtml(m){
 
   var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
 
   out+='</div>';
 
@@ -14436,6 +14497,12 @@ function _priceMoveRunnerByName(name){
 
 function runnerRow(ru,ctx,extraHtml,isFav){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
+  // extraHtml may carry two pieces joined by the <!--nrv--> marker (see
+  // _runnerExtraHtml): the part before it renders in the slot beneath the row
+  // content; the part after it (the race verdict block) renders at the very
+  // bottom of the row, after the Form pill.
+  var _exSrc=String(extraHtml||''),_exMark=_exSrc.indexOf('<!--nrv-->');
+  var _exTop=_exMark===-1?_exSrc:_exSrc.slice(0,_exMark),_exTail=_exMark===-1?'':_exSrc.slice(_exMark+10);
   var silk=ru.silk?nrSilk(ru.silk):'';
   var jockey=ru.jockey||ru.jt||'';
   var trainer=ru.trainer||'';
@@ -14612,7 +14679,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         return _pm?'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end">'+_btn+_pm+'</div>':_btn;
       })()
     +'</div>'
-    +(extraHtml||'')
+    +_exTop
     +(function(){
       var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
       return '<div style="display:flex;padding:6px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
@@ -14620,6 +14687,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:4px;cursor:pointer;white-space:nowrap">Form</div>'
         +'</div>';
     })()
+  +_exTail
   +'</div>'
   +histCarousel;
 }
@@ -15358,7 +15426,7 @@ function nrRenderCard(){
   function buildNrCard(runnerCtx){
     var raceRunners=_sortByPrice((r._runners&&r._runners.length)?r._runners:NR_RUNNERS);
     var favNames=_rcFavNames(raceRunners);
-    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_inlineHorseAnalysisHtml(r.venue,r.t,r.venue,ru.name),!!favNames[ru.name]);}).join('');
+    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_runnerExtraHtml(r.venue,r.t,r.venue,ru),!!favNames[ru.name]);}).join('');
     var cdId=runnerCtx==='nrhome'?'nr-hdr-cd-home':'nr-hdr-cd';
     return '<div>'
       +'<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">'
@@ -18854,7 +18922,7 @@ function tmRaceDetailHtml(m){
   var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:TM_RUNNERS);
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'tm',_inlineHorseAnalysisHtml(m.id,race.t,m.name,r.name),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'tm',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
