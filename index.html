@@ -15652,6 +15652,7 @@ var GROUND_COUNT=0;
 var GROUND_HORSES=[];
 var HOT_YARD=null;
 var HOT_YARD_CARD=null;
+var HOT_YARDS=[];
 var _horseEdgeFlags={};  // { "horse name lower": { draw:true, class:true, jockey:true, trainer:true } }
 
 function _buildEdgeFlags(horseName, factors){
@@ -15802,6 +15803,7 @@ function loadDailyBuild(){
       GROUND_HORSES=data.groundLoverHorses||[];
       HOT_YARD=data.hotYard||null;
       HOT_YARD_CARD=data.hotYardCard||null;
+      HOT_YARDS=Array.isArray(data.hotYards)?data.hotYards:(data.hotYard&&data.hotYard.trainerName?[data.hotYard]:[]);
 
       // Map analyses to intelligence cards — today's cards (with passed race times filtered out) first, tomorrow's cards after
       var todayItems=((data.intelligence&&data.intelligence.length)?data.intelligence:[]).filter(function(item){
@@ -16153,15 +16155,20 @@ function renderAIIntelligence(){
   // and C&D+G (isHotYardCard:true). Only appended when the build produced
   // card copy — hotYardCard stays null when no yard met the Hot Yard criteria
   // or the AI call failed (see daily-build-background.js step 3.6).
-  if(HOT_YARD_CARD&&HOT_YARD&&HOT_YARD.trainerName){
+  // Hot Yard — up to two yards from the build's hotYards (best first); the card
+  // is appended only when the build produced card copy, so a day with no
+  // qualifier shows no Hot Yard card at all.
+  if(HOT_YARD_CARD&&HOT_YARDS.length&&HOT_YARDS[0].trainerName){
+    var _hy0=HOT_YARDS[0],_hy1=HOT_YARDS[1]||null;
     _items=_items.concat([{
       isHotYardCard:true,
       signalType:'HOT YARD',
       sigColor:'#10b981',
-      trainerName:HOT_YARD.trainerName||'',
-      strikeLabel:(HOT_YARD.strikeRate7d!=null?HOT_YARD.strikeRate7d:0)+'%',
-      winners7d:HOT_YARD.winners7d||0,
-      runners7d:HOT_YARD.runners7d||0,
+      trainerName:_hy0.trainerName||'',
+      strikeLabel:(_hy0.strikeRate7d!=null?_hy0.strikeRate7d:0)+'%',
+      winners7d:_hy0.winners7d||0,
+      runners7d:_hy0.runners7d||0,
+      second:_hy1&&_hy1.trainerName?_hy1:null,
       intelligenceText:escHtml(HOT_YARD_CARD||'')
     }]);
   }
@@ -16208,11 +16215,13 @@ function renderAIIntelligence(){
             +'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.strikeLabel)+'</div>'
           +'</div>'
           +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+escHtml(item.trainerName)+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:'+(item.second?'4px':'12px')+'">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
+          +(item.second?'<div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:12px">Also hot: <span style="font-weight:700;color:#fff">'+escHtml(item.second.trainerName)+'</span> &middot; '+(item.second.winners7d||0)+' wins from '+(item.second.runners7d||0)+' runners &middot; '+(item.second.strikeRate7d!=null?item.second.strikeRate7d:0)+'%</div>':'')
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
             +'<button class="ai-cta-light" onclick="selectRacingSection(\'trainer:'+_hyNameJs+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View '+escHtml(item.trainerName)+'\'s runners today &rarr;</button>'
+            +(item.second?'<button class="ai-cta-light" onclick="selectRacingSection(\'trainer:'+String(item.second.trainerName||'').replace(/'/g,"\\'")+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View '+escHtml(item.second.trainerName)+'\'s runners today &rarr;</button>':'')
           +'</div>'
         +'</div>'
       +'</div>';

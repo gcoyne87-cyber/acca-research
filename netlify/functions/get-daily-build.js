@@ -126,6 +126,7 @@ exports.handler = async function(event) {
         groundLoverHorsesCount: (report.groundLoverHorses || []).length,
         groundLoverHorses: report.groundLoverHorses || [],
         hotYard: report.hotYard || null,
+        hotYards: report.hotYards || [],
         hotYardCard: report.hotYardCard || null,
         intelligence: report.intelligence || [],
         analyses: report.analyses || [],

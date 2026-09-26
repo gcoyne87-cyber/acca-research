@@ -2224,6 +2224,7 @@ exports.handler = async function(event) {
     // the card cleanly absent rather than half-populated.
     report.hotYard = null;
     report.hotYardCard = null;
+    report.hotYards = [];
     let hotYardSource = [];
     // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
     // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
@@ -2373,75 +2374,88 @@ exports.handler = async function(event) {
       console.log('[daily-build] trainer-form:table write failed: ' + e.message);
     }
 
-    // 3.6 Hot Yard card — the single top qualifier by 7-day strike rate under
-    // exactly the criteria racecards.js's Hot Yard tag applies (elite
-    // whitelist, 9+ runners and 4+ winners in 7 days, 7-day rate strictly
-    // above 14-day), plus their runners on today's card. report.hotYard /
-    // report.hotYardCard stay null when nobody qualifies or the AI call
-    // fails; the AI call is only made when a qualifier exists.
+    // 3.6 Hot Yard card — the yard(s) the site's own Trainer Form table would
+    // show green with an upward trend, so the card can never disagree with the
+    // table: 7-day strike rate >= 30 (the table's green threshold in
+    // index.html _trainerFormSrColor), and — only while the 14-day rate is below
+    // 30 — a 7-day rate more than 3 points above it (the table's green up-arrow
+    // rule; a yard green over both windows needs no arrow), and EITHER on the elite
+    // whitelist (no minimum-runs test) OR 9+ runners in the 7-day window. Rates
+    // are rounded exactly as the table rounds them. Up to two qualifiers, best
+    // 7-day rate first. No qualifier means no Hot Yard card that day — never a
+    // fallback to the best available below the bar. The racecard chip rule in
+    // racecards.js is separate and untouched. report.hotYards holds 0-2 yards;
+    // report.hotYard is the first of them (or null) for readers of the old shape.
     try {
+      const hyRound = function(v) { return Math.round(Number(v) || 0); };
       const hotYardQualifiers = hotYardSource.filter(function(t) {
         const name = (t.trainerName || '').toLowerCase().trim();
-        return ELITE_TRAINERS_LC.indexOf(name) !== -1
-          && Number(t.runners7d) >= 9
-          && Number(t.winners7d) >= 4
-          && Number(t.strikeRate7d) > Number(t.strikeRate14d || 0);
-      }).sort(function(a, b) { return Number(b.strikeRate7d) - Number(a.strikeRate7d); });
-      const hotYardTop = hotYardQualifiers[0] || null;
+        const sr7 = hyRound(t.strikeRate7d), sr14 = hyRound(t.strikeRate14d);
+        const elite = ELITE_TRAINERS_LC.indexOf(name) !== -1;
+        // Trend test only while the 14-day rate is below green: a yard already at
+        // 30+ over both windows is sustained green and qualifies without an arrow.
+        const trendOk = sr14 >= 30 || sr7 > sr14 + 3;
+        return sr7 >= 30 && trendOk && (elite || Number(t.runners7d) >= 9);
+      }).sort(function(a, b) { return hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d); }).slice(0, 2);
 
-      if (hotYardTop) {
-        const hyNameLc = (hotYardTop.trainerName || '').toLowerCase().trim();
-        const runnersToday = [];
+      const runnersTodayFor = function(trainerName) {
+        const nameLc = (trainerName || '').toLowerCase().trim();
+        const out = [];
         racecards.forEach(function(race) {
           const t24 = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
           (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-            if ((r.trainer || '').toLowerCase().trim() !== hyNameLc) return;
+            if ((r.trainer || '').toLowerCase().trim() !== nameLc) return;
             const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
             const sp = oddsArr
               ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
               : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
-            runnersToday.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
+            out.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
           });
         });
+        return out;
+      };
 
-        report.hotYard = {
-          trainerName: hotYardTop.trainerName,
-          runners7d: hotYardTop.runners7d,
-          winners7d: hotYardTop.winners7d,
-          strikeRate7d: hotYardTop.strikeRate7d,
-          runnersToday: runnersToday
+      report.hotYards = hotYardQualifiers.map(function(t) {
+        return {
+          trainerName: t.trainerName,
+          runners7d: t.runners7d,
+          winners7d: t.winners7d,
+          strikeRate7d: t.strikeRate7d,
+          strikeRate14d: t.strikeRate14d,
+          runnersToday: runnersTodayFor(t.trainerName),
+          winVenues7: t.winVenues7 || []
         };
+      });
+      report.hotYard = report.hotYards[0] || null;
 
-        const venueLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
-          ? ' Winning venues last 7 days: ' + hotYardTop.winVenues7.join(', ') + '.'
-          : '';
-        const runnersLine = runnersToday.length
-          ? runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
-          : 'none declared';
-        // The "list the venues" format instruction is only issued when venue
-        // data is actually supplied below — otherwise the model is told to
-        // list something it was never given, which invites invented venues.
-        const venueFormatLine = (hotYardTop.winVenues7 && hotYardTop.winVenues7.length)
-          ? ' Then list the venues where winners came from.'
-          : '';
+      if (report.hotYards.length) {
+        const yardBlocks = report.hotYards.map(function(y, i) {
+          const runnersLine = y.runnersToday.length
+            ? y.runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
+            : 'none declared';
+          const venueLine = y.winVenues7.length ? ' Winning venues last 7 days: ' + y.winVenues7.join(', ') + '.' : '';
+          return 'Yard ' + (i + 1) + (i === 0 ? ' (best)' : '') + ': ' + y.trainerName + '.'
+            + ' Last 7 days: ' + y.runners7d + ' runners, ' + y.winners7d + ' winners, ' + y.strikeRate7d + '% strike rate'
+            + ' (14-day rate ' + hyRound(y.strikeRate14d) + '%).' + venueLine
+            + ' Today\'s runners: ' + runnersLine + '.';
+        });
+        const anyVenues = report.hotYards.some(function(y) { return y.winVenues7.length > 0; });
         const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot Yard' +
           ' card for Racing Edge. Plain text only — no asterisks, no' +
-          ' markdown, no bold, no headers. Do not begin with the' +
+          ' markdown, no bold, no headers. Do not begin with a' +
           ' trainer name, a label, or any heading — start directly' +
           ' with the first sentence of the card.' +
           ' 105 to 110 words exactly. Count carefully. No exceptions.' +
           ' No opinions, no predictions. No prices or odds.' +
-          ' Cover the trainer\'s recent form stats, the winning' +
-          ' venues, today\'s declared runners with course and time,' +
-          ' and close on the declared runner or runners with the' +
-          ' strongest case today, stated in specific terms.' + NO_SITE_CTA +
-          ' The data: Trainer: ' + hotYardTop.trainerName + '.' +
-          ' Last 7 days: ' + hotYardTop.runners7d + ' runners, ' +
-          hotYardTop.winners7d + ' winners, ' +
-          hotYardTop.strikeRate7d + '% strike rate.' +
-          venueLine +
-          ' Today\'s runners: ' + runnersLine + '.' +
-          venueFormatLine;
+          (report.hotYards.length === 2
+            ? ' Two yards qualify today: cover both, the best yard first and in more depth, then the second.'
+            : ' One yard qualifies today.') +
+          ' For each yard cover its recent form stats' + (anyVenues ? ', the venues its winners came from' : '') +
+          ', and its declared runners today with course and time, and close on the' +
+          ' declared runner or runners with the strongest case today, stated in' +
+          ' specific terms.' + NO_SITE_CTA +
+          ' The data: ' + yardBlocks.join(' ');
+
 
         // Hard 25s ceiling on this call. It runs BEFORE race analysis, and
         // apiPost's socket timeout only emits an event (never destroys the
@@ -2478,6 +2492,7 @@ exports.handler = async function(event) {
       }
     } catch (eHY) {
       report.errors.push('hotYard: ' + eHY.message);
+      report.hotYards = [];
       report.hotYard = null;
       report.hotYardCard = null;
     }
