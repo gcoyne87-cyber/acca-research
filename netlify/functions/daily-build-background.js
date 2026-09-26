@@ -190,13 +190,13 @@ This is not shown to the user. Let it govern the tone of everything you write.
 
 ---
 CRITICAL — HOW TO SCORE CONFIDENCE (confidenceScore: one decimal place, e.g. 6.8, 7.3, 8.1):
-Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race. Nothing to do with the prestige or media coverage of the race.
+Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race.
 
 Score HIGH (7.0–10.0): one horse has a clear provable advantage — superior form, right ground, right trip, right weight, market agrees, money coming.
 Score LOW (3.0–5.0): field is evenly matched, picking by elimination, no genuine standout.
 Score PASS: genuinely unanalysable.
 
-A Grade 1 with 8 evenly-matched top-class horses is LOW — score 3.0–4.0. A Class 5 handicap where one horse is 7lb clear on form and the trainer is targeting it specifically is HIGH — score 8.0+. The prestige of the race does NOT increase your score. Only the gap between your selection and its rivals.
+A clear advantage can exist in any race. A standout towering over a weak field and a dominant horse in a quality field are BOTH high-confidence selections when genuinely likely to win. A competitive race where no horse stands out is low-confidence whatever its class. Judge the horse against what it must actually beat.
 
 DECIMAL PRECISION IS MANDATORY: Use one decimal place. Do I have 3 strong factors but one concern? Score 6.8, not 7. Do I have form, market, trainer AND jockey all aligned? Score 7.6, not 7. Total standout, no genuine dangers? Score 8.3, not 8. A round number means you did not think hard enough.
 
@@ -289,7 +289,7 @@ This is not shown to the user. Let it govern the tone of everything you write.
 
 ---
 CRITICAL — HOW TO SCORE CONFIDENCE (confidenceScore: one decimal place, e.g. 6.8, 7.3, 8.1):
-Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race. It has nothing to do with the profile, prestige or media coverage of the race.
+Your confidence score measures one thing only: how clearly your selection stands apart from its rivals in THIS race.
 
 Score HIGH (7.0–10.0) when:
 - One horse has a clear, provable advantage — superior OR, right going, right trip, proven at the course, jockey retained
@@ -303,7 +303,7 @@ Score LOW (3.0–5.0) when:
 
 Score PASS when genuinely unanalysable.
 
-IMPORTANT: A Group 1 with 10 evenly-matched top-class fillies is LOW — score 3.0–4.0. A Class 4 handicap where one horse is on a career-low OR, trainer in red-hot form, jockey retained, money coming — score 8.0–9.0. The prestige of the race, the volume of media coverage, or the quality of the field has NO bearing on confidenceScore. Only how far ahead your selection is from its rivals.
+A clear advantage can exist in any race. A standout towering over a weak field and a dominant horse in a quality field are BOTH high-confidence selections when genuinely likely to win. A competitive race where no horse stands out is low-confidence whatever its class. Judge the horse against what it must actually beat.
 
 DECIMAL PRECISION IS MANDATORY: Use one decimal place. 3 strong factors but one concern? Score 6.8, not 7. Tipster signal AND market move AND trainer quote AND form all aligned? Score 7.6, not 7. Total standout — one horse the rest cannot live with? Score 8.3, not 8. A round number means you did not think hard enough. The decimal is where your genuine assessment lives.
 
@@ -653,13 +653,24 @@ Base your ordering on: how many runners the horse must beat, how clearly it stan
 
 Respond with ONLY a JSON array of the five horse names, most likely winner first. No other text.`;
 
+// Prompt for the NAP tie-break (step 5.7): the horses tied on the day's top
+// confidenceScore, ordered head-to-head. {N} is replaced with the tie size.
+// Same criteria as the NB reorder; price plays no part.
+const NAP_TIEBREAK_PROMPT = `You are a professional horse racing analyst. The {N} horses below are tied on the top confidence score of the day, each from a different race analysed in isolation. Only one can be the NAP — the single most likely winner on today's card.
+
+Order these {N} horses by genuine probability of winning their race today, most likely winner first. The horse you place first becomes the NAP. Give that decision particular care.
+
+Base your ordering on the strength of each horse's case against what it must actually beat: how clearly it stands out from its rivals, its form, its course and distance record, and going suitability. Price plays no part. Do not favour a race for its prestige, and do not penalise it.
+
+Respond with ONLY a JSON array of the {N} horse names, most likely winner first. No other text.`;
+
 // Validates the reorder response. Anything other than exactly the five expected
 // horse names, each appearing once (in any order), is a hard fail — returns
 // null and the day keeps its original confidence-score order. Name matching is
 // case/punctuation-insensitive via normaliseHorseName so a cosmetic difference
 // ("St. Mark's" vs "St Marks") never fails a genuinely correct answer.
 function validateNbReorderResponse(returned, candidates) {
-  if (!Array.isArray(returned) || returned.length !== 5) return null;
+  if (!Array.isArray(returned) || returned.length !== candidates.length) return null;
   const byNorm = {};
   candidates.forEach(function(c) { byNorm[normaliseHorseName(c.strongestSelection.horseName)] = c; });
   const ordered = [];
@@ -3285,6 +3296,7 @@ exports.handler = async function(event) {
     // back to their score sort) and the failure is recorded in the build log
     // AND the completion email, never silently.
     let nbReorderStatusLine = 'NB Reorder: not run';
+    let napTiebreakLine = '';
     // Hard 30s ceiling on this call — longer than the other card calls since
     // it affects NAP/NB ordering. Same pattern as the Hot Yard card call
     // above — apiPost's socket timeout only emits an event (never destroys
@@ -3299,6 +3311,62 @@ exports.handler = async function(event) {
       const rankedAll = (report.analyses || [])
         .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName && a.strongestSelection.confidenceLevel !== 'Pass'; })
         .sort(function(a, b) { return (b.confidenceScore || 0) - (a.confidenceScore || 0); });
+      // NAP tie-break on merit. When two or more analyses share the top
+      // confidenceScore, the tied horses go to the same reorder call (same
+      // criteria, same validator) with their full analyses, and its first-ranked
+      // horse is the NAP. Equal top scores are separated by a head-to-head racing
+      // judgement of those specific horses, never by processing order. Price
+      // plays no part. On any failure the score order is kept and the failure is
+      // recorded in the warnings and the email, never silently.
+      if (rankedAll.length >= 2 && rankedAll[0].confidenceScore != null && rankedAll[1].confidenceScore === rankedAll[0].confidenceScore) {
+        const topScore = rankedAll[0].confidenceScore;
+        const tied = rankedAll.filter(function(a) { return a.confidenceScore === topScore; });
+        let tbTimer = null;
+        try {
+          const runnersByRaceTb = {};
+          (report.raceBreakdown || []).forEach(function(rb) { runnersByRaceTb[rb.race] = rb.runners; });
+          const tiedBlock = tied.map(function(a, i) {
+            const sel = a.strongestSelection || {};
+            const own = (a.runnerAnalysis || []).filter(function(h) { return normaliseHorseName(h.horseName || '') === normaliseHorseName(sel.horseName || ''); })[0];
+            return 'Candidate ' + (i + 1) + ': ' + sel.horseName
+              + '\nCourse and race time: ' + (a.race || 'unknown')
+              + '\nConfidence score: ' + topScore
+              + '\nRunners in race: ' + (runnersByRaceTb[a.race] || (a.runnerAnalysis || []).length || 'unknown')
+              + '\nCase: ' + (sel.pullQuote || 'none')
+              + '\nFactors: ' + ((sel.factors || []).join(' | ') || 'none')
+              + '\nRunner analysis: ' + ((own && own.analysis) || 'none');
+          }).join('\n\n');
+          const tbResp = await Promise.race([
+            callClaude(NAP_TIEBREAK_PROMPT.replace(/\{N\}/g, String(tied.length)), tiedBlock, 400, true),
+            new Promise(function(_, reject) {
+              tbTimer = setTimeout(function() { reject(new Error('timed out after ' + (NB_REORDER_TIMEOUT_MS / 1000) + 's')); }, NB_REORDER_TIMEOUT_MS);
+            })
+          ]);
+          report.inputTokens += tbResp.inputTokens || 0;
+          report.outputTokens += tbResp.outputTokens || 0;
+          report.cacheReadTokens += tbResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += tbResp.cacheWriteTokens || 0;
+          report.callLog.push({ type: 'nap-tiebreak', label: 'NAP Tie-break', inputTokens: tbResp.inputTokens || 0, outputTokens: tbResp.outputTokens || 0, cacheReadTokens: tbResp.cacheReadTokens || 0, cacheWriteTokens: tbResp.cacheWriteTokens || 0 });
+          if (tbResp.apiError) throw new Error(String(tbResp.apiError).slice(0, 200));
+          const tbNames = extractJsonArray(tbResp.text || '');
+          const tbOrdered = validateNbReorderResponse(tbNames, tied);
+          if (!tbOrdered) throw new Error('response was not exactly the ' + tied.length + ' tied horse names: ' + JSON.stringify(tbNames).slice(0, 200));
+          // Rebuild in place: the tie-broken block first, then everything below
+          // the tie in its existing score order.
+          const belowTie = rankedAll.filter(function(a) { return tied.indexOf(a) === -1; });
+          rankedAll.length = 0;
+          tbOrdered.forEach(function(a) { rankedAll.push(a); });
+          belowTie.forEach(function(a) { rankedAll.push(a); });
+          napTiebreakLine = 'NAP tie-break: ' + tied.length + ' tied on ' + topScore + ' — NAP is ' + tbOrdered[0].strongestSelection.horseName;
+          console.log('[daily-build] ' + napTiebreakLine + ' | order: ' + tbNames.join(', '));
+        } catch (tbErr) {
+          napTiebreakLine = 'NAP tie-break: FAILED — score order kept (' + tbErr.message + ')';
+          report.warnings.push(napTiebreakLine);
+          console.error('[daily-build] ' + napTiebreakLine);
+        } finally {
+          if (tbTimer) clearTimeout(tbTimer);
+        }
+      }
       if (rankedAll.length >= 6) {
         const nbCandidates = rankedAll.slice(1, 6);
         const runnersByRace = {};
@@ -3358,6 +3426,7 @@ exports.handler = async function(event) {
     } finally {
       if (nbTimer) clearTimeout(nbTimer);
     }
+    if (napTiebreakLine) nbReorderStatusLine = napTiebreakLine + ' | ' + nbReorderStatusLine;
 
     // 6. Calculate cost and store final report
     // AUDIT-DAILY-INTELLIGENCE.md, finding S4: report.costUSD used to silently
