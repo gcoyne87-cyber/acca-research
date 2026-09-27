@@ -127,12 +127,27 @@ async function lookupHistory(horse_id, targetDate, today) {
     }
   } catch(e) { /* scan failure falls through to the live call */ }
 
-  // 4. One live Racing API call — the daily build's exact fetch and mapping.
+  // 4. Live Racing API call(s) — the daily build's exact fetch and mapping,
+  // now paginated (skip=N in blocks of 50, up to 10 pages / 500 runs) so a
+  // veteran's career isn't capped at the first 50 runs. Same page-size and
+  // page-cap reasoning as fetch-horse-history-1/2-background.js's
+  // fetchFullCareerResults — the Racing API's true documented max for
+  // `limit` could not be confirmed from this environment (egress to
+  // api.theracingapi.com is blocked), so this reuses the pagination
+  // approach already proven in get-horse-profile.js/trainer-history-
+  // background.js rather than guessing a bigger single-call number.
   // The result is cached under the dated key (fire-and-forget) so the next
   // open of this horse is a tier-1 hit.
   try {
-    const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=50');
-    const history = (data.results || []).map(race => {
+    const PAGE = 50, MAX_PAGES = 10;
+    let allResults = [];
+    for (let pg = 0; pg < MAX_PAGES; pg++) {
+      const data = await apiGetRacing('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=' + PAGE + '&skip=' + (pg * PAGE));
+      const pageResults = (data && data.results) || [];
+      allResults = allResults.concat(pageResults);
+      if (pageResults.length < PAGE) break; // short page — no more results
+    }
+    const history = allResults.map(race => {
       const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
       return {
         date: race.date || '',

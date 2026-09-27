@@ -87,9 +87,30 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Full career, paginated — the Racing API's documented max for `limit` on
+// this endpoint could not be confirmed from this environment (egress to
+// api.theracingapi.com and its docs site is blocked here; see
+// racing-sweep-background.js's header comment for the full account). Rather
+// than guess a bigger single-call number, this pages the same way
+// get-horse-profile.js and trainer-history-background.js already do
+// (skip=N in blocks of 50), raised to 10 pages (500 runs) — comfortably
+// beyond any real career — so a horse is never undercounted just because
+// it outlived a single page.
+async function fetchFullCareerResults(horse_id) {
+  const PAGE = 50, MAX_PAGES = 10;
+  let all = [];
+  for (let pg = 0; pg < MAX_PAGES; pg++) {
+    const data = await apiGet('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=' + PAGE + '&skip=' + (pg * PAGE));
+    const pageResults = data.results || [];
+    all = all.concat(pageResults);
+    if (pageResults.length < PAGE) break; // short page — no more results
+  }
+  return all;
+}
+
 async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
-  const data = await apiGet('/v1/horses/' + encodeURIComponent(horse_id) + '/results?limit=50');
-  const history = (data.results || []).map(race => {
+  const allResults = await fetchFullCareerResults(horse_id);
+  const history = allResults.map(race => {
     const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
     return {
       date: race.date || '',
