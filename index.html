@@ -273,7 +273,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
   #home-carousel-section > div:first-child{padding-left:24px;padding-right:24px}
 
   /* AI intelligence cards — cap width so they don't stretch on wide screens */
-  #ai-intelligence-list{padding:0 24px 4px}
+  #ai-intelligence-list{padding:0 24px 4px;scroll-padding:0 24px}
   #ai-intelligence-list > div{max-width:420px !important}
 
   /* Recent winners strip — side padding */
@@ -2273,7 +2273,7 @@ function showRacingHome(){
   var tn=document.getElementById('main-topnav');
   if(tn){tn.style.display='';tn.classList.add('racing-mode');}
   buildDateStrip();
-  renderTodayMeetingsList();
+  _renderCurrentHomeList();
   loadDailyBuild();
   renderAIIntelligence();
   _wcStart();
@@ -2533,7 +2533,7 @@ window.addEventListener('load',function(){
     </div>
      <div style="font-size:12px;color:#9aa3b5;margin:0 0 6px;padding:0 14px 0 13px">Today's key angles and intelligence across the card</div>
     <!-- Intelligence carousel -->
-    <div id="ai-intelligence-list" style="display:flex;align-items:stretch;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px"></div>
+    <div id="ai-intelligence-list" style="display:flex;align-items:stretch;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 12px;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px"></div>
     <!-- Dot indicators -->
     <div id="ai-dots" style="display:flex;justify-content:center;gap:6px;padding:6px 0 0"></div>
   </div>
@@ -2548,7 +2548,7 @@ window.addEventListener('load',function(){
       </div>
       <span onclick="selectRacingSection('results')" style="font-size:12px;font-weight:700;color:#1e9e6b;cursor:pointer;white-space:nowrap">Full Results &rarr;</span>
     </div>
-    <div id="home-res-strip-feed" style="display:flex;overflow-x:auto;gap:10px;padding:4px 14px 8px;margin-bottom:-8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+    <div id="home-res-strip-feed" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 14px;gap:10px;padding:4px 14px 8px;margin-bottom:-8px;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
   </div>
 
     <!-- SECTION NAV — replaced by topnav tabs -->
@@ -11535,7 +11535,11 @@ function loadRacecards(){
         data.meetings.forEach(function(m){ (m.races||[]).forEach(function(r){ if((r.t24||0)>_lastRaceT24) _lastRaceT24=r.t24; }); });
         var _nowT24parts=_irishNowHHMM().split(':');
         var _nowT24=parseInt(_nowT24parts[0],10)*60+parseInt(_nowT24parts[1],10);
-        _homeRcDay=(_lastRaceT24>0 && _nowT24>_lastRaceT24)?'tomorrow':'today';
+        // Only switch once tomorrow's real card has landed (same guard as the
+        // 60s tick); otherwise stay on today and let the tomorrow fetch's
+        // success handler flip the day when its data arrives.
+        var _tmReady=window._tmRealDataLoaded===true&&typeof TM_MEETINGS!=='undefined'&&TM_MEETINGS&&TM_MEETINGS.length>0;
+        _homeRcDay=(_lastRaceT24>0 && _nowT24>_lastRaceT24 && _tmReady)?'tomorrow':'today';
         // Keep the section heading in lockstep with the auto-chosen day —
         // this is also what reverts "Tomorrow's Racecards" back to "Today's
         // Racecards" when the midnight date-rollover refetch lands here.
@@ -11571,6 +11575,9 @@ function loadRacecards(){
         var _n=new Date();
         var _nStr=irishDateStr(_n);
         if(_nStr!==window._rcLoadedDateStr && !window._rcFetchInFlight){
+          // New racing day: the tomorrow cache holds the OLD tomorrow (now
+          // today) and would be served as tomorrow's card until a reload.
+          _tomorrowCache=null;
           loadRacecards();
           return;
         }
@@ -11612,6 +11619,18 @@ function loadRacecards(){
       if(!data.meetings||!data.meetings.length) return;
       TM_MEETINGS=data.meetings;
       window._tmRealDataLoaded=true;
+      // Same payload the homepage renderer reads (renderTomorrowMeetingsList
+      // keys off _tomorrowCache, not TM_MEETINGS) — without this the evening
+      // render found nothing and started duplicate fetches of its own.
+      _tomorrowCache=data.meetings;
+      // The on-load clock switch now waits for this data (see the today
+      // handler above): if today's racing is over and no pill was chosen,
+      // flip to tomorrow here, with the same guard as the 60s tick.
+      if(!_rcDayUserChosen&&_homeRcDay==='today'&&!_trainerFilter&&RC_MEETINGS.length&&!_getLiveMeetings().length){
+        _homeRcDay='tomorrow';
+        _rcSetRacecardsHeading();
+        buildDateStrip();
+      }
       if(_homeRcDay==='tomorrow'){ _renderCurrentHomeList(); }
       _renderRcTrainerChips();
       tmActiveVenue=TM_MEETINGS[0].id;
@@ -16339,6 +16358,9 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // Keep the reader's place across the 5-minute refresh re-render: with
+  // mandatory snapping, a rebuilt list otherwise jumps back to the first card.
+  var _aiKeepX=el.scrollLeft;
   el.innerHTML=_items.map(function(item){
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
@@ -16498,6 +16520,9 @@ function renderAIIntelligence(){
       +'</div>'
     +'</div>';
   }).join('');
+  // Restore after the scroll listener below is attached (next frame) so the
+  // dot indicator lands on the right card too.
+  if(_aiKeepX) requestAnimationFrame(function(){ el.scrollLeft=_aiKeepX; });
 
   var dotsEl=document.getElementById('ai-dots');
   if(dotsEl){
@@ -17046,7 +17071,10 @@ function renderRacingPicks(){
     var badgeLabel=pillLabels[i]||('PICK '+(i+1));
     return '<div style="position:relative;padding-top:14px">'
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
-        +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+badgeLabel+'</span>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+badgeLabel+'</span>'
+          +'<span style="background:#1d9e75;color:#fff;font-size:13px;font-weight:500;padding:5px 14px;border-radius:8px">58 runs · 31 wins · 11 places · 55%</span>'
+        +'</div>'
       +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
       +(fullImgSrc?'<img src="'+fullImgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
@@ -17135,7 +17163,10 @@ function renderHomeSelections(el){
     var metaLine=jt.join(' &middot; ')+(p.form?(jt.length?' &middot; ':'')+escHtml(p.form):'');
     return '<div style="position:relative;padding-top:14px">'
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
-        +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+pillLabels[i]+'</span>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+pillLabels[i]+'</span>'
+          +'<span style="background:#1d9e75;color:#fff;font-size:13px;font-weight:500;padding:5px 14px;border-radius:8px">58 runs · 31 wins · 11 places · 55%</span>'
+        +'</div>'
       +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
         +_bg(gi.src)
@@ -17482,11 +17513,13 @@ function _buildResTrainerCarousel(){
   out+='<div onclick="var inp=document.getElementById(\'res-trainer-search-input\');if(inp)inp.focus();" style="font-size:13px;font-weight:700;color:#10b981;cursor:pointer">&rarr;</div>';
   out+='</div>';
   out+='<div style="font-size:12px;color:#9aa3b5;margin:-4px 0 10px;padding-left:13px">Pick a trainer to see all their results '+escHtml(dayWord.toLowerCase())+'</div>';
-  out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 2px 4px">';
+  // Proximity, not mandatory: these are small variable-width chips, and a
+  // mandatory snap fights any partial scroll along a dense row.
+  out+='<div style="overflow-x:auto;scroll-snap-type:x proximity;scroll-padding:0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 2px 4px">';
   out+='<div id="res-car-track" style="display:flex;gap:10px">';
   trainers.forEach(function(t){
     var tEsc=t.name.replace(/'/g,"\\'");
-    out+='<div onclick="_setResTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
+    out+='<div onclick="_setResTrainerFilter(\''+tEsc+'\')" style="flex-shrink:0;scroll-snap-align:start;background:#fff;border:1px solid #f0f2f7;border-radius:12px;padding:12px;min-width:140px;cursor:pointer">';
     out+='<div style="font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+escHtml(t.name)+'</div>';
     out+='<div style="font-size:11px;color:#9aa3b5;margin-top:2px">'+t.wins+(t.wins===1?' Winner':' Winners')+' &middot; '+t.runs+(t.runs===1?' Runner':' Runners')+'</div>';
     out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:6px">View Results &rarr;</div>';
@@ -17614,12 +17647,18 @@ function _newRaceFinishedSinceLastFetch(){
   return found;
 }
 
-// Returns {start, end} as Date objects derived from today's RC_MEETINGS race times
-// End = last race off time + 45 minutes (allow results to arrive)
+// Returns {start, end} as Date objects derived from TODAY's race times:
+// start = first off - 15 minutes, end = last off + 90 minutes (results can
+// take that long to be published). Built from RC_TODAY_MEETINGS, which only
+// ever holds today's card, so a dated-pill browse (which swaps RC_MEETINGS
+// to a future day's card) can no longer map future off times onto today and
+// close the window early. Off times are Irish HH:MM, so the window is placed
+// with the Irish clock (_irishNowHHMM) rather than the browser's local one.
 function _getResWindow(){
-  if(!RC_MEETINGS||!RC_MEETINGS.length) return null;
+  var src=(typeof RC_TODAY_MEETINGS!=='undefined'&&RC_TODAY_MEETINGS&&RC_TODAY_MEETINGS.length)?RC_TODAY_MEETINGS:RC_MEETINGS;
+  if(!src||!src.length) return null;
   var mins=[];
-  RC_MEETINGS.forEach(function(m){
+  src.forEach(function(m){
     (m.races||[]).forEach(function(r){
       var t=r.t||'';
       var match=t.match(/^(\d{1,2}):(\d{2})$/);
@@ -17627,11 +17666,11 @@ function _getResWindow(){
     });
   });
   if(!mins.length) return null;
-  var now=new Date();
-  function toToday(totalMins){
-    return new Date(now.getFullYear(),now.getMonth(),now.getDate(),Math.floor(totalMins/60),totalMins%60,0);
-  }
-  return { start:toToday(Math.min.apply(null,mins)-15), end:toToday(Math.max.apply(null,mins)+90) };
+  var nowMs=Date.now();
+  var _ip=_irishNowHHMM().split(':');
+  var nowIrishMins=parseInt(_ip[0],10)*60+parseInt(_ip[1],10);
+  function atIrish(totalMins){ return new Date(nowMs+(totalMins-nowIrishMins)*60000); }
+  return { start:atIrish(Math.min.apply(null,mins)-15), end:atIrish(Math.max.apply(null,mins)+90) };
 }
 
 function _stopResultsPolling(){
@@ -17665,9 +17704,13 @@ function _startResultsPolling(){
         _sharedResultsFetch(today).then(function(v){ if(_resNoteTodayResults(v&&v.venues))_renderResDateBar(); }).catch(function(){});
       }
     }
-    // Keep the independent Latest Results strip live too when it's showing
-    // today — shares the same in-flight fetch as the page refresh above.
-    if(_resFeedDate===today) _loadResultsFeed(today);
+    // Keep the independent Latest Results strip live too — shares the same
+    // in-flight fetch as the page refresh above. Re-evaluated from today on
+    // every tick even when the strip fell back to yesterday (_loadResultsFeed
+    // pins _resFeedDate to yesterday while today is empty), so it un-pins
+    // itself once today's first result lands.
+    var _yday=irishDateStr(new Date(Date.now()-86400000));
+    if(_resFeedDate===today||_resFeedDate===_yday) _loadResultsFeed(today);
   }
   if(now<win.start){
     // Not yet started — schedule to begin at first race time
@@ -18169,7 +18212,7 @@ function _buildResultCard(item,pickMap,bulked){
   var favNames=_resFavNames(race.runners);
   var ordinals=['1st','2nd','3rd','4th'];
   var html='';
-  html+='<div style="flex-shrink:0;width:'+(bulked?280:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+  html+='<div style="flex-shrink:0;scroll-snap-align:start;width:'+(bulked?280:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
   // Header: compact (homepage strip) keeps the original "time · venue" line
   // untouched. Bulked (Results page) drops the venue — the venue heading
   // already sits above this row — and puts the race name on the same line
@@ -18283,7 +18326,11 @@ function renderHomeResultsStrip(){
       html+=_buildResultCard(item,_pickMap);
     });
 
+    // Preserve the reader's place across the 90s poll re-render — with
+    // mandatory snapping a rebuilt strip otherwise yanks back to the first card.
+    var _keepX=feed.scrollLeft;
     feed.innerHTML=html;
+    if(_keepX) feed.scrollLeft=_keepX;
     window._homeResHasData=!!html;
     // Only reveal in place if the user is still on the home section — the
     // datepills bar is home-only, so its visibility is the section signal.
@@ -18295,8 +18342,38 @@ function renderHomeResultsStrip(){
   renderFrom(_homeRes.data);
 }
 
+// Catch-up when the tab comes back. Every results refresh below is a bare
+// timer that browsers throttle or freeze while the tab is hidden, and until
+// now nothing re-checked on return: the strip could sit on a stale card for
+// as long as the next tick took to fire (or forever, if the day's window had
+// closed meanwhile). On visibility/focus: re-arm the strip polling (which
+// fetches once immediately whatever the window state) and, if the Results
+// section is on screen, refresh today's page + strip and re-arm its poll.
+// Debounced to once per 10s — visibilitychange and focus usually fire
+// together.
+var _resVisLastMs=0;
+function _resVisibilityCatchUp(){
+  if(document.visibilityState&&document.visibilityState!=='visible') return;
+  var _n=Date.now();
+  if(_n-_resVisLastMs<10000) return;
+  _resVisLastMs=_n;
+  try{ _startHomeResultsPolling(); }catch(e){}
+  try{
+    var _rc=document.getElementById('racing-results-content');
+    if(_rc&&_rc.style.display!=='none'){
+      var _t=irishDateStr();
+      if(_resLoadedDate===_t){ delete _resApiCache[_t]; _resApiFetching=false; loadResultsPage(_t); }
+      var _y=irishDateStr(new Date(Date.now()-86400000));
+      if(_resFeedDate===_t||_resFeedDate===_y) _loadResultsFeed(_t);
+      _startResultsPolling();
+    }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',_resVisibilityCatchUp);
+window.addEventListener('focus',_resVisibilityCatchUp);
+
 // Independent polling loop for the homepage strip — same 90s cadence and the
-// same first-race-to-last-race+45min window guard as the Results page's own
+// same first-race-to-last-race+90min window guard as the Results page's own
 // polling (_getResWindow), but entirely separate timers so neither loop can
 // stop or double the other. Called from loadRacecards' success handler once
 // RC_MEETINGS is confirmed populated (never at DOMContentLoaded); if the
@@ -18631,9 +18708,9 @@ function selectMainTab(tab){
     if(sb) sb.style.display='none';
     selectRacingSection('home');
   } else if(tab==='cards'){
-    if(sb) sb.style.display='block';
-    var sc=document.getElementById('subbar-cards');
-    if(sc) sc.style.display='flex';
+    // Sub-bar day tabs stay hidden (see selectRacingSection): the in-place
+    // row under "Today's Racecards" is the only day-tab row.
+    if(sb) sb.style.display='none';
     selectCardsSubTab('today');
   } else if(tab==='nextrace'){
     if(sb) sb.style.display='none';
@@ -18894,8 +18971,12 @@ function selectRacingSection(s){
   var _subbar=document.getElementById('topnav-subbar');
   var _subbarCards=document.getElementById('subbar-cards');
   if(s==='racecards'){
-    if(_subbar) _subbar.style.display='block';
-    if(_subbarCards) _subbarCards.style.display='flex';
+    // The sticky sub-bar copy of the day tabs (#subbar-cards) is never
+    // shown: #home-date-strip-bar above the meetings list owns the day tabs
+    // for the homepage stack, and this second copy, pinned in the top nav,
+    // was what rendered a date row above the Daily Intelligence carousel.
+    if(_subbarCards) _subbarCards.style.display='none';
+    if(_subbar) _subbar.style.display='none';
   } else if(s!=='results'&&s!=='pickofday'){
     if(_subbar) _subbar.style.display='none';
   }
@@ -18967,7 +19048,10 @@ function selectRacingSection(s){
     if(nrPanel) nrPanel.style.display="";
     if(homeNRL) homeNRL.style.display="";
     _rcListForCards=false;
-    renderTodayMeetingsList();
+    // Shared dispatcher (today / tomorrow / future date / active filter), not
+    // the bare today renderer, which printed the "Tomorrow's race cards are
+    // not available yet" placeholder over real cards every evening.
+    _renderCurrentHomeList();
     renderNextRaceSection();
   } else if(s==="racecards"){
     // Arriving from Picks of the Day leaves _picksMode at 'full' — restore
@@ -19018,10 +19102,13 @@ function selectRacingSection(s){
     },50);
   } else if(s==="results"){
     if(resultsC) resultsC.style.display="";
-    // Only refetch if a race has finished since we last loaded — otherwise serve from cache instantly.
-    // Also floored at 20s since the last fetch (below the 90s poll interval) so
-    // back-to-back tab taps can't force a refetch every single time.
-    if(_newRaceFinishedSinceLastFetch() && (Date.now()-_resLastFetchMs)>20000){
+    // Entering Results always takes one fresh fetch of TODAY (loadResultsPage
+    // with no date loads today): the old "only if a race finished 10 minutes
+    // ago" gate plus the _resApiCache short-circuit meant a tap could paint
+    // stale cards with no network call at all. Floored at 20s since the last
+    // fetch so back-to-back tab taps can't force a refetch every single time.
+    // Past-date pills keep their per-date cache untouched.
+    if((Date.now()-_resLastFetchMs)>20000){
       var _resToday=irishDateStr();
       delete _resApiCache[_resToday];
       _resApiFetching=false;
@@ -19327,10 +19414,10 @@ function renderTomorrowMeetingsList(targetEl){
     _renderMeetings(_tomorrowCache);
     return;
   }
-  var now=new Date();
-  var tmrw=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
-  var y=tmrw.getFullYear(),mo=String(tmrw.getMonth()+1).padStart(2,'0'),dy=String(tmrw.getDate()).padStart(2,'0');
-  var dateStr=y+'-'+mo+'-'+dy;
+  // Irish racing date, as loadRacecards' own tomorrow fetch uses — the
+  // browser-local date here requested a different day on non-Dublin devices.
+  var _tmD=new Date(); _tmD.setDate(_tmD.getDate()+1);
+  var dateStr=irishDateStr(_tmD);
   function _swapIfCards(){
     if(!targetEl&&_cardsDay==='tomorrow') _applyCardsDayVisibility('tomorrow');
   }
