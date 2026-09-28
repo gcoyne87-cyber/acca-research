@@ -150,6 +150,18 @@ function mapRunner(r, idx) {
     sex: r.sex || '',
     sire: r.sire || '',
     dam: r.dam || '',
+    // Bloodline + connections — identical to fetch-future-cards-background.js's
+    // mapRunner so a card written by this fallback path carries the same
+    // ids the chevron's bloodline panel (ancestor:stats:{id}) keys on.
+    sire_id: r.sire_id || '',
+    dam_id: r.dam_id || '',
+    damsire: r.damsire || '',
+    damsire_id: r.damsire_id || '',
+    owner: r.owner || '',
+    owner_id: r.owner_id || '',
+    prev_trainers: Array.isArray(r.prev_trainers) ? r.prev_trainers.map(function(t) {
+      return { trainer: (t && t.trainer) || '', trainer_id: (t && t.trainer_id) || '', change_date: (t && t.change_date) || '' };
+    }) : [],
     headgear: headgear,
     headgearCode: r.headgear || '',
     headgearRun: r.headgear_run || '',

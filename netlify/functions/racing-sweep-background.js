@@ -185,6 +185,153 @@ function mapHistory(allResults, horse_id) {
   });
 }
 
+// ── Bloodline stats cache (ancestor:stats:{id}) ──────────────────────────
+//
+// Second phase of the sweep, run once the form-history worklist is empty.
+// For every distinct sire_id / dam_id / damsire_id across the card window
+// it writes ancestor:stats:{id} — the cache the horse chevron's Sire / Dam /
+// Damsire panel reads via get-ancestor-stats.js. The entry shape matches
+// the panel's documented expectation in index.html (_nrhBloodRender)
+// field for field: { name, kind, total_runners, distances[], classes[],
+// fetchedAt }, distances/classes stored exactly as the Racing API returns
+// them ({dist, dist_y, dist_m, dist_f, runners, "1st","2nd","3rd","4th",
+// "a/e", "win_%", "1_pl"} and the class equivalent). `comment` is left
+// absent — the panel only renders the paragraph once a later job adds it.
+//
+// Cards stored before the card writer carried the ids have none; those
+// runners are resolved through the horse pro endpoint (the same one
+// get-horse-profile.js uses), reading the 24h horse:profile:v2 cache first
+// so a horse whose chevron was opened today costs no API call. A horse
+// whose pro record yields no ids is counted as unresolvable and skipped.
+//
+// State lives in racing-sweep:ancestors:{runKey} so the phase survives the
+// sweep's hop chaining; both loops check the same TIMEOUT_MS budget and
+// hand back done:false when it is spent.
+
+const ANCESTOR_TTL_SEC = 45 * 86400;
+const ANCESTOR_ENDPOINT = { sire: '/v1/sires/', dam: '/v1/dams/', damsire: '/v1/damsires/' };
+
+// SET with expiry — Upstash REST accepts EX as a query parameter alongside
+// the JSON body value. Used only for ancestor:stats entries (45 days).
+function redisSetEx(key, value, seconds) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return Promise.resolve(null);
+  const url = new URL(UPSTASH_URL);
+  const body = JSON.stringify(value);
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: url.hostname,
+      path: '/set/' + encodeURIComponent(key) + '?EX=' + seconds,
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        if (res.statusCode !== 200) return reject(new Error('Redis write failed: HTTP ' + res.statusCode));
+        try { const p = JSON.parse(d); if (p && p.error) return reject(new Error('Redis write error: ' + p.error)); } catch (e) {}
+        resolve(d);
+      });
+    });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
+function newAncestorState() {
+  return {
+    resolveQueue: [],   // [{horse_id, horseName}] runners whose card carries no ancestor ids
+    ancestors: {},      // id -> { name, kind }
+    fetchQueue: null,   // built once resolveQueue is empty: ids still to check/fetch
+    counts: { fromCards: 0, resolvedViaProfile: 0, unresolvable: 0, alreadyCached: 0, fetched: 0, failed: 0 },
+    failures: []        // [{id, name, kind, reason}]
+  };
+}
+
+// Record the three ancestors a runner (card runner or pro profile) names.
+// Returns true when at least one id was present.
+function addAncestorsFrom(state, src) {
+  let any = false;
+  [['sire', 'sire_id'], ['dam', 'dam_id'], ['damsire', 'damsire_id']].forEach(function(pair) {
+    const id = src && src[pair[1]] ? String(src[pair[1]]) : '';
+    if (!id) return;
+    any = true;
+    if (!state.ancestors[id]) state.ancestors[id] = { name: String(src[pair[0]] || ''), kind: pair[0] };
+    else if (!state.ancestors[id].name && src[pair[0]]) state.ancestors[id].name = String(src[pair[0]]);
+  });
+  return any;
+}
+
+// Runs (or resumes) the resolve + fetch loops within the remaining budget.
+// Mutates `state`; returns { done } — false means the budget ran out with
+// work queued and the caller must persist state and chain the next hop.
+async function runAncestorPhase(state, startTime) {
+  const overBudget = function() { return Date.now() - startTime > TIMEOUT_MS; };
+
+  // 1. Resolve ids for runners whose stored card predates the id fields.
+  while (state.resolveQueue.length) {
+    if (overBudget()) return { done: false };
+    const batch = state.resolveQueue.slice(0, BATCH);
+    const results = await Promise.allSettled(batch.map(async function(h) {
+      const cached = await redisGet('horse:profile:v2:' + h.horse_id);
+      let prof = cached && cached.profile && cached.profile.sire_id ? cached.profile : null;
+      if (!prof) {
+        const p = await apiGetRacing('/v1/horses/' + encodeURIComponent(h.horse_id) + '/pro');
+        prof = (p && !p.detail) ? p : null;
+      }
+      return prof && addAncestorsFrom(state, prof);
+    }));
+    results.forEach(function(r) {
+      if (r.status === 'fulfilled' && r.value) state.counts.resolvedViaProfile++;
+      else state.counts.unresolvable++;
+    });
+    state.resolveQueue = state.resolveQueue.slice(BATCH);
+    if (state.resolveQueue.length) await sleep(1000);
+  }
+
+  // 2. Fetch stats for every distinct id that has no cache entry.
+  if (!Array.isArray(state.fetchQueue)) state.fetchQueue = Object.keys(state.ancestors);
+  while (state.fetchQueue.length) {
+    if (overBudget()) return { done: false };
+    const batch = state.fetchQueue.slice(0, BATCH);
+    const results = await Promise.allSettled(batch.map(async function(id) {
+      const known = state.ancestors[id] || { name: '', kind: '' };
+      if (!ANCESTOR_ENDPOINT[known.kind]) throw new Error('unknown ancestor kind');
+      const existing = await redisGet('ancestor:stats:' + id);
+      if (existing && typeof existing === 'object' && Array.isArray(existing.distances)) return { cached: true };
+      // Two calls per id, sequential, so a batch of 5 never exceeds the
+      // endpoints' 5 requests-per-second limit.
+      const base = ANCESTOR_ENDPOINT[known.kind] + encodeURIComponent(id) + '/analysis/';
+      const dist = await apiGetRacing(base + 'distances');
+      if (!dist || dist.detail || !Array.isArray(dist.distances)) throw new Error('distances: ' + ((dist && dist.detail) || 'unexpected response'));
+      const cls = await apiGetRacing(base + 'classes');
+      if (!cls || cls.detail || !Array.isArray(cls.classes)) throw new Error('classes: ' + ((cls && cls.detail) || 'unexpected response'));
+      const entry = {
+        name: dist[known.kind] || cls[known.kind] || known.name || '',
+        kind: known.kind,
+        total_runners: dist.total_runners != null ? dist.total_runners : (cls.total_runners != null ? cls.total_runners : null),
+        distances: dist.distances,
+        classes: cls.classes,
+        fetchedAt: new Date().toISOString()
+      };
+      await redisSetEx('ancestor:stats:' + id, entry, ANCESTOR_TTL_SEC);
+      return { cached: false };
+    }));
+    results.forEach(function(r, i) {
+      const id = batch[i];
+      const known = state.ancestors[id] || { name: '', kind: '' };
+      if (r.status === 'fulfilled') {
+        if (r.value && r.value.cached) state.counts.alreadyCached++; else state.counts.fetched++;
+      } else {
+        state.counts.failed++;
+        const reason = (r.reason && r.reason.message) || 'unknown fetch error';
+        state.failures.push({ id: id, name: known.name, kind: known.kind, reason: reason });
+        console.log('[racing-sweep] ancestor FAIL ' + known.kind + ' ' + (known.name || '?') + ' (' + id + '): ' + reason);
+      }
+    });
+    state.fetchQueue = state.fetchQueue.slice(BATCH);
+    if (state.fetchQueue.length) await sleep(1000);
+  }
+  return { done: true };
+}
+
 // ── Date helpers ─────────────────────────────────────────────────────────
 
 // Europe/Dublin calendar date, offsetDays ahead of now — same Intl-based
@@ -273,7 +420,7 @@ exports.handler = async function(event) {
     const dates = [];
     for (let i = 0; i < WINDOW_DAYS; i++) dates.push(irishDateStr(i));
 
-    let worklist, meta, failures;
+    let worklist, meta, failures, ancestorState;
 
     if (hop === 0) {
       // ── Build phase — scan every date's racecard once, dedupe by horse,
@@ -283,6 +430,8 @@ exports.handler = async function(event) {
       // depend on which of its declared dates we're looking from).
       const horseInfo = new Map(); // horse_id -> { horseName, dates:[...], cardHasForm, cardNewestISO }
       const perDateHorseIds = {};
+      ancestorState = newAncestorState();
+      const ancestorSeenHorses = new Set();
 
       for (const dateStr of dates) {
         perDateHorseIds[dateStr] = [];
@@ -293,6 +442,13 @@ exports.handler = async function(event) {
             (race.runners || []).forEach(function(r) {
               if (!r.horse_id) return;
               perDateHorseIds[dateStr].push(r.horse_id);
+              // Bloodline ids straight off the card when the writer carried
+              // them; otherwise the horse is queued for pro-endpoint resolution.
+              if (!ancestorSeenHorses.has(r.horse_id)) {
+                ancestorSeenHorses.add(r.horse_id);
+                if (addAncestorsFrom(ancestorState, r)) ancestorState.counts.fromCards++;
+                else ancestorState.resolveQueue.push({ horse_id: r.horse_id, horseName: r.name || '' });
+              }
               if (!horseInfo.has(r.horse_id)) {
                 const hasForm = Array.isArray(r.history) && r.history.length > 0;
                 horseInfo.set(r.horse_id, {
@@ -342,7 +498,9 @@ exports.handler = async function(event) {
       failures = [];
 
       await redisSet('racing-sweep:meta:' + runKey, meta);
+      await redisSet('racing-sweep:ancestors:' + runKey, ancestorState);
       console.log('[racing-sweep] built worklist: ' + worklist.length + ' horse(s) need fetching across ' + dates.join(', '));
+      console.log('[racing-sweep] ancestors: ' + Object.keys(ancestorState.ancestors).length + ' distinct id(s) from ' + ancestorState.counts.fromCards + ' runner(s) with ids on the card; ' + ancestorState.resolveQueue.length + ' runner(s) queued for pro-endpoint id resolution');
     } else {
       meta = await redisGet('racing-sweep:meta:' + runKey);
       worklist = await redisGet('racing-sweep:worklist:' + runKey);
@@ -353,7 +511,9 @@ exports.handler = async function(event) {
         return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'no persisted worklist for this runKey' }) };
       }
       if (!Array.isArray(failures)) failures = [];
-      console.log('[racing-sweep] resumed hop ' + hop + ' with ' + worklist.length + ' remaining');
+      ancestorState = await redisGet('racing-sweep:ancestors:' + runKey);
+      if (!ancestorState || typeof ancestorState !== 'object' || !ancestorState.ancestors) ancestorState = newAncestorState();
+      console.log('[racing-sweep] resumed hop ' + hop + ' with ' + worklist.length + ' remaining; ancestors: ' + ancestorState.resolveQueue.length + ' to resolve, ' + (Array.isArray(ancestorState.fetchQueue) ? ancestorState.fetchQueue.length : Object.keys(ancestorState.ancestors).length) + ' to check/fetch');
     }
 
     // ── Fetch phase — batches of 5, 1s apart, time-budgeted ──
@@ -395,26 +555,32 @@ exports.handler = async function(event) {
       if (remaining.length) await sleep(1000);
     }
 
-    if (timedOut && remaining.length) {
+    // Self-chain: persist whatever is outstanding (history worklist and/or
+    // ancestor state) and POST the next hop. Shared by both phases.
+    const chainNextHop = async function(label) {
       await redisSet('racing-sweep:worklist:' + runKey, remaining);
       await redisSet('racing-sweep:failures:' + runKey, failures);
-      console.log('[racing-sweep] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — ' + remaining.length + ' still queued; persisted for the next hop');
+      await redisSet('racing-sweep:ancestors:' + runKey, ancestorState);
+      console.log('[racing-sweep] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — ' + label + '; persisted for the next hop');
+      try {
+        await new Promise(function(resolve) {
+          const req = https.request({
+            hostname: HOSTNAME,
+            path: '/.netlify/functions/racing-sweep-background?hop=' + (hop + 1),
+            method: 'POST',
+            headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
+          }, function(res) { res.resume(); res.on('end', resolve); });
+          req.on('error', function() { resolve(); });
+          req.setTimeout(10000, function() { req.destroy(); resolve(); });
+          req.end();
+        });
+        console.log('[racing-sweep] partial — self-chained hop ' + (hop + 1));
+      } catch (e) {}
+    };
 
+    if (timedOut && remaining.length) {
       if (hop < HOP_CAP) {
-        try {
-          await new Promise(function(resolve) {
-            const req = https.request({
-              hostname: HOSTNAME,
-              path: '/.netlify/functions/racing-sweep-background?hop=' + (hop + 1),
-              method: 'POST',
-              headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
-            }, function(res) { res.resume(); res.on('end', resolve); });
-            req.on('error', function() { resolve(); });
-            req.setTimeout(10000, function() { req.destroy(); resolve(); });
-            req.end();
-          });
-          console.log('[racing-sweep] partial — self-chained hop ' + (hop + 1));
-        } catch (e) {}
+        await chainNextHop(remaining.length + ' horse(s) still queued');
         return { statusCode: 200, headers, body: JSON.stringify({ status: 'partial', hop: hop, remaining: remaining.length, fetched: fetched }) };
       }
 
@@ -424,7 +590,29 @@ exports.handler = async function(event) {
       remaining.forEach(function(item) {
         failures.push({ horse_id: item.horse_id, horseName: item.horseName, dates: item.dates, reason: 'not processed — racing-sweep exceeded its ' + HOP_CAP + '-hop cap for the night' });
       });
-      console.log('[racing-sweep] hop cap reached with ' + remaining.length + ' unprocessed — recorded as failures, writing coverage now.');
+      remaining = [];
+      console.log('[racing-sweep] hop cap reached with ' + failures.length + ' failure(s) recorded — writing coverage now.');
+    }
+
+    // ── Ancestor phase — bloodline stats cache, only once the history
+    // worklist is empty. Same budget, same chaining. At the hop cap any
+    // outstanding ancestor work is counted and named, never silently dropped.
+    const ancestorResult = await runAncestorPhase(ancestorState, startTime);
+    if (!ancestorResult.done) {
+      const outstanding = ancestorState.resolveQueue.length + (Array.isArray(ancestorState.fetchQueue) ? ancestorState.fetchQueue.length : Object.keys(ancestorState.ancestors).length);
+      if (hop < HOP_CAP) {
+        await chainNextHop('ancestors: ' + outstanding + ' still queued');
+        return { statusCode: 200, headers, body: JSON.stringify({ status: 'partial', hop: hop, remaining: 0, ancestorsOutstanding: outstanding, fetched: fetched }) };
+      }
+      ancestorState.counts.unresolvable += ancestorState.resolveQueue.length;
+      (ancestorState.fetchQueue || []).forEach(function(id) {
+        const known = ancestorState.ancestors[id] || { name: '', kind: '' };
+        ancestorState.counts.failed++;
+        ancestorState.failures.push({ id: id, name: known.name, kind: known.kind, reason: 'not processed — racing-sweep exceeded its ' + HOP_CAP + '-hop cap for the night' });
+      });
+      ancestorState.resolveQueue = [];
+      ancestorState.fetchQueue = [];
+      console.log('[racing-sweep] hop cap reached with ' + outstanding + ' ancestor item(s) unprocessed — recorded, writing coverage now.');
     }
 
     // ── Report phase — every date gets a coverage line + a named failure
@@ -448,8 +636,26 @@ exports.handler = async function(event) {
       await redisSet('sweep:failures:' + d, dateFailures);
     }
 
+    // Ancestor coverage — one line in the log plus a checkable key holding
+    // the counts and every individual fetch failure by name and id.
+    const ancestorReport = {
+      distinctAncestors: Object.keys(ancestorState.ancestors).length,
+      runnersWithIdsOnCard: ancestorState.counts.fromCards,
+      runnersResolvedViaProfile: ancestorState.counts.resolvedViaProfile,
+      runnersUnresolvable: ancestorState.counts.unresolvable,
+      fetchedTonight: ancestorState.counts.fetched,
+      alreadyCached: ancestorState.counts.alreadyCached,
+      failed: ancestorState.counts.failed,
+      failures: ancestorState.failures,
+      completedAt: new Date().toISOString()
+    };
+    await redisSet('sweep:ancestors:' + runKey, ancestorReport);
+    console.log('[racing-sweep] ancestors: ' + ancestorReport.distinctAncestors + ' distinct | fetched tonight ' + ancestorReport.fetchedTonight + ' | already cached ' + ancestorReport.alreadyCached + ' | failed ' + ancestorReport.failed + ' | runners with ids on card ' + ancestorReport.runnersWithIdsOnCard + ', resolved via profile ' + ancestorReport.runnersResolvedViaProfile + ', unresolvable ' + ancestorReport.runnersUnresolvable);
+    ancestorState.failures.forEach(function(f) { console.log('[racing-sweep] ancestor failure: ' + f.kind + ' ' + (f.name || '?') + ' (' + f.id + ') — ' + f.reason); });
+
     await redisSet('racing-sweep:worklist:' + runKey, []);
     await redisSet('racing-sweep:failures:' + runKey, []);
+    await redisSet('racing-sweep:ancestors:' + runKey, null);
     const summary = {
       status: 'complete',
       runKey: runKey,
@@ -458,6 +664,13 @@ exports.handler = async function(event) {
       fetched: fetched,
       genuineDebutants: skippedAsGenuineDebutant,
       failed: failures.length,
+      ancestors: {
+        distinct: ancestorReport.distinctAncestors,
+        fetchedTonight: ancestorReport.fetchedTonight,
+        alreadyCached: ancestorReport.alreadyCached,
+        failed: ancestorReport.failed,
+        runnersUnresolvable: ancestorReport.runnersUnresolvable
+      },
       elapsedSec: Math.round((Date.now() - startTime) / 1000),
       hop: hop
     };
