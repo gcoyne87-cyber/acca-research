@@ -142,6 +142,35 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Status-aware variant used only by the ancestor fetch loop: resolves
+// { status, data } (data null when the body is not JSON) instead of hiding
+// the HTTP status like apiGetRacing above, so a 429 can be recognised.
+function apiGetRacingWithStatus(path) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.theracingapi.com', path: path, method: 'GET',
+      headers: { 'Authorization': 'Basic ' + RACING_AUTH, 'Accept': 'application/json' }
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => { let data = null; try { data = JSON.parse(d); } catch(e) {} resolve({ status: res.statusCode, data: data }); });
+    });
+    req.on('error', reject); req.end();
+  });
+}
+
+// One ancestor endpoint call with a single retry after a 2s wait on HTTP
+// 429, so a transient rate-limit response self-heals instead of becoming a
+// named failure. A second 429, any other non-200, or an unparseable body
+// throws, and the caller records that as the ancestor's failure reason.
+async function apiGetAncestor(path) {
+  let r = await apiGetRacingWithStatus(path);
+  if (r.status === 429) { await sleep(2000); r = await apiGetRacingWithStatus(path); }
+  if (r.status === 429) throw new Error('HTTP 429 after one retry');
+  if (r.status !== 200) throw new Error('HTTP ' + r.status + ((r.data && r.data.detail) ? ' ' + r.data.detail : ''));
+  if (!r.data) throw new Error('unparseable response');
+  return r.data;
+}
+
 // Full career, paginated — identical shape and reasoning to
 // fetch-horse-history-1/2-background.js's fetchFullCareerResults (see this
 // file's header comment for why pagination rather than a bigger single
@@ -209,6 +238,10 @@ function mapHistory(allResults, horse_id) {
 // hand back done:false when it is spent.
 
 const ANCESTOR_TTL_SEC = 45 * 86400;
+// Fetch batch is 3 ids (not the sweep's BATCH of 5): each id makes two
+// sequential calls, so 3 in parallel peaks at 6 requests per ~1.5s cycle,
+// about 4 per second sustained, under the endpoints' 5-per-second limit.
+const ANCESTOR_FETCH_BATCH = 3;
 const ANCESTOR_ENDPOINT = { sire: '/v1/sires/', dam: '/v1/dams/', damsire: '/v1/damsires/' };
 
 // SET with expiry — Upstash REST accepts EX as a query parameter alongside
@@ -290,19 +323,20 @@ async function runAncestorPhase(state, startTime) {
   if (!Array.isArray(state.fetchQueue)) state.fetchQueue = Object.keys(state.ancestors);
   while (state.fetchQueue.length) {
     if (overBudget()) return { done: false };
-    const batch = state.fetchQueue.slice(0, BATCH);
+    const batch = state.fetchQueue.slice(0, ANCESTOR_FETCH_BATCH);
     const results = await Promise.allSettled(batch.map(async function(id) {
       const known = state.ancestors[id] || { name: '', kind: '' };
       if (!ANCESTOR_ENDPOINT[known.kind]) throw new Error('unknown ancestor kind');
       const existing = await redisGet('ancestor:stats:' + id);
       if (existing && typeof existing === 'object' && Array.isArray(existing.distances)) return { cached: true };
-      // Two calls per id, sequential, so a batch of 5 never exceeds the
-      // endpoints' 5 requests-per-second limit.
+      // Two calls per id, sequential; with ANCESTOR_FETCH_BATCH ids in
+      // parallel that stays under the endpoints' 5 requests-per-second
+      // limit, and apiGetAncestor retries once on a 429.
       const base = ANCESTOR_ENDPOINT[known.kind] + encodeURIComponent(id) + '/analysis/';
-      const dist = await apiGetRacing(base + 'distances');
-      if (!dist || dist.detail || !Array.isArray(dist.distances)) throw new Error('distances: ' + ((dist && dist.detail) || 'unexpected response'));
-      const cls = await apiGetRacing(base + 'classes');
-      if (!cls || cls.detail || !Array.isArray(cls.classes)) throw new Error('classes: ' + ((cls && cls.detail) || 'unexpected response'));
+      const dist = await apiGetAncestor(base + 'distances');
+      if (dist.detail || !Array.isArray(dist.distances)) throw new Error('distances: ' + (dist.detail || 'unexpected response'));
+      const cls = await apiGetAncestor(base + 'classes');
+      if (cls.detail || !Array.isArray(cls.classes)) throw new Error('classes: ' + (cls.detail || 'unexpected response'));
       const entry = {
         name: dist[known.kind] || cls[known.kind] || known.name || '',
         kind: known.kind,
@@ -326,7 +360,7 @@ async function runAncestorPhase(state, startTime) {
         console.log('[racing-sweep] ancestor FAIL ' + known.kind + ' ' + (known.name || '?') + ' (' + id + '): ' + reason);
       }
     });
-    state.fetchQueue = state.fetchQueue.slice(BATCH);
+    state.fetchQueue = state.fetchQueue.slice(ANCESTOR_FETCH_BATCH);
     if (state.fetchQueue.length) await sleep(1000);
   }
   return { done: true };
@@ -561,7 +595,13 @@ exports.handler = async function(event) {
       await redisSet('racing-sweep:worklist:' + runKey, remaining);
       await redisSet('racing-sweep:failures:' + runKey, failures);
       await redisSet('racing-sweep:ancestors:' + runKey, ancestorState);
-      console.log('[racing-sweep] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — ' + label + '; persisted for the next hop');
+      // Release the run lock BEFORE posting the next hop: the next invocation
+      // arrives ~3-10s after this hop's 780s budget, inside the 800s lock
+      // window, and would otherwise stand down against this hop's own lock.
+      // Continuity is carried by the persisted worklist/ancestor state, and
+      // the next hop re-acquires the lock at its own start.
+      try { await redisSet('racing-sweep:lock:' + runKey, null); } catch (ue) {}
+      console.log('[racing-sweep] approaching 900s timeout (' + Math.round((Date.now() - startTime) / 1000) + 's elapsed) — ' + label + '; persisted for the next hop, lock released');
       try {
         await new Promise(function(resolve) {
           const req = https.request({
