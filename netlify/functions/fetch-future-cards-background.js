@@ -233,6 +233,18 @@ function mapRunner(r, idx) {
     sex: r.sex || '',
     sire: r.sire || '',
     dam: r.dam || '',
+    // Bloodline + connections, kept exactly as the pro racecard sends them.
+    // The ids key the ancestor:stats:{id} cache the chevron's bloodline
+    // panel reads; prev_trainers is the API's own spell record.
+    sire_id: r.sire_id || '',
+    dam_id: r.dam_id || '',
+    damsire: r.damsire || '',
+    damsire_id: r.damsire_id || '',
+    owner: r.owner || '',
+    owner_id: r.owner_id || '',
+    prev_trainers: Array.isArray(r.prev_trainers) ? r.prev_trainers.map(function(t) {
+      return { trainer: (t && t.trainer) || '', trainer_id: (t && t.trainer_id) || '', change_date: (t && t.change_date) || '' };
+    }) : [],
     headgear: headgear,
     headgearCode: r.headgear || '',
     headgearRun: r.headgear_run || '',

@@ -14950,17 +14950,41 @@ function nrLoadProfile(pfx,horseId){
       var _bred=[colour,sex].filter(Boolean).join(' ').toLowerCase();
       var _foaled=p.dob?fmtD(p.dob):'';
       var _trVal=currentTrainer?'<span style="font-weight:500;color:#0b1628">'+escHtml(currentTrainer)+'</span>'+(t14?'<span style="color:#9ca3af"> · 14d: '+escHtml(t14)+'</span>':''):'';
-      var _rows=[['Bred',_bred?escHtml(_bred):'',false],['Foaled',_foaled?escHtml(_foaled):'',false],['Trainer',_trVal,true],['Owner',owner?escHtml(owner):'',false],['Breeder',p.breeder?escHtml(p.breeder):'',false],['Sire',p.sire?escHtml(p.sire):'',false],['Dam',p.dam?escHtml(p.dam):'',false],['Damsire',p.damsire?escHtml(p.damsire):'',false],['Previously',prevLine?escHtml(prevLine):'',false]].filter(function(r){return !!r[1];});
+      // Bloodline rows (Sire / Dam / Damsire): name from the stored racecard
+      // runner first (the card writer now carries damsire and the three
+      // ancestor ids), falling back to the Racing API profile. The id keys the
+      // ancestor:stats:{id} cache the inline panel reads (nrhBloodToggle). A
+      // row is only emitted when a name exists, so older stored cards with no
+      // damsire simply show no Damsire row.
+      var _bl={
+        sire:{name:String((ru&&ru.sire)||p.sire||''),id:String((ru&&ru.sire_id)||p.sire_id||'')},
+        dam:{name:String((ru&&ru.dam)||p.dam||''),id:String((ru&&ru.dam_id)||p.dam_id||'')},
+        damsire:{name:String((ru&&ru.damsire)||p.damsire||''),id:String((ru&&ru.damsire_id)||p.damsire_id||'')}
+      };
+      var _blRow=function(kind){
+        if(!_bl[kind].name)return '';
+        return '<span style="font-weight:500;color:#0b1628">'+escHtml(_bl[kind].name)+'</span>'
+          +'<span id="nrh-blarr-'+pfx+'-'+kind+'" style="display:inline-block;margin-left:6px;font-size:8px;color:#d4af37;transition:transform .2s ease;vertical-align:middle">&#9660;</span>';
+      };
+      var _rows=[['Bred',_bred?escHtml(_bred):'',false],['Foaled',_foaled?escHtml(_foaled):'',false],['Trainer',_trVal,true],['Owner',owner?escHtml(owner):'',false],['Breeder',p.breeder?escHtml(p.breeder):'',false],['Sire',_blRow('sire'),false,'sire'],['Dam',_blRow('dam'),false,'dam'],['Damsire',_blRow('damsire'),false,'damsire'],['Previously',prevLine?escHtml(prevLine):'',false]].filter(function(r){return !!r[1];});
       if(_rows.length){
         out+='<div style="padding:10px 12px 0">';
         out+=_shdr('Horse Details');
         out+='<div style="background:#ffffff;border:1px solid #d4af37;border-radius:8px;padding:2px 12px">';
         _rows.forEach(function(r,i){
           var lastRow=i===_rows.length-1;
-          out+='<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0'+(lastRow?'':';border-bottom:1px solid #f3f4f6')+'">'
+          var kind=r[3]||'';
+          // A bloodline row is tappable and carries its ancestor's name/id as
+          // data attributes so the panel can be built from the DOM alone (the
+          // chevron html is cached per horse and re-inserted without this
+          // closure). Its inline panel host follows the row inside the card.
+          var _attr=function(v){return escHtml(v).replace(/"/g,'&quot;');};
+          var rowAttrs=kind?' id="nrh-blrow-'+pfx+'-'+kind+'" data-blkind="'+kind+'" data-blname="'+_attr(_bl[kind].name)+'" data-blid="'+_attr(_bl[kind].id)+'" onclick="nrhBloodToggle(\''+pfx+'\',\''+kind+'\')"':'';
+          out+='<div'+rowAttrs+' style="display:flex;justify-content:space-between;gap:10px;padding:7px 0'+(lastRow?'':';border-bottom:1px solid #f3f4f6')+(kind?';cursor:pointer':'')+'">'
             +'<span style="font-size:12px;color:#9ca3af;flex-shrink:0">'+r[0]+'</span>'
             +'<span style="font-size:12px;color:#374151;text-align:right">'+r[1]+'</span>'
             +'</div>';
+          if(kind)out+='<div id="nrh-blp-'+pfx+'-'+kind+'" style="display:none"></div>';
         });
         out+='</div></div>';
       }
@@ -15055,6 +15079,120 @@ function nrLoadProfile(pfx,horseId){
       var tDiv2=document.getElementById('nrh-pai-'+pfx);
       if(tDiv2)tDiv2.innerHTML='<div style="padding:10px 0;font-size:12px;color:#888">Could not load profile right now.</div>';
     });
+}
+// ---- Bloodline panel (horse chevron: Sire / Dam / Damsire rows) ----
+// One shared inline panel per chevron, hosted under whichever bloodline row
+// was tapped (nrh-blp-{pfx}-{kind}); tapping the open row again closes it,
+// tapping another row moves it. Tabs switch the content in place. Stats come
+// from ancestor:stats:{id} via get-ancestor-stats, memoised in
+// _nrAncestorStats (key absent = not asked yet, null = no cache entry).
+// Expected entry shape, written by a later job (every field optional here):
+//   { name, kind, total_runners, comment,
+//     distances:[{ dist, dist_f, runners, "1st","2nd","3rd","4th", "a/e", "win_%", "1_pl" }],
+//     classes:[{ class, runners, "1st","2nd","3rd","4th", "a/e", "win_%", "1_pl" }] }
+// The italic analysis paragraph renders only when `comment` exists.
+var _nrBloodOpen={};        // pfx -> kind of the row whose panel is open
+var _nrBloodTab={};         // pfx -> kind of the active tab
+var _nrAncestorStats={};    // ancestor id -> entry | null
+var _nrAncestorPending={};  // ancestor id -> true while its fetch is in flight
+var _NR_BLOOD_KINDS=['sire','dam','damsire'];
+var _NR_BLOOD_LABEL={sire:'Sire',dam:'Dam',damsire:'Damsire'};
+function _nrhBloodInfo(pfx){
+  var info={};
+  _NR_BLOOD_KINDS.forEach(function(k){
+    var row=document.getElementById('nrh-blrow-'+pfx+'-'+k);
+    if(row)info[k]={name:row.dataset.blname||'',id:row.dataset.blid||''};
+  });
+  return info;
+}
+function nrhBloodToggle(pfx,kind){
+  var info=_nrhBloodInfo(pfx);
+  if(!info[kind])return;
+  var wasOpen=_nrBloodOpen[pfx];
+  // Close whichever row's panel is open (this one included when re-tapped).
+  _NR_BLOOD_KINDS.forEach(function(k){
+    var host=document.getElementById('nrh-blp-'+pfx+'-'+k);
+    if(host){host.style.display='none';host.innerHTML='';}
+    var a=document.getElementById('nrh-blarr-'+pfx+'-'+k);
+    if(a)a.style.transform='';
+  });
+  delete _nrBloodOpen[pfx];
+  if(wasOpen===kind)return;
+  _nrBloodOpen[pfx]=kind;
+  _nrBloodTab[pfx]=kind;
+  var arr=document.getElementById('nrh-blarr-'+pfx+'-'+kind);
+  if(arr)arr.style.transform='rotate(180deg)';
+  _nrhBloodRender(pfx);
+  // Ask once for any ancestor whose stats have not been requested yet, then
+  // re-render the panel in place (only if it is still open).
+  var need=[];
+  _NR_BLOOD_KINDS.forEach(function(k){var e=info[k];if(e&&e.id&&!(e.id in _nrAncestorStats)&&!_nrAncestorPending[e.id])need.push(e.id);});
+  if(!need.length)return;
+  need.forEach(function(id){_nrAncestorPending[id]=true;});
+  fetch('/.netlify/functions/get-ancestor-stats?ids='+need.map(encodeURIComponent).join(','))
+    .then(function(r){return r.json();})
+    .then(function(data){var s=(data&&data.stats)||{};need.forEach(function(id){_nrAncestorStats[id]=s[id]||null;});})
+    .catch(function(){need.forEach(function(id){_nrAncestorStats[id]=null;});})
+    .then(function(){need.forEach(function(id){delete _nrAncestorPending[id];});if(_nrBloodOpen[pfx])_nrhBloodRender(pfx);});
+}
+function nrhBloodTab(pfx,kind){
+  if(!_nrBloodOpen[pfx])return;
+  _nrBloodTab[pfx]=kind;
+  _nrhBloodRender(pfx);
+}
+function _nrhBloodRender(pfx){
+  var openKind=_nrBloodOpen[pfx];if(!openKind)return;
+  var host=document.getElementById('nrh-blp-'+pfx+'-'+openKind);if(!host)return;
+  var info=_nrhBloodInfo(pfx);
+  var tab=_nrBloodTab[pfx]||openKind;if(!info[tab])tab=openKind;
+  var html='<div style="background:#fbf7ec;border-radius:6px;padding:10px 12px;margin:2px 0 8px" onclick="event.stopPropagation()">';
+  // Tab strip — one tab per ancestor the card names.
+  html+='<div style="display:flex;gap:16px;border-bottom:1px solid #ece5d3;margin-bottom:9px">';
+  _NR_BLOOD_KINDS.forEach(function(k){
+    if(!info[k])return;
+    var on=k===tab;
+    html+='<span onclick="nrhBloodTab(\''+pfx+'\',\''+k+'\')" style="font-size:11px;font-weight:'+(on?'600':'500')+';color:'+(on?'#0b1628':'#9ca3af')+';padding:0 0 6px;margin-bottom:-1px;border-bottom:2px solid '+(on?'#d4af37':'transparent')+';cursor:pointer">'+_NR_BLOOD_LABEL[k]+'</span>';
+  });
+  html+='</div>';
+  var e=info[tab];
+  var st=e.id?_nrAncestorStats[e.id]:null;
+  var loading=!!e.id&&!(e.id in _nrAncestorStats);
+  var runsN=(st&&st.total_runners!=null&&!isNaN(Number(st.total_runners)))?Number(st.total_runners):null;
+  html+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px">'
+    +'<span style="font-size:12px;font-weight:600;color:#0b1628">'+escHtml(e.name)+'</span>'
+    +'<span style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;white-space:nowrap">'+_NR_BLOOD_LABEL[tab].toUpperCase()+(runsN!=null?' &middot; '+runsN.toLocaleString()+' RUNNERS':'')+'</span>'
+    +'</div>';
+  if(loading){
+    html+='<div style="font-size:11.5px;line-height:1.6;color:#9ca3af;font-style:italic">Loading bloodline data&hellip;</div>';
+  } else if(!st){
+    html+='<div style="font-size:11.5px;line-height:1.6;color:#9ca3af;font-style:italic">Bloodline data coming soon.</div>';
+  } else {
+    if(st.comment)html+='<div style="font-size:11.5px;line-height:1.6;color:#0b1628;font-style:italic;margin-bottom:8px">'+escHtml(String(st.comment))+'</div>';
+    var bands=Array.isArray(st.distances)?st.distances.filter(function(b){return b&&Number(b.runners)>0;}):[];
+    var pct=function(b){var r=Number(b.runners)||0,w=Number(b['1st'])||0;return r?Math.round(100*w/r):0;};
+    var top4=function(b){return (Number(b['1st'])||0)+(Number(b['2nd'])||0)+(Number(b['3rd'])||0)+(Number(b['4th'])||0);};
+    var label=function(b){return String(b.dist||b.dist_f||'');};
+    // Chips: best two and weakest trips among bands with a meaningful sample
+    // (20+ progeny runs), by win rate; total runners as the neutral chip.
+    var sig=bands.filter(function(b){return Number(b.runners)>=20;}).sort(function(a,b){return pct(b)-pct(a);});
+    var chip=function(txt,fg,bd){return '<span style="display:inline-block;font-size:9px;font-weight:600;color:'+fg+';background:#fff;border:1px solid '+bd+';border-radius:999px;padding:3px 8px;margin:0 6px 6px 0;white-space:nowrap">'+txt+'</span>';};
+    var chips='';
+    sig.slice(0,2).forEach(function(b){chips+=chip('Best '+escHtml(label(b))+' &middot; '+pct(b)+'%','#1e9e6b','#d9efe4');});
+    if(sig.length>2){var wk=sig[sig.length-1];chips+=chip('Weakest '+escHtml(label(wk))+' &middot; '+pct(wk)+'%','#ef4444','#fde2e2');}
+    if(runsN!=null)chips+=chip(runsN.toLocaleString()+' runners','#6b7280','#f0f2f5');
+    if(chips)html+='<div style="margin-bottom:4px">'+chips+'</div>';
+    if(bands.length){
+      var TH='text-align:right;padding:4px 6px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap';
+      var TD='text-align:right;padding:4px 6px;font-size:10px;color:#374151;border-top:1px solid #f0ead6;white-space:nowrap';
+      html+='<table style="width:100%;border-collapse:collapse;margin-top:4px"><thead><tr><th style="'+TH+';text-align:left;padding-left:0">Trip</th><th style="'+TH+'">Runs</th><th style="'+TH+'">Wins</th><th style="'+TH+'">Win%</th><th style="'+TH+';padding-right:0">Top 4</th></tr></thead><tbody>';
+      bands.slice().sort(function(a,b){return Number(b.runners)-Number(a.runners);}).slice(0,8).forEach(function(b){
+        html+='<tr><td style="'+TD+';text-align:left;padding-left:0">'+escHtml(label(b))+'</td><td style="'+TD+'">'+(Number(b.runners)||0)+'</td><td style="'+TD+'">'+(Number(b['1st'])||0)+'</td><td style="'+TD+';font-weight:600;color:#0b1628">'+pct(b)+'%</td><td style="'+TD+';padding-right:0">'+top4(b)+'</td></tr>';
+      });
+      html+='</tbody></table>';
+    }
+  }
+  html+='</div>';
+  host.innerHTML=html;host.style.display='block';
 }
 // Course cell for the per-horse form tables. Every trailing bracketed
 // qualifier — (AW), (IRE), (FR), (July) — is split off and rendered as a
