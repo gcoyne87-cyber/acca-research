@@ -238,6 +238,7 @@ function mapHistory(allResults, horse_id) {
 // hand back done:false when it is spent.
 
 const ANCESTOR_TTL_SEC = 45 * 86400;
+const ANCESTOR_NORESULTS_TTL_SEC = 7 * 86400;   // "no progeny runs yet" markers recheck weekly
 // Fetch batch is 3 ids (not the sweep's BATCH of 5): each id makes two
 // sequential calls, so 3 in parallel peaks at 6 requests per ~1.5s cycle,
 // about 4 per second sustained, under the endpoints' 5-per-second limit.
@@ -334,6 +335,22 @@ async function runAncestorPhase(state, startTime) {
       // limit, and apiGetAncestor retries once on a 429.
       const base = ANCESTOR_ENDPOINT[known.kind] + encodeURIComponent(id) + '/analysis/';
       const dist = await apiGetAncestor(base + 'distances');
+      // "No results found" = the ancestor has no progeny runs on record yet
+      // (a young mare's first foal about to run). Cache a marker so the panel
+      // can say so, on a short TTL so it rechecks weekly. Any other detail /
+      // non-200 (429, timeouts) still throws below and writes nothing.
+      if (dist.detail && /^No results found/i.test(String(dist.detail))) {
+        await redisSetEx('ancestor:stats:' + id, {
+          name: known.name || '',
+          kind: known.kind,
+          total_runners: 0,
+          noResults: true,
+          distances: [],
+          classes: [],
+          fetchedAt: new Date().toISOString()
+        }, ANCESTOR_NORESULTS_TTL_SEC);
+        return { cached: false };
+      }
       if (dist.detail || !Array.isArray(dist.distances)) throw new Error('distances: ' + (dist.detail || 'unexpected response'));
       const cls = await apiGetAncestor(base + 'classes');
       if (cls.detail || !Array.isArray(cls.classes)) throw new Error('classes: ' + (cls.detail || 'unexpected response'));
