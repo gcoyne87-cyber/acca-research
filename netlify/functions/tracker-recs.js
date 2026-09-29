@@ -51,6 +51,72 @@ async function getStoredRecords() {
 
 function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
 
+// ── NAP / NB record stats (tracker:stats) ─────────────────────────────────
+// Recomputed after every successful merge write and served through
+// get-daily-build as `records` for the homepage / Picks stat pill. Per slot
+// ('NAP', 'NB'): one record per date — a settled one (result W/P/L) wins,
+// the first settled if several, otherwise the first — then over the settled
+// survivors: runs, wins, places, strike rate (whole %), and the mean SP as a
+// decimal to 1 place. SP source: the settled `sp` field, falling back to the
+// build-time `price` when sp is missing or "SP"; a record with neither is
+// left out of the average only (it still counts as a run).
+const STATS_KEY = 'tracker:stats';
+
+// "6/5" -> 2.2, "EVS"/"evens"/"evs" -> 2.0, "SP"/blank/unparseable -> null
+function fracToDec(s) {
+  const v = String(s || '').trim().toLowerCase();
+  if (!v || v === 'sp' || v === '-') return null;
+  if (v === 'evs' || v === 'evens' || v === 'even') return 2.0;
+  const m = v.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const num = parseFloat(m[1]), den = parseFloat(m[2]);
+  if (!den) return null;
+  return 1 + num / den;
+}
+
+function computeSlotStats(records, type) {
+  const byDate = {};
+  records.forEach(function(r) {
+    if (!r || r.type !== type || !r.date) return;
+    const settled = r.result === 'W' || r.result === 'P' || r.result === 'L';
+    const cur = byDate[r.date];
+    if (!cur) { byDate[r.date] = r; return; }
+    const curSettled = cur.result === 'W' || cur.result === 'P' || cur.result === 'L';
+    if (settled && !curSettled) byDate[r.date] = r;   // a settled record replaces an unsettled one; first settled stays
+  });
+  let runs = 0, wins = 0, places = 0, spSum = 0, spN = 0;
+  Object.keys(byDate).forEach(function(d) {
+    const r = byDate[d];
+    if (!(r.result === 'W' || r.result === 'P' || r.result === 'L')) return;
+    runs++;
+    if (r.result === 'W') wins++;
+    if (r.result === 'P') places++;
+    let dec = fracToDec(r.sp);
+    if (dec === null) dec = fracToDec(r.price);
+    if (dec !== null) { spSum += dec; spN++; }
+  });
+  return {
+    runs: runs,
+    wins: wins,
+    places: places,
+    strikePct: runs ? Math.round(100 * wins / runs) : 0,
+    avgSp: spN ? Math.round((spSum / spN) * 10) / 10 : null
+  };
+}
+
+function computeTrackerStats(records) {
+  return {
+    nap: computeSlotStats(records, 'NAP'),
+    nb: computeSlotStats(records, 'NB'),
+    computedAt: new Date().toISOString()
+  };
+}
+
+// Best-effort: a stats write failure must never fail the merge response.
+async function writeTrackerStats(records) {
+  try { await redisRaw('/set/' + STATS_KEY, 'POST', computeTrackerStats(records)); } catch (e) { /* swallow */ }
+}
+
 // SET NX EX — only one concurrent POST may run the read-merge-write cycle.
 // Options go as path segments (/set/key/value/EX/15/NX), NOT query params:
 // Upstash expands each query param as an ARGUMENT PAIR, so ?NX=true became
@@ -95,12 +161,50 @@ function recKey(r) { return r.date + '|' + (r.type || '') + '|' + normHorse(r.ho
 // mirroring the client's own L->P migration in ptShow: a stored 'L' upgraded
 // by an incoming 'P' (2nd place recheck) — an upgrade, never a loss.
 // Nothing is ever deleted.
+// The five build slots are single-occupancy per date: the server is
+// authoritative for WHICH horse holds a slot, so a stale client re-pushing an
+// earlier build's picks in the evening can never add a second NAP/NB/Intel
+// record for the day or swap the stored horse. An incoming slot record is
+// discarded unless the stored occupant is the same horse (normalised), and
+// even then it may only fill blank settlement fields (result / pos / sp).
+// Legacy signal types keep the original additive merge.
+const BUILD_SLOTS = ['NAP', 'NB', 'Intel 3', 'Intel 4', 'Intel 5'];
+function slotKey(r) { return r.date + '|' + (r.type || ''); }
+
 function mergeInto(stored, incoming) {
   const byKey = {};
-  stored.forEach(r => { byKey[recKey(r)] = r; });
-  let appended = 0, updated = 0;
+  const bySlot = {};   // date|type -> the stored occupant for a build slot (first seen wins)
+  stored.forEach(r => {
+    byKey[recKey(r)] = r;
+    if (BUILD_SLOTS.indexOf(r.type) !== -1 && !bySlot[slotKey(r)]) bySlot[slotKey(r)] = r;
+  });
+  let appended = 0, updated = 0, discarded = 0;
+  // Fill only blank settlement fields — never the horse, never a settled result.
+  function fillSettlement(ex, n) {
+    let changed = false;
+    if (n.result && !ex.result) { ex.result = n.result; changed = true; }
+    if (n.pos && !ex.pos) { ex.pos = n.pos; changed = true; }
+    if (n.sp && !ex.sp) { ex.sp = n.sp; changed = true; }
+    if (ex.result === 'L' && n.result === 'P') { ex.result = 'P'; if (n.pos) ex.pos = n.pos; if (n.sp) ex.sp = n.sp; changed = true; }
+    return changed;
+  }
   incoming.forEach(n => {
     const k = recKey(n);
+    const isSlot = BUILD_SLOTS.indexOf(n.type) !== -1;
+    if (isSlot) {
+      const occupant = bySlot[slotKey(n)];
+      if (!occupant) {
+        stored.push(n);
+        byKey[k] = n;
+        bySlot[slotKey(n)] = n;
+        appended++;
+      } else if (normHorse(occupant.horse) === normHorse(n.horse)) {
+        if (fillSettlement(occupant, n)) updated++;
+      } else {
+        discarded++;   // slot already held by a different horse for that date
+      }
+      return;
+    }
     const ex = byKey[k];
     if (!ex) {
       stored.push(n);
@@ -121,7 +225,7 @@ function mergeInto(stored, incoming) {
     if (b.date < a.date) return -1;
     return (a.time || '').localeCompare(b.time || '');
   });
-  return { records: stored, appended, updated };
+  return { records: stored, appended, updated, discarded };
 }
 
 exports.handler = async function(event) {
@@ -234,11 +338,13 @@ exports.handler = async function(event) {
     }
     if (result.appended || result.updated || scrubbedCount > 0) {
       await redisRaw('/set/' + RECS_KEY, 'POST', result.records);
+      // Keep the NAP / NB stat pill's source current with every write.
+      await writeTrackerStats(result.records);
     }
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ ok: true, received: allowed.length, blocked: blockedCount, scrubbed: scrubbedCount, appended: result.appended, updated: result.updated, total: result.records.length })
+      body: JSON.stringify({ ok: true, received: allowed.length, blocked: blockedCount, scrubbed: scrubbedCount, appended: result.appended, updated: result.updated, discarded: result.discarded, total: result.records.length })
     };
   } catch (e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };

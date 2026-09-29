@@ -2781,9 +2781,36 @@ window.addEventListener('load',function(){
     // that has a result when it doesn't), so local-first + remote-appended
     // means: local kept, remote fills empty results and adds unknown picks.
     // Nothing in localStorage is ever cleared or overwritten destructively.
+    // The five build slots are SERVER-AUTHORITATIVE: on every pull the local
+    // NAP / NB / Intel 3-5 records are replaced by the server's copy (one per
+    // date per slot, as tracker-recs now enforces), so a device that still
+    // holds evening duplicates or an earlier build's picks self-heals to the
+    // clean store rather than re-adding them. A local slot record the server
+    // does not hold is dropped, not merged back. A settlement the client
+    // already computed for the SAME horse is carried onto the server copy when
+    // that copy is still blank, so it pushes up as normal (the server guard
+    // lets same-horse blanks fill). Legacy / other types keep the union.
+    var PT_SLOT_TYPES=['NAP','NB','Intel 3','Intel 4','Intel 5'];
+    function ptIsSlotType(r){ return !!r && PT_SLOT_TYPES.indexOf(r.type)!==-1; }
     function ptMergeFromRemote(remote){
       if(!Array.isArray(remote)||!remote.length) return getRecs();
-      var merged=unionRecs(getRecs(),remote);
+      var local=getRecs();
+      var localOther=local.filter(function(r){ return !ptIsSlotType(r); });
+      var localSlotByKey={};
+      local.forEach(function(r){ if(ptIsSlotType(r)) localSlotByKey[recKey(r)]=r; });
+      var remoteOther=remote.filter(function(r){ return !ptIsSlotType(r); });
+      var slots=remote.filter(ptIsSlotType).map(function(r){
+        var l=localSlotByKey[recKey(r)];
+        if(l&&l.result&&!r.result){
+          var c={}; for(var k in r) c[k]=r[k];
+          c.result=l.result; if(l.pos&&!c.pos) c.pos=l.pos; if(l.sp&&!c.sp) c.sp=l.sp;
+          return c;
+        }
+        return r;
+      });
+      var merged=unionRecs(localOther.concat(slots),remoteOther);
+      var dropped=Object.keys(localSlotByKey).length-slots.filter(function(r){ return !!localSlotByKey[recKey(r)]; }).length;
+      if(dropped>0) console.log('[pt-redis] slots are server-authoritative — dropped '+dropped+' local slot record(s) the server does not hold');
       saveRecs(merged);
       return merged;
     }
@@ -15913,6 +15940,9 @@ function loadDailyBuild(){
         });
       }
 
+      // NAP / NB record stats ride on the same response (absent = no pill).
+      PICK_RECORDS=(data.records&&typeof data.records==='object')?data.records:null;
+
       // Map analyses to RACING_PICKS format
       if(data.picks&&data.picks.length){
         var pillTypes=['NAP · Pick of the Day','Next Best','3rd Pick'];
@@ -16540,6 +16570,11 @@ function renderAIIntelligence(){
   }
 }
 
+// NAP / NB record stats from get-daily-build's `records` field (written to
+// tracker:stats by tracker-recs). null until a build response carries it; the
+// stat pill renders nothing at all while it is null.
+var PICK_RECORDS=null;
+
 var RACING_PICKS=[
 
   {type:"NAP · Pick of the Day",icon:"⚡",horse:"Majolique",detail:"13:15 Cork · 2m7f Maiden Hurdle",
@@ -17033,6 +17068,17 @@ function renderAllSelections(analyses,date){
   window._ptInjectAllSel();
 }
 
+// Stat pill beside the NAP / NEXT BEST tag: card index 0 reads
+// PICK_RECORDS.nap, index 1 PICK_RECORDS.nb. Returns '' (no pill at all)
+// unless the slot's record exists with at least one settled run — never
+// placeholder numbers.
+function _pickRecordPill(i){
+  var rec=PICK_RECORDS?(i===0?PICK_RECORDS.nap:i===1?PICK_RECORDS.nb:null):null;
+  if(!rec||!(Number(rec.runs)>0)) return '';
+  var txt=rec.runs+' runs &middot; '+(rec.wins||0)+' wins &middot; '+(rec.places||0)+' places &middot; '+(rec.strikePct||0)+'%';
+  if(rec.avgSp!=null&&!isNaN(Number(rec.avgSp))) txt+=' &middot; avg SP '+Number(rec.avgSp).toFixed(1);
+  return '<span style="background:#1d9e75;color:#fff;font-size:13px;font-weight:500;padding:5px 14px;border-radius:8px;white-space:nowrap">'+txt+'</span>';
+}
 function renderRacingPicks(){
 
   var el=document.getElementById('racing-picks-container');
@@ -17073,7 +17119,7 @@ function renderRacingPicks(){
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
         +'<div style="display:flex;align-items:center;gap:8px">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+badgeLabel+'</span>'
-          +'<span style="background:#1d9e75;color:#fff;font-size:13px;font-weight:500;padding:5px 14px;border-radius:8px">58 runs · 31 wins · 11 places · 55%</span>'
+          +_pickRecordPill(i)
         +'</div>'
       +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
@@ -17165,7 +17211,7 @@ function renderHomeSelections(el){
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
         +'<div style="display:flex;align-items:center;gap:8px">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+pillLabels[i]+'</span>'
-          +'<span style="background:#1d9e75;color:#fff;font-size:13px;font-weight:500;padding:5px 14px;border-radius:8px">58 runs · 31 wins · 11 places · 55%</span>'
+          +_pickRecordPill(i)
         +'</div>'
       +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'

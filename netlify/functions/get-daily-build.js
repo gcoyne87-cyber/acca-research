@@ -109,10 +109,16 @@ exports.handler = async function(event) {
         race: a.race
       }));
 
+    // NAP / NB record stats for the picks stat pill, written by tracker-recs
+    // after every merge (tracker:stats). Passed through untouched; the field
+    // is omitted entirely when the key is absent so the client renders no pill.
+    const trackerStats = await redisGet('tracker:stats');
+    const recordsField = (trackerStats && typeof trackerStats === 'object') ? { records: trackerStats } : {};
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         status: 'done',
         date: reportDate,
         picks,
@@ -135,7 +141,7 @@ exports.handler = async function(event) {
         callLog: report.callLog || [],
         racesAnalysed: report.racesAnalysed,
         webSearchCount: report.webSearchCount || 0
-      })
+      }, recordsField))
     };
   } catch(e) {
     return { statusCode: 500, headers, body: JSON.stringify({ status: 'error', error: e.message }) };
