@@ -264,6 +264,37 @@ exports.handler = async function(event) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(qs.date || '') ? qs.date : H.irishDateStr();
   const tag = '[text-engine collect ' + date + ']';
 
+  // CANCEL stage (?stage=cancel&batch=msgbatch_...): POSTs the Batches
+  // cancel endpoint for that id and records the API's processing_status and
+  // request_counts under text-engine:cancel:{batchId}. Results are never
+  // fetched or stored by this path.
+  if (qs.stage === 'cancel') {
+    const batchId = String(qs.batch || '');
+    if (!/^msgbatch_[A-Za-z0-9]+$/.test(batchId)) return { statusCode: 400, headers, body: JSON.stringify({ error: 'batch id required' }) };
+    try {
+      const before = await H.anthropic('GET', '/v1/messages/batches/' + batchId);
+      let cancel = null;
+      if (before.status === 200 && before.json && before.json.processing_status !== 'ended') {
+        cancel = await H.anthropic('POST', '/v1/messages/batches/' + batchId + '/cancel');
+      }
+      const after = await H.anthropic('GET', '/v1/messages/batches/' + batchId);
+      const out = {
+        batchId: batchId, at: new Date().toISOString(),
+        statusBefore: before.json ? before.json.processing_status : ('HTTP ' + before.status),
+        cancelCalled: !!cancel, cancelHttp: cancel ? cancel.status : null,
+        processing_status: after.json ? after.json.processing_status : ('HTTP ' + after.status),
+        request_counts: after.json ? after.json.request_counts : null,
+        ended_at: after.json ? after.json.ended_at : null,
+        error: (after.json && after.json.error) || (cancel && cancel.json && cancel.json.error) || null
+      };
+      await H.redisSet('text-engine:cancel:' + batchId, out);
+      console.log(tag, 'CANCEL', JSON.stringify(out));
+      return { statusCode: 200, headers, body: JSON.stringify(out) };
+    } catch (e) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    }
+  }
+
   try {
     const record = await H.redisGet('text-engine:batch:' + date);
     if (!record || !record.batchId) return { statusCode: 200, headers, body: JSON.stringify({ error: 'no batch record for ' + date }) };
