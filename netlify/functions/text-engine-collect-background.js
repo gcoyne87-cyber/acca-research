@@ -72,12 +72,14 @@ function validate(parsed, env) {
   parsed.trainerSpells.forEach(function(s, i) { texts['spell' + i] = String((s && s.text) || ''); });
   const allText = Object.keys(texts).map(function(k) { return texts[k]; }).join('\n');
 
-  // word counts
-  const inRange = function(n, r) { return n >= Math.floor(r[0] * (1 - TOLERANCE)) && n <= Math.ceil(r[1] * (1 + TOLERANCE)); };
-  ['recentForm', 'going', 'trip', 'track', 'horseSummary'].forEach(function(k) { if (!inRange(words(texts[k]), WORD_RANGES[k])) fail('words-' + k, words(texts[k]) + ' words: ' + texts[k].slice(0, 80)); });
+  // Word counts are WARNINGS, never blockers: a section over its cap is
+  // recorded ({section, words, cap, over}) and reported in coverage, but the
+  // horse's texts are still stored when every fact check passes.
+  const warnings = [];
+  const capOf = function(k) { return WORD_RANGES[k][1]; };
+  ['recentForm', 'going', 'trip', 'track', 'horseSummary'].forEach(function(k) { const n = words(texts[k]); if (n > capOf(k)) warnings.push({ section: k, words: n, cap: capOf(k), over: n - capOf(k) }); });
   parsed.trainerSpells.forEach(function(s, i) {
-    const fs = f.spells[i]; const r = (fs && fs.runs <= 1) ? WORD_RANGES.spellSingle : WORD_RANGES.spell;
-    if (!inRange(words(s && s.text), r)) fail('words-spell', words(s && s.text) + ' words: ' + String((s && s.text) || '').slice(0, 80));
+    const n = words(s && s.text); if (n > WORD_RANGES.spell[1]) warnings.push({ section: 'spell' + (i + 1), words: n, cap: WORD_RANGES.spell[1], over: n - WORD_RANGES.spell[1] });
   });
 
   // "Xth of Y" -> real row
@@ -87,20 +89,41 @@ function validate(parsed, env) {
 
   // distances -> rows or race
   const allowedF = {}; rows.forEach(function(r) { const x = H.furlongs(r.dist); if (x) allowedF[x] = true; }); allowedF[env.raceDistF] = true;
+  // A distance describing the course itself ("oval of 1m2f", "run-in of
+  // around 4f") or a margin ("longer by 1f") is not a claim about the record.
   const reDist = /\b(\d+m(?:\d+f)?|\d+f)\b/g;
-  while ((m = reDist.exec(allText)) !== null) { const x = H.furlongs(m[1]); if (x && !allowedF[x]) fail('distance-not-in-record', sentenceAround(allText, m.index)); }
+  while ((m = reDist.exec(allText)) !== null) {
+    const x = H.furlongs(m[1]); if (!x || allowedF[x]) continue;
+    const before = allText.slice(Math.max(0, m.index - 24), m.index).toLowerCase();
+    if (/\b(of|by|around|about|under|roughly|nearly|almost|circuit|circumference|run-in)\s*(?:\w+\s+)?$/.test(before)) continue;
+    fail('distance-not-in-record', sentenceAround(allText, m.index));
+  }
 
-  // going terms -> rows
-  const rowGoing = {}; rows.forEach(function(r) { rowGoing[normGoing(H.primaryGoing(r.going))] = true; });
-  const normAll = normGoing(allText);
+  // going terms -> rows. Row goings such as "Standard / Slow" or "Good To
+  // Firm (Good in places)" register both their full term and their leading
+  // term, so "Standard" or "Good To Firm" in the text is accepted. Only
+  // CAPITALISED single-word terms count (a lowercase "yielding" is a verb,
+  // "untested on heavy" is a reading, not a claim about the rows).
+  const rowGoing = {};
+  rows.forEach(function(r) {
+    const g = normGoing(H.primaryGoing(r.going)); if (!g) return;
+    rowGoing[g] = true;
+    rowGoing[g.replace(/\s*\/\s*/g, ' to ')] = true;
+    rowGoing[g.split(/\s*\/\s*/)[0].trim()] = true;
+  });
+  const goingHits = [];
   GOING_TERMS.forEach(function(term) {
-    const re = new RegExp('\\b' + term.replace(/ /g, '\\s+') + '\\b', 'g'); let mm;
-    while ((mm = re.exec(normAll)) !== null) {
-      // a longer term containing this one (e.g. "good to soft" vs "soft") is checked on its own; skip the inner match
-      const before = normAll.slice(Math.max(0, mm.index - 12), mm.index), after = normAll.slice(mm.index + term.length, mm.index + term.length + 12);
-      if (/\bto\s*$/.test(before) || /^\s*to\b/.test(after)) continue;
-      if (!rowGoing[term]) fail('going-not-in-record', sentenceAround(allText, Math.min(mm.index, allText.length - 1)));
-    }
+    const single = term.indexOf(' ') === -1;
+    const pattern = single ? term.charAt(0).toUpperCase() + term.slice(1) : term.replace(/ /g, '[\\s-]+');
+    const re = new RegExp('\\b' + pattern + '\\b', single ? 'g' : 'gi'); let mm;
+    while ((mm = re.exec(allText)) !== null) goingHits.push({ term: term, index: mm.index, len: mm[0].length });
+  });
+  goingHits.sort(function(a, b) { return a.index - b.index || b.len - a.len; });
+  let coveredTo = -1;
+  goingHits.forEach(function(h) {
+    if (h.index < coveredTo) return;            // inner match of a longer term already judged
+    coveredTo = h.index + h.len;
+    if (!rowGoing[normGoing(h.term)]) fail('going-not-in-record', sentenceAround(allText, h.index));
   });
 
   // courses named -> rows or race course
@@ -110,7 +133,12 @@ function validate(parsed, env) {
     while ((mm = re.exec(allText)) !== null) {
       const lc = c.toLowerCase();
       const known = Object.keys(rowCourses).some(function(k) { return k === lc || k.indexOf(lc) === 0; });
-      if (!known) fail('course-not-in-record', sentenceAround(allText, mm.index));
+      if (known) continue;
+      // Part of a person's or horse's name ("Jamie Hamilton", "Cork Harbour"):
+      // a capitalised word directly before or after is a name, not a venue.
+      const before = allText.slice(Math.max(0, mm.index - 30), mm.index), after = allText.slice(mm.index + mm[0].length, mm.index + mm[0].length + 30);
+      if (/\b[A-Z][a-z']+\s+$/.test(before) || /^\s+[A-Z][a-z']+/.test(after)) continue;
+      fail('course-not-in-record', sentenceAround(allText, mm.index));
     }
   });
 
@@ -123,9 +151,15 @@ function validate(parsed, env) {
   f.going.forEach(function(g) { add('runs', g.runs); add('wins', g.wins); add('placings', g.placings); });
   f.courses.forEach(function(c) { add('runs', c.runs); add('wins', c.positions.filter(function(p) { return H.posNum(p.pos) === 1; }).length); });
   f.spells.forEach(function(s) { add('runs', s.runs); add('wins', s.wins); add('placings', s.placings); });
-  const reCount = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(runs?|starts?|wins?|placings?|seconds?|thirds?|2nds?|3rds?)\b/gi;
+  // Number words up to ninety-nine ("Twenty-three runs"); a "of N win(s)"
+  // phrase is a finishing position ("1st of 9 win"), not a count.
+  const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  const reCount = /\b((?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(runs?|starts?|wins?|placings?|seconds?|thirds?|2nds?|3rds?)\b/gi;
   while ((m = reCount.exec(allText)) !== null) {
-    const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : NUM_WORDS[m[1].toLowerCase()];
+    if (/\bof\s*$/.test(allText.slice(Math.max(0, m.index - 4), m.index))) continue;
+    let n;
+    if (/^\d+$/.test(m[1])) n = parseInt(m[1], 10);
+    else { const w = m[1].toLowerCase().split(/[- ]/); n = (TENS[w[0]] || NUM_WORDS[w[0]] || 0) + (w[1] ? (NUM_WORDS[w[1]] || 0) : 0); }
     const noun = m[2].toLowerCase();
     const kind = /^(run|start)/.test(noun) ? 'runs' : /^win/.test(noun) ? 'wins' : /^placing/.test(noun) ? 'placings' : /^(second|2nd)/.test(noun) ? 'seconds' : 'thirds';
     if (!counts[kind][n]) fail('count-not-in-facts', sentenceAround(allText, m.index));
@@ -136,12 +170,15 @@ function validate(parsed, env) {
   else parsed.trainerSpells.forEach(function(s, i) {
     const fs = f.spells[i];
     const tn = String((s && s.trainer) || '').toLowerCase().trim(), fn = fs.trainer.toLowerCase().trim();
-    if (tn !== fn && tn !== fs.surname.toLowerCase()) fail('spell-trainer', 'spell ' + (i + 1) + ': "' + (s && s.trainer) + '" vs "' + fs.trainer + '"');
-    if (String((s && s.from) || '') !== fs.from) fail('spell-from', 'spell ' + (i + 1) + ': "' + (s && s.from) + '" vs "' + fs.from + '"');
+    // Full name, surname, or a multi-word tail of the full name ("De Bromhead" for "Henry De Bromhead").
+    const nameOk = tn === fn || tn === fs.surname.toLowerCase() || (tn.length >= 3 && fn.endsWith(tn) && /\s/.test(fn.slice(0, fn.length - tn.length)));
+    if (!nameOk) fail('spell-trainer', 'spell ' + (i + 1) + ': "' + (s && s.trainer) + '" vs "' + fs.trainer + '"');
+    // A zero-run current spell has no start month in the facts; any "from" is accepted for it.
+    if (fs.runs > 0 && String((s && s.from) || '') !== fs.from) fail('spell-from', 'spell ' + (i + 1) + ': "' + (s && s.from) + '" vs "' + fs.from + '"');
     if (String((s && s.to) || '') !== fs.to) fail('spell-to', 'spell ' + (i + 1) + ': "' + (s && s.to) + '" vs "' + fs.to + '"');
   });
 
-  return { ok: failures.length === 0, failures: failures };
+  return { ok: failures.length === 0, failures: failures, warnings: warnings };
 }
 
 function parseJsonText(text) {
@@ -195,7 +232,7 @@ async function processResults(batchId, record, date, pass, tag) {
   }
   const jsonl = await fetchText(status.json.results_url);
   const lines = jsonl.split('\n').filter(Boolean);
-  const out = { passed: [], failed: [], usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, errored: [] };
+  const out = { passed: [], failed: [], usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, errored: [], warnings: [] };
   for (const line of lines) {
     let item; try { item = JSON.parse(line); } catch (e) { continue; }
     const id = item.custom_id; const stored = record.envelopes[id];
@@ -207,6 +244,7 @@ async function processResults(batchId, record, date, pass, tag) {
     const env = await envelopeFor(id, date, stored);
     if (!env) { out.failed.push({ horse_id: id, horseName: stored.horseName, failures: [{ check: 'no-history-key', sentence: '' }] }); continue; }
     const v = validate(parsed, env);
+    if (v.warnings && v.warnings.length) out.warnings.push({ horse_id: id, horseName: stored.horseName, sections: v.warnings });
     if (v.ok) {
       try { await storeHorse(id, date, env, parsed); out.passed.push(id); }
       catch (e) { out.failed.push({ horse_id: id, horseName: stored.horseName, failures: [{ check: 'store', sentence: e.message }] }); }
@@ -231,14 +269,14 @@ exports.handler = async function(event) {
     if (!record || !record.batchId) return { statusCode: 200, headers, body: JSON.stringify({ error: 'no batch record for ' + date }) };
     if (record.phase === 'done') return { statusCode: 200, headers, body: JSON.stringify({ date: date, status: 'already complete', coverage: await H.redisGet('text-engine:coverage:' + date) }) };
 
-    // ── First pass ──
-    if (record.phase === 'first') {
+    // ── First pass (a resubmit batch is handled identically) ──
+    if (record.phase === 'first' || record.phase === 'resubmit') {
       const r = await processResults(record.batchId, record, date, 1, tag);
       if (r.pending) {
         await H.redisSet('text-engine:batch:' + date, Object.assign({}, record, { lastPoll: new Date().toISOString(), lastCounts: r.counts }));
         return { statusCode: 200, headers, body: JSON.stringify({ date: date, status: 'processing', batchId: record.batchId, counts: r.counts }) };
       }
-      record.firstPass = { passed: r.passed.length, failed: r.failed.length, errored: r.errored, usage: r.usage, failures: r.failed };
+      record.firstPass = { passed: r.passed.length, failed: r.failed.length, errored: r.errored, usage: r.usage, failures: r.failed, warnings: r.warnings };
       const retryable = r.failed.filter(function(f) { return !f.failures.some(function(x) { return x.check === 'no-history-key' || x.check === 'store'; }); });
       if (retryable.length) {
         const requests = retryable.map(function(f) {
@@ -255,7 +293,7 @@ exports.handler = async function(event) {
         return { statusCode: 200, headers, body: JSON.stringify({ date: date, status: 'retry submitted', firstPass: { passed: r.passed.length, failed: r.failed.length }, retryBatchId: resp.json.id, retryCount: requests.length }) };
       }
       record.phase = 'finalise';
-      record.retryPass = { passed: 0, failed: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, failures: [] };
+      record.retryPass = { passed: 0, failed: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, failures: [], warnings: [] };
     }
 
     // ── Retry pass ──
@@ -265,9 +303,31 @@ exports.handler = async function(event) {
         await H.redisSet('text-engine:batch:' + date, Object.assign({}, record, { lastPoll: new Date().toISOString(), lastCounts: r.counts }));
         return { statusCode: 200, headers, body: JSON.stringify({ date: date, status: 'retry processing', batchId: record.retryBatchId, counts: r.counts }) };
       }
-      record.retryPass = { passed: r.passed.length, failed: r.failed.length, errored: r.errored, usage: r.usage, failures: r.failed };
+      record.retryPass = { passed: r.passed.length, failed: r.failed.length, errored: r.errored, usage: r.usage, failures: r.failed, warnings: r.warnings };
       record.phase = 'finalise';
     }
+
+    // ── Word-count warnings: latest pass per horse wins; per section: horses
+    // over the cap, median and max overrun, five worst named.
+    const warnByHorse = {};
+    ((record.firstPass && record.firstPass.warnings) || []).forEach(function(w) { warnByHorse[w.horse_id] = w; });
+    ((record.retryPass && record.retryPass.warnings) || []).forEach(function(w) { warnByHorse[w.horse_id] = w; });
+    const perSection = {};
+    Object.keys(warnByHorse).forEach(function(id) {
+      const w = warnByHorse[id];
+      w.sections.forEach(function(s) {
+        const key = /^spell/.test(s.section) ? 'trainerSpell' : s.section;
+        perSection[key] = perSection[key] || { cap: s.cap, overs: [] };
+        perSection[key].overs.push({ horseName: w.horseName, words: s.words, over: s.over });
+      });
+    });
+    const wordCountWarnings = {};
+    Object.keys(perSection).forEach(function(k) {
+      const overs = perSection[k].overs.slice().sort(function(a, b) { return b.over - a.over; });
+      const vals = overs.map(function(o) { return o.over; }).sort(function(a, b) { return a - b; });
+      const mid = vals.length ? (vals.length % 2 ? vals[(vals.length - 1) / 2] : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2) : 0;
+      wordCountWarnings[k] = { cap: perSection[k].cap, horsesOver: overs.length, medianOver: mid, maxOver: vals.length ? vals[vals.length - 1] : 0, worst: overs.slice(0, 5) };
+    });
 
     // ── Coverage + ledger ──
     const fp = record.firstPass, rp = record.retryPass;
@@ -284,7 +344,9 @@ exports.handler = async function(event) {
       batchErrors: (fp.errored || []).concat(rp.errored || []),
       generated: fp.passed + rp.passed,
       tokens: { uncachedInput: total.input, cacheWrite: total.cacheWrite, cacheRead: total.cacheRead, output: total.output },
-      costUSD: costOf(total), pricing: PRICE
+      costUSD: costOf(total), pricing: PRICE,
+      wordCountWarnings: wordCountWarnings,
+      mode: record.resubmitOf ? 'resubmit' : (record.limit ? 'limit ' + record.limit : 'full')
     };
     await H.redisSet('text-engine:coverage:' + date, coverage);
     try {

@@ -25,7 +25,10 @@ const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 const MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 1400;
+// 2000, not 1400: on the first live run every JSON-parse failure was an
+// 18-50 run horse with several spells — the six texts plus JSON overhead
+// were being cut off at the cap.
+const MAX_TOKENS = 2000;
 const ROWS_IN_ENVELOPE = 12;
 
 // ── Redis helpers (same shapes as form-summary-background.js) ─────────────
@@ -278,7 +281,7 @@ function buildEnvelope(horse, race, rows) {
     'LAST ' + last12.length + ' RUNS (newest first): date | course | distance | going | position of field | SP | class | trainer | jockey',
     last12.map(rowLine).join('\n'),
     '',
-    'FACTS (computed from all ' + facts.career.runs + ' runs — authoritative):',
+    'FACTS (computed from all ' + facts.career.runs + ' runs — authoritative; "placings" means 2nd or 3rd only; every spell listed below gets its own paragraph, including a current trainer with no runs yet):',
     factsText(facts)
   ].join('\n');
   return { facts: facts, raceCourse: stripParens(race.course), raceDistance: distLabel(raceDistF), raceDistF: raceDistF, rows: rows, text: text };
@@ -288,6 +291,8 @@ function buildEnvelope(horse, race, rows) {
 
 const STATIC_PROMPT = "You write three texts about one racehorse from its record. Use ONLY the rows and computed facts provided. The facts block is authoritative for every count — never count rows yourself, never state a number that is not in the facts or rows. If the data does not support a statement, leave it out: a shorter section is correct, a filled one is a failure.\n\n" +
 "SHARED RULES: Every sentence carries a number, a date, a course, a distance or a name. Finishing positions as '3rd of 7', never '3/7'. Each section opens with the pattern the record shows, proves it with the rows, and stops — no flourish, no character, no conclusion the numbers don't contain. Certainty matches the evidence: a horse with 2-3 runs gets description, not conclusions — say plainly when the record is too short to call a preference. Never reference the upcoming race's going, field size, or anything that can change before the off. The race's course and distance are fixed and may be referenced where the section rules allow. Each section owns its lens and must not repeat another section's point.\n\n" +
+"HARD WORD LIMITS — these are ceilings, not targets. Recent form 50, Going 45, Trip 60, Track 70, each trainer spell 70, horse summary 100. A section over its limit is a failure. For a long career, compress by dropping the least important runs — never by writing longer. A 30-run horse gets the same section lengths as an 8-run horse: the caps force selection, not summary of everything.\n\n" +
+"Use only numbers that appear in the facts block or the rows verbatim. Never derive new counts (no 'the remaining 9 runs', no 'three of the last four', no adding placings together). If a number is not given, do not state it.\n\n" +
 "TEXT 1 — FORM SUMMARY, four sections:\n" +
 "RECENT FORM (30-50 words): the direction and pattern of the horse's own record — the last four runs, what changed, where placings cluster. Past field sizes are facts and may be used. Never mention the upcoming race's field size.\n" +
 "GOING (30-45 words): the record by going, then ONE conditional read ('the quicker the better' / 'wants cut' / 'no clear preference'). Never the upcoming race's going.\n" +
@@ -298,7 +303,7 @@ const STATIC_PROMPT = "You write three texts about one racehorse from its record
 "Going: 'Quick summer ground is fine, but her form sharpens as it firms — both seconds came on Gd To Firm, while she's 0-4 with two 3rds on Good. The quicker the better; untested with real cut.'\n" +
 "Trip: '1m2f at Epsom asks nothing new — 7 of her 8 starts have been at the trip and all four placings came there (2nd of 5, 2nd of 3, 3rd of 9, 3rd of 11). Her only start away from it was 7f on debut, 4th of 12, and she has since been kept exclusively at 1m2f.'\n" +
 "Track: 'Epsom's downhill, cambered 1m2f is the one thing her record hasn't covered — seven tracks in eight starts, none worse than 6th. She has run her best on stiff, galloping finishes (both 2nds at Sandown and Newmarket) and her two weakest on the sharper, undulating ones (Chester 6th of 10, Goodwood 5th of 12) — which is the pattern to weigh at Epsom.'\n\n" +
-"TEXT 2 — TRAINER HISTORY: one paragraph per spell from the facts block's spell list, 45-70 words each, single-run spells shorter. Decision lens: what this trainer changed or chose — trips, class, courses, jockeys, spacing, what was avoided — with results only as evidence of whether it worked. Compare to the previous spell by that trainer's surname. Close each spell with a plain verdict: working / declining / too early to call. No reference to any upcoming race. No 'began her career under' openers. Never repeat the horse's name inside a paragraph.\n\n" +
+"TEXT 2 — TRAINER HISTORY: one paragraph per spell from the facts block's spell list, 45-70 words each, single-run spells shorter. Decision lens: what this trainer changed or chose — trips, class, courses, jockeys, spacing, what was avoided — with results only as evidence of whether it worked. Compare to the previous spell by that trainer's surname. Close each spell with a plain verdict: working / declining / too early to call. No reference to any upcoming race. No 'began her career under' openers. Never repeat the horse's name inside a paragraph. A horse with 4+ spells: write the current spell and the two most significant past spells in full; earlier spells get one sentence each (trainer, dates, record).\n\n" +
 "WORKED EXAMPLES:\n" +
 "Current spell (Musical Angel, Dow): 'Dow's plan has been a narrowing: pitched her into a Class 2 early (too deep, 8th of 16), then abandoned experiments and committed to the Epsom 7f route — three of her last four runs at that exact course and distance. He has also upgraded the saddle each time it mattered: Bradley for the quiet runs, Marquand then Davies for the targets. The placement is working — each Epsom run has finished closer, 8th to 3rd to 2nd.'\n" +
 "Past spell (Musical Angel, Balding): 'Balding built her patiently: started at 6f, kept her in Class 4-5 company where she could win (Brighton, then Lingfield placings), and only stepped her to 7f at the very end of the spell — where she immediately won at Epsom. He found her trip last, and the yard moved her on just as the penny dropped.'\n" +
@@ -347,13 +352,31 @@ exports.handler = async function(event) {
     if (!card || !Array.isArray(card.meetings)) return { statusCode: 200, headers, body: JSON.stringify({ error: 'no racecards:' + date }) };
 
     // Distinct horses, first race each, non-runners skipped.
-    const horses = []; const seen = {};
+    let horses = []; const seen = {};
     card.meetings.forEach(function(m) { (m.races || []).forEach(function(r) { (r.runners || []).forEach(function(ru) {
       if (!ru.horse_id || seen[ru.horse_id]) return;
       if (ru.nonRunner === true || ru.price === 'NR') return;
       seen[ru.horse_id] = true;
       horses.push({ horse: ru, race: { course: m.name, dist: r.dist, time: r.t } });
     }); }); });
+    const eligibleTotal = horses.length;
+
+    // RESUBMIT MODE (?stage=resubmit): only horses with NO stored dated
+    // form-summary key — i.e. the ones an earlier batch failed or never
+    // covered — get a fresh batch under the current prompt. Debutants are
+    // already templated, so they hold a key and drop out here too.
+    const stage = qs.stage === 'resubmit' ? 'resubmit' : 'first';
+    let previous = null;
+    if (stage === 'resubmit') {
+      previous = await redisGet('text-engine:batch:' + date);
+      const existing = await redisMGet(horses.map(function(h) { return 'form-summary:' + h.horse.horse_id + ':' + date; }));
+      horses = horses.filter(function(h, i) { return !existing[i]; });
+      console.log(tag, 'resubmit: ' + horses.length + ' of ' + eligibleTotal + ' eligible horses have no stored form-summary:{id}:' + date);
+    }
+
+    // TEST MODE (?limit=N): the first N eligible horses only; everything else identical.
+    const limitN = parseInt(qs.limit, 10);
+    if (limitN > 0) horses = horses.slice(0, limitN);
 
     const hv = await redisMGet(horses.map(function(h) { return 'form:history:' + h.horse.horse_id + ':' + date; }));
     const requests = []; const envelopes = {}; const debutants = []; const noKey = [];
@@ -390,8 +413,10 @@ exports.handler = async function(event) {
       return { statusCode: 502, headers, body: JSON.stringify({ error: 'batch submit failed', status: resp.status, detail: (resp.json && resp.json.error) || resp.raw.slice(0, 300) }) };
     }
     const record = {
-      date: date, batchId: resp.json.id, phase: 'first', model: MODEL, maxTokens: MAX_TOKENS,
+      date: date, batchId: resp.json.id, phase: stage, model: MODEL, maxTokens: MAX_TOKENS,
       horseCount: requests.length, debutantCount: debutants.length, debutantWrites: debutantWrites, noHistoryKey: noKey.length,
+      eligibleTotal: eligibleTotal, limit: limitN > 0 ? limitN : null,
+      resubmitOf: previous ? { batchId: previous.batchId || null, retryBatchId: previous.retryBatchId || null, phase: previous.phase || null } : null,
       submittedAt: new Date().toISOString(), envelopes: envelopes
     };
     await redisSet('text-engine:batch:' + date, record);
