@@ -104,13 +104,17 @@ exports.handler = async function(event) {
     // TTL, null when not yet generated). Attached to the response on both
     // paths below but never written into the profile cache entry.
     const th = await redisGet('horse:trainer-history:' + horseId);
+    // Horse summary from the text engine (horse:summary:{id}, no TTL) — key
+    // read only, attached as horseSummary; the chevron's Horse Summary box
+    // still renders its placeholder until a display line reads this field.
+    const hs = await redisGet('horse:summary:' + horseId);
 
     const cacheKey = 'horse:profile:v2:' + horseId;
 
     // Cache tier — the 24h TTL below means any hit is fresh by definition.
     const cached = await redisGet(cacheKey);
     if (cached && (cached.profile || cached.results)) {
-      return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, cached, { trainerHistory: th || null })) };
+      return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, cached, { trainerHistory: th || null, horseSummary: hs || null })) };
     }
 
     // Two parallel Racing API calls; allSettled so one failure never takes
@@ -171,7 +175,7 @@ exports.handler = async function(event) {
     // in Redis for 24 hours.
     if (profile && results) { try { await redisSetEx(cacheKey, combined, 86400); } catch (e) { /* best-effort */ } }
 
-    return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, combined, { trainerHistory: th || null })) };
+    return { statusCode: 200, headers, body: JSON.stringify(Object.assign({}, combined, { trainerHistory: th || null, horseSummary: hs || null })) };
   } catch (e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }

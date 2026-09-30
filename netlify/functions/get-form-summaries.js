@@ -35,9 +35,23 @@ exports.handler = async function(event) {
     return { statusCode: 200, headers, body: JSON.stringify({ summaries: {} }) };
   }
 
+  // Dated key first: the text engine writes form-summary:{id}:{date} for the
+  // card date (styleVersion 4, written for that race's course and distance);
+  // the undated key from the older job is the fallback. Date comes from
+  // ?date= when the client passes it, else the Irish racing date today.
+  const dateParam = (event.queryStringParameters || {}).date || '';
+  const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (function() {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
+    const g = function(t) { const p = parts.find(function(x) { return x.type === t; }); return p ? p.value : ''; };
+    return g('year') + '-' + g('month') + '-' + g('day');
+  })();
+
   try {
     const results = await Promise.all(horseIds.map(function(id) {
-      return redisGet('form-summary:' + id).then(function(data) { return { id: id, data: data }; });
+      return redisGet('form-summary:' + id + ':' + dateStr).then(function(dated) {
+        if (dated) return { id: id, data: dated };
+        return redisGet('form-summary:' + id).then(function(data) { return { id: id, data: data }; });
+      });
     }));
 
     const summaries = {};
