@@ -1,4 +1,5 @@
 const https = require('https');
+const { buildHistoryRow, isGBCourse } = require('./lib/history-row.js');
 
 // racing-sweep-background.js
 //
@@ -189,28 +190,12 @@ async function fetchFullCareerResults(horse_id) {
   return all;
 }
 
-// Same mapping horse-form.js's lookupHistory() cache-miss tier uses,
-// verbatim (date/course/dist/going/pos/ran/sp/or/jockey/race_class/
-// trainer/prize/surface/type) — "the same code path the backfill used".
+// Same mapping horse-form.js's lookupHistory() cache-miss tier uses — now
+// the shared lib/history-row.js helper, which also adds pattern/rating_band.
 function mapHistory(allResults, horse_id) {
   return allResults.map(function(race) {
     const runner = (race.runners || []).find(function(r) { return r.horse_id === horse_id; }) || {};
-    return {
-      date: race.date || '',
-      course: race.course || '',
-      dist: race.dist || '',
-      going: race.going || '',
-      pos: runner.position || '-',
-      ran: (race.runners || []).length || 0,
-      sp: runner.sp || '',
-      or: runner.or || '',
-      jockey: runner.jockey || '',
-      race_class: race.class || race.race_class || '',
-      trainer: runner.trainer || '',
-      prize: runner.prize || '',
-      surface: race.surface || '',
-      type: race.type || ''
-    };
+    return buildHistoryRow(race, runner);
   });
 }
 
@@ -425,7 +410,7 @@ function cardHistoryDateToISO(entry) {
 const HOSTNAME = 'superlative-flan-93dfc4.netlify.app';
 const LOCK_WINDOW_MS = 800 * 1000;
 const TIMEOUT_MS = 780 * 1000;
-const HOP_CAP = 8;
+const HOP_CAP = 16;
 const BATCH = 5;
 
 exports.handler = async function(event) {
@@ -516,6 +501,19 @@ exports.handler = async function(event) {
         });
       }
 
+      // Three additional staleness checks (Proven Class Drop build): a horse
+      // can have a cached history that's current by the two checks above
+      // (right length, newest date matches the card) and still be useless
+      // for class-drop purposes because it predates the race_class/pattern/
+      // rating_band/or fix just made to the four history writers, or because
+      // it's capped at exactly 50 rows (the Racing API's page size — a
+      // horse with a longer career is silently truncated), or because a GB
+      // row in its most recent 6 has no class recorded at all. Counted
+      // separately from the two checks above (and from each other) so the
+      // coverage log can report how many horses fall under each condition on
+      // its own, not just how many are newly caught by it.
+      const staleCounts = { blankClassGB: 0, fiftyRows: 0, noPatternField: 0 };
+
       const built = [];
       for (const [horse_id, info] of horseInfo) {
         const repDate = info.dates[0];
@@ -532,6 +530,18 @@ exports.handler = async function(event) {
             if (info.cardNewestISO && cachedNewest && info.cardNewestISO > cachedNewest) {
               needsFetch = true; reason = 'stale (card shows a newer run)';
             }
+
+            const last6 = existing.slice(0, 6);
+            const hitBlankClassGB = last6.some(function(r) { return r && isGBCourse(r.course) && !r.race_class; });
+            const hitFiftyRows = existing.length === 50;
+            const hitNoPatternField = !Object.prototype.hasOwnProperty.call(existing[0] || {}, 'pattern');
+            if (hitBlankClassGB) staleCounts.blankClassGB++;
+            if (hitFiftyRows) staleCounts.fiftyRows++;
+            if (hitNoPatternField) staleCounts.noPatternField++;
+            if (!needsFetch && (hitBlankClassGB || hitFiftyRows || hitNoPatternField)) {
+              needsFetch = true;
+              reason = hitBlankClassGB ? 'stale (blank GB class in last 6)' : hitFiftyRows ? 'stale (exactly 50 rows — may be truncated)' : 'stale (pre-fix row, no pattern field)';
+            }
           }
         } else {
           // Unexpected shape (not array, not null) — treat conservatively
@@ -545,12 +555,13 @@ exports.handler = async function(event) {
       }
 
       worklist = built;
-      meta = { dates: dates, perDateHorseIds: perDateHorseIds };
+      meta = { dates: dates, perDateHorseIds: perDateHorseIds, staleCounts: staleCounts };
       failures = [];
 
       await redisSet('racing-sweep:meta:' + runKey, meta);
       await redisSet('racing-sweep:ancestors:' + runKey, ancestorState);
       console.log('[racing-sweep] built worklist: ' + worklist.length + ' horse(s) need fetching across ' + dates.join(', '));
+      console.log('[racing-sweep] stale breakdown — blank GB class in last 6: ' + staleCounts.blankClassGB + ' | exactly 50 rows: ' + staleCounts.fiftyRows + ' | no pattern field (pre-fix): ' + staleCounts.noPatternField);
       console.log('[racing-sweep] ancestors: ' + Object.keys(ancestorState.ancestors).length + ' distinct id(s) from ' + ancestorState.counts.fromCards + ' runner(s) with ids on the card; ' + ancestorState.resolveQueue.length + ' runner(s) queued for pro-endpoint id resolution');
     } else {
       meta = await redisGet('racing-sweep:meta:' + runKey);
@@ -721,6 +732,7 @@ exports.handler = async function(event) {
       fetched: fetched,
       genuineDebutants: skippedAsGenuineDebutant,
       failed: failures.length,
+      staleBreakdown: meta.staleCounts || { blankClassGB: 0, fiftyRows: 0, noPatternField: 0 },
       ancestors: {
         distinct: ancestorReport.distinctAncestors,
         fetchedTonight: ancestorReport.fetchedTonight,

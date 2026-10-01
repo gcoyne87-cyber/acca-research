@@ -319,6 +319,8 @@ function mapRacecards(apiData) {
       dist: race.distance || '',
       going: race.going || race.going_detailed || '',
       class: race.race_class || '',
+      pattern: race.pattern || '',
+      rating_band: race.rating_band || '',
       prize: race.prize || '',
       type: race.type || '',
       tip: race.tip || '',

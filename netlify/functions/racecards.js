@@ -237,6 +237,8 @@ function mapRacecards(apiData) {
       dist: race.distance || '',
       going: stripGoingStick(race.going || race.going_detailed || ''),
       class: race.race_class || '',
+      pattern: race.pattern || '',
+      rating_band: race.rating_band || '',
       prize: race.prize || '',
       type: race.type || '',
       tip: race.tip || '',
@@ -346,7 +348,87 @@ function milesFurlongs(distStr) {
   return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
 }
 
-function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers) {
+// Proven Class Drop — parses "Class 4" -> 4. Class 1 is the highest class;
+// a higher number is a lower class. Shared by provenClassDrop below.
+function parseClassNum(classStr) {
+  const m = /class\s*(\d+)/i.exec(String(classStr || ''));
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// provenClassDrop — a runner dropping exactly one class from its most
+// recent class-numbered run, proven at that higher level, in form, and rated
+// among today's best. Only called for GB meetings (see its call site inside
+// computeRunnerTags) — Irish races never reach this function, satisfying
+// "Irish races cannot qualify" without needing the meeting flag as its own
+// parameter.
+//
+// race._offDt carries today's race date (e.g. "2026-10-01T17:00:00+01:00");
+// its first 10 characters are used as the cutoff so historyRows dated on or
+// after today's race are never treated as "prior" form.
+function provenClassDrop(runner, race, fieldRunners, historyRows) {
+  const todayClassNum = parseClassNum(race && race.class);
+  if (todayClassNum === null) return false;
+
+  const raceDateStr = String((race && race._offDt) || '').slice(0, 10);
+  if (!raceDateStr) return false;
+
+  // Rows strictly before today's race, newest first. form:history rows are
+  // already stored newest-first, but re-sorted defensively rather than
+  // assumed, since this tag's correctness depends on "most recent run"
+  // meaning the literal newest date, not just array position 0.
+  const priorRows = (historyRows || [])
+    .filter(function(r) { return r && r.date && r.date < raceDateStr; })
+    .slice()
+    .sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+  if (!priorRows.length) return false;
+
+  const lastRun = priorRows[0];
+  const lastRunClassNum = parseClassNum(lastRun.race_class);
+  if (lastRunClassNum === null) return false;
+
+  // T1 — today's class number is exactly one higher (one class lower) than
+  // the last run's. A same-class run, a rise, or a drop of 2+ classes fails.
+  if (todayClassNum !== lastRunClassNum + 1) return false;
+
+  // T2 — at least 2 top-3 finishes within the 6 most recent runs, in races
+  // whose class number is equal to or lower than the last run's (i.e. the
+  // level just dropped from, or a harder one). Runs with no class number
+  // never count toward this, in either direction.
+  const last6 = priorRows.slice(0, 6);
+  const provenRuns = last6.filter(function(r) {
+    const cls = parseClassNum(r.race_class);
+    if (cls === null || cls > lastRunClassNum) return false;
+    const pos = parseInt(r.pos, 10);
+    return !isNaN(pos) && pos >= 1 && pos <= 3;
+  });
+  if (provenRuns.length < 2) return false;
+
+  // T3 — ran well last time: finishing position <= field size / 2. A
+  // non-finisher code (PU/F/UR/BD/RO/SU/DSQ, or anything else non-numeric)
+  // and a missing/zero field size both fail via the NaN checks below.
+  const lastPos = parseInt(lastRun.pos, 10);
+  const lastRan = parseInt(lastRun.ran, 10);
+  if (isNaN(lastPos) || isNaN(lastRan) || lastRan <= 0) return false;
+  if (lastPos > lastRan / 2) return false;
+
+  // T4 — today's official rating (stored as `or`) is among the top 3 of
+  // today's declared, non-runner-excluded, rated field. Ties at 3rd-highest
+  // all pass. A runner with no rating (or stored as 0, the mapper's default
+  // for "no rating") fails.
+  const ratedField = (fieldRunners || [])
+    .filter(function(r) { return !(r.nonRunner === true || r.price === 'NR'); })
+    .map(function(r) { return parseInt(r.or, 10); })
+    .filter(function(n) { return !isNaN(n) && n > 0; });
+  const thisRating = parseInt(runner.or, 10);
+  if (isNaN(thisRating) || thisRating <= 0) return false;
+  const distinctSorted = Array.from(new Set(ratedField)).sort(function(a, b) { return b - a; });
+  const top3Threshold = distinctSorted.length >= 3 ? distinctSorted[2] : (distinctSorted[distinctSorted.length - 1] || 0);
+  if (thisRating < top3Threshold) return false;
+
+  return true;
+}
+
+function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
@@ -457,6 +539,13 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     var _tn = (runner.trainer || '').toLowerCase().trim();
     if(_tn && hotYardTrainers.indexOf(_tn) !== -1) runner.isHotYard = true;
   }
+
+  // Proven Class Drop — GB meetings only; this is what makes "Irish races
+  // cannot qualify" true without provenClassDrop needing the meeting flag
+  // itself as a parameter.
+  if (meetingFlag === 'GB' && race) {
+    if (provenClassDrop(runner, race, race.runners, history)) runner.isProvenClassDrop = true;
+  }
 }
 
 // One pipelined Redis round-trip covering every runner's
@@ -530,7 +619,7 @@ async function enrichRunnerTags(meetings, date) {
         if (raw) {
           try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) history = parsed; } catch (eH) { history = []; }
         }
-        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers);
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers, e.race);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
   } catch (e) { /* enrichment is best-effort by design */ }

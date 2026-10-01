@@ -14720,8 +14720,9 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             if(ru.isGBRaider) _t.push('GB Raider');
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
+            if(ru.isProvenClassDrop) _t.push('Proven Class Drop');
             if(!_t.length) return '';
-            return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
+            return _t.map(function(t){var _ti=t==='Proven Class Drop'?' title="Dropping one class; top 3 at least twice at the higher level in its last 6; top half last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
           })()
         +'</div>'
         // Form string on its own line directly below the name
@@ -18071,8 +18072,9 @@ function _edgeTagChips(o,fs,pad){
   if(o.isGBRaider)_t.push('GB Raider');
   if(o.isGroundLover)_t.push('Ground Lover');
   if(o.isHotYard)_t.push('Hot Yard');
+  if(o.isProvenClassDrop)_t.push('Proven Class Drop');
   if(!_t.length)return '';
-  return _t.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
+  return _t.map(function(t){var _ti=t==='Proven Class Drop'?' title="Dropping one class; top 3 at least twice at the higher level in its last 6; top half last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
 }
 // NAP / NB pick lookup — one source of truth for Full Results and both Latest
 // Results strips. Tracker records (ptRecs2) for the date, then RACING_PICKS

@@ -1,4 +1,5 @@
 const https = require('https');
+const { buildHistoryRow } = require('./lib/history-row.js');
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -149,22 +150,7 @@ async function lookupHistory(horse_id, targetDate, today) {
     }
     const history = allResults.map(race => {
       const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
-      return {
-        date: race.date || '',
-        course: race.course || '',
-        dist: race.dist || '',
-        going: race.going || '',
-        pos: runner.position || '-',
-        ran: (race.runners || []).length || 0,
-        sp: runner.sp || '',
-        or: runner.or || '',
-        jockey: runner.jockey || '',
-        race_class: race.class || race.race_class || '',
-        trainer: runner.trainer || '',
-        prize: runner.prize || '',
-        surface: race.surface || '',
-        type: race.type || ''
-      };
+      return buildHistoryRow(race, runner);
     });
     if (history.length) {
       // Fire-and-forget — redisSet resolves (never rejects) on failure.

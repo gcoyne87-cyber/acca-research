@@ -1,5 +1,6 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
+const { buildHistoryRow } = require('./lib/history-row.js');
 
 module.exports.config = { timeout: 900 };
 
@@ -112,21 +113,7 @@ async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
   const allResults = await fetchFullCareerResults(horse_id);
   const history = allResults.map(race => {
     const runner = (race.runners || []).find(r => r.horse_id === horse_id) || {};
-    return {
-      date: race.date || '',
-      course: race.course || '',
-      dist: race.dist || '',
-      going: race.going || '',
-      pos: runner.position || '-',
-      ran: (race.runners || []).length || 0,
-      sp: runner.sp || '',
-      jockey: runner.jockey || '',
-      trainer: runner.trainer || '',
-      prize: runner.prize || '',
-      surface: race.surface || '',
-      type: race.type || '',
-      race_class: race.class || race.race_class || ''
-    };
+    return buildHistoryRow(race, runner);
   });
   if(history.length === 0){ throw new Error('Empty history returned for horse ' + horse_id + ' — skipping Redis write'); }
   await Promise.all(dateStrs.map(dateStr => redisSet('form:history:' + horse_id + ':' + dateStr, history)));
