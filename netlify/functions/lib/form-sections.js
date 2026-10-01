@@ -136,6 +136,21 @@ function formatResult(r) {
   return posWord(r.pos) + ' of ' + (r.ran || '?') + ', ' + stripParens(r.course || '') + ', ' + dayMonYear(r.date);
 }
 
+// "Best" ordering: lowest finishing position wins; a tie goes to the bigger
+// field (harder to achieve the same position in a bigger field); a further
+// tie goes to the more recent run. Non-finishers (no numeric position) are
+// never a candidate — a pulled-up run can't be anyone's "best" result.
+function compareForBest(a, b) {
+  const pa = posNum(a.pos), pb = posNum(b.pos);
+  if (pa === null && pb === null) return 0;
+  if (pa === null) return 1;
+  if (pb === null) return -1;
+  if (pa !== pb) return pa - pb;
+  const ra = parseInt(a.ran, 10) || 0, rb = parseInt(b.ran, 10) || 0;
+  if (ra !== rb) return rb - ra;
+  return String(b.date).localeCompare(String(a.date));
+}
+
 // windowRows -> groups in display order: turf (rank asc), all-weather (rank
 // asc), unranked (first-seen order).
 function goingGroups(windowRows) {
@@ -150,9 +165,17 @@ function goingGroups(windowRows) {
     const g = byName[name];
     const wins = g.rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
     const places = g.rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
+    // "In the top half": position <= field size / 2. Non-finishers (no
+    // numeric position) and a missing/zero field size never count.
+    const topHalf = g.rows.filter(function(r) {
+      const p = posNum(r.pos); const ran = parseInt(r.ran, 10);
+      return p !== null && ran > 0 && p <= ran / 2;
+    }).length;
+    const bestRow = g.rows.slice().sort(compareForBest)[0];
+    const best = (bestRow && posNum(bestRow.pos) !== null) ? formatResult(bestRow) : null;
     return {
       name: g.name, rank: g.rank, surface: g.surface, isCompound: g.isCompound, unranked: g.unranked,
-      runs: g.rows.length, wins: wins, places: places,
+      runs: g.rows.length, wins: wins, places: places, topHalf: topHalf, best: best,
       results: g.rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); }).map(formatResult)
     };
   });
@@ -172,11 +195,27 @@ function goingNeverRun(groups) {
   return { line: missing.length ? 'Never run on (turf): ' + missing.join(', ') : null, names: missing };
 }
 
-function buildGoingBlock(groups, neverRun) {
+// All-weather equivalent — only produced at all when the horse has at least
+// one all-weather run in the window (a horse with zero AW runs gets no
+// all-weather never-run line at all, same as the turf function's own "no
+// turf runs" case, just silent instead of a placeholder sentence, since a
+// pure-turf horse's all-weather record isn't a meaningful thing to list).
+function goingNeverRunAW(groups) {
+  const awGroups = (groups || []).filter(function(g) { return g.surface === 'all-weather'; });
+  if (!awGroups.length) return { line: null, names: [] };
+  const covered = {};
+  awGroups.forEach(function(g) { if (!g.isCompound && !g.unranked) covered[g.rank] = true; });
+  const missing = GOING_SCALE.allweather.filter(function(g) { return !covered[g.rank]; }).map(function(g) { return g.name; });
+  return { line: missing.length ? 'Never run on (all-weather): ' + missing.join(', ') : null, names: missing };
+}
+
+function buildGoingBlock(groups, neverRun, neverRunAW) {
   const lines = groups.map(function(g) {
-    return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + '. Results: ' + g.results.join('; ') + '.';
+    const bestClause = g.best ? ' Best: ' + g.best + '.' : '';
+    return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ', ' + g.topHalf + ' in the top half.' + bestClause + ' Results: ' + g.results.join('; ') + '.';
   });
-  if (neverRun.line) lines.push(neverRun.line);
+  if (neverRun && neverRun.line) lines.push(neverRun.line);
+  if (neverRunAW && neverRunAW.line) lines.push(neverRunAW.line);
   return lines.join('\n');
 }
 
@@ -193,56 +232,55 @@ function buildEnvelope(horse, windowResult, blocks) {
   return lines.join('\n');
 }
 
-function buildGoingEnvelope(horse, windowResult, groups, neverRun) {
-  return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun) }]);
+function buildGoingEnvelope(horse, windowResult, groups, neverRun, neverRunAW) {
+  return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun, neverRunAW) }]);
 }
 
 // ── E. EMPTY WINDOW ──────────────────────────────────────────────────────
 const NO_RUNS_TEMPLATE = 'No runs in the last 18 months, so no going record to assess.';
 
 // ── F. STATIC PROMPT — byte-identical on every call, cached ─────────────
-const FORM_SECTIONS_PROMPT = "You write sections of a racehorse's form summary for a racing website. Each section describes the horse's own past record only. You never mention a future race.\n\n" +
-"You are given the horse's last 8 runs within 18 months, organised into a labelled data block per section. Write each section only from its own block.\n\n" +
-"Read the data and say, in your own words, what it shows: where the horse has done well, where it has not, and whether there is a real pattern. Back it with specific results. Every record is different, so every text should read differently. If the record is too thin or too mixed to show anything, say so plainly.\n\n" +
+const FORM_SECTIONS_PROMPT = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
+"The reader can already see every result in the form table. Your job is the next step: tell them what those results mean. The counting and comparing is done for you in the data block, so use those figures. Lead with what the record says about this horse, and back it with one or two results. Do not walk through every result.\n\n" +
+"A good read is specific to the horse: what it handles, what it doesn't, where its best runs come from. If the record shows nothing clear, that is the read: say so plainly and say why (results are poor whatever the ground, or there are too few runs to judge). Every horse is different, so every text should sound different. Do not open with a stock phrase.\n\n" +
 "RULES FOR EVERY SECTION\n" +
-"1. Use only what is in the data block. Never state a result, count, going, course or distance that is not there.\n" +
-"2. Never add runs, wins or places from different categories together. No totals, percentages, strike rates or phrases like '2 of her last 4'. Use counts exactly as given.\n" +
-"3. A place is a 2nd or 3rd only. A win is never a place; a 4th or worse is never a place.\n" +
-"4. Positions exactly as '3rd of 9', never '3/9' or 'third'. All numbers as digits.\n" +
-"5. Never mention a future race, 'today', 'next time', or what conditions will or should suit.\n" +
-"6. Never give a reason a horse ran well or badly.\n" +
-"7. No betting language: never 'backed', 'value', 'each-way', 'price', 'odds', 'market', 'favourite'.\n" +
-"8. Plain prose. No headings, bullets, quotation marks or markdown.\n\n" +
-"SECTION: GOING (from GOING DATA)\n" +
-"Say how the horse has run on different ground.\n" +
-"Ground scale, fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding (same ground as Good to Soft), Yielding to Soft, Soft, Soft to Heavy, Heavy. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow.\n" +
-"G1. Never compare turf with all-weather as faster or slower.\n" +
-"G2. One run on a going is not a preference; describe it only.\n" +
-"G3. Name goings not run on only from the 'Never run on' line.\n" +
-"G4. Ground only: no courses, distances, trainers, jockeys or class, except a course named inside a result.\n" +
-"G5. 30 to 45 words.\n\n" +
+"1. Use only what is in the data block. No outside knowledge of horses, courses or people.\n" +
+"2. Use figures exactly as given. Never add figures from different categories together or work out totals or percentages yourself.\n" +
+"3. A place is a 2nd or 3rd. A win is not a place; 4th or worse is not a place.\n" +
+"4. Write positions as '3rd of 9'. All numbers as digits.\n" +
+"5. Never mention a future race, today, or what will suit.\n" +
+"6. Never give a reason for a run: no injury, trip, draw, pace or fitness.\n" +
+"7. No betting words: backed, value, each-way, price, odds, market, favourite.\n" +
+"8. Plain prose. No headings, bullets or quotation marks.\n\n" +
+"GOING (from GOING DATA): how the horse has run on different ground.\n" +
+"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft or Yielding (the same ground), Yielding to Soft, Soft, Soft to Heavy, Heavy. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. Never compare turf with all-weather.\n" +
+"'In the top half' means the horse finished in the top half of the field. Use it to judge where it runs well.\n" +
+"One run on a going is not enough to call a preference.\n" +
+"Name goings it has not run on only from the 'Never run on' lines.\n" +
+"Ground only: no courses, distances, trainers, jockeys or class, except a course inside a result.\n" +
+"30 to 45 words.\n\n" +
 "OUTPUT: strict JSON only: {\"going\": \"...\"}";
 
 const MAX_TOKENS = 200;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
-// block: { groups, neverRun } — the same groups/neverRun buildGoingEnvelope
-// was given, so validation checks the model's claims against exactly what it
-// was sent, nothing recomputed differently.
+// block: { groups, neverRun, neverRunAW } — the same groups/neverRun(AW)
+// buildGoingEnvelope was given, so validation checks the model's claims
+// against exactly what it was sent, nothing recomputed differently.
 //
-// Two checks disclosed as not fully reliable (same structural limits as the
-// main text engine's validator):
-//   - first/second/third/fourth as position words is a blunt whole-word
-//     search; it cannot tell "her third run" (banned) from "the first time"
-//     (not a position at all) — it trades false positives for never missing
-//     a real one.
-//   - count-not-given can only confirm N is SOME going's own count, not that
-//     it's THIS going's count — two goings sharing the same run/win/place
-//     tally are indistinguishable to a regex check.
+// One check disclosed as not fully reliable (same structural limit as the
+// main text engine's validator): count-not-given can only confirm a number
+// is SOME going's own figure, not that it's THIS going's figure — two
+// goings sharing the same run/win/place/top-half tally are indistinguishable
+// to a regex check. The "N of M" check below is stricter (both numbers must
+// belong to the same going), but a bare "N runs" still isn't tied to a
+// specific going.
 function words(s) { const t = String(s || '').trim(); return t ? t.split(/\s+/).length : 0; }
 const ALL_SCALE_NAMES = GOING_SCALE.turf.concat(GOING_SCALE.allweather).map(function(g) { return g.name; });
 const BANNED_WORDS = ['backed', 'value', 'each-way', 'each way', 'price', 'odds', 'market', 'favourite', 'today', 'tomorrow', 'next time', 'should suit', 'will suit'];
-const ORDINAL_WORDS = ['first', 'second', 'third', 'fourth'];
+const NUM_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+function numFrom(s) { return /^\d+$/.test(s) ? parseInt(s, 10) : NUM_WORDS[String(s || '').toLowerCase()]; }
+const NUM_WORD_ALT = 'one|two|three|four|five|six|seven|eight|nine|ten';
 
 function parseJsonGoing(text) {
   let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -266,41 +304,81 @@ function validateGoing(text, block) {
 
   const groups = (block && block.groups) || [];
   const neverRun = (block && block.neverRun) || { names: [] };
+  const neverRunAW = (block && block.neverRunAW) || { names: [] };
 
-  // position-not-in-record
+  // position-not-in-record (also covers positions inside a "Best:" clause,
+  // since a going's best result is always one of its own listed results).
   const pairs = {};
   groups.forEach(function(g) { g.results.forEach(function(r) { const m = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (m) pairs[m[1] + '|' + m[2]] = true; }); });
   let m;
   const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
   while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0]); }
 
-  // going-not-in-record: any canonical scale name mentioned must be in the block or the never-run line.
+  // going-not-in-record: any canonical scale name mentioned must be in the
+  // block or EITHER never-run line (turf or all-weather) — fix (a).
   const allowed = {};
   groups.forEach(function(g) { allowed[g.name.toLowerCase()] = true; });
   neverRun.names.forEach(function(n) { allowed[n.toLowerCase()] = true; });
+  neverRunAW.names.forEach(function(n) { allowed[n.toLowerCase()] = true; });
   ALL_SCALE_NAMES.slice().sort(function(a, b) { return b.length - a.length; }).forEach(function(name) {
     const re = new RegExp('\\b' + name.replace(/ /g, '\\s+') + '\\b', 'gi'); let mm;
     while ((mm = re.exec(t)) !== null) { if (!allowed[name.toLowerCase()]) fail('going-not-in-record', mm[0]); }
   });
 
-  // count-not-given
-  const counts = { run: {}, win: {}, place: {} };
-  groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; });
-  const NUM_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-  const reCount = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(runs?|wins?|places?)\b/gi;
+  // count-not-given — fix (b). Four parts: (1) "N runs/wins/places" and
+  // "N in the top half", each checked against that one figure's own set of
+  // values across goings; (2) "N of M runs/outings/starts/races" valid only
+  // when some single going has runs === M and one of its other figures
+  // (wins/places/topHalf/runs itself) === N; (3) a standalone "N
+  // outings/starts/races" (a synonym for "N runs" not already part of an
+  // "of" fraction) checked against any going's own figure; (4) hidden
+  // totals — "all N", bare "both" (implies 2), "other N" — checked the same
+  // loose way, since these words don't name which figure they mean.
+  const counts = { run: {}, win: {}, place: {}, topHalf: {} };
+  groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topHalf[g.topHalf] = true; });
+  function matchesAnyGoingFigure(n) { return groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topHalf === n; }); }
+
+  const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
   while ((m = reCount.exec(t)) !== null) {
-    const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : NUM_WORDS[m[1].toLowerCase()];
+    const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
     if (!counts[kind][n]) fail('count-not-given', m[0]);
   }
+  const reTopHalf = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top half\\b', 'gi');
+  while ((m = reTopHalf.exec(t)) !== null) { const n = numFrom(m[1]); if (!counts.topHalf[n]) fail('count-not-given', m[0]); }
 
-  // banned-format: N/M shorthand, ordinal words as positions
+  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
+  while ((m = reOfRuns.exec(t)) !== null) {
+    const n = numFrom(m[1]), total = numFrom(m[2]);
+    const sameGoing = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topHalf === n); });
+    if (!sameGoing) fail('count-not-given', m[0] + ' (N and M not from the same going)');
+  }
+
+  const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (!counts.run[n]) fail('count-not-given', m[0]); }
+
+  const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  if (/\bboth\b/i.test(t) && !matchesAnyGoingFigure(2)) fail('count-not-given', 'both (hidden total)');
+  const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+
+  // banned-format: N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
   while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
-  ORDINAL_WORDS.forEach(function(w) {
-    const re = new RegExp('\\b' + w + '\\b', 'gi'); let mm;
-    while ((mm = re.exec(t)) !== null) fail('banned-format', mm[0] + ' (ordinal word)');
-  });
+
+  // ordinal words as a finishing position only — fix (c). Fails only when an
+  // ordinal is preceded by a position-indicating word (finished/was/came/
+  // ran/placed/a/an) AND not immediately followed by a noun that shows it's
+  // describing WHICH run/attempt rather than a placing (run/start/time/
+  // attempt/outing/try, or "of" as in "a third of her runs"). "her third
+  // run" is never flagged (no trigger word precedes "third"); "finished
+  // second" / "was third" / "a fourth" are. Disclosed trade-off: a
+  // sentence-initial, trigger-less ordinal used as a position (rare) could
+  // be missed — deliberately traded for not flagging descriptive ordinals,
+  // per this round's explicit instruction.
+  const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
+  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)');
 
   // banned-words
   BANNED_WORDS.forEach(function(w) {
@@ -320,6 +398,7 @@ module.exports = {
   classifyGoing: classifyGoing,
   goingGroups: goingGroups,
   goingNeverRun: goingNeverRun,
+  goingNeverRunAW: goingNeverRunAW,
   buildGoingBlock: buildGoingBlock,
   buildEnvelope: buildEnvelope,
   buildGoingEnvelope: buildGoingEnvelope,

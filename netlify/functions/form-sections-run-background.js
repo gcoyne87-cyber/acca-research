@@ -76,11 +76,20 @@ function usageFrom(json) {
 }
 
 async function storeGoing(h, win, goingText) {
+  // Carry the outgoing going text forward as goingPrev/goingPrevAt before
+  // overwriting it, so round 2's rewritten texts don't erase the only copy
+  // of what was there before (needed for this round's own before/after
+  // report, and useful going forward for any future before/after diffing).
+  const existing = await E.redisGet('form-sections:' + h.horse_id);
   const record = {
     going: goingText,
     goingWindow: { size: win.size, limit: win.limitApplied, oldest: win.oldestDate, newest: win.newestDate, excludedNoGoing: win.excludedNoGoing },
     generatedAt: new Date().toISOString()
   };
+  if (existing && existing.going) {
+    record.goingPrev = existing.going;
+    record.goingPrevAt = existing.generatedAt || null;
+  }
   await E.redisSet('form-sections:' + h.horse_id, record);
   return record;
 }
@@ -90,14 +99,15 @@ async function processHorse(h, date) {
   const win = F.sectionWindow(Array.isArray(rows) ? rows : [], date);
 
   if (!win.size) {
-    await storeGoing(h, win, F.NO_RUNS_TEMPLATE);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: true, attempt: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, windowInfo: win };
+    const rec = await storeGoing(h, win, F.NO_RUNS_TEMPLATE);
+    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: true, attempt: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, windowInfo: win, hadPrev: !!rec.goingPrev };
   }
 
   const groups = F.goingGroups(win.rows);
   const neverRun = F.goingNeverRun(groups);
-  const envelope = F.buildGoingEnvelope(h, win, groups, neverRun);
-  const block = { groups: groups, neverRun: neverRun };
+  const neverRunAW = F.goingNeverRunAW(groups);
+  const envelope = F.buildGoingEnvelope(h, win, groups, neverRun, neverRunAW);
+  const block = { groups: groups, neverRun: neverRun, neverRunAW: neverRunAW };
   let usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
   let resp = await callModel(envelope);
@@ -108,8 +118,8 @@ async function processHorse(h, date) {
   let text = (resp.json.content[0] && resp.json.content[0].text) || '';
   let v = F.validateGoing(text, block);
   if (v.ok) {
-    await storeGoing(h, win, v.going);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 1, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, windowInfo: win };
+    const rec = await storeGoing(h, win, v.going);
+    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 1, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, windowInfo: win, hadPrev: !!rec.goingPrev };
   }
 
   // One retry, failure notes appended — same pattern as the main text
@@ -126,8 +136,8 @@ async function processHorse(h, date) {
   text = (resp.json.content[0] && resp.json.content[0].text) || '';
   v = F.validateGoing(text, block);
   if (v.ok) {
-    await storeGoing(h, win, v.going);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 2, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, firstFailures: firstFailures, windowInfo: win };
+    const rec = await storeGoing(h, win, v.going);
+    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 2, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, firstFailures: firstFailures, windowInfo: win, hadPrev: !!rec.goingPrev };
   }
   return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 2, firstFailures: firstFailures, retryFailures: v.failures, usage: usage, windowInfo: win };
 }
@@ -162,17 +172,18 @@ exports.handler = async function(event) {
 
   try {
     let state = hop > 0 ? await E.redisGet('form-sections:worklist:' + date) : null;
-    let remaining, results, templated, generated, failed, usage, cacheReadCount, firstPassFailCount;
+    let remaining, results, templated, generated, failed, usage, cacheReadCount, firstPassFailCount, hadPrevCount;
 
     if (state) {
       remaining = state.remaining; results = state.results; templated = state.templated;
       generated = state.generated; failed = state.failed; usage = state.usage;
       cacheReadCount = state.cacheReadCount; firstPassFailCount = state.firstPassFailCount;
+      hadPrevCount = state.hadPrevCount || 0;
     } else {
       remaining = await eligibleHorses(date);
       results = []; templated = 0; generated = 0; failed = [];
       usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
-      cacheReadCount = 0; firstPassFailCount = 0;
+      cacheReadCount = 0; firstPassFailCount = 0; hadPrevCount = 0;
       console.log('[form-sections]', remaining.length, 'eligible horses for', date);
     }
 
@@ -190,13 +201,14 @@ exports.handler = async function(event) {
         else if (r.stored) { generated++; if (r.cacheRead) cacheReadCount++; }
         else failed.push({ horse_id: r.horse_id, horseName: r.horseName, error: r.error || null, firstFailures: r.firstFailures || null, retryFailures: r.retryFailures || null });
         if (r.firstFailures && r.firstFailures.length) firstPassFailCount++;
+        if (r.hadPrev) hadPrevCount++;
       });
       remaining = remaining.slice(CONCURRENCY);
     }
 
     if (timedOut && remaining.length) {
       if (hop < HOP_CAP) {
-        await E.redisSet('form-sections:worklist:' + date, { remaining: remaining, results: results, templated: templated, generated: generated, failed: failed, usage: usage, cacheReadCount: cacheReadCount, firstPassFailCount: firstPassFailCount, totalEligible: totalEligible });
+        await E.redisSet('form-sections:worklist:' + date, { remaining: remaining, results: results, templated: templated, generated: generated, failed: failed, usage: usage, cacheReadCount: cacheReadCount, firstPassFailCount: firstPassFailCount, hadPrevCount: hadPrevCount, totalEligible: totalEligible });
         // Lock released BEFORE the self-chain POST — same reasoning as
         // racing-sweep-background.js's chainNextHop: the next hop arrives
         // inside this lock's own window and would stand down against it.
@@ -228,6 +240,7 @@ exports.handler = async function(event) {
       failedCount: failed.length,
       failed: failed,
       retriedCount: firstPassFailCount,
+      hadPrevCount: hadPrevCount,
       cacheReadCalls: cacheReadCount,
       cacheActive: cacheReadCount > 0,
       usage: usage,
