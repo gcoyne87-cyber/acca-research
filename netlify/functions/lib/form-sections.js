@@ -236,8 +236,148 @@ function buildGoingEnvelope(horse, windowResult, groups, neverRun, neverRunAW) {
   return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun, neverRunAW) }]);
 }
 
+// ── TRIP — joins Going in this engine; built as its own block so Going,
+// Trip and Track can later run in one call. Does not touch any Going
+// function above: tripGroups has its own stats computation rather than
+// sharing goingGroups' internals, a deliberate duplication to keep zero risk
+// to the already-shipped, stored Going text while this is built.
+
+// A. DISTANCE — miles*8 + furlongs + ½ for a "½" + yards/220, rounded to the
+// nearest whole furlong with exact .5 rounding DOWN (Math.ceil(x-0.5) is the
+// round-half-down formula for positive x). Examples given and verified:
+// "2m4½f" -> 20.5f -> 20f -> "2m4f"; "1m1f201y" -> 9.9136f -> 10f -> "1m2f";
+// "7f6y" -> 7.0273f -> 7f -> "7f"; "5f7y" -> 5.0318f -> 5f -> "5f".
+function parseDistanceFurlongs(distStr) {
+  const s = String(distStr || '');
+  const mi = (s.match(/(\d+)m/) || [])[1];
+  const fm = s.match(/(\d+)(½)?f/);
+  const y = (s.match(/(\d+)y/) || [])[1];
+  if (!mi && !fm && !y) return null;
+  const total = (mi ? parseInt(mi, 10) : 0) * 8 + (fm ? parseInt(fm[1], 10) : 0) + (fm && fm[2] ? 0.5 : 0) + (y ? parseInt(y, 10) / 220 : 0);
+  return Math.ceil(total - 0.5);
+}
+function furlongsLabel(totalF) {
+  if (totalF === null || totalF === undefined || isNaN(totalF)) return '(distance unknown)';
+  if (totalF < 8) return totalF + 'f';
+  const m = Math.floor(totalF / 8), f = totalF % 8;
+  return m + 'm' + (f ? f + 'f' : '');
+}
+
+// B. GROUPS — order by race type (Flat, NH Flat, Hurdle, Chase, then any
+// other/unknown type in first-seen order), shortest to longest within a type.
+const TRIP_TYPE_ORDER = ['Flat', 'NH Flat', 'Hurdle', 'Chase'];
+function tripTypeOf(row) { return (row && row.type && String(row.type).trim()) || '(type unknown)'; }
+
+// Trip-change marker for one window row, found by locating it (by object
+// reference — window rows are the SAME objects as in the full history
+// array, never cloned, since sectionWindow only filters/sorts) in the
+// horse's FULL stored history, newest first, so a window row's own previous
+// run can be outside the window (the window/18-month/8-run limits are a
+// display cap, not a reason to lose the comparison point).
+function tripChangeMarker(fullRowsNewestFirst, row) {
+  const idx = fullRowsNewestFirst.indexOf(row);
+  if (idx === -1 || idx === fullRowsNewestFirst.length - 1) return '(debut)';
+  const prev = fullRowsNewestFirst[idx + 1];
+  const thisType = tripTypeOf(row), prevType = tripTypeOf(prev);
+  if (thisType !== prevType) return '(first run after a ' + prevType + ' run)';
+  const thisF = parseDistanceFurlongs(row.dist), prevF = parseDistanceFurlongs(prev.dist);
+  if (thisF === null || prevF === null || thisF === prevF) return '(same trip)';
+  return thisF > prevF ? '(up from ' + furlongsLabel(prevF) + ')' : '(down from ' + furlongsLabel(prevF) + ')';
+}
+
+function tripGroups(windowRows, fullRowsNewestFirst) {
+  const byKey = {}; const order = [];
+  (windowRows || []).forEach(function(r) {
+    const type = tripTypeOf(r);
+    const f = parseDistanceFurlongs(r.dist);
+    const label = furlongsLabel(f);
+    const key = type + '|' + label;
+    if (!byKey[key]) { byKey[key] = { type: type, label: label, furlongs: f, rows: [] }; order.push(key); }
+    byKey[key].rows.push(r);
+  });
+  const groups = order.map(function(key) {
+    const g = byKey[key];
+    const wins = g.rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
+    const places = g.rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
+    const topHalf = g.rows.filter(function(r) {
+      const p = posNum(r.pos); const ran = parseInt(r.ran, 10);
+      return p !== null && ran > 0 && p <= ran / 2;
+    }).length;
+    const bestRow = g.rows.slice().sort(compareForBest)[0];
+    const best = (bestRow && posNum(bestRow.pos) !== null) ? formatResult(bestRow) : null;
+    const results = g.rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); })
+      .map(function(r) { return posWord(r.pos) + ' of ' + (r.ran || '?') + ', ' + stripParens(r.course || '') + ' ' + tripChangeMarker(fullRowsNewestFirst, r); });
+    return { name: g.label + ' (' + g.type + ')', type: g.type, distanceLabel: g.label, furlongs: g.furlongs, runs: g.rows.length, wins: wins, places: places, topHalf: topHalf, best: best, results: results };
+  });
+  return groups.sort(function(a, b) {
+    const ta = TRIP_TYPE_ORDER.indexOf(a.type), tb = TRIP_TYPE_ORDER.indexOf(b.type);
+    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
+    if (ra !== rb) return ra - rb;
+    if (ra === TRIP_TYPE_ORDER.length && a.type !== b.type) return order.indexOf(a.type + '|' + a.distanceLabel) - order.indexOf(b.type + '|' + b.distanceLabel);
+    const fa = a.furlongs === null ? Infinity : a.furlongs, fb = b.furlongs === null ? Infinity : b.furlongs;
+    return fa - fb;
+  });
+}
+function buildTripGroupLines(groups) {
+  return groups.map(function(g) {
+    const bestClause = g.best ? ' Best: ' + g.best + '.' : '';
+    return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ', ' + g.topHalf + ' in the top half.' + bestClause + ' Results: ' + g.results.join('; ') + '.';
+  });
+}
+
+// C. STAMINA LINE — one per race type present in the window.
+function staminaLines(groups) {
+  const byType = {};
+  groups.forEach(function(g) {
+    if (!byType[g.type]) byType[g.type] = [];
+    byType[g.type].push(g);
+  });
+  const types = Object.keys(byType).sort(function(a, b) {
+    const ta = TRIP_TYPE_ORDER.indexOf(a), tb = TRIP_TYPE_ORDER.indexOf(b);
+    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
+    return ra - rb;
+  });
+  return types.map(function(type) {
+    const tGroups = byType[type];
+    const wonGroups = tGroups.filter(function(g) { return g.wins > 0; });
+    const placedGroups = tGroups.filter(function(g) { return g.places > 0; });
+    const longestOf = function(arr) { return arr.length ? furlongsLabel(Math.max.apply(null, arr.map(function(g) { return g.furlongs === null ? -1 : g.furlongs; }))) : 'none'; };
+    const longestWon = wonGroups.length ? longestOf(wonGroups) : 'none';
+    const longestPlaced = placedGroups.length ? longestOf(placedGroups) : 'none';
+    const longestTried = longestOf(tGroups);
+    const shortestTried = furlongsLabel(Math.min.apply(null, tGroups.map(function(g) { return g.furlongs === null ? Infinity : g.furlongs; })));
+    return type + ': longest won ' + longestWon + '; longest placed ' + longestPlaced + '; longest tried ' + longestTried + '; shortest tried ' + shortestTried + '.';
+  });
+}
+
+// D. NEVER-TRIED LINE — one per race type present in the window, restating
+// the stamina line's own "longest tried" as an explicit upper bound, for the
+// prompt's "untested beyond X" framing.
+function neverTriedLines(groups) {
+  const byType = {};
+  groups.forEach(function(g) { if (!byType[g.type]) byType[g.type] = []; byType[g.type].push(g); });
+  const types = Object.keys(byType).sort(function(a, b) {
+    const ta = TRIP_TYPE_ORDER.indexOf(a), tb = TRIP_TYPE_ORDER.indexOf(b);
+    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
+    return ra - rb;
+  });
+  return types.map(function(type) {
+    const tGroups = byType[type];
+    const longest = furlongsLabel(Math.max.apply(null, tGroups.map(function(g) { return g.furlongs === null ? -1 : g.furlongs; })));
+    return 'Never tried beyond ' + longest + ' (' + type + ').';
+  });
+}
+
+function buildTripBlock(groups) {
+  return buildTripGroupLines(groups).concat(staminaLines(groups)).concat(neverTriedLines(groups)).join('\n');
+}
+function buildTripEnvelope(horse, windowResult, groups) {
+  return buildEnvelope(horse, windowResult, [{ heading: 'TRIP DATA', text: buildTripBlock(groups) }]);
+}
+
 // ── E. EMPTY WINDOW ──────────────────────────────────────────────────────
 const NO_RUNS_TEMPLATE = 'No runs in the last 18 months, so no going record to assess.';
+const NO_RUNS_TRIP_TEMPLATE = 'No runs in the last 18 months, so no trip record to assess.';
 
 // ── F. STATIC PROMPT — byte-identical on every call, cached ─────────────
 const FORM_SECTIONS_PROMPT = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
@@ -262,6 +402,56 @@ const FORM_SECTIONS_PROMPT = "You write sections of a racehorse's form summary f
 "OUTPUT: strict JSON only: {\"going\": \"...\"}";
 
 const MAX_TOKENS = 200;
+
+// ── PROMPT BLOCKS — exported so Going, Trip and (later) Track can be
+// combined into one call with one shared rule set and one JSON output. For
+// now the live Going runner keeps using FORM_SECTIONS_PROMPT above,
+// unchanged — these new constants are not wired into it. The eventual
+// merged call will be SHARED_RULES + GOING_SECTION + TRIP_SECTION (+
+// TRACK_SECTION) + one combined OUTPUT line, and Going will move onto
+// SHARED_RULES at that point (dropping its own, slightly different RULES
+// FOR EVERY SECTION list above in favour of this shared one).
+const SHARED_RULES = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
+"The reader can already see every result in the form table. Your job is the next step: tell them what those results mean. The counting and comparing is done for you in the data block, so use those figures. Lead with what the record says about this horse, and back it with one or two results. Do not walk through every result.\n\n" +
+"A good read is specific to the horse: what suits it, what doesn't, where its best runs come from. If the record shows nothing clear, that is the read: say so plainly and say why (results are poor whatever the conditions, or too few runs to judge). Never fill a gap the data does not support. Every horse is different, so every text should sound different. Do not open with a stock phrase.\n\n" +
+"RULES FOR EVERY SECTION\n" +
+"1. Use only what is in the data block. No outside knowledge of horses, courses or people.\n" +
+"2. Use figures exactly as given. Never add figures from different groups together or work out totals or percentages. You may use the window size from the WINDOW line.\n" +
+"3. A place is a 2nd or 3rd. A win is not a place; 4th or worse is not a place.\n" +
+"4. Write positions as '3rd of 9'. All numbers as digits.\n" +
+"5. Call a run 'best' only when the data labels it Best. Never call a run the worst.\n" +
+"6. One run in a group is not enough to call a preference.\n" +
+"7. Never mention a future race, today, or what will suit.\n" +
+"8. Never give a reason for a run: no injury, draw, pace or fitness.\n" +
+"9. No betting words: backed, value, each-way, price, odds, market, favourite.\n" +
+"10. Plain prose. No headings, bullets or quotation marks.\n\n" +
+"'In the top half' means the horse finished in the top half of the field. Use it to judge where the horse runs well.";
+
+// The current live Going section text, extracted verbatim from
+// FORM_SECTIONS_PROMPT above (its "GOING (from GOING DATA)..." paragraph).
+// Unchanged, unused by the live runner today — exported only for the future
+// merged-call note above.
+const GOING_SECTION = "GOING (from GOING DATA): how the horse has run on different ground.\n" +
+"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft or Yielding (the same ground), Yielding to Soft, Soft, Soft to Heavy, Heavy. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. Never compare turf with all-weather.\n" +
+"'In the top half' means the horse finished in the top half of the field. Use it to judge where it runs well.\n" +
+"One run on a going is not enough to call a preference.\n" +
+"Name goings it has not run on only from the 'Never run on' lines.\n" +
+"Ground only: no courses, distances, trainers, jockeys or class, except a course inside a result.\n" +
+"30 to 45 words.";
+
+const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and how far it has proven itself.\n" +
+"Distances are grouped to the nearest furlong and kept apart by race type (Flat, NH Flat, Hurdle, Chase). Never compare distances across race types. Write distances exactly as they appear in the data, for example 1m2f or 2m4f.\n" +
+"Say where the horse has done its best work and how far it has proven itself, using the group figures and the stamina line. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
+"If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
+"Never say whether the horse will or won't stay a distance it has not run. Untried distances are only 'untested', using the 'Never tried beyond' line.\n" +
+"Mention only distances in the data.\n" +
+"30 to 45 words.";
+
+// This trial's own system prompt: SHARED_RULES + TRIP_SECTION + a
+// trip-only JSON output. Byte-identical on every call, cache_control
+// ephemeral — same caching pattern as FORM_SECTIONS_PROMPT.
+const TRIP_PROMPT = SHARED_RULES + "\n\n" + TRIP_SECTION + "\n\nOUTPUT: strict JSON only: {\"trip\": \"...\"}";
+const TRIP_MAX_TOKENS = 200;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
 // block: { groups, neverRun, neverRunAW } — the same groups/neverRun(AW)
@@ -392,6 +582,122 @@ function validateGoing(text, block) {
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, going: t };
 }
 
+// ── TRIP VALIDATOR ─────────────────────────────────────────────────────
+// tripData: { groups } — the same groups buildTripEnvelope was given.
+// Shares the Going validator's count/ordinal/N-of-M machinery conceptually
+// but is its own function against trip's own block shape (group.name is
+// "{distance} ({type})", group.distanceLabel is the bare distance).
+const STAMINA_PREDICTION_PHRASES = ['will stay', "won't stay", 'should stay', 'likely to stay', 'unlikely to stay', 'will get', "won't get", 'should get'];
+
+function parseJsonTrip(text) {
+  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a > 0 || (b >= 0 && b < t.length - 1)) t = t.slice(a, b + 1);
+  try { return JSON.parse(t); } catch (e) { return null; }
+}
+
+function validateTrip(text, tripData) {
+  const failures = []; const warnings = [];
+  const fail = function(check, detail) { failures.push({ check: check, detail: detail }); };
+
+  const parsed = parseJsonTrip(text);
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.trip !== 'string' || !parsed.trip.trim()) {
+    fail('json', 'invalid JSON or missing "trip" field');
+    return { ok: false, failures: failures, warnings: warnings, wordCount: 0, trip: null };
+  }
+  const t = parsed.trip;
+  const wc = words(t);
+  if (wc > 45) warnings.push({ section: 'trip', words: wc, cap: 45, over: wc - 45 }); // warning only, never blocks storage
+
+  const groups = (tripData && tripData.groups) || [];
+  const windowSize = (tripData && tripData.windowSize) || null;
+
+  // position-not-in-record
+  const pairs = {};
+  groups.forEach(function(g) { g.results.forEach(function(r) { const mm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (mm) pairs[mm[1] + '|' + mm[2]] = true; }); });
+  let m;
+  const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
+  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0]); }
+
+  // trip-not-in-record: any distance token (e.g. 7f, 1m, 1m2f, 2m4f) must be
+  // one of this horse's own group/stamina/never-tried distance labels — all
+  // drawn from the same groups list, so one allow-set covers all three.
+  const allowedDist = {};
+  groups.forEach(function(g) { allowedDist[g.distanceLabel.toLowerCase()] = true; });
+  const reDist = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi; let mm;
+  while ((mm = reDist.exec(t)) !== null) { if (!allowedDist[mm[0].toLowerCase()]) fail('trip-not-in-record', mm[0]); }
+  if (/\bmiles?\b|\bfurlongs?\b/i.test(t)) fail('trip-not-in-record', 'distance given in words, not data notation');
+
+  // "best" directly attached to a position ("best of 2nd of 5", "best run,
+  // 2nd of 5", "best effort was 2nd of 5") must be one of the groups' own
+  // labelled Best pairs.
+  const bestPairs = {};
+  groups.forEach(function(g) { if (g.best) { const bm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(g.best); if (bm) bestPairs[bm[1] + '|' + bm[2]] = true; } });
+  const reBestAttached = /\bbest\b[^.]{0,25}?\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/gi;
+  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0]); }
+
+  // "worst" is never allowed.
+  if (/\bworst\b/i.test(t)) fail('banned-format', 'worst');
+
+  // counts — "N run(s)/win(s)/place(s)" and "N in the top half": a single
+  // group's own figure, or the window size.
+  const counts = { run: {}, win: {}, place: {}, topHalf: {} };
+  groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topHalf[g.topHalf] = true; });
+  function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topHalf === n; }); }
+
+  const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
+  while ((m = reCount.exec(t)) !== null) {
+    const n = numFrom(m[1]);
+    const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
+    if (n !== windowSize && !counts[kind][n]) fail('count-not-given', m[0]);
+  }
+  const reTopHalf = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top half\\b', 'gi');
+  while ((m = reTopHalf.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topHalf[n]) fail('count-not-given', m[0]); }
+
+  // "N of M runs/outings/starts/races" — both numbers from the same group.
+  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
+  while ((m = reOfRuns.exec(t)) !== null) {
+    const n = numFrom(m[1]), total = numFrom(m[2]);
+    const sameGroup = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topHalf === n); });
+    if (!sameGroup) fail('count-not-given', m[0] + ' (N and M not from the same group)');
+  }
+
+  // hidden totals — standalone "N outings/starts/races", "all N", bare
+  // "both" (=2), "other N" — a single group's figure or the window size.
+  const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n]) fail('count-not-given', m[0]); }
+  const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  if (/\bboth\b/i.test(t) && !matchesAnyGroupFigure(2)) fail('count-not-given', 'both (hidden total)');
+  const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+
+  // N/M shorthand
+  const reSlash = /\b\d+\/\d+\b/g;
+  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
+
+  // stamina predictions — never say whether an untried trip will suit.
+  STAMINA_PREDICTION_PHRASES.forEach(function(phrase) {
+    const re = new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i');
+    if (re.test(t)) fail('stamina-prediction', phrase);
+  });
+
+  // ordinal word as a finishing position only (same refined rule as Going).
+  const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
+  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)');
+
+  // banned-words
+  BANNED_WORDS.forEach(function(w) {
+    const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
+    if (re.test(t)) fail('banned-words', w);
+  });
+
+  // percent
+  if (/%|per\s*cent|percent/i.test(t)) fail('percent', 'percentage language found');
+
+  return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, trip: t };
+}
+
 module.exports = {
   GOING_SCALE: GOING_SCALE,
   sectionWindow: sectionWindow,
@@ -407,5 +713,23 @@ module.exports = {
   MAX_TOKENS: MAX_TOKENS,
   validateGoing: validateGoing,
   parseJsonGoing: parseJsonGoing,
-  compactKey: compactKey
+  compactKey: compactKey,
+  // Trip + shared prompt blocks (this task) — none of the above Going
+  // exports changed.
+  parseDistanceFurlongs: parseDistanceFurlongs,
+  furlongsLabel: furlongsLabel,
+  tripChangeMarker: tripChangeMarker,
+  tripGroups: tripGroups,
+  staminaLines: staminaLines,
+  neverTriedLines: neverTriedLines,
+  buildTripBlock: buildTripBlock,
+  buildTripEnvelope: buildTripEnvelope,
+  NO_RUNS_TRIP_TEMPLATE: NO_RUNS_TRIP_TEMPLATE,
+  SHARED_RULES: SHARED_RULES,
+  GOING_SECTION: GOING_SECTION,
+  TRIP_SECTION: TRIP_SECTION,
+  TRIP_PROMPT: TRIP_PROMPT,
+  TRIP_MAX_TOKENS: TRIP_MAX_TOKENS,
+  validateTrip: validateTrip,
+  parseJsonTrip: parseJsonTrip
 };
