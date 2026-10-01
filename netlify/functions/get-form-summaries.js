@@ -63,6 +63,17 @@ exports.handler = async function(event) {
       summaries[r.id] = (typeof r.data === 'string') ? { summary: r.data } : r.data;
     });
 
+    // form-sections:{id} (the new production engine, Going is its first
+    // section) overrides .going wherever it has an answer, in place of the
+    // old text engine's own Going sub-section; absent, .going is left unset
+    // so the Form tab shows nothing rather than a stale or placeholder text.
+    const sectionsVals = await Promise.all(horseIds.map(function(id) { return redisGet('form-sections:' + id); }));
+    horseIds.forEach(function(id, i) {
+      const going = sectionsVals[i] && sectionsVals[i].going;
+      if (summaries[id]) summaries[id].going = going || undefined;
+      else if (going) summaries[id] = { going: going };
+    });
+
     return { statusCode: 200, headers, body: JSON.stringify({ summaries: summaries }) };
   } catch(e) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
