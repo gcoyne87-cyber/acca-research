@@ -112,17 +112,24 @@ async function callModelTrip(userText) {
 // already passes validateTrip, before it is stored. Same model as the
 // writer (claude-sonnet-4-6), its own static cached system prompt, direct
 // call like every other call in this runner.
+// An assistant-turn prefill of "{" forces the model straight into the JSON
+// object instead of reasoning sentence-by-sentence first (observed live:
+// without it, the model wrote out its full chain of reasoning in prose and
+// hit max_tokens before ever emitting JSON, on nearly every call). This
+// changes nothing about the system prompt, model or max_tokens — only how
+// the reply is shaped — so the response text is the CONTINUATION after
+// "{", and "{" must be re-added before parsing.
 async function callSecondCheck(dataBlockText, tripText) {
   return E.anthropic('POST', '/v1/messages', {
     model: E.MODEL,
     max_tokens: F.TRIP_SECOND_CHECK_MAX_TOKENS,
     system: [{ type: 'text', text: F.TRIP_SECOND_CHECK_PROMPT, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: 'DATA\n' + dataBlockText + '\n\nPARAGRAPH\n' + tripText }]
+    messages: [{ role: 'user', content: 'DATA\n' + dataBlockText + '\n\nPARAGRAPH\n' + tripText }, { role: 'assistant', content: '{' }]
   });
 }
 function parseSecondCheck(resp) {
   if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return null;
-  const raw = (resp.json.content[0] && resp.json.content[0].text) || '';
+  const raw = '{' + ((resp.json.content[0] && resp.json.content[0].text) || '');
   try {
     const obj = JSON.parse(raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, ''));
     if (typeof obj.supported === 'boolean') return obj;
@@ -196,7 +203,7 @@ async function processHorseTrip(h, date) {
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseSecondCheck(resp);
     if (!parsed) {
-      const rawText = (resp.json.content[0] && resp.json.content[0].text) || '(no text block — content: ' + JSON.stringify(resp.json.content).slice(0, 300) + ')';
+      const rawText = '{' + ((resp.json.content[0] && resp.json.content[0].text) || '(no text block — content: ' + JSON.stringify(resp.json.content).slice(0, 300) + ')');
       return { error: 'invalid JSON from second check: ' + rawText.slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
     }
     return { supported: parsed.supported, problems: parsed.problems || [] };
