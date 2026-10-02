@@ -108,6 +108,28 @@ async function callModelTrip(userText) {
   });
 }
 
+// Trip round 3, Change 6 — second, independent check run after a text
+// already passes validateTrip, before it is stored. Same model as the
+// writer (claude-sonnet-4-6), its own static cached system prompt, direct
+// call like every other call in this runner.
+async function callSecondCheck(dataBlockText, tripText) {
+  return E.anthropic('POST', '/v1/messages', {
+    model: E.MODEL,
+    max_tokens: F.TRIP_SECOND_CHECK_MAX_TOKENS,
+    system: [{ type: 'text', text: F.TRIP_SECOND_CHECK_PROMPT, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: 'DATA\n' + dataBlockText + '\n\nPARAGRAPH\n' + tripText }]
+  });
+}
+function parseSecondCheck(resp) {
+  if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return null;
+  const raw = (resp.json.content[0] && resp.json.content[0].text) || '';
+  try {
+    const obj = JSON.parse(raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, ''));
+    if (typeof obj.supported === 'boolean') return obj;
+  } catch (e) {}
+  return null;
+}
+
 async function storeGoing(h, win, goingText) {
   // Carry the outgoing going text forward as goingPrev/goingPrevAt before
   // overwriting it, so round 2's rewritten texts don't erase the only copy
@@ -150,41 +172,82 @@ async function processHorseTrip(h, date) {
 
   if (!win.size) {
     await storeTrip(h, win, F.NO_RUNS_TRIP_TEMPLATE);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: true, attempt: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, windowInfo: win };
+    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: true, attempt: 0, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, usage2: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, windowInfo: win };
   }
 
   const groups = F.tripGroups(win.rows, fullSorted);
   const envelope = F.buildTripEnvelope(h, win, groups);
-  const tripData = { groups: groups, windowSize: win.size };
+  const tripData = { groups: groups, windowSize: win.size, courses: F.courseNamesIn(win.rows) };
+  const dataBlockText = 'TRIP DATA\n' + F.buildTripBlock(groups);
   let usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+  let usage2 = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
-  let resp = await callModelTrip(envelope);
-  if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) {
-    return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 1, error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200), usage: usage, windowInfo: win };
+  async function write(userText) {
+    const resp = await callModelTrip(userText);
+    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
+    usage = addUsage(usage, usageFrom(resp.json));
+    return { text: (resp.json.content[0] && resp.json.content[0].text) || '' };
   }
-  usage = addUsage(usage, usageFrom(resp.json));
-  let text = (resp.json.content[0] && resp.json.content[0].text) || '';
-  let v = F.validateTrip(text, tripData);
-  if (v.ok) {
-    await storeTrip(h, win, v.trip);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 1, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, windowInfo: win };
+  // Trip round 3, Change 6 — second check, run only once a text has already
+  // passed validateTrip. Tokens/cost tracked separately (usage2).
+  async function secondCheck(tripText) {
+    const resp = await callSecondCheck(dataBlockText, tripText);
+    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
+    usage2 = addUsage(usage2, usageFrom(resp.json));
+    const parsed = parseSecondCheck(resp);
+    if (!parsed) return { error: 'invalid JSON from second check' };
+    return { supported: parsed.supported, problems: parsed.problems || [] };
   }
 
-  const firstFailures = v.failures;
-  const notes = firstFailures.map(function(x) { return '- ' + x.check + (x.detail ? ': "' + x.detail + '"' : ''); }).join('\n');
-  const retryText = envelope + '\n\nPREVIOUS ATTEMPT FAILED VALIDATION — every claim is checked in code against the trip data above. Failures:\n' + notes + '\nRewrite so every position, distance and count appears in the trip data exactly, with no new claims, staying inside the word limit.';
-  resp = await callModelTrip(retryText);
-  if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) {
-    return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 2, firstFailures: firstFailures, error: 'retry HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200), usage: usage, windowInfo: win };
+  // ── Pass 1: write, then the existing one-retry-on-code-failure cycle ──
+  let w = await write(envelope);
+  if (w.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 1, error: w.error, usage: usage, usage2: usage2, windowInfo: win };
+  let v = F.validateTrip(w.text, tripData);
+  let codeCheckFirstFailures = null, codeCheckRetryFailures = null;
+  let attempt = 1;
+
+  if (!v.ok) {
+    codeCheckFirstFailures = v.failures;
+    const notes = v.failures.map(function(x) { return '- ' + x.check + (x.detail ? ': "' + x.detail + '"' : ''); }).join('\n');
+    const retryText = envelope + '\n\nPREVIOUS ATTEMPT FAILED VALIDATION — every claim is checked in code against the trip data above. Failures:\n' + notes + '\nRewrite so every position, distance and count appears in the trip data exactly, with no new claims, staying inside the word limit.';
+    w = await write(retryText);
+    attempt = 2;
+    if (w.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, error: 'retry ' + w.error, usage: usage, usage2: usage2, windowInfo: win };
+    v = F.validateTrip(w.text, tripData);
+    if (!v.ok) {
+      codeCheckRetryFailures = v.failures;
+      return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: codeCheckRetryFailures, usage: usage, usage2: usage2, windowInfo: win };
+    }
   }
-  usage = addUsage(usage, usageFrom(resp.json));
-  text = (resp.json.content[0] && resp.json.content[0].text) || '';
-  v = F.validateTrip(text, tripData);
-  if (v.ok) {
-    await storeTrip(h, win, v.trip);
-    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: 2, usage: usage, wordCount: v.wordCount, wordWarning: v.warnings[0] || null, cacheRead: usage.cacheRead > 0, firstFailures: firstFailures, windowInfo: win };
+
+  // v.ok is true here — candidateText passed the code checker on `attempt`.
+  let candidateText = v.trip, wordCount = v.wordCount, wordWarning = v.warnings[0] || null;
+
+  const sc1 = await secondCheck(candidateText);
+  if (sc1.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: attempt, codeCheckFirstFailures: codeCheckFirstFailures, error: 'second check ' + sc1.error, usage: usage, usage2: usage2, windowInfo: win };
+  if (sc1.supported) {
+    await storeTrip(h, win, candidateText);
+    return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: attempt, usage: usage, usage2: usage2, wordCount: wordCount, wordWarning: wordWarning, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: true, windowInfo: win };
   }
-  return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: 2, firstFailures: firstFailures, retryFailures: v.failures, usage: usage, windowInfo: win };
+
+  // Second check found unsupported statements — regenerate ONCE with the
+  // problems appended, then run both checks again.
+  const problemsList = sc1.problems.map(function(p) { return '- "' + p.sentence + '": ' + p.reason; }).join('\n');
+  const regenText = envelope + '\n\nA checker found these unsupported statements: ' + problemsList + '. Rewrite using only what the data shows.';
+  w = await write(regenText);
+  const regenAttempt = attempt + 1;
+  if (w.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: sc1.problems, error: 'regen ' + w.error, usage: usage, usage2: usage2, windowInfo: win };
+  const v2 = F.validateTrip(w.text, tripData);
+  if (!v2.ok) {
+    return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: sc1.problems, codeCheckRetryFailures: v2.failures, usage: usage, usage2: usage2, windowInfo: win };
+  }
+  const sc2 = await secondCheck(v2.trip);
+  if (sc2.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: sc1.problems, error: 'second check (regen) ' + sc2.error, usage: usage, usage2: usage2, windowInfo: win };
+  if (!sc2.supported) {
+    return { horse_id: h.horse_id, horseName: h.name, stored: false, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: sc1.problems, secondCheckSecondSupported: false, secondCheckSecondProblems: sc2.problems, usage: usage, usage2: usage2, windowInfo: win };
+  }
+  await storeTrip(h, win, v2.trip);
+  return { horse_id: h.horse_id, horseName: h.name, stored: true, template: false, attempt: regenAttempt, usage: usage, usage2: usage2, wordCount: v2.wordCount, wordWarning: v2.warnings[0] || null, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: sc1.problems, secondCheckSecondSupported: true, regenerated: true, windowInfo: win };
 }
 
 async function processHorse(h, date) {
@@ -257,18 +320,20 @@ async function runTripSection(date, qs, hop, startTime, headers) {
 
   try {
     let state = hop > 0 ? await E.redisGet('form-sections:trip:worklist:' + date) : null;
-    let remaining, results, templated, generated, failed, usage, cacheReadCount, firstPassFailCount, raceIdsUsed;
+    let remaining, results, templated, generated, failed, usage, usage2, cacheReadCount, firstPassFailCount, secondCheckFailCount, regeneratedCount, passedFirstTimeCount, raceIdsUsed;
 
     if (state) {
       remaining = state.remaining; results = state.results; templated = state.templated;
-      generated = state.generated; failed = state.failed; usage = state.usage;
+      generated = state.generated; failed = state.failed; usage = state.usage; usage2 = state.usage2 || { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
       cacheReadCount = state.cacheReadCount; firstPassFailCount = state.firstPassFailCount;
+      secondCheckFailCount = state.secondCheckFailCount || 0; regeneratedCount = state.regeneratedCount || 0; passedFirstTimeCount = state.passedFirstTimeCount || 0;
       raceIdsUsed = state.raceIdsUsed || raceIds;
     } else {
       remaining = await eligibleHorsesForRaces(date, raceIds);
       results = []; templated = 0; generated = 0; failed = [];
       usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
-      cacheReadCount = 0; firstPassFailCount = 0; raceIdsUsed = raceIds;
+      usage2 = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+      cacheReadCount = 0; firstPassFailCount = 0; secondCheckFailCount = 0; regeneratedCount = 0; passedFirstTimeCount = 0; raceIdsUsed = raceIds;
       console.log('[form-sections:trip]', remaining.length, 'eligible horses across', raceIds.length, 'race(s) for', date);
     }
 
@@ -278,21 +343,39 @@ async function runTripSection(date, qs, hop, startTime, headers) {
     while (remaining.length) {
       if (Date.now() - startTime > TIMEOUT_MS) { timedOut = true; break; }
       const chunk = remaining.slice(0, CONCURRENCY);
-      const settled = await Promise.all(chunk.map(function(h) { return processHorseTrip(h, date).catch(function(e) { return { horse_id: h.horse_id, horseName: h.name, stored: false, error: e.message }; }); }));
+      const settled = await Promise.all(chunk.map(function(h) { return processHorseTrip(h, date).catch(function(e) { return { horse_id: h.horse_id, horseName: h.name, stored: false, error: e.message, usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, usage2: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 } }; }); }));
       settled.forEach(function(r) {
-        results.push({ horse_id: r.horse_id, horseName: r.horseName, stored: r.stored, template: !!r.template, attempt: r.attempt });
-        usage = addUsage(usage, r.usage || { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
+        const emptyUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+        results.push({
+          horse_id: r.horse_id, horseName: r.horseName, stored: r.stored, template: !!r.template, attempt: r.attempt,
+          wordCount: r.wordCount || null,
+          codeCheckFirstFailures: r.codeCheckFirstFailures || null, codeCheckRetryFailures: r.codeCheckRetryFailures || null,
+          secondCheckFirstSupported: r.secondCheckFirstSupported === undefined ? null : r.secondCheckFirstSupported,
+          secondCheckFirstProblems: r.secondCheckFirstProblems || null,
+          secondCheckSecondSupported: r.secondCheckSecondSupported === undefined ? null : r.secondCheckSecondSupported,
+          secondCheckSecondProblems: r.secondCheckSecondProblems || null,
+          regenerated: !!r.regenerated
+        });
+        usage = addUsage(usage, r.usage || emptyUsage);
+        usage2 = addUsage(usage2, r.usage2 || emptyUsage);
         if (r.template) templated++;
-        else if (r.stored) { generated++; if (r.cacheRead) cacheReadCount++; }
-        else failed.push({ horse_id: r.horse_id, horseName: r.horseName, error: r.error || null, firstFailures: r.firstFailures || null, retryFailures: r.retryFailures || null });
-        if (r.firstFailures && r.firstFailures.length) firstPassFailCount++;
+        else if (r.stored) {
+          generated++;
+          if (r.cacheRead) cacheReadCount++;
+          if (!r.codeCheckFirstFailures && r.secondCheckFirstSupported) passedFirstTimeCount++;
+        } else {
+          failed.push({ horse_id: r.horse_id, horseName: r.horseName, error: r.error || null, codeCheckFirstFailures: r.codeCheckFirstFailures || null, codeCheckRetryFailures: r.codeCheckRetryFailures || null, secondCheckFirstProblems: r.secondCheckFirstProblems || null, secondCheckSecondProblems: r.secondCheckSecondProblems || null });
+        }
+        if (r.codeCheckFirstFailures && r.codeCheckFirstFailures.length) firstPassFailCount++;
+        if (r.secondCheckFirstSupported === false) secondCheckFailCount++;
+        if (r.regenerated) regeneratedCount++;
       });
       remaining = remaining.slice(CONCURRENCY);
     }
 
     if (timedOut && remaining.length) {
       if (hop < HOP_CAP) {
-        await E.redisSet('form-sections:trip:worklist:' + date, { remaining: remaining, results: results, templated: templated, generated: generated, failed: failed, usage: usage, cacheReadCount: cacheReadCount, firstPassFailCount: firstPassFailCount, raceIdsUsed: raceIdsUsed, totalEligible: totalEligible });
+        await E.redisSet('form-sections:trip:worklist:' + date, { remaining: remaining, results: results, templated: templated, generated: generated, failed: failed, usage: usage, usage2: usage2, cacheReadCount: cacheReadCount, firstPassFailCount: firstPassFailCount, secondCheckFailCount: secondCheckFailCount, regeneratedCount: regeneratedCount, passedFirstTimeCount: passedFirstTimeCount, raceIdsUsed: raceIdsUsed, totalEligible: totalEligible });
         try { await E.redisSet('form-sections:trip:lock:' + date, null); } catch (ue) {}
         console.log('[form-sections:trip] approaching timeout at hop', hop, '—', remaining.length, 'horse(s) still queued, chaining hop', hop + 1);
         await new Promise(function(resolve) {
@@ -318,13 +401,20 @@ async function runTripSection(date, qs, hop, startTime, headers) {
       totalEligible: totalEligible,
       templated: templated,
       generated: generated,
+      passedFirstTime: passedFirstTimeCount,
       failedCount: failed.length,
       failed: failed,
+      results: results,
       retriedCount: firstPassFailCount,
+      secondCheckFailCount: secondCheckFailCount,
+      regeneratedCount: regeneratedCount,
       cacheReadCalls: cacheReadCount,
       cacheActive: cacheReadCount > 0,
       usage: usage,
       costUSD: costOf(usage),
+      usage2: usage2,
+      cost2USD: costOf(usage2),
+      totalCostUSD: +(costOf(usage) + costOf(usage2)).toFixed(4),
       hops: hop + 1,
       pricing: PRICE
     };

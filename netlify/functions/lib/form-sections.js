@@ -261,19 +261,17 @@ function parseDistanceFurlongs(distStr) {
   const total = (mi ? parseInt(mi, 10) : 0) * 8 + (fm ? parseInt(fm[1], 10) : 0) + (fm && fm[2] ? 0.5 : 0) + (y ? parseInt(y, 10) / 220 : 0);
   return Math.ceil(total - 0.5);
 }
-// Trip round 2, Change 2 — words, not short form. Every caller (group
-// labels, stamina lines, trip-change markers) goes through this one
-// function, so rewriting it here is the whole change: "6f" -> "6 furlongs",
-// "1f" -> "1 furlong", "1m" -> "1 mile", "2m" -> "2 miles", "1m2f" -> "1 mile
-// 2 furlongs", "2m4f" -> "2 miles 4 furlongs". Rounding itself (nearest
-// furlong, exact .5 down) is unchanged in parseDistanceFurlongs above.
+// Trip round 3, Change 1 — back to the form table's own short-form
+// notation (reverted from round 2's words). Every caller (group labels,
+// stamina lines, trip-change markers) goes through this one function, so
+// rewriting it here is the whole change: 5 -> "5f", 8 -> "1m", 10 -> "1m2f",
+// 16 -> "2m", 20 -> "2m4f", 25 -> "3m1f". Rounding itself (nearest furlong,
+// exact .5 down) is unchanged in parseDistanceFurlongs above.
 function furlongsLabel(totalF) {
   if (totalF === null || totalF === undefined || isNaN(totalF)) return '(distance unknown)';
   const m = Math.floor(totalF / 8), f = totalF % 8;
-  const parts = [];
-  if (m) parts.push(m + ' mile' + (m === 1 ? '' : 's'));
-  if (f || !m) parts.push(f + ' furlong' + (f === 1 ? '' : 's'));
-  return parts.join(' ');
+  if (!m) return f + 'f';
+  return m + 'm' + (f ? f + 'f' : '');
 }
 
 // B. GROUPS — order by race type (Flat, NH Flat, Hurdle, Chase, then any
@@ -296,6 +294,19 @@ function tripChangeMarker(fullRowsNewestFirst, row) {
   const thisF = parseDistanceFurlongs(row.dist), prevF = parseDistanceFurlongs(prev.dist);
   if (thisF === null || prevF === null || thisF === prevF) return '(same trip)';
   return thisF > prevF ? '(up from ' + furlongsLabel(prevF) + ')' : '(down from ' + furlongsLabel(prevF) + ')';
+}
+
+// Trip round 3, Change 2 — the distinct course names appearing in a
+// horse's own window, exactly as they appear in the results text
+// (stripParens'd, same as tripGroups below). Passed through tripData so
+// validateTrip can tell "Market Rasen" from the banned word "market".
+function courseNamesIn(windowRows) {
+  const seen = {}; const list = [];
+  (windowRows || []).forEach(function(r) {
+    const c = stripParens((r && r.course) || '');
+    if (c && !seen[c]) { seen[c] = true; list.push(c); }
+  });
+  return list;
 }
 
 function tripGroups(windowRows, fullRowsNewestFirst) {
@@ -352,6 +363,10 @@ function staminaLines(groups) {
   });
   return types.map(function(type) {
     const tGroups = byType[type];
+    // Trip round 3, Change 4 — the race type's own run total (sum of its
+    // groups' run counts) now opens the stamina line, so the model has an
+    // explicit, checkable figure for "N runs" claims about a whole type.
+    const totalRuns = tGroups.reduce(function(s, g) { return s + g.runs; }, 0);
     const wonGroups = tGroups.filter(function(g) { return g.wins > 0; });
     const placedGroups = tGroups.filter(function(g) { return g.places > 0; });
     const longestOf = function(arr) { return arr.length ? furlongsLabel(Math.max.apply(null, arr.map(function(g) { return g.furlongs === null ? -1 : g.furlongs; }))) : 'none'; };
@@ -359,7 +374,7 @@ function staminaLines(groups) {
     const longestPlaced = placedGroups.length ? longestOf(placedGroups) : 'none';
     const longestTried = longestOf(tGroups);
     const shortestTried = furlongsLabel(Math.min.apply(null, tGroups.map(function(g) { return g.furlongs === null ? Infinity : g.furlongs; })));
-    return type + ': longest won ' + longestWon + '; longest placed ' + longestPlaced + '; longest tried ' + longestTried + '; shortest tried ' + shortestTried + '.';
+    return type + ': ' + totalRuns + ' run' + (totalRuns === 1 ? '' : 's') + '; longest won ' + longestWon + '; longest placed ' + longestPlaced + '; longest tried ' + longestTried + '; shortest tried ' + shortestTried + '.';
   });
 }
 
@@ -439,7 +454,7 @@ const GOING_SECTION = "GOING (from GOING DATA): how the horse has run on differe
 "30 to 45 words.";
 
 const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and how far it has proven itself.\n" +
-"Distances are grouped to the nearest furlong and kept apart by race type (Flat, NH Flat, Hurdle, Chase). Never compare distances across race types. Write every distance in words, exactly as it appears in the data, for example 1 mile 2 furlongs or 2 miles 4 furlongs. Never use short forms like 1m2f or 6f.\n" +
+"Distances are grouped to the nearest furlong and kept apart by race type (Flat, NH Flat, Hurdle, Chase). Never compare distances across race types. Write every distance exactly as it appears in the data, for example 2m4f or 1m2f. Never write a distance in words.\n" +
 "Say where the horse has done its best work and how far it has proven itself, using the group figures and the stamina line. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
 "If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
 "Never say whether the horse will or won't stay a distance it has not run. Only mention a distance the horse has not run when it genuinely matters to the read; do not end with a statement about untested distances by default.\n" +
@@ -450,7 +465,17 @@ const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and 
 // trip-only JSON output. Byte-identical on every call, cache_control
 // ephemeral — same caching pattern as FORM_SECTIONS_PROMPT.
 const TRIP_PROMPT = SHARED_RULES + "\n\n" + TRIP_SECTION + "\n\nOUTPUT: strict JSON only: {\"trip\": \"...\"}";
-const TRIP_MAX_TOKENS = 200;
+// Trip round 3, Change 3 — 200 -> 300, more headroom for the longer
+// stamina-line-with-total texts this round can produce.
+const TRIP_MAX_TOKENS = 300;
+
+// Trip round 3, Change 6 — second, independent check run after a text
+// already passes validateTrip, before it is stored. Static, cache_control
+// ephemeral like every other system prompt here. Model/tokens live with the
+// runner (form-sections-run-background.js) since that's where the call is
+// made; the prompt text itself belongs here with the other prompt blocks.
+const TRIP_SECOND_CHECK_PROMPT = "You check a short paragraph about a racehorse against the data it was written from. Read every sentence. A sentence is supported only if every fact in it can be read directly from the data: each position, count, distance, course, race type, comparison (longer, shorter, furthest, every, each, both, only) and any statement about where the horse runs well or badly. A summary or judgement is supported only if the figures in the data clearly show it. Ignore style and length. Do not suggest rewrites. Return strict JSON only: {\"supported\": true} if every sentence is supported, or {\"supported\": false, \"problems\": [{\"sentence\": \"...\", \"reason\": \"...\"}]} listing every unsupported sentence and exactly what is wrong.";
+const TRIP_SECOND_CHECK_MAX_TOKENS = 300;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
 // block: { groups, neverRun, neverRunAW } — the same groups/neverRun(AW)
@@ -618,27 +643,16 @@ function validateTrip(text, tripData) {
   const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
   while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0]); }
 
-  // trip-not-in-record — Trip round 2, Change 2: distances must now be
-  // WORDS, not short form. Any short-form token (6f, 1m, 1m2f, 2m4f, ...) is
-  // an outright fail; every word-form distance mentioned must parse back to
-  // a furlong total that matches one of this horse's own trip groups
-  // (the stamina line's own figures are always a subset of the groups'
-  // furlong values, so one allow-set covers group, stamina and — formerly —
-  // never-tried mentions too).
-  const reShortForm = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi; let mm;
-  while ((mm = reShortForm.exec(t)) !== null) fail('trip-not-in-record', mm[0] + ' (short form — distances must be written in words)');
-
-  const allowedFurlongs = {};
-  groups.forEach(function(g) { if (g.furlongs !== null && g.furlongs !== undefined) allowedFurlongs[g.furlongs] = true; });
-  // Word forms accepted: "N furlong(s)" alone, "N mile(s)" alone, "N mile(s)
-  // M furlong(s)" together — covers every example given (5 furlongs, 1
-  // furlong, 1 mile, 2 miles, 3 miles, 1 mile 2 furlongs, 1 mile 1 furlong,
-  // 2 miles 4 furlongs, 2 miles 1 furlong).
-  const reDistWords = /\b(\d+)\s+miles?(?:\s+(\d+)\s+furlongs?)?\b|\b(\d+)\s+furlongs?\b/gi;
-  while ((m = reDistWords.exec(t)) !== null) {
-    const total = m[1] !== undefined ? parseInt(m[1], 10) * 8 + (m[2] !== undefined ? parseInt(m[2], 10) : 0) : parseInt(m[3], 10);
-    if (!allowedFurlongs[total]) fail('trip-not-in-record', m[0]);
-  }
+  // trip-not-in-record — Trip round 3, Change 1: back to short form, same
+  // check as round 1. Any distance token (7f, 1m, 1m2f, 2m4f, ...) must be
+  // one of this horse's own group/stamina distance labels; the word-distance
+  // parser added in round 2 is removed outright, and the words
+  // mile/miles/furlong/furlongs are banned regardless of context.
+  const allowedDist = {};
+  groups.forEach(function(g) { allowedDist[g.distanceLabel.toLowerCase()] = true; });
+  const reDist = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi; let mm;
+  while ((mm = reDist.exec(t)) !== null) { if (!allowedDist[mm[0].toLowerCase()]) fail('trip-not-in-record', mm[0]); }
+  if (/\bmiles?\b|\bfurlongs?\b/i.test(t)) fail('trip-not-in-record', 'distance given in words, not data notation');
 
   // "best" directly attached to a position ("best of 2nd of 5", "best run,
   // 2nd of 5", "best effort was 2nd of 5") must be one of the groups' own
@@ -665,36 +679,68 @@ function validateTrip(text, tripData) {
   if (/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i.test(t)) fail('last-mislabelled', 'count of last-place finishes');
   if (/\btwice\s+last\b|\bonce\s+last\b/i.test(t)) fail('last-mislabelled', 'count of last finishes');
 
-  // counts — "N run(s)/win(s)/place(s)" and "N in the top three" (Trip round
-  // 2, Change 4 — was "top half"): a single group's own figure, or the
-  // window size.
+  // counts — "N run(s)/win(s)/place(s)" and "N in the top three": a single
+  // group's own figure, or the window size. Trip round 3, Change 4: a run
+  // count ("N runs") may now also equal a race type's own total (the figure
+  // the stamina line now gives), since groups within a type always sum to
+  // it and the model is told to use that figure.
   const counts = { run: {}, win: {}, place: {}, topThree: {} };
   groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
   function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }); }
+  const typeTotals = {};
+  groups.forEach(function(g) { typeTotals[g.type] = (typeTotals[g.type] || 0) + g.runs; });
+  function isAnyTypeTotal(n) { return Object.keys(typeTotals).some(function(k) { return typeTotals[k] === n; }); }
+  function typeKeyFromWord(w) {
+    const lw = String(w || '').toLowerCase();
+    if (lw === 'flat') return 'Flat';
+    if (lw === 'nh flat') return 'NH Flat';
+    if (lw.indexOf('hurdle') === 0) return 'Hurdle';
+    if (lw.indexOf('chase') === 0 || lw === 'fences') return 'Chase';
+    return null;
+  }
+  const TYPE_WORD_SRC = '(Flat|NH Flat|hurdles?|chases?)';
 
   const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
   while ((m = reCount.exec(t)) !== null) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n]) fail('count-not-given', m[0]);
+    if (kind === 'run') {
+      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n)) fail('count-not-given', m[0]);
+    } else if (n !== windowSize && !counts[kind][n]) fail('count-not-given', m[0]);
+  }
+  // "N {race type} runs/starts" — must match that type's own total (or a
+  // single group's run count, or the window size).
+  const reTypeCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+' + TYPE_WORD_SRC + '\\s+(runs?|starts?)\\b', 'gi');
+  while ((m = reTypeCount.exec(t)) !== null) {
+    const n = numFrom(m[1]); const typeKey = typeKeyFromWord(m[2]);
+    if (n !== windowSize && typeTotals[typeKey] !== n && !counts.run[n]) fail('count-not-given', m[0] + ' (does not match the ' + typeKey + ' total)');
   }
   const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
   while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0]); }
 
-  // "N of M runs/outings/starts/races" — both numbers from the same group.
-  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
+  // "N of M runs/outings/starts/races", optionally naming a race type — Trip
+  // round 3, Change 4: "N of M" is valid when both numbers belong to the
+  // same group, OR M is that race type's total and N is one of that type's
+  // own figures (including the type total itself).
+  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(?:' + TYPE_WORD_SRC + '\\s+)?(runs?|outings|starts|races)\\b', 'gi');
   while ((m = reOfRuns.exec(t)) !== null) {
-    const n = numFrom(m[1]), total = numFrom(m[2]);
-    const sameGroup = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
-    if (!sameGroup) fail('count-not-given', m[0] + ' (N and M not from the same group)');
+    const n = numFrom(m[1]), total = numFrom(m[2]); const typeKey = m[3] ? typeKeyFromWord(m[3]) : null;
+    let ok;
+    if (typeKey) {
+      ok = typeTotals[typeKey] === total && (n === typeTotals[typeKey] || groups.some(function(g) { return g.type === typeKey && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); }));
+    } else {
+      ok = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
+    }
+    if (!ok) fail('count-not-given', m[0] + (typeKey ? ' (N and M not consistent with the ' + typeKey + ' total)' : ' (N and M not from the same group)'));
   }
 
   // hidden totals — standalone "N outings/starts/races", "all N", bare
-  // "both" (=2), "other N" — a single group's figure or the window size.
+  // "both" (=2), "other N" — a single group's figure, a race type's total,
+  // or the window size.
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n]) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n)) fail('count-not-given', m[0]); }
   const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
   if (/\bboth\b/i.test(t) && !matchesAnyGroupFigure(2)) fail('count-not-given', 'both (hidden total)');
   const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
   while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
@@ -702,6 +748,133 @@ function validateTrip(text, tripData) {
   // N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
   while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
+
+  // Trip round 3, Change 5 — comparison-claim checks. Where a sentence
+  // names a race type (Flat, NH Flat, hurdle(s), chase(s), fences), each
+  // check below applies to that type's groups only; otherwise to all
+  // groups. Sentences are split on end punctuation; a phrase matched only
+  // at the whole-text level (no containing sentence found) falls back to
+  // scoping against every group.
+  const sentences = t.split(/(?<=[.!?])\s+/).filter(function(s) { return s.trim(); });
+  function typeWordsInSentence(s) {
+    const found = [];
+    if (/\bnh flat\b/i.test(s)) found.push('NH Flat');
+    else if (/\bflat\b/i.test(s)) found.push('Flat');
+    if (/\bhurdles?\b/i.test(s)) found.push('Hurdle');
+    if (/\bchases?\b|\bfences\b/i.test(s)) found.push('Chase');
+    return found;
+  }
+  function groupsInScope(sentence) {
+    const types = typeWordsInSentence(sentence);
+    return types.length ? groups.filter(function(g) { return types.indexOf(g.type) !== -1; }) : groups;
+  }
+  function findSentence(re) { return sentences.find(function(s) { return re.test(s); }) || null; }
+  function shortestF(arr) { const fs = arr.map(function(g) { return g.furlongs; }).filter(function(f) { return f !== null && f !== undefined; }); return fs.length ? Math.min.apply(null, fs) : null; }
+  function longestF(arr) { const fs = arr.map(function(g) { return g.furlongs; }).filter(function(f) { return f !== null && f !== undefined; }); return fs.length ? Math.max.apply(null, fs) : null; }
+  function phraseRe(phrase) { return new RegExp('\\b' + phrase.replace(/ /g, '\\s+') + '\\b', 'i'); }
+
+  // (a) "one run at each" and its variants — every group in scope must have
+  // exactly 1 run.
+  ['one run at each', '1 run at each', 'a single run at each', 'only 1 run at each', 'each visited just once'].forEach(function(phrase) {
+    const re = phraseRe(phrase);
+    const sent = findSentence(re);
+    if (!sent) return;
+    const scope = groupsInScope(sent);
+    if (!scope.length || scope.some(function(g) { return g.runs !== 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has exactly 1 run');
+  });
+
+  // (b) "top three/3 at every trip" and its negation — every group in scope
+  // must have >=1 top-three finish (positive) or 0 (negative).
+  ['top three at every', 'top 3 at every', 'placed at every', 'at every trip'].forEach(function(phrase) {
+    const re = phraseRe(phrase);
+    const sent = findSentence(re);
+    if (!sent) return;
+    const scope = groupsInScope(sent);
+    if (!scope.length || scope.some(function(g) { return g.topThree < 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has a top-three finish');
+  });
+  ['not reached the top three at any', 'nothing in the top three at any', 'no top-three finish at any'].forEach(function(phrase) {
+    const re = phraseRe(phrase);
+    const sent = findSentence(re);
+    if (!sent) return;
+    const scope = groupsInScope(sent);
+    if (scope.some(function(g) { return g.topThree > 0; })) fail('comparison-claim', '"' + phrase + '" — some group in scope has a top-three finish');
+  });
+
+  // (c) "at the longer distances" etc. used with results — every quoted
+  // result's own group must be longer (or, for the shorter-side phrases,
+  // shorter) than that race type's shortest (longest) tried distance.
+  // Scope for the comparison is always resolved from the quoted result's
+  // own group and its type, not the sentence-level scope above, since
+  // "longer"/"shorter" is only meaningful within one race type.
+  const reResultTok = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
+  function groupForResult(posOfM) { return groups.find(function(g) { return g.results.some(function(r) { return r.indexOf(posOfM) === 0; }); }); }
+  [['at the longer distances', true], ['at longer trips', true], ['the longer end', true], ['as the trip lengthens', true], ['beyond that', true],
+   ['at shorter trips', false], ['shorter distances', false], ['the shorter end', false]].forEach(function(pair) {
+    const phrase = pair[0], wantLonger = pair[1];
+    const re = phraseRe(phrase);
+    const sent = findSentence(re);
+    if (!sent) return;
+    const localRe = new RegExp(reResultTok.source, 'g'); let rm; let any = false;
+    while ((rm = localRe.exec(sent)) !== null) {
+      any = true;
+      const g = groupForResult(rm[0]);
+      if (!g) { fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" not found in any group'); continue; }
+      const sameType = groups.filter(function(gg) { return gg.type === g.type; });
+      const bound = wantLonger ? shortestF(sameType) : longestF(sameType);
+      const okSide = bound !== null && g.furlongs !== null && (wantLonger ? g.furlongs > bound : g.furlongs < bound);
+      if (!okSide) fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" is not from a group ' + (wantLonger ? 'longer' : 'shorter') + ' than ' + g.type + '\'s ' + (wantLonger ? 'shortest' : 'longest') + ' tried trip');
+    }
+  });
+
+  // (d) "the furthest"/"the longest"/"the shortest" — any distance or
+  // result attached (same sentence) must be that type's longest (or
+  // shortest) tried.
+  const reDistTok = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi;
+  function checkSuperlative(phrases, wantMax) {
+    phrases.forEach(function(phrase) {
+      const re = phraseRe(phrase);
+      const sent = findSentence(re);
+      if (!sent) return;
+      const localDistRe = new RegExp(reDistTok.source, 'gi'); let dm;
+      while ((dm = localDistRe.exec(sent)) !== null) {
+        const g = groups.find(function(gg) { return gg.distanceLabel.toLowerCase() === dm[0].toLowerCase(); });
+        if (!g) continue;
+        const sameType = groups.filter(function(gg) { return gg.type === g.type; });
+        const target = wantMax ? longestF(sameType) : shortestF(sameType);
+        if (g.furlongs !== target) fail('comparison-claim', '"' + phrase + '": "' + dm[0] + '" is not ' + g.type + '\'s ' + (wantMax ? 'longest' : 'shortest') + ' tried trip');
+      }
+      const localResRe = new RegExp(reResultTok.source, 'g'); let rm2;
+      while ((rm2 = localResRe.exec(sent)) !== null) {
+        const g = groupForResult(rm2[0]);
+        if (!g) continue;
+        const sameType = groups.filter(function(gg) { return gg.type === g.type; });
+        const target = wantMax ? longestF(sameType) : shortestF(sameType);
+        if (g.furlongs !== target) fail('comparison-claim', '"' + phrase + '": "' + rm2[0] + '" is not from ' + g.type + '\'s ' + (wantMax ? 'longest' : 'shortest') + ' tried group');
+      }
+    });
+  }
+  checkSuperlative(['the furthest', 'the longest', 'his longest', 'her longest'], true);
+  checkSuperlative(['the shortest'], false);
+
+  // (e) "both"/"all N"/"each of N" followed by results — the number of
+  // results quoted in that sentence must match the stated count.
+  function countResultsInSentence(sent) { const re = new RegExp(reResultTok.source, 'g'); let c = 0; while (re.exec(sent) !== null) c++; return c; }
+  sentences.forEach(function(sent) {
+    if (/\bboth\b/i.test(sent)) {
+      const c = countResultsInSentence(sent);
+      if (c > 0 && c !== 2) fail('comparison-claim', '"both" sentence quotes ' + c + ' result(s), not 2: "' + sent.trim() + '"');
+    }
+    const reAllN = /\ball\s+(\d+|one|two|three|four|five|six|seven|eight)\b/gi; let am;
+    while ((am = reAllN.exec(sent)) !== null) {
+      const n = numFrom(am[1]); const c = countResultsInSentence(sent);
+      if (c > 0 && c !== n) fail('comparison-claim', '"' + am[0] + '" sentence quotes ' + c + ' result(s), not ' + n);
+    }
+    const reEachOf = /\beach\s+of\s+(?:his|her|its|their)?\s*(\d+|one|two|three|four|five|six|seven|eight)\b/gi; let eom;
+    while ((eom = reEachOf.exec(sent)) !== null) {
+      const n = numFrom(eom[1]); const c = countResultsInSentence(sent);
+      if (c > 0 && c !== n) fail('comparison-claim', '"' + eom[0] + '" sentence quotes ' + c + ' result(s), not ' + n);
+    }
+  });
 
   // stamina predictions — never say whether an untried trip will suit.
   STAMINA_PREDICTION_PHRASES.forEach(function(phrase) {
@@ -718,10 +891,26 @@ function validateTrip(text, tripData) {
     if (new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i').test(t)) fail('reason-given', phrase);
   });
 
-  // banned-words
+  // banned-words — Trip round 3, Change 2: a banned word never fails when
+  // the exact occurrence is part of one of this horse's own course names
+  // (e.g. "market" inside "Market Rasen"). Matched by finding every
+  // occurrence of each known course name in the text first, then skipping
+  // any banned-word hit whose full span falls inside one of those spans;
+  // a banned word is still failed if it also occurs outside any course name.
+  const courseNames = (tripData && tripData.courses) || [];
+  const _courseSpans = [];
+  courseNames.forEach(function(c) {
+    if (!c) return;
+    const re = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    let cm;
+    while ((cm = re.exec(t)) !== null) _courseSpans.push([cm.index, cm.index + cm[0].length]);
+  });
+  function insideCourseName(idx, len) { return _courseSpans.some(function(sp) { return idx >= sp[0] && (idx + len) <= sp[1]; }); }
   BANNED_WORDS.forEach(function(w) {
     const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    if (re.test(t)) fail('banned-words', w);
+    let wm; let hit = false;
+    while ((wm = re.exec(t)) !== null) { if (!insideCourseName(wm.index, wm[0].length)) { hit = true; break; } }
+    if (hit) fail('banned-words', w);
   });
 
   // percent
@@ -751,6 +940,7 @@ module.exports = {
   parseDistanceFurlongs: parseDistanceFurlongs,
   furlongsLabel: furlongsLabel,
   tripChangeMarker: tripChangeMarker,
+  courseNamesIn: courseNamesIn,
   tripGroups: tripGroups,
   staminaLines: staminaLines,
   buildTripBlock: buildTripBlock,
@@ -761,6 +951,8 @@ module.exports = {
   TRIP_SECTION: TRIP_SECTION,
   TRIP_PROMPT: TRIP_PROMPT,
   TRIP_MAX_TOKENS: TRIP_MAX_TOKENS,
+  TRIP_SECOND_CHECK_PROMPT: TRIP_SECOND_CHECK_PROMPT,
+  TRIP_SECOND_CHECK_MAX_TOKENS: TRIP_SECOND_CHECK_MAX_TOKENS,
   validateTrip: validateTrip,
   parseJsonTrip: parseJsonTrip
 };
