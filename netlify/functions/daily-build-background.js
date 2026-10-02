@@ -852,16 +852,18 @@ function pullQuoteWordCount(s) { return String(s || '').trim().split(/\s+/).filt
 
 // Mechanical fallback: last complete sentence at or under 110 words. Only
 // used when even the condense call overshoots the ceiling.
-function trimPullQuoteToSentence(q) {
+// maxWords defaults to 110; the 45-50 word cards pass 50.
+function trimPullQuoteToSentence(q, maxWords) {
+  const cap = maxWords || 110;
   const sentences = String(q || '').trim().match(/[^.!?]*[.!?]+(?:['")\]]*)?/g) || [String(q || '').trim()];
   let out = '', words = 0;
   for (const s of sentences) {
     const w = pullQuoteWordCount(s);
-    if (words + w > 110) break;
+    if (words + w > cap) break;
     out += (out ? ' ' : '') + s.trim();
     words += w;
   }
-  return out || String(q || '').trim().split(/\s+/).slice(0, 110).join(' ');
+  return out || String(q || '').trim().split(/\s+/).slice(0, cap).join(' ');
 }
 
 // Every card is read on Racing Edge itself, so a sentence that points the
@@ -2291,15 +2293,13 @@ exports.handler = async function(event) {
           ' markdown, no bold, no headers. Do not begin with a' +
           ' trainer name, a label, or any heading — start directly' +
           ' with the first sentence of the card.' +
-          ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
           ' No opinions, no predictions. No prices or odds.' +
           (report.hotYards.length === 2
-            ? ' Two yards qualify today: cover both, the best yard first and in more depth, then the second.'
+            ? ' Two yards qualify today: write a separate card text for each yard, the best yard first, each text covering only its own yard and following the length rule on its own. Put a line containing only === between the two texts and write nothing else.'
             : ' One yard qualifies today.') +
           ' For each yard cover its recent form stats' + (anyVenues ? ', the venues its winners came from' : '') +
-          ', and its declared runners today with course and time, and close on the' +
-          ' declared runner or runners with the strongest case today, stated in' +
-          ' specific terms.' + NO_SITE_CTA +
+          '.' + NO_SITE_CTA +
           ' The data: ' + yardBlocks.join(' ');
 
 
@@ -2318,7 +2318,31 @@ exports.handler = async function(event) {
               hyTimer = setTimeout(function() { reject(new Error('timed out after ' + (HOT_YARD_CALL_TIMEOUT_MS / 1000) + 's — skipped')); }, HOT_YARD_CALL_TIMEOUT_MS);
             })
           ]);
-          if (hyResp.text && hyResp.text.trim()) report.hotYardCard = stripSiteCta(hyResp.text);
+          if (hyResp.text && hyResp.text.trim()) {
+            // One card per yard: each yard's text is stored on its own hotYards
+            // entry (cardText). With two yards the call returns the two texts
+            // split by a line holding only "===", split BEFORE stripSiteCta
+            // (which would glue the lines together). If the separator is
+            // missing the texts cannot be told apart, so neither yard gets a
+            // card rather than showing a merged text.
+            const hyCap = function(t) {
+              let s = stripSiteCta(t);
+              if (pullQuoteWordCount(s) > 50) s = trimPullQuoteToSentence(s, 50);
+              return s;
+            };
+            if (report.hotYards.length === 2) {
+              const hyParts = hyResp.text.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
+              if (hyParts.length === 2) {
+                report.hotYards[0].cardText = hyCap(hyParts[0]);
+                report.hotYards[1].cardText = hyCap(hyParts[1]);
+              } else {
+                report.errors.push('hotYardCard: expected 2 yard texts, got ' + hyParts.length + ' — no Hot Yard cards stored');
+              }
+            } else {
+              report.hotYards[0].cardText = hyCap(hyResp.text);
+            }
+            report.hotYardCard = report.hotYards[0].cardText || null;
+          }
           report.inputTokens += hyResp.inputTokens || 0;
           report.outputTokens += hyResp.outputTokens || 0;
           report.cacheReadTokens += hyResp.cacheReadTokens || 0;
@@ -2483,7 +2507,7 @@ exports.handler = async function(event) {
           const bigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
             ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
             ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-            ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+            ' Write 45 to 50 words, never more than 50.' +
             ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
             ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
             ' Open with what the race is and the shape of the field.' +
@@ -2497,7 +2521,11 @@ exports.handler = async function(event) {
               brcTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_CARD_TIMEOUT_MS);
             })
           ]);
-          if (brcResp.text && brcResp.text.trim()) report.bigRace.raceIntelligence = stripSiteCta(brcResp.text);
+          if (brcResp.text && brcResp.text.trim()) {
+            let brText = stripSiteCta(brcResp.text);
+            if (pullQuoteWordCount(brText) > 50) brText = trimPullQuoteToSentence(brText, 50);
+            report.bigRace.raceIntelligence = brText;
+          }
           report.inputTokens += brcResp.inputTokens || 0;
           report.outputTokens += brcResp.outputTokens || 0;
           report.cacheReadTokens += brcResp.cacheReadTokens || 0;
@@ -2513,6 +2541,9 @@ exports.handler = async function(event) {
         } finally {
           if (brcTimer) clearTimeout(brcTimer);
         }
+        // Fallback text (the selection's pullQuote) stands when the card call
+        // fails or returns nothing: hold it to the same 50-word cap.
+        if (pullQuoteWordCount(report.bigRace.raceIntelligence) > 50) report.bigRace.raceIntelligence = trimPullQuoteToSentence(report.bigRace.raceIntelligence, 50);
         // Short display name for the card title — one small Claude call. Falls
         // back to the full raceName on any failure or empty response so the
         // card always has a title. Tokens roll into the report accumulators
@@ -2639,7 +2670,7 @@ exports.handler = async function(event) {
             const tmBigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
               ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
               ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-              ' 105 to 110 words exactly. Count carefully. No exceptions.' +
+              ' Write 45 to 50 words, never more than 50.' +
               ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
               ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
               ' Open with what the race is and the shape of the field.' +
@@ -2653,7 +2684,11 @@ exports.handler = async function(event) {
                 tbrcTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_CARD_TIMEOUT_MS);
               })
             ]);
-            if (tbrcResp.text && tbrcResp.text.trim()) report.bigRaceTomorrow.raceIntelligence = stripSiteCta(tbrcResp.text);
+            if (tbrcResp.text && tbrcResp.text.trim()) {
+              let tbrText = stripSiteCta(tbrcResp.text);
+              if (pullQuoteWordCount(tbrText) > 50) tbrText = trimPullQuoteToSentence(tbrText, 50);
+              report.bigRaceTomorrow.raceIntelligence = tbrText;
+            }
             report.inputTokens += tbrcResp.inputTokens || 0;
             report.outputTokens += tbrcResp.outputTokens || 0;
             report.cacheReadTokens += tbrcResp.cacheReadTokens || 0;
@@ -2669,6 +2704,8 @@ exports.handler = async function(event) {
           } finally {
             if (tbrcTimer) clearTimeout(tbrcTimer);
           }
+          // Same cap on whatever text stands if the card call failed.
+          if (pullQuoteWordCount(report.bigRaceTomorrow.raceIntelligence) > 50) report.bigRaceTomorrow.raceIntelligence = trimPullQuoteToSentence(report.bigRaceTomorrow.raceIntelligence, 50);
           // Short display name — same call and ceiling as today's bigrace-name.
           report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
           const TM_BIG_RACE_NAME_TIMEOUT_MS = 20000;
@@ -2773,15 +2810,10 @@ exports.handler = async function(event) {
           ' Racing Edge. Plain text only — no markdown, no asterisks,' +
           ' no bold, no headers, no bullet points. Do not begin with' +
           ' a label, heading or title — start directly with the first' +
-          ' sentence. 105 to 110 words exactly. Count carefully.' +
+          ' sentence. Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
           ' No tipster language. No opinions. No prices or odds.' +
           ' Open with the total number of qualifiers and the venues' +
-          ' they run at today. Then work through the named qualifiers' +
-          ' themselves, as many as the word count allows, giving each' +
-          ' horse its course, distance and going record in specific' +
-          ' terms — no generalities, no summarising the list. Close on' +
-          ' the qualifier with the strongest combined course, distance' +
-          ' and going case.' + NO_SITE_CTA +
+          ' they run at today.' + NO_SITE_CTA +
           ' The horses are: ' + candgHorseLines.join('; ');
 
         const candgResp = await Promise.race([
@@ -2791,7 +2823,9 @@ exports.handler = async function(event) {
           })
         ]);
         if (candgResp.text && candgResp.text.trim()) {
-          report.candgCard = stripSiteCta(candgResp.text);
+          let candgText = stripSiteCta(candgResp.text);
+          if (pullQuoteWordCount(candgText) > 50) candgText = trimPullQuoteToSentence(candgText, 50);
+          report.candgCard = candgText;
         }
         report.inputTokens += candgResp.inputTokens || 0;
         report.outputTokens += candgResp.outputTokens || 0;
@@ -2884,7 +2918,7 @@ exports.handler = async function(event) {
         const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
           ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' 95 to 105 words exactly. Count carefully. No tipster language. No' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
           ' opinions. No prices or odds.' +
           ' A Ground Lover is a horse that has already won on exactly today\'s official' +
           ' going within its last six runs, on a day of genuine give underfoot.' +
@@ -2894,17 +2928,6 @@ exports.handler = async function(event) {
           ' runners in a race and must never be described as a number of qualifiers.' +
           ' Then go venue by venue: name the venue, today\'s official going there, and' +
           ' how many of the ' + glTotal + ' qualifiers run there.' +
-          (glTotal <= 6
-            ? ' There are ' + glTotal + ' qualifiers, so every one of them must be named with' +
-              ' the course, date and going of the win that qualifies it: none may be left' +
-              ' out, because the card states the total and the reader will count. Budget' +
-              ' roughly 20 words per horse after the opening and venue sentences; write' +
-              ' tightly rather than padding, and never spend words on anything that would' +
-              ' push a horse out.'
-            : ' Then name as many of the qualifying horses as the word count allows, each' +
-              ' with the course, date and going of the win that qualifies it.') +
-          ' For the horse whose qualifying win is the most recent, note that within its' +
-          ' own sentence; do not reorder the horses around it.' +
           (glEwCount > 0
             ? ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
               ' going is Yielding and its field has 16 or more runners. The words each-way' +
@@ -2925,7 +2948,7 @@ exports.handler = async function(event) {
           // boundary with the same helper the pull quotes use (the model overshot
           // to 124 words on the first live run).
           let glText = stripSiteCta(glResp.text);
-          if (pullQuoteWordCount(glText) > 110) glText = trimPullQuoteToSentence(glText);
+          if (pullQuoteWordCount(glText) > 50) glText = trimPullQuoteToSentence(glText, 50);
           report.groundLoverCard = glText;
         }
         report.inputTokens += glResp.inputTokens || 0;
@@ -3019,7 +3042,7 @@ exports.handler = async function(event) {
         const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
           ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' 95 to 105 words exactly. Count carefully. No tipster language. No' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
           ' opinions. No prices, odds or betting words.' +
           ' A Class Drop horse is dropping exactly one class today, has finished in' +
           ' the top 3 at least twice at the higher class level within its last six' +
@@ -3030,14 +3053,7 @@ exports.handler = async function(event) {
           ' any other number as a qualifier count.' +
           ' Use only the facts given for each horse — never invent a reason for the class' +
           ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-          (cdTotal <= 6
-            ? ' There are ' + cdTotal + ' qualifiers, so every one of them must be named with' +
-              ' its course, time, class move and the facts that qualify it: none may be left' +
-              ' out, because the card states the total and the reader will count. Budget' +
-              ' roughly 20 words per horse after the opening sentence; write tightly rather' +
-              ' than padding, and never spend words on anything that would push a horse out.'
-            : ' Then name as many of the qualifying horses as the word count allows, each' +
-              ' with its course, time, class move and the facts that qualify it.') + NO_SITE_CTA +
+          NO_SITE_CTA +
           ' The horses are: ' + horseLines.join('; ');
         const cdResp = await Promise.race([
           callClaude('', cdPrompt, 400, true),
@@ -3047,7 +3063,7 @@ exports.handler = async function(event) {
         ]);
         if (cdResp.text && cdResp.text.trim()) {
           let cdText = stripSiteCta(cdResp.text);
-          if (pullQuoteWordCount(cdText) > 110) cdText = trimPullQuoteToSentence(cdText);
+          if (pullQuoteWordCount(cdText) > 50) cdText = trimPullQuoteToSentence(cdText, 50);
           report.classDropCard = cdText;
         }
         report.inputTokens += cdResp.inputTokens || 0;
