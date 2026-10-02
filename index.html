@@ -5717,6 +5717,10 @@ function unlockCorkAnalysis(){
           <div><div id="edge-row-hotyard-name" style="font-size:13px;font-weight:700;color:#0b1628">Hot Yard</div><div style="font-size:11px;color:#6b7280">Runners from yards in red-hot form over the last 7 days</div></div>
           <div id="edge-row-hotyard-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-hotyard-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
         </div>
+        <div id="edge-row-classdrop" onclick="_toggleEdgeRow('classdrop')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
+          <div><div id="edge-row-classdrop-name" style="font-size:13px;font-weight:700;color:#0b1628">Class Drop</div><div style="font-size:11px;color:#6b7280">Dropping one class, proven at the higher level and rated among today's best</div></div>
+          <div id="edge-row-classdrop-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-classdrop-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:14px"><button onclick="_rcFilterClear()" style="flex:1;height:38px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button onclick="_rcFilterClose()" style="flex:2;height:38px;border-radius:8px;border:none;background:#1e9e6b;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Apply</button></div>
       <!-- Legacy trainer input kept in the DOM but hidden: setTrainerFilter /
@@ -12146,6 +12150,7 @@ function _edgeRunnerMatches(ru){
   if(_edgeChipMode==='ground') return !!ru.isGroundLover;
   if(_edgeChipMode==='hotyard') return !!ru.isHotYard;
   if(_edgeChipMode==='cdg') return !!ru.isCandDGoing;
+  if(_edgeChipMode==='classdrop') return !!ru.isProvenClassDrop;
   return false;
 }
 
@@ -12180,7 +12185,7 @@ function _edgeDayMeetings(k){
 function _renderEdgeChips(){
   var rowOn='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #1e9e6b;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
   var rowOff='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
-  ['cd','ground','cdg','hotyard'].forEach(function(k){
+  ['cd','ground','cdg','hotyard','classdrop'].forEach(function(k){
     var on=_edgeChipMode===k;
     var row=document.getElementById('edge-row-'+k);
     var nm=document.getElementById('edge-row-'+k+'-name');
@@ -12288,8 +12293,8 @@ function renderTrainerFilterMultiDay(el,isInitial){
   // "Edge: ..." chip/clearEdgeFilter() instead — added, not substituted.
   var _isEdge=!_trainerFilter&&_edgeChipMode!=='trainer';
   _syncHomeDateStrip(); // the filtered view carries its own day tabs — hide the plain row
-  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':(_edgeChipMode==='cdg'?'Edge: C&D+G':'Edge: Ground')));
-  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':(_edgeChipMode==='cdg'?'C&D+G runners':'Ground specialists')));
+  var _filterLabel=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Edge: Course & Distance':(_edgeChipMode==='hotyard'?'Edge: Hot Yard':(_edgeChipMode==='cdg'?'Edge: C&D+G':(_edgeChipMode==='classdrop'?'Edge: Class Drop':'Edge: Ground'))));
+  var _filterNoun=_trainerFilter?_trainerFilter:(_edgeChipMode==='cd'?'Course & Distance winners':(_edgeChipMode==='hotyard'?'Hot Yard runners':(_edgeChipMode==='cdg'?'C&D+G runners':(_edgeChipMode==='classdrop'?'Class Drop runners':'Ground specialists'))));
   var _filterClearFn=_trainerFilter?'clearTrainerFilter()':'clearEdgeFilter()';
   // Both paths scroll the racecards list (#today-meetings-list) into view —
   // the Option C toggle rows are tall enough that scrolling to them left the
@@ -14698,6 +14703,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   if(_edgeChipMode==='ground'&&ru.isGroundLover) _rowBg='#ecfdf5';
   if(_edgeChipMode==='hotyard'&&ru.isHotYard) _rowBg='#ecfdf5';
   if(_edgeChipMode==='cdg'&&ru.isCandDGoing) _rowBg='#ecfdf5';
+  if(_edgeChipMode==='classdrop'&&ru.isProvenClassDrop) _rowBg='#ecfdf5';
   var _isHorseHighlighted=!!(_horseHighlight&&(ru.name||'').toLowerCase().trim()===_horseHighlight.toLowerCase().trim());
   if(_isHorseHighlighted) _rowBg='#ecfdf5';
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
@@ -14720,9 +14726,9 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             if(ru.isGBRaider) _t.push('GB Raider');
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
-            if(ru.isProvenClassDrop) _t.push('Proven Class Drop');
+            if(ru.isProvenClassDrop) _t.push('Class Drop');
             if(!_t.length) return '';
-            return _t.map(function(t){var _ti=t==='Proven Class Drop'?' title="Dropping one class; top 3 at least twice at the higher level in its last 6; top half last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
+            return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
           })()
         +'</div>'
         // Form string on its own line directly below the name
@@ -15843,6 +15849,8 @@ var CANDG_COUNT=0;
 var GROUND_CARD=null;
 var GROUND_COUNT=0;
 var GROUND_HORSES=[];
+var CLASSDROP_CARD=null;
+var CLASSDROP_COUNT=0;
 var HOT_YARD=null;
 var HOT_YARD_CARD=null;
 var HOT_YARDS=[];
@@ -15997,6 +16005,8 @@ function loadDailyBuild(){
       GROUND_CARD=data.groundLoverCard||null;
       GROUND_COUNT=data.groundLoverHorsesCount||0;
       GROUND_HORSES=data.groundLoverHorses||[];
+      CLASSDROP_CARD=data.classDropCard||null;
+      CLASSDROP_COUNT=data.classDropHorsesCount||0;
       HOT_YARD=data.hotYard||null;
       HOT_YARD_CARD=data.hotYardCard||null;
       HOT_YARDS=Array.isArray(data.hotYards)?data.hotYards:(data.hotYard&&data.hotYard.trainerName?[data.hotYard]:[]);
@@ -16347,6 +16357,20 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // Class Drop — data-summary card like Ground Lover/C&D+G (isProvenClassDrop
+  // runners, same deterministic rule racecards.js's tag chip uses). Only
+  // appended when the build produced card copy; classDropCard stays null on
+  // a day with no qualifiers or a failed AI call.
+  if(CLASSDROP_CARD){
+    _items=_items.concat([{
+      isClassDrop:true,
+      signalType:'CLASS DROP',
+      sigColor:'#f59e0b',
+      countLabel:CLASSDROP_COUNT+' horse'+(CLASSDROP_COUNT===1?'':'s'),
+      intelligenceText:escHtml(CLASSDROP_CARD||'')
+    }]);
+  }
+
   // Hot Yard — trainer-level data card, same special-item pattern as Big Race
   // and C&D+G (isHotYardCard:true). Only appended when the build produced
   // card copy — hotYardCard stays null when no yard met the Hot Yard criteria
@@ -16464,6 +16488,27 @@ function renderAIIntelligence(){
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
             +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'ground\')" style="width:100%;padding:11px"><span>&#x2756;</span> View Ground Lover Runners &rarr;</button>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }
+    if(item.isClassDrop){
+      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 14px rgba(13,27,62,0.25);display:flex;flex-direction:column">'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
+          +'<div style="min-height:104px">'
+          +'<div style="display:flex;align-items:center;justify-content:flex-start;min-height:28px;margin-bottom:0px">'
+            +'<div style="display:flex;align-items:center;gap:6px">'
+              +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
+            +'</div>'
+          +'</div>'
+          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Class Drop</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Dropping one class, proven at the higher level and rated among today\'s best</div>'
+          +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:8px">'
+            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'classdrop\')" style="width:100%;padding:11px"><span>&#x2756;</span> See today\'s Class Drop runners &rarr;</button>'
           +'</div>'
         +'</div>'
       +'</div>';
@@ -18072,9 +18117,9 @@ function _edgeTagChips(o,fs,pad){
   if(o.isGBRaider)_t.push('GB Raider');
   if(o.isGroundLover)_t.push('Ground Lover');
   if(o.isHotYard)_t.push('Hot Yard');
-  if(o.isProvenClassDrop)_t.push('Proven Class Drop');
+  if(o.isProvenClassDrop)_t.push('Class Drop');
   if(!_t.length)return '';
-  return _t.map(function(t){var _ti=t==='Proven Class Drop'?' title="Dropping one class; top 3 at least twice at the higher level in its last 6; top half last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
+  return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
 }
 // NAP / NB pick lookup — one source of truth for Full Results and both Latest
 // Results strips. Tracker records (ptRecs2) for the date, then RACING_PICKS

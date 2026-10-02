@@ -365,12 +365,18 @@ function parseClassNum(classStr) {
 // race._offDt carries today's race date (e.g. "2026-10-01T17:00:00+01:00");
 // its first 10 characters are used as the cutoff so historyRows dated on or
 // after today's race are never treated as "prior" form.
-function provenClassDrop(runner, race, fieldRunners, historyRows) {
+//
+// provenClassDropDetail holds the one and only copy of the T1-T4 rule and
+// returns the qualifying detail (for the Class Drop Daily Intelligence
+// card's prompt) or null; provenClassDrop is a thin boolean wrapper over it
+// so the tag check and the card both run the exact same gates in the exact
+// same order — nothing about who qualifies changes from before this split.
+function provenClassDropDetail(runner, race, fieldRunners, historyRows) {
   const todayClassNum = parseClassNum(race && race.class);
-  if (todayClassNum === null) return false;
+  if (todayClassNum === null) return null;
 
   const raceDateStr = String((race && race._offDt) || '').slice(0, 10);
-  if (!raceDateStr) return false;
+  if (!raceDateStr) return null;
 
   // Rows strictly before today's race, newest first. form:history rows are
   // already stored newest-first, but re-sorted defensively rather than
@@ -380,15 +386,15 @@ function provenClassDrop(runner, race, fieldRunners, historyRows) {
     .filter(function(r) { return r && r.date && r.date < raceDateStr; })
     .slice()
     .sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
-  if (!priorRows.length) return false;
+  if (!priorRows.length) return null;
 
   const lastRun = priorRows[0];
   const lastRunClassNum = parseClassNum(lastRun.race_class);
-  if (lastRunClassNum === null) return false;
+  if (lastRunClassNum === null) return null;
 
   // T1 — today's class number is exactly one higher (one class lower) than
   // the last run's. A same-class run, a rise, or a drop of 2+ classes fails.
-  if (todayClassNum !== lastRunClassNum + 1) return false;
+  if (todayClassNum !== lastRunClassNum + 1) return null;
 
   // T2 — at least 2 top-3 finishes within the 6 most recent runs, in races
   // whose class number is equal to or lower than the last run's (i.e. the
@@ -401,15 +407,15 @@ function provenClassDrop(runner, race, fieldRunners, historyRows) {
     const pos = parseInt(r.pos, 10);
     return !isNaN(pos) && pos >= 1 && pos <= 3;
   });
-  if (provenRuns.length < 2) return false;
+  if (provenRuns.length < 2) return null;
 
   // T3 — ran well last time: finishing position <= field size / 2. A
   // non-finisher code (PU/F/UR/BD/RO/SU/DSQ, or anything else non-numeric)
   // and a missing/zero field size both fail via the NaN checks below.
   const lastPos = parseInt(lastRun.pos, 10);
   const lastRan = parseInt(lastRun.ran, 10);
-  if (isNaN(lastPos) || isNaN(lastRan) || lastRan <= 0) return false;
-  if (lastPos > lastRan / 2) return false;
+  if (isNaN(lastPos) || isNaN(lastRan) || lastRan <= 0) return null;
+  if (lastPos > lastRan / 2) return null;
 
   // T4 — today's official rating (stored as `or`) is among the top 3 of
   // today's declared, non-runner-excluded, rated field. Ties at 3rd-highest
@@ -420,12 +426,22 @@ function provenClassDrop(runner, race, fieldRunners, historyRows) {
     .map(function(r) { return parseInt(r.or, 10); })
     .filter(function(n) { return !isNaN(n) && n > 0; });
   const thisRating = parseInt(runner.or, 10);
-  if (isNaN(thisRating) || thisRating <= 0) return false;
+  if (isNaN(thisRating) || thisRating <= 0) return null;
   const distinctSorted = Array.from(new Set(ratedField)).sort(function(a, b) { return b - a; });
   const top3Threshold = distinctSorted.length >= 3 ? distinctSorted[2] : (distinctSorted[distinctSorted.length - 1] || 0);
-  if (thisRating < top3Threshold) return false;
+  if (thisRating < top3Threshold) return null;
 
-  return true;
+  return {
+    todayClassNum: todayClassNum,
+    lastRunClassNum: lastRunClassNum,
+    qualifyingRuns: provenRuns.map(function(r) { return { pos: r.pos, ran: r.ran, race_class: r.race_class, course: r.course, date: r.date }; }),
+    lastRun: { pos: lastRun.pos, ran: lastRun.ran, race_class: lastRun.race_class, course: lastRun.course, date: lastRun.date },
+    ratingRank: distinctSorted.indexOf(thisRating) + 1,
+    ratedFieldSize: distinctSorted.length
+  };
+}
+function provenClassDrop(runner, race, fieldRunners, historyRows) {
+  return !!provenClassDropDetail(runner, race, fieldRunners, historyRows);
 }
 
 function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race) {
@@ -733,3 +749,4 @@ exports.handler = async function(event) {
 
 exports.enrichRunnerTags = enrichRunnerTags;
 exports.computeRunnerTags = computeRunnerTags;
+exports.provenClassDropDetail = provenClassDropDetail;
