@@ -195,7 +195,10 @@ async function processHorseTrip(h, date) {
     if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseSecondCheck(resp);
-    if (!parsed) return { error: 'invalid JSON from second check' };
+    if (!parsed) {
+      const rawText = (resp.json.content[0] && resp.json.content[0].text) || '(no text block — content: ' + JSON.stringify(resp.json.content).slice(0, 300) + ')';
+      return { error: 'invalid JSON from second check: ' + rawText.slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
+    }
     return { supported: parsed.supported, problems: parsed.problems || [] };
   }
 
