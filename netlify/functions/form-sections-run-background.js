@@ -111,29 +111,47 @@ async function callModelTrip(userText) {
 // Trip round 3, Change 6 — second, independent check run after a text
 // already passes validateTrip, before it is stored. Same model as the
 // writer (claude-sonnet-4-6), its own static cached system prompt, direct
-// call like every other call in this runner.
-// An assistant-turn prefill of "{" forces the model straight into the JSON
-// object instead of reasoning sentence-by-sentence first (observed live:
-// without it, the model wrote out its full chain of reasoning in prose and
-// hit max_tokens before ever emitting JSON, on nearly every call). This
-// changes nothing about the system prompt, model or max_tokens — only how
-// the reply is shaped — so the response text is the CONTINUATION after
-// "{", and "{" must be re-added before parsing.
+// call like every other call in this runner, same max_tokens (300), same
+// output shape ({supported, problems}).
+//
+// Observed live: without forcing, the model reasoned sentence-by-sentence
+// in prose and hit max_tokens before ever emitting the JSON, on nearly
+// every call. An assistant-turn prefill ("{") would normally force
+// immediate JSON, but this model rejects assistant prefill ("the
+// conversation must end with a user message") — so a forced tool call is
+// used instead: same system prompt, same model, same max_tokens, same
+// {supported, problems} shape, just delivered as a tool_use input (which
+// the model must emit immediately, with no prose first) rather than a
+// text block holding a JSON string.
+const SECOND_CHECK_TOOL = {
+  name: 'report_check',
+  description: 'Report whether every sentence in the paragraph is supported by the data.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      supported: { type: 'boolean' },
+      problems: {
+        type: 'array',
+        items: { type: 'object', properties: { sentence: { type: 'string' }, reason: { type: 'string' } }, required: ['sentence', 'reason'] }
+      }
+    },
+    required: ['supported']
+  }
+};
 async function callSecondCheck(dataBlockText, tripText) {
   return E.anthropic('POST', '/v1/messages', {
     model: E.MODEL,
     max_tokens: F.TRIP_SECOND_CHECK_MAX_TOKENS,
     system: [{ type: 'text', text: F.TRIP_SECOND_CHECK_PROMPT, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: 'DATA\n' + dataBlockText + '\n\nPARAGRAPH\n' + tripText }, { role: 'assistant', content: '{' }]
+    messages: [{ role: 'user', content: 'DATA\n' + dataBlockText + '\n\nPARAGRAPH\n' + tripText }],
+    tools: [SECOND_CHECK_TOOL],
+    tool_choice: { type: 'tool', name: 'report_check' }
   });
 }
 function parseSecondCheck(resp) {
   if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return null;
-  const raw = '{' + ((resp.json.content[0] && resp.json.content[0].text) || '');
-  try {
-    const obj = JSON.parse(raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, ''));
-    if (typeof obj.supported === 'boolean') return obj;
-  } catch (e) {}
+  const block = resp.json.content.find(function(b) { return b.type === 'tool_use' && b.name === 'report_check'; });
+  if (block && block.input && typeof block.input.supported === 'boolean') return block.input;
   return null;
 }
 
@@ -203,8 +221,7 @@ async function processHorseTrip(h, date) {
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseSecondCheck(resp);
     if (!parsed) {
-      const rawText = '{' + ((resp.json.content[0] && resp.json.content[0].text) || '(no text block — content: ' + JSON.stringify(resp.json.content).slice(0, 300) + ')');
-      return { error: 'invalid JSON from second check: ' + rawText.slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
+      return { error: 'no usable report_check tool call — content: ' + JSON.stringify(resp.json.content).slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
     }
     return { supported: parsed.supported, problems: parsed.problems || [] };
   }
