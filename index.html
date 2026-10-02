@@ -17179,18 +17179,19 @@ function renderRacingPicks(){
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+badgeLabel+'</span>'
       +'</div>'
-      +'<div style="position:absolute;top:14px;right:16px;text-align:right;z-index:10">'
-        +'<div style="font-size:8px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em">season '+(i===0?'NAP':'NB')+' record</div>'
-        +'<div style="font-size:18px;font-weight:500;color:#fff;line-height:1.2">55%</div>'
-        +'<div style="font-size:9px;color:#9aa5b8">31W-15P-56R</div>'
-        +'<div style="font-size:9px;color:#9aa5b8">avg 13/10</div>'
-      +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
       +(fullImgSrc?'<img src="'+fullImgSrc+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">':'')
       +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
       +'<div style="position:relative;z-index:2">'
         +'<div style="padding:20px 14px 14px">'
-          +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(courseName)+' &middot; '+escHtml(fullPickTime)+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin:14px 0 4px">'
+            +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(courseName)+' &middot; '+escHtml(fullPickTime)+'</div>'
+            +'<div style="text-align:right">'
+              +'<div style="font-size:10px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em;font-weight:700;line-height:1">season '+(i===0?'NAP':'NB')+' record</div>'
+              +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">55%</div>'
+              +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">31W-15P-56R &middot; avg 13/10</div>'
+            +'</div>'
+          +'</div>'
           +(function(){
             // Live price first — read from the same RC_MEETINGS runner the
             // movement pill uses (one shared lookup), falling back to the
@@ -17274,17 +17275,18 @@ function renderHomeSelections(el){
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+pillLabels[i]+'</span>'
       +'</div>'
-      +'<div style="position:absolute;top:14px;right:16px;text-align:right;z-index:10">'
-        +'<div style="font-size:8px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em">season '+(i===0?'NAP':'NB')+' record</div>'
-        +'<div style="font-size:18px;font-weight:500;color:#fff;line-height:1.2">55%</div>'
-        +'<div style="font-size:9px;color:#9aa5b8">31W-15P-56R</div>'
-        +'<div style="font-size:9px;color:#9aa5b8">avg 13/10</div>'
-      +'</div>'
       +'<div style="border-radius:16px;overflow:hidden;position:relative;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22)">'
         +_bg(gi.src)
         +'<div style="position:relative;z-index:2">'
           +'<div style="padding:20px 14px 14px">'
-            +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(gi.course)+' &middot; '+escHtml(gi.time)+'</div>'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin:14px 0 4px">'
+              +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:10px;text-transform:uppercase">'+escHtml(gi.course)+' &middot; '+escHtml(gi.time)+'</div>'
+              +'<div style="text-align:right">'
+                +'<div style="font-size:10px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em;font-weight:700;line-height:1">season '+(i===0?'NAP':'NB')+' record</div>'
+                +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">55%</div>'
+                +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">31W-15P-56R &middot; avg 13/10</div>'
+              +'</div>'
+            +'</div>'
             +(function(){
               // Live price first — read from the same RC_MEETINGS runner the
               // movement pill uses (one shared lookup), falling back to the
