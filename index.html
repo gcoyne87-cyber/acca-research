@@ -16247,6 +16247,56 @@ function _bigRaceDateLabel(ds){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
 }
+// One swipe, one card — homepage Daily Intelligence and Latest Results, touch
+// devices only. CSS scroll-snap alone still lets a hard swipe skip several
+// cards on mobile, so the browser's own sideways panning is switched off
+// (touch-action:pan-y — vertical page scroll is unaffected) and the swipe is
+// turned into a smooth scroll to exactly the next / previous card. Listeners
+// sit on the container, so cards replaced by a refresh re-render are covered,
+// and the refresh code's own scrollLeft restore is untouched. Mouse and
+// trackpad scrolling is unchanged (touch-action does not apply to them).
+(function(){
+  function init(){
+    var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+    if(!isTouch) return;
+    ['ai-intelligence-list','home-res-strip-feed'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el||el._oneCardSwipe) return;
+      el._oneCardSwipe=true;
+      el.style.touchAction='pan-y';
+      var st=null, lastIdx=-1, lastAt=0;
+      function cards(){ return Array.prototype.filter.call(el.children,function(c){ return c.offsetWidth>0; }); }
+      function padLeft(){ return parseFloat(getComputedStyle(el).scrollPaddingLeft)||0; }
+      // Index of the card whose left edge is nearest the snap position.
+      function snappedIndex(list){
+        var base=el.getBoundingClientRect().left+padLeft(), best=0, bd=Infinity;
+        list.forEach(function(c,i){ var d=Math.abs(c.getBoundingClientRect().left-base); if(d<bd){bd=d;best=i;} });
+        return best;
+      }
+      el.addEventListener('touchstart',function(e){
+        if(e.touches.length!==1){ st=null; return; }
+        var list=cards(); if(!list.length){ st=null; return; }
+        // A previous swipe's smooth scroll may still be running: count from the
+        // card it was heading to, so a quick second swipe is still one card.
+        var idx=(Date.now()-lastAt<600&&lastIdx>=0)?lastIdx:snappedIndex(list);
+        st={x:e.touches[0].clientX,y:e.touches[0].clientY,idx:idx};
+      },{passive:true});
+      el.addEventListener('touchend',function(e){
+        if(!st) return;
+        var t=e.changedTouches[0], dx=t.clientX-st.x, dy=t.clientY-st.y, from=st.idx;
+        st=null;
+        if(Math.abs(dx)<=30||Math.abs(dx)<=Math.abs(dy)) return;   // tap or mainly vertical: leave it alone
+        var list=cards(); if(!list.length) return;
+        var to=Math.max(0,Math.min(list.length-1,from+(dx<0?1:-1)));
+        lastIdx=to; lastAt=Date.now();
+        var target=el.scrollLeft+(list[to].getBoundingClientRect().left-(el.getBoundingClientRect().left+padLeft()));
+        el.scrollTo({left:Math.max(0,target),behavior:'smooth'});
+      },{passive:true});
+      el.addEventListener('touchcancel',function(){ st=null; },{passive:true});
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
 function renderAIIntelligence(){
   var _ldNow=new Date();
   var _todayStr = irishDateStr(_ldNow);
