@@ -897,9 +897,13 @@ function stripSiteCta(text) {
 // not assumed), and — only if still under 40 — ONE further rewrite of the
 // same kind, recomputed against the latest text; never more than two
 // rewrites in total for the under-40 case, one for the over-50 case.
-// Returns the fixed text plus the rewrite calls' combined usage (zeroed
-// when no extra call was made) and a warning string (null when nothing
-// went wrong or is still short after the two attempts).
+// Every attempt (the original plus each rewrite) is kept; the best one is
+// returned — any attempt landing in 40-50 words wins, closest to 47 breaking
+// ties, and only when none land in range is the attempt closest to that
+// range used. A later, worse rewrite can therefore never displace an
+// earlier, better one. Returns the fixed text plus the rewrite calls'
+// combined usage (zeroed when no extra call was made) and a warning string
+// (null when nothing went wrong or the best attempt is still outside range).
 //
 // splitOn (optional) — Hot Yard's two-yard case: the prompt that generated
 // rawText covers BOTH yards at once (separated by a lone "===" line), so a
@@ -941,6 +945,17 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
   const wasUnder40 = wc < 40;
   const factsList = (factsOpt && factsOpt.list) || [];
   const noHorseLine = factsOpt && factsOpt.omitNoHorseLine ? '' : ' Do not name any horse.';
+  const attempts = [{ text: text, wc: wc }];
+
+  function pickBest() {
+    const inRange = attempts.filter(function(a) { return a.wc >= 40 && a.wc <= 50; });
+    if (inRange.length) {
+      inRange.sort(function(a, b) { return Math.abs(a.wc - 47) - Math.abs(b.wc - 47); });
+      return inRange[0];
+    }
+    function distToRange(w) { return w < 40 ? (40 - w) : (w - 50); }
+    return attempts.slice().sort(function(a, b) { return distToRange(a.wc) - distToRange(b.wc); })[0];
+  }
 
   function buildInstruction(currentText, currentWc) {
     if (currentWc > 50) return ' Your text was ' + currentWc + ' words. Rewrite it in 45 to 50 words, in complete sentences, keeping the same facts.';
@@ -970,24 +985,33 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
 
   try {
     let rewritten = await oneRewrite(text, wc);
-    if (rewritten === null) return { text: text, usage: usage, warning: label + ': rewrite call returned nothing — kept original (' + wc + ' words)' };
+    if (rewritten === null) return { text: pickBest().text, usage: usage, warning: label + ': rewrite call returned nothing — kept original (' + wc + ' words)' };
     let rewrittenWc = pullQuoteWordCount(rewritten);
+    attempts.push({ text: rewritten, wc: rewrittenWc });
 
     if (wasUnder40 && rewrittenWc < 40) {
       const second = await oneRewrite(rewritten, rewrittenWc);
-      if (second !== null) { rewritten = second; rewrittenWc = pullQuoteWordCount(rewritten); }
+      if (second !== null) {
+        const secondWc = pullQuoteWordCount(second);
+        attempts.push({ text: second, wc: secondWc });
+        rewritten = second; rewrittenWc = secondWc;
+      }
     }
 
     if (rewrittenWc > 50) {
       rewritten = trimPullQuoteToSentence(rewritten, 50);
       return { text: rewritten, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
     }
-    if (rewrittenWc < 40) {
-      return { text: rewritten, usage: usage, warning: label + ': still under 40 words after ' + (wasUnder40 ? 'two rewrite attempts' : 'one rewrite attempt') + ' (' + rewrittenWc + ') — kept as the best available text' };
+
+    const best = pickBest();
+    if (best.wc < 40 || best.wc > 50) {
+      const attemptCount = attempts.length - 1;
+      return { text: best.text, usage: usage, warning: label + ': still outside 40-50 words after ' + attemptCount + ' rewrite attempt' + (attemptCount === 1 ? '' : 's') + ' (best: ' + best.wc + ' words) — kept the closest available text' };
     }
-    return { text: rewritten, usage: usage, warning: null };
+    return { text: best.text, usage: usage, warning: null };
   } catch (e) {
-    return { text: text, usage: usage, warning: label + ': rewrite call failed (' + e.message + ') — kept original (' + wc + ' words)' };
+    const best = pickBest();
+    return { text: best.text, usage: usage, warning: label + ': rewrite call failed (' + e.message + ') — kept ' + (best === attempts[0] ? 'original' : 'best attempt') + ' (' + best.wc + ' words)' };
   }
 }
 
@@ -1464,6 +1488,14 @@ async function generateIntelligence(racecards) {
 // only re-run never touches the site's own Trainer Form table display).
 async function runDailyIntelligenceCards(today, racecards, report, opts) {
   const updateTrainerFormTable = !opts || opts.updateTrainerFormTable !== false;
+  // opts.cards (optional) — array of card keys to regenerate: 'hotYard',
+  // 'bigRace', 'bigRaceTomorrow', 'candg', 'groundLover', 'classDrop'. When
+  // given, every other card's block is skipped entirely (report already
+  // holds its stored value from the caller's deep copy, so skipping leaves
+  // it untouched). Omitted/null runs all six, unchanged from before.
+  const selectedCards = opts && Array.isArray(opts.cards) ? opts.cards : null;
+  const cardSelected = function(key) { return !selectedCards || selectedCards.indexOf(key) !== -1; };
+  if (cardSelected('hotYard')) {
     // 3.5 Trainer form table — a full leaderboard of today's trainers by 14-day strike
     // rate. Placed here, outside the cache-check above, so it runs unconditionally on
     // every build regardless of whether Daily Intelligence (and therefore the Hot Yard
@@ -1792,6 +1824,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       report.hotYard = null;
       report.hotYardCard = null;
     }
+  }
+  if (cardSelected('bigRace')) {
     // 4.5 Big Race of the Day — the single highest-prize race among today's
     // successfully analysed races (report.analyses, populated by step 4
     // above). Only races with a completed analysis are eligible, since
@@ -1979,7 +2013,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
     } catch (e) {
       report.errors.push('bigRace: ' + e.message);
     }
-
+  }
+  if (cardSelected('bigRaceTomorrow')) {
     // 4.55 Tomorrow's Big Race of the Day — the highest-prize race on
     // tomorrow's cached card (racecards:{tomorrow}, the Redis meetings shape
     // fetch-future-cards-background.js writes at 23:00, so it is present at
@@ -2147,7 +2182,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
     } catch (e) {
       report.errors.push('bigRaceTomorrow: ' + e.message);
     }
-
+  }
+  if (cardSelected('candg')) {
     // 4.6 C&D+G horses — every runner flagged isCandDGoing on today's cached
     // racecard. That flag (plus cdgWinGoing/cdgWinDate) is written directly
     // onto racecards:{date} by refresh-prices-background.js's hourly recheck
@@ -2255,7 +2291,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         if (candgTimer) clearTimeout(candgTimer);
       }
     }
-
+  }
+  if (cardSelected('groundLover')) {
     // 4.8 Ground Lover card — every runner on today's card that has WON on
     // exactly today's official going within its last six runs, on a day whose
     // going is Yielding / Yielding To Soft / Soft / Soft To Heavy / Heavy (never
@@ -2387,7 +2424,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         if (glTimer) clearTimeout(glTimer);
       }
     }
-
+  }
+  if (cardSelected('classDrop')) {
     // 4.9 Class Drop card — copy of the Ground Lover card's own pattern
     // (4.8 above): its own redisGet('racecards:'+today) + enrichRunnerTags
     // call, no card when there are no qualifiers, one Claude call in the
@@ -2516,6 +2554,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         if (cdTimer) clearTimeout(cdTimer);
       }
     }
+  }
 }
 module.exports.runDailyIntelligenceCards = runDailyIntelligenceCards;
 

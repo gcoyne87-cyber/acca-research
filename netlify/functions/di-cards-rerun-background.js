@@ -13,6 +13,19 @@ const https = require('https');
 // trainer-form:table:{date} (the site's own Trainer Form table) — that is
 // main-build-only, gated off here via updateTrainerFormTable:false.
 //
+// Optional ?cards= query param — comma-separated subset of hotYard, bigRace,
+// bigRaceTomorrow, candg, groundLover, classDrop. When given, only those
+// cards are regenerated and only their own report fields are written back;
+// every other card field is left exactly as stored (runDailyIntelligenceCards
+// itself skips the non-selected cards' blocks entirely via opts.cards, so
+// their values in `working` are already untouched copies of the original).
+// Without ?cards=, behaviour is unchanged — all six cards are rebuilt.
+//
+// Any warnings raised during this run (new ones not already on the stored
+// report) are saved onto the report as cardWarnings, replacing whatever was
+// there from the previous rerun, so they're visible without having to read
+// the (discarded) background-function response body.
+//
 // `today` uses the same plain UTC-date convention daily-build-background.js
 // itself uses for its own `today` (new Date().toISOString().slice(0,10)) —
 // not a separate Europe/Dublin computation — so this always reads/writes
@@ -59,14 +72,19 @@ function redisSet(key, value) {
   });
 }
 
-// The only fields this job is allowed to touch on daily:report:{date}.
-const CARD_FIELDS = [
-  'hotYard', 'hotYardCard', 'hotYards',
-  'bigRace', 'bigRaceTomorrow',
-  'candgHorses', 'candgCard',
-  'groundLoverHorses', 'groundLoverCard',
-  'classDropHorses', 'classDropCard'
-];
+// Which report fields each card key owns — the same keys runDailyIntelligenceCards
+// accepts in opts.cards.
+const CARD_KEY_FIELDS = {
+  hotYard: ['hotYard', 'hotYardCard', 'hotYards'],
+  bigRace: ['bigRace'],
+  bigRaceTomorrow: ['bigRaceTomorrow'],
+  candg: ['candgHorses', 'candgCard'],
+  groundLover: ['groundLoverHorses', 'groundLoverCard'],
+  classDrop: ['classDropHorses', 'classDropCard']
+};
+// Every field any card can touch — used as the default (no ?cards=) copy
+// set, and as the full allow-list when checking the diff.
+const CARD_FIELDS = Object.keys(CARD_KEY_FIELDS).reduce(function(acc, k) { return acc.concat(CARD_KEY_FIELDS[k]); }, []);
 
 exports.handler = async function(event) {
   const headers = { 'Content-Type': 'application/json' };
@@ -76,6 +94,15 @@ exports.handler = async function(event) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const cardsParam = (event.queryStringParameters || {}).cards;
+  const requestedCards = cardsParam
+    ? cardsParam.split(',').map(function(s) { return s.trim(); }).filter(function(k) { return CARD_KEY_FIELDS.hasOwnProperty(k); })
+    : null;
+  const selectedCards = (requestedCards && requestedCards.length) ? requestedCards : null;
+  const fieldsToCopy = selectedCards
+    ? selectedCards.reduce(function(acc, k) { return acc.concat(CARD_KEY_FIELDS[k]); }, [])
+    : CARD_FIELDS;
 
   try {
     const existingReport = await redisGet('daily:report:' + today);
@@ -92,23 +119,28 @@ exports.handler = async function(event) {
     // Work on a deep copy so runDailyIntelligenceCards (which reads
     // report.analyses for Big Race Today and writes several report.* fields
     // directly) can never mutate the real, already-stored report in place —
-    // only the explicit CARD_FIELDS copy-back below does that.
+    // only the explicit fieldsToCopy copy-back below does that.
     const working = JSON.parse(JSON.stringify(existingReport));
     working.warnings = working.warnings || [];
     working.errors = working.errors || [];
 
-    await runDailyIntelligenceCards(today, racecards, working, { updateTrainerFormTable: false });
+    await runDailyIntelligenceCards(today, racecards, working, { updateTrainerFormTable: false, cards: selectedCards || undefined });
 
     const updated = JSON.parse(JSON.stringify(existingReport));
-    CARD_FIELDS.forEach(function(f) { updated[f] = working[f]; });
+    fieldsToCopy.forEach(function(f) { updated[f] = working[f]; });
+
+    const newWarnings = working.warnings.filter(function(w) { return existingReport.warnings ? existingReport.warnings.indexOf(w) === -1 : true; });
+    updated.cardWarnings = newWarnings;
 
     await redisSet('daily:report:' + today, updated);
 
     // Confirm the diff: every top-level key that actually changed, and
-    // whether that set is a subset of CARD_FIELDS.
+    // whether that set is a subset of the fields this run was allowed to
+    // touch (the selected cards' own fields, plus cardWarnings).
+    const allowedChangedFields = fieldsToCopy.concat(['cardWarnings']);
     const allKeys = Array.from(new Set(Object.keys(existingReport).concat(Object.keys(updated))));
     const changedFields = allKeys.filter(function(k) { return JSON.stringify(existingReport[k]) !== JSON.stringify(updated[k]); });
-    const onlyCardFieldsChanged = changedFields.every(function(k) { return CARD_FIELDS.indexOf(k) !== -1; });
+    const onlyCardFieldsChanged = changedFields.every(function(k) { return allowedChangedFields.indexOf(k) !== -1; });
 
     return {
       statusCode: 200,
@@ -116,10 +148,11 @@ exports.handler = async function(event) {
       body: JSON.stringify({
         ok: true,
         date: today,
+        cards: selectedCards || 'all',
         changedFields: changedFields,
         onlyCardFieldsChanged: onlyCardFieldsChanged,
-        cardRewriteWarnings: working.warnings.filter(function(w) { return existingReport.warnings ? existingReport.warnings.indexOf(w) === -1 : true; }),
-        cards: {
+        cardWarnings: newWarnings,
+        cardTexts: {
           hotYardCard: updated.hotYardCard,
           bigRace: updated.bigRace && updated.bigRace.raceIntelligence,
           bigRaceTomorrow: updated.bigRaceTomorrow && updated.bigRaceTomorrow.raceIntelligence,
