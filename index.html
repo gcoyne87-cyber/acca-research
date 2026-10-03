@@ -16435,6 +16435,26 @@ function renderAIIntelligence(){
   el.innerHTML=_items.map(function(item){
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
+      // Runner count for today's "N horses" pill — same substring,
+      // case-insensitive trainer match setTrainerFilter/_tfMatchesForDay use
+      // (ru.trainer indexOf trainerName), so this number matches what the
+      // "View ... runners today" button filters to. Counted across the whole
+      // day (RC_TODAY_MEETINGS, every race, including ones already run), not
+      // just upcoming races. null (no pill) when racecards haven't loaded yet
+      // — never shows "0 horses".
+      var _hyRunnerCount=null;
+      if(RC_TODAY_MEETINGS&&RC_TODAY_MEETINGS.length){
+        var _hyTnLc=String(item.trainerName||'').toLowerCase();
+        _hyRunnerCount=0;
+        RC_TODAY_MEETINGS.forEach(function(m){
+          (m.races||[]).forEach(function(race){
+            (race.runners||[]).forEach(function(ru){
+              if((ru.trainer||'').toLowerCase().indexOf(_hyTnLc)!==-1) _hyRunnerCount++;
+            });
+          });
+        });
+      }
+      var _hyCountLabel=_hyRunnerCount!=null?(_hyRunnerCount+' horse'+(_hyRunnerCount===1?'':'s')):null;
       return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
@@ -16447,6 +16467,7 @@ function renderAIIntelligence(){
           +'</div>'
           +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+escHtml(item.trainerName)+'</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
+          +(_hyCountLabel?'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+_hyCountLabel+'</div>':'')
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
