@@ -886,15 +886,20 @@ function stripSiteCta(text) {
 }
 
 // 45-50 word card length fixer — shared by the Big Race (today/tomorrow),
-// C&D+G, Class Drop and Hot Yard cards. The old trim-only step kept only
-// whole sentences up to 50 words, so a model that wrote slightly over 50
-// could lose everything after its first sentence (observed live: Class Drop
-// stored 13 words, Hot Yard 31). Now: over 50 or under 40 words gets ONE
-// extra call asking the model to rewrite within 45-50 words, in complete
-// sentences, keeping the same facts; trimPullQuoteToSentence is only a last
-// resort if that rewrite itself still comes back over 50. Returns the fixed
-// text plus the extra call's own usage (zeroed when no extra call was made)
-// and a warning string (null when nothing went wrong).
+// C&D+G, Class Drop, Ground Lover and Hot Yard cards. The old trim-only step
+// kept only whole sentences up to 50 words, so a model that wrote slightly
+// over 50 could lose everything after its first sentence (observed live:
+// Class Drop stored 13 words, Hot Yard 31). Now: over 50 words gets ONE
+// rewrite call then, only if still over 50, trimPullQuoteToSentence as a
+// last resort (unchanged from before). Under 40 words gets a rewrite whose
+// instruction names the specific facts from the card's own data that the
+// text hasn't used yet (factsOpt.list — checked against the text itself,
+// not assumed), and — only if still under 40 — ONE further rewrite of the
+// same kind, recomputed against the latest text; never more than two
+// rewrites in total for the under-40 case, one for the over-50 case.
+// Returns the fixed text plus the rewrite calls' combined usage (zeroed
+// when no extra call was made) and a warning string (null when nothing
+// went wrong or is still short after the two attempts).
 //
 // splitOn (optional) — Hot Yard's two-yard case: the prompt that generated
 // rawText covers BOTH yards at once (separated by a lone "===" line), so a
@@ -903,43 +908,86 @@ function stripSiteCta(text) {
 // caller is fixing, by index, leaving the other yard's already-good text
 // untouched. { index, count } — index of the part to keep, count of parts
 // expected in the rewrite's own response.
-async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn) {
+//
+// factsOpt (optional) — { list: [{label, keywords:[...], mode:'any'|'all'}],
+// omitNoHorseLine: true/false }. Each fact's keywords are checked (case-
+// insensitive substring) against the current text — 'any' (default) means
+// the fact counts as already used if ANY keyword appears; 'all' means every
+// keyword must appear (used for compound facts like a class move needing
+// both class numbers). omitNoHorseLine drops the "Do not name any horse."
+// sentence — Big Race's own prompt explicitly wants named horses, so it is
+// the one card that passes this true.
+function missingFactLabels(text, facts) {
+  if (!facts || !facts.length) return [];
+  const lower = text.toLowerCase();
+  const seen = {}; const missing = [];
+  facts.forEach(function(f) {
+    const kws = f.keywords || [];
+    if (!kws.length) return;
+    const found = f.mode === 'all'
+      ? kws.every(function(k) { return lower.indexOf(String(k).toLowerCase()) !== -1; })
+      : kws.some(function(k) { return lower.indexOf(String(k).toLowerCase()) !== -1; });
+    if (!found && !seen[f.label]) { seen[f.label] = true; missing.push(f.label); }
+  });
+  return missing;
+}
+
+async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOpt) {
   const text = stripSiteCta(rawText);
   const wc = pullQuoteWordCount(text);
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   if (wc <= 50 && wc >= 40) return { text: text, usage: usage, warning: null };
 
-  const instruction = wc > 50
-    ? ' Your text was ' + wc + ' words. Rewrite it in 45 to 50 words, in complete sentences, keeping the same facts.'
-    : ' Your text was ' + wc + ' words, which is too short. Write 45 to 50 words in complete sentences, using only the facts given.';
+  const wasUnder40 = wc < 40;
+  const factsList = (factsOpt && factsOpt.list) || [];
+  const noHorseLine = factsOpt && factsOpt.omitNoHorseLine ? '' : ' Do not name any horse.';
 
-  let rewriteTimer = null;
-  try {
+  function buildInstruction(currentText, currentWc) {
+    if (currentWc > 50) return ' Your text was ' + currentWc + ' words. Rewrite it in 45 to 50 words, in complete sentences, keeping the same facts.';
+    const missing = missingFactLabels(currentText, factsList);
+    const useFacts = missing.length ? ' Use these facts as well: ' + missing.join(', ') + '.' : '';
+    return ' Your text was ' + currentWc + ' words, which is too short. Write 45 to 50 words in complete sentences.' + useFacts + noHorseLine;
+  }
+
+  async function oneRewrite(currentText, currentWc) {
+    let rewriteTimer = null;
     const resp = await Promise.race([
-      callClaude('', prompt + instruction, 400, true),
+      callClaude('', prompt + buildInstruction(currentText, currentWc), 400, true),
       new Promise(function(_, reject) {
         rewriteTimer = setTimeout(function() { reject(new Error('timed out after ' + ((timeoutMs || 25000) / 1000) + 's')); }, timeoutMs || 25000);
       })
-    ]);
-    usage.input = resp.inputTokens || 0; usage.output = resp.outputTokens || 0;
-    usage.cacheRead = resp.cacheReadTokens || 0; usage.cacheWrite = resp.cacheWriteTokens || 0;
-    if (!resp.text || !resp.text.trim()) return { text: text, usage: usage, warning: label + ': rewrite call returned nothing — kept original (' + wc + ' words)' };
+    ]).finally(function() { if (rewriteTimer) clearTimeout(rewriteTimer); });
+    usage.input += resp.inputTokens || 0; usage.output += resp.outputTokens || 0;
+    usage.cacheRead += resp.cacheReadTokens || 0; usage.cacheWrite += resp.cacheWriteTokens || 0;
+    if (!resp.text || !resp.text.trim()) return null;
     let rewriteRaw = resp.text;
     if (splitOn) {
       const parts = rewriteRaw.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
       rewriteRaw = parts.length === splitOn.count ? parts[splitOn.index] : rewriteRaw;
     }
-    let rewritten = stripSiteCta(rewriteRaw);
-    const rewrittenWc = pullQuoteWordCount(rewritten);
+    return stripSiteCta(rewriteRaw);
+  }
+
+  try {
+    let rewritten = await oneRewrite(text, wc);
+    if (rewritten === null) return { text: text, usage: usage, warning: label + ': rewrite call returned nothing — kept original (' + wc + ' words)' };
+    let rewrittenWc = pullQuoteWordCount(rewritten);
+
+    if (wasUnder40 && rewrittenWc < 40) {
+      const second = await oneRewrite(rewritten, rewrittenWc);
+      if (second !== null) { rewritten = second; rewrittenWc = pullQuoteWordCount(rewritten); }
+    }
+
     if (rewrittenWc > 50) {
       rewritten = trimPullQuoteToSentence(rewritten, 50);
       return { text: rewritten, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
     }
+    if (rewrittenWc < 40) {
+      return { text: rewritten, usage: usage, warning: label + ': still under 40 words after ' + (wasUnder40 ? 'two rewrite attempts' : 'one rewrite attempt') + ' (' + rewrittenWc + ') — kept as the best available text' };
+    }
     return { text: rewritten, usage: usage, warning: null };
   } catch (e) {
     return { text: text, usage: usage, warning: label + ': rewrite call failed (' + e.message + ') — kept original (' + wc + ' words)' };
-  } finally {
-    if (rewriteTimer) clearTimeout(rewriteTimer);
   }
 }
 
@@ -1684,13 +1732,21 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
             // (which would otherwise glue the lines together via stripSiteCta).
             // If the separator is missing the texts cannot be told apart, so
             // neither yard gets a card rather than showing a merged text.
-            const hyCap = function(t, splitOn) { return fixCardLength('Hot Yard card', hotYardPrompt, t, HOT_YARD_CALL_TIMEOUT_MS, splitOn); };
+            const hotYardFacts = function(y) {
+              const list = [
+                { label: 'the 7-day strike rate', keywords: [y.strikeRate7d + '%', y.strikeRate7d + ' percent'] },
+                { label: 'the 14-day rate', keywords: [y.strikeRate14d + '%', y.strikeRate14d + ' percent'] }
+              ];
+              if (y.winVenues7 && y.winVenues7.length) list.push({ label: 'the venues its winners came from', keywords: y.winVenues7 });
+              return { list: list };
+            };
+            const hyCap = function(t, splitOn, yardIndex) { return fixCardLength('Hot Yard card', hotYardPrompt, t, HOT_YARD_CALL_TIMEOUT_MS, splitOn, hotYardFacts(report.hotYards[yardIndex])); };
             const hyWarnings = [];
             if (report.hotYards.length === 2) {
               const hyParts = hyResp.text.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
               if (hyParts.length === 2) {
-                const hy0 = await hyCap(hyParts[0], { index: 0, count: 2 });
-                const hy1 = await hyCap(hyParts[1], { index: 1, count: 2 });
+                const hy0 = await hyCap(hyParts[0], { index: 0, count: 2 }, 0);
+                const hy1 = await hyCap(hyParts[1], { index: 1, count: 2 }, 1);
                 report.hotYards[0].cardText = hy0.text;
                 report.hotYards[1].cardText = hy1.text;
                 [hy0, hy1].forEach(function(r) {
@@ -1703,7 +1759,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
                 report.errors.push('hotYardCard: expected 2 yard texts, got ' + hyParts.length + ' — no Hot Yard cards stored');
               }
             } else {
-              const hy0 = await hyCap(hyResp.text, null);
+              const hy0 = await hyCap(hyResp.text, null, 0);
               report.hotYards[0].cardText = hy0.text;
               report.inputTokens += hy0.usage.input; report.outputTokens += hy0.usage.output;
               report.cacheReadTokens += hy0.usage.cacheRead; report.cacheWriteTokens += hy0.usage.cacheWrite;
@@ -1843,7 +1899,13 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
             })
           ]);
           if (brcResp.text && brcResp.text.trim()) {
-            const brFixed = await fixCardLength('Big Race preview', bigRacePrompt, brcResp.text, BIG_RACE_CARD_TIMEOUT_MS);
+            const brFacts = { omitNoHorseLine: true, list: [
+              { label: 'the going', keywords: [report.bigRace.going].filter(Boolean) },
+              { label: 'the class or grade', keywords: [report.bigRace.raceClass].filter(Boolean) },
+              { label: 'the distance', keywords: [report.bigRace.distance].filter(Boolean) },
+              { label: 'the prize money', keywords: [report.bigRace.prize].filter(Boolean) }
+            ].filter(function(f) { return f.keywords.length; }) };
+            const brFixed = await fixCardLength('Big Race preview', bigRacePrompt, brcResp.text, BIG_RACE_CARD_TIMEOUT_MS, null, brFacts);
             report.bigRace.raceIntelligence = brFixed.text;
             report.inputTokens += brFixed.usage.input; report.outputTokens += brFixed.usage.output;
             report.cacheReadTokens += brFixed.usage.cacheRead; report.cacheWriteTokens += brFixed.usage.cacheWrite;
@@ -2011,7 +2073,13 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
               })
             ]);
             if (tbrcResp.text && tbrcResp.text.trim()) {
-              const tbrFixed = await fixCardLength('Tomorrow Big Race preview', tmBigRacePrompt, tbrcResp.text, TM_BIG_RACE_CARD_TIMEOUT_MS);
+              const tbrFacts = { omitNoHorseLine: true, list: [
+                { label: 'the going', keywords: [report.bigRaceTomorrow.going].filter(Boolean) },
+                { label: 'the class or grade', keywords: [report.bigRaceTomorrow.raceClass].filter(Boolean) },
+                { label: 'the distance', keywords: [report.bigRaceTomorrow.distance].filter(Boolean) },
+                { label: 'the prize money', keywords: [report.bigRaceTomorrow.prize].filter(Boolean) }
+              ].filter(function(f) { return f.keywords.length; }) };
+              const tbrFixed = await fixCardLength('Tomorrow Big Race preview', tmBigRacePrompt, tbrcResp.text, TM_BIG_RACE_CARD_TIMEOUT_MS, null, tbrFacts);
               report.bigRaceTomorrow.raceIntelligence = tbrFixed.text;
               report.inputTokens += tbrFixed.usage.input; report.outputTokens += tbrFixed.usage.output;
               report.cacheReadTokens += tbrFixed.usage.cacheRead; report.cacheWriteTokens += tbrFixed.usage.cacheWrite;
@@ -2154,7 +2222,14 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           })
         ]);
         if (candgResp.text && candgResp.text.trim()) {
-          const candgFixed = await fixCardLength('C&D+G card', candgPrompt, candgResp.text, CANDG_CARD_TIMEOUT_MS);
+          const candgFacts = { list: [] };
+          const candgVenues = Array.from(new Set(report.candgHorses.map(function(h) { return h.course; }).filter(Boolean)));
+          if (candgVenues.length) candgFacts.list.push({ label: 'the venues', keywords: candgVenues });
+          const candgGoings = Array.from(new Set(report.candgHorses.map(function(h) { return h.todayGoing; }).filter(Boolean)));
+          if (candgGoings.length) candgFacts.list.push({ label: "today's going", keywords: candgGoings });
+          const candgWinDates = Array.from(new Set(report.candgHorses.map(function(h) { return h.winDate; }).filter(Boolean)));
+          if (candgWinDates.length) candgFacts.list.push({ label: 'the date of the earlier win on this going', keywords: candgWinDates });
+          const candgFixed = await fixCardLength('C&D+G card', candgPrompt, candgResp.text, CANDG_CARD_TIMEOUT_MS, null, candgFacts);
           report.candgCard = candgFixed.text;
           report.inputTokens += candgFixed.usage.input; report.outputTokens += candgFixed.usage.output;
           report.cacheReadTokens += candgFixed.usage.cacheRead; report.cacheWriteTokens += candgFixed.usage.cacheWrite;
@@ -2280,7 +2355,13 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           })
         ]);
         if (glResp.text && glResp.text.trim()) {
-          const glFixed = await fixCardLength('Ground Lover card', glPrompt, glResp.text, GL_CARD_TIMEOUT_MS);
+          const glFacts = { list: [] };
+          const glFieldSizes = Array.from(new Set(report.groundLoverHorses.map(function(h) { return String(h.fieldSize); }).filter(Boolean)));
+          if (glFieldSizes.length) glFacts.list.push({ label: 'the field size', keywords: glFieldSizes });
+          const glWinCourses = Array.from(new Set(report.groundLoverHorses.map(function(h) { return h.winCourse; }).filter(Boolean)));
+          if (glWinCourses.length) glFacts.list.push({ label: 'the course of the earlier win on this going', keywords: glWinCourses });
+          if (glEwCount > 0) glFacts.list.push({ label: 'the each-way profile mark', keywords: ['each-way'] });
+          const glFixed = await fixCardLength('Ground Lover card', glPrompt, glResp.text, GL_CARD_TIMEOUT_MS, null, glFacts);
           report.groundLoverCard = glFixed.text;
           report.inputTokens += glFixed.usage.input; report.outputTokens += glFixed.usage.output;
           report.cacheReadTokens += glFixed.usage.cacheRead; report.cacheWriteTokens += glFixed.usage.cacheWrite;
@@ -2394,6 +2475,14 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           ' Describe the qualifying evidence using the facts given — the class move, the placings at the higher class, the last run and the rating rank — without naming any horse.' +
           NO_SITE_CTA +
           ' The horses are: ' + horseLines.join('; ');
+        const cdFacts = { list: [] };
+        report.classDropHorses.forEach(function(h) {
+          cdFacts.list.push({ label: 'the class move', keywords: ['Class ' + h.lastRunClassNum, 'Class ' + h.todayClassNum], mode: 'all' });
+          const placingKeywords = (h.qualifyingRuns || []).map(function(r) { return cdPosOf(r.pos, r.ran); });
+          if (placingKeywords.length) cdFacts.list.push({ label: 'the placings at the higher class', keywords: placingKeywords });
+          cdFacts.list.push({ label: 'the last run', keywords: [cdPosOf(h.lastRun.pos, h.lastRun.ran)] });
+          cdFacts.list.push({ label: 'the rating rank', keywords: [cdOrdinal(h.ratingRank)] });
+        });
         const cdResp = await Promise.race([
           callClaude('', cdPrompt, 400, true),
           new Promise(function(_, reject) {
@@ -2401,7 +2490,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           })
         ]);
         if (cdResp.text && cdResp.text.trim()) {
-          const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS);
+          const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS, null, cdFacts);
           report.classDropCard = cdFixed.text;
           report.inputTokens += cdFixed.usage.input; report.outputTokens += cdFixed.usage.output;
           report.cacheReadTokens += cdFixed.usage.cacheRead; report.cacheWriteTokens += cdFixed.usage.cacheWrite;
