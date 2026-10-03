@@ -273,7 +273,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);min-height:100vh;color
   #home-carousel-section > div:first-child{padding-left:24px;padding-right:24px}
 
   /* AI intelligence cards — cap width so they don't stretch on wide screens */
-  #ai-intelligence-list{padding:0 24px 4px;scroll-padding:0 24px}
+  #ai-intelligence-list{padding:0 24px 4px;scroll-padding:0 24px;padding-left:24px !important;scroll-padding-left:24px !important}
   #ai-intelligence-list > div{max-width:420px !important}
 
   /* Recent winners strip — side padding */
@@ -2533,7 +2533,7 @@ window.addEventListener('load',function(){
     </div>
      <div style="font-size:12px;color:#9aa3b5;margin:0 0 6px;padding:0 14px 0 13px">Today's key angles and intelligence across the card</div>
     <!-- Intelligence carousel -->
-    <div id="ai-intelligence-list" style="display:flex;align-items:stretch;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 12px;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px"></div>
+    <div id="ai-intelligence-list" style="display:flex;align-items:stretch;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 12px 0 0;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;gap:8px;padding:0 12px 4px 0"></div>
     <!-- Dot indicators -->
     <div id="ai-dots" style="display:flex;justify-content:center;gap:6px;padding:6px 0 0"></div>
   </div>
@@ -18348,7 +18348,7 @@ function _buildResultCard(item,pickMap,bulked){
   var favNames=_resFavNames(race.runners);
   var ordinals=['1st','2nd','3rd','4th'];
   var html='';
-  html+='<div style="flex-shrink:0;scroll-snap-align:start;width:'+(bulked?280:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+  html+='<div style="flex-shrink:0;scroll-snap-align:start;'+(bulked?'':'scroll-snap-stop:always;')+'width:'+(bulked?280:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
   // Header: compact (homepage strip) keeps the original "time · venue" line
   // untouched. Bulked (Results page) drops the venue — the venue heading
   // already sits above this row — and puts the race name on the same line
