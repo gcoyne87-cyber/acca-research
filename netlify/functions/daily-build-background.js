@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 
 module.exports.config = { timeout: 900 };
 
+
 const RACING_AUTH = Buffer.from(
   (process.env.RACING_API_USERNAME || '') + ':' + (process.env.RACING_API_KEY || '')
 ).toString('base64');
@@ -884,6 +885,64 @@ function stripSiteCta(text) {
   return out || t;
 }
 
+// 45-50 word card length fixer — shared by the Big Race (today/tomorrow),
+// C&D+G, Class Drop and Hot Yard cards. The old trim-only step kept only
+// whole sentences up to 50 words, so a model that wrote slightly over 50
+// could lose everything after its first sentence (observed live: Class Drop
+// stored 13 words, Hot Yard 31). Now: over 50 or under 40 words gets ONE
+// extra call asking the model to rewrite within 45-50 words, in complete
+// sentences, keeping the same facts; trimPullQuoteToSentence is only a last
+// resort if that rewrite itself still comes back over 50. Returns the fixed
+// text plus the extra call's own usage (zeroed when no extra call was made)
+// and a warning string (null when nothing went wrong).
+//
+// splitOn (optional) — Hot Yard's two-yard case: the prompt that generated
+// rawText covers BOTH yards at once (separated by a lone "===" line), so a
+// length-fix rewrite must resend that same full two-yard prompt (per the
+// "same prompt" rule) and then pull back out just the one yard's part the
+// caller is fixing, by index, leaving the other yard's already-good text
+// untouched. { index, count } — index of the part to keep, count of parts
+// expected in the rewrite's own response.
+async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn) {
+  const text = stripSiteCta(rawText);
+  const wc = pullQuoteWordCount(text);
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  if (wc <= 50 && wc >= 40) return { text: text, usage: usage, warning: null };
+
+  const instruction = wc > 50
+    ? ' Your text was ' + wc + ' words. Rewrite it in 45 to 50 words, in complete sentences, keeping the same facts.'
+    : ' Your text was ' + wc + ' words, which is too short. Write 45 to 50 words in complete sentences, using only the facts given.';
+
+  let rewriteTimer = null;
+  try {
+    const resp = await Promise.race([
+      callClaude('', prompt + instruction, 400, true),
+      new Promise(function(_, reject) {
+        rewriteTimer = setTimeout(function() { reject(new Error('timed out after ' + ((timeoutMs || 25000) / 1000) + 's')); }, timeoutMs || 25000);
+      })
+    ]);
+    usage.input = resp.inputTokens || 0; usage.output = resp.outputTokens || 0;
+    usage.cacheRead = resp.cacheReadTokens || 0; usage.cacheWrite = resp.cacheWriteTokens || 0;
+    if (!resp.text || !resp.text.trim()) return { text: text, usage: usage, warning: label + ': rewrite call returned nothing — kept original (' + wc + ' words)' };
+    let rewriteRaw = resp.text;
+    if (splitOn) {
+      const parts = rewriteRaw.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
+      rewriteRaw = parts.length === splitOn.count ? parts[splitOn.index] : rewriteRaw;
+    }
+    let rewritten = stripSiteCta(rewriteRaw);
+    const rewrittenWc = pullQuoteWordCount(rewritten);
+    if (rewrittenWc > 50) {
+      rewritten = trimPullQuoteToSentence(rewritten, 50);
+      return { text: rewritten, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
+    }
+    return { text: rewritten, usage: usage, warning: null };
+  } catch (e) {
+    return { text: text, usage: usage, warning: label + ': rewrite call failed (' + e.message + ') — kept original (' + wc + ' words)' };
+  } finally {
+    if (rewriteTimer) clearTimeout(rewriteTimer);
+  }
+}
+
 // Second-pass condenser: the prompts ask for ~105 words but the model has a
 // history of ignoring the ceiling (every quote on 2026-08-31 came back
 // 159-236 words). One extra small call — same model, no web search — rewrites
@@ -1347,6 +1406,1029 @@ async function generateIntelligence(racecards) {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
+
+
+// Daily Intelligence cards — Hot Yard, Big Race (today/tomorrow), C&D+G,
+// Ground Lover and Class Drop. One shared implementation called both by
+// the main build (updateTrainerFormTable:true, right after race analysis
+// so it can use report.analyses for Big Race Today) and by the standalone
+// di-cards-rerun-background.js (updateTrainerFormTable:false, so a cards-
+// only re-run never touches the site's own Trainer Form table display).
+async function runDailyIntelligenceCards(today, racecards, report, opts) {
+  const updateTrainerFormTable = !opts || opts.updateTrainerFormTable !== false;
+    // 3.5 Trainer form table — a full leaderboard of today's trainers by 14-day strike
+    // rate. Placed here, outside the cache-check above, so it runs unconditionally on
+    // every build regardless of whether Daily Intelligence (and therefore the Hot Yard
+    // signal, which only runs inside generateIntelligence()) was served from cache or
+    // regenerated — Hot Yard's own trainerFormMap/trainerFormCandidates are local to
+    // that function and never computed at all on a cache hit, so this does its own
+    // independent pass over racecards instead of depending on that data.
+    // Hot Yard card inputs — filled from the stored table rows below (step
+    // 3.6) once the table write succeeds; both report fields default to null
+    // so a failed table write, no qualifier, or a failed AI call all leave
+    // the card cleanly absent rather than half-populated.
+    report.hotYard = null;
+    report.hotYardCard = null;
+    report.hotYards = [];
+    let hotYardSource = [];
+    // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
+    // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
+    // _buildPopularTrainers list). Needed here so every elite yard running
+    // today is guaranteed a slot in the stored table below, regardless of
+    // where they rank by 14-day strike rate, and reused by the Hot Yard card
+    // qualifier filter in step 3.6. Stored lowercase to match the
+    // case-insensitive comparisons used against it.
+    const ELITE_TRAINERS_LC = [
+      "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
+      'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
+      'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
+      'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
+      'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
+      'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
+      'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
+      'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
+      'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
+      "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
+      'Sir Mark Prescott Bt'
+    ].map(function(t) { return t.toLowerCase(); });
+    try {
+      const trainerTableMap = {};
+      racecards.forEach(function(race) {
+        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+          const t14 = r.trainer_14_days || {};
+          const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
+          if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
+            trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
+          }
+        });
+      });
+
+      // Top 15, not 30: each stored trainer costs one paced Racing API call in
+      // the 7-day loop below (~500-800ms each), all spent BEFORE race analysis
+      // starts — trimming 30 -> 15 reclaims ~2 minutes of the 15-minute build
+      // budget (2026-08-25: a 26-race cold-cache day timed out). The display
+      // caps at 15 rows and now requires 5+ runners in-window, so the trimmed
+      // tail is invisible in the 14-day view; only edge case is a yard ranked
+      // 16-30 by 14-day SR that would have made the 7-day toggle's top 15.
+      const trainerTableTop15 = Object.values(trainerTableMap).sort(function(a, b) {
+        return b.pct - a.pct;
+      }).slice(0, 15);
+
+      // Every elite trainer running today, independent of their 14-day rank —
+      // built straight from today's racecards (not from trainerTableTop15) so
+      // an elite yard is included even when it wouldn't otherwise crack the
+      // top 15, or even the >=3-runs floor trainerTableMap requires. This is
+      // what racecards.js's Hot Yard tag actually needs; the homepage's top-15
+      // display list (trainerTableTop15, used below to build the stored rows
+      // and read unchanged elsewhere) is untouched by this addition.
+      const eliteTodayMap = {};
+      racecards.forEach(function(race) {
+        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+          const nameLc = (r.trainer || '').toLowerCase().trim();
+          if (!nameLc || !r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINERS_LC.indexOf(nameLc) === -1) return;
+          const existing = trainerTableMap[r.trainer];
+          if (existing) { eliteTodayMap[r.trainer] = existing; return; }
+          const t14 = r.trainer_14_days || {};
+          eliteTodayMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
+        });
+      });
+
+      // Rows to actually fetch 7-day stats for and store: the top-15 display
+      // set plus any elite trainer running today not already in it. Storing
+      // (not displaying) all 39 is what Change 2 asks for — the homepage
+      // table continues to read only trainerTableTop15-derived rows.
+      const trainerTableStoreMap = {};
+      trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer] = e; });
+      Object.keys(eliteTodayMap).forEach(function(name) { if (!trainerTableStoreMap[name]) trainerTableStoreMap[name] = eliteTodayMap[name]; });
+      const trainerTableToStore = Object.values(trainerTableStoreMap);
+
+      // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
+      // window comes from the trainers results endpoint (same endpoint and
+      // pattern as the Hot Yard 60-day baseline): one date-ranged call per
+      // stored trainer, runs/wins counted from the flat results list. A failed
+      // call leaves that trainer's 7d fields at zero — the table write must
+      // never fail because one trainer lookup did.
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      for (const entry of trainerTableToStore) {
+        entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
+        // Venues each 7-day win came from — only consumed by the Hot Yard
+        // card prompt (step 3.6); not part of the stored table shape.
+        entry.winVenues7 = [];
+        if (!entry.trainer_id) continue;
+        try {
+          const data7 = await apiGet('api.theracingapi.com',
+            '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sevenDaysAgo + '&end_date=' + today,
+            { 'Authorization': 'Basic ' + RACING_AUTH }
+          );
+          await new Promise(resolve => setTimeout(resolve, 200));
+          // Race objects with runners nested inside race.runners[] — the same
+          // shape fetchHorseHistory handles. Match this trainer's runners by
+          // trainer_id; position lives on the runner, never at the race's top
+          // level (the old top-level read counted 0 wins for every trainer,
+          // found 2026-08-17). Per-runner counting also fixes runs7 when a
+          // yard fields two horses in one race.
+          const results7 = data7.results || [];
+          let runs7 = 0, wins7 = 0;
+          results7.forEach(function(race) {
+            (race.runners || []).forEach(function(runner) {
+              if ((runner.trainer_id || '') !== entry.trainer_id) return;
+              runs7++;
+              if (String(runner.position) === '1') {
+                wins7++;
+                if (race.course && entry.winVenues7.indexOf(race.course) === -1) entry.winVenues7.push(race.course);
+              }
+            });
+          });
+          entry.runs7 = runs7;
+          entry.wins7 = wins7;
+          entry.pct7 = entry.runs7 > 0 ? Math.round(entry.wins7 / entry.runs7 * 100) : 0;
+        } catch (e7) {
+          console.log('[daily-build] trainer-form 7d fetch failed for ' + entry.trainer + ': ' + e7.message);
+        }
+      }
+
+      const trainerFormTable = trainerTableToStore.map(function(entry) {
+        return {
+          trainerName: entry.trainer,
+          runners14d: entry.runs,
+          winners14d: entry.wins,
+          strikeRate: entry.pct, // kept under its original name so cached frontends still read it
+          strikeRate14d: entry.pct,
+          runners7d: entry.runs7,
+          winners7d: entry.wins7,
+          strikeRate7d: entry.pct7
+        };
+      });
+
+      if (updateTrainerFormTable) await redisSet('trainer-form:table:' + today, trainerFormTable);
+
+      // Snapshot for the Hot Yard card (step 3.6) — same rows as the stored
+      // table plus each yard's 7-day winning venues, which the table itself
+      // doesn't carry.
+      hotYardSource = trainerTableToStore.map(function(entry) {
+        return {
+          trainerName: entry.trainer,
+          runners7d: entry.runs7,
+          winners7d: entry.wins7,
+          strikeRate7d: entry.pct7,
+          strikeRate14d: entry.pct,
+          winVenues7: entry.winVenues7 || []
+        };
+      });
+    } catch (e) {
+      console.log('[daily-build] trainer-form:table write failed: ' + e.message);
+    }
+
+    // 3.6 Hot Yard card — the yard(s) the site's own Trainer Form table would
+    // show green with an upward trend, so the card can never disagree with the
+    // table: 7-day strike rate >= 30 (the table's green threshold in
+    // index.html _trainerFormSrColor), and — only while the 14-day rate is below
+    // 30 — a 7-day rate more than 3 points above it (the table's green up-arrow
+    // rule; a yard green over both windows needs no arrow), and EITHER on the elite
+    // whitelist (no minimum-runs test) OR 9+ runners in the 7-day window. Rates
+    // are rounded exactly as the table rounds them. Up to two qualifiers, best
+    // 7-day rate first. No qualifier means no Hot Yard card that day — never a
+    // fallback to the best available below the bar. The racecard chip rule in
+    // racecards.js is separate and untouched. report.hotYards holds 0-2 yards;
+    // report.hotYard is the first of them (or null) for readers of the old shape.
+    try {
+      const hyRound = function(v) { return Math.round(Number(v) || 0); };
+      const hotYardQualifiers = hotYardSource.filter(function(t) {
+        const name = (t.trainerName || '').toLowerCase().trim();
+        const sr7 = hyRound(t.strikeRate7d), sr14 = hyRound(t.strikeRate14d);
+        const elite = ELITE_TRAINERS_LC.indexOf(name) !== -1;
+        // Trend test only while the 14-day rate is below green: a yard already at
+        // 30+ over both windows is sustained green and qualifies without an arrow.
+        const trendOk = sr14 >= 30 || sr7 > sr14 + 3;
+        return sr7 >= 30 && trendOk && (elite || Number(t.runners7d) >= 9);
+      }).sort(function(a, b) { return hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d); }).slice(0, 2);
+
+      const runnersTodayFor = function(trainerName) {
+        const nameLc = (trainerName || '').toLowerCase().trim();
+        const out = [];
+        racecards.forEach(function(race) {
+          const t24 = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+          (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
+            if ((r.trainer || '').toLowerCase().trim() !== nameLc) return;
+            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+            const sp = oddsArr
+              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+            out.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
+          });
+        });
+        return out;
+      };
+
+      report.hotYards = hotYardQualifiers.map(function(t) {
+        return {
+          trainerName: t.trainerName,
+          runners7d: t.runners7d,
+          winners7d: t.winners7d,
+          strikeRate7d: t.strikeRate7d,
+          strikeRate14d: t.strikeRate14d,
+          runnersToday: runnersTodayFor(t.trainerName),
+          winVenues7: t.winVenues7 || []
+        };
+      });
+      report.hotYard = report.hotYards[0] || null;
+
+      if (report.hotYards.length) {
+        const yardBlocks = report.hotYards.map(function(y, i) {
+          const runnersLine = y.runnersToday.length
+            ? y.runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
+            : 'none declared';
+          const venueLine = y.winVenues7.length ? ' Winning venues last 7 days: ' + y.winVenues7.join(', ') + '.' : '';
+          return 'Yard ' + (i + 1) + (i === 0 ? ' (best)' : '') + ': ' + y.trainerName + '.'
+            + ' Last 7 days: ' + y.runners7d + ' runners, ' + y.winners7d + ' winners, ' + y.strikeRate7d + '% strike rate'
+            + ' (14-day rate ' + hyRound(y.strikeRate14d) + '%).' + venueLine
+            + ' Today\'s runners: ' + runnersLine + '.';
+        });
+        const anyVenues = report.hotYards.some(function(y) { return y.winVenues7.length > 0; });
+        const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot Yard' +
+          ' card for Racing Edge. Plain text only — no asterisks, no' +
+          ' markdown, no bold, no headers. Do not begin with a' +
+          ' trainer name, a label, or any heading — start directly' +
+          ' with the first sentence of the card.' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
+          ' No opinions, no predictions. No prices or odds.' +
+          (report.hotYards.length === 2
+            ? ' Two yards qualify today: write a separate card text for each yard, the best yard first, each text covering only its own yard and following the length rule on its own. Put a line containing only === between the two texts and write nothing else.'
+            : ' One yard qualifies today.') +
+          ' For each yard cover its recent form stats' + (anyVenues ? ', the venues its winners came from' : '') +
+          '.' +
+          ' Cover the yard\'s 7-day strike rate against its 14-day rate and the venues its recent winners came from, without naming any horse.' +
+          NO_SITE_CTA +
+          ' The data: ' + yardBlocks.join(' ');
+
+
+        // Hard 25s ceiling on this call. It runs BEFORE race analysis, and
+        // apiPost's socket timeout only emits an event (never destroys the
+        // socket), so a hung Anthropic call here would otherwise stall the
+        // whole build. On timeout the card is skipped (hotYardCard stays
+        // null), the timeout is logged, and the build carries on — the
+        // underlying request is left to finish or fail on its own.
+        const HOT_YARD_CALL_TIMEOUT_MS = 25000;
+        let hyTimer = null;
+        try {
+          const hyResp = await Promise.race([
+            callClaude('', hotYardPrompt, 400, true),
+            new Promise(function(_, reject) {
+              hyTimer = setTimeout(function() { reject(new Error('timed out after ' + (HOT_YARD_CALL_TIMEOUT_MS / 1000) + 's — skipped')); }, HOT_YARD_CALL_TIMEOUT_MS);
+            })
+          ]);
+          if (hyResp.text && hyResp.text.trim()) {
+            // One card per yard: each yard's text is stored on its own hotYards
+            // entry (cardText). With two yards the call returns the two texts
+            // split by a line holding only "===", split BEFORE fixCardLength
+            // (which would otherwise glue the lines together via stripSiteCta).
+            // If the separator is missing the texts cannot be told apart, so
+            // neither yard gets a card rather than showing a merged text.
+            const hyCap = function(t, splitOn) { return fixCardLength('Hot Yard card', hotYardPrompt, t, HOT_YARD_CALL_TIMEOUT_MS, splitOn); };
+            const hyWarnings = [];
+            if (report.hotYards.length === 2) {
+              const hyParts = hyResp.text.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
+              if (hyParts.length === 2) {
+                const hy0 = await hyCap(hyParts[0], { index: 0, count: 2 });
+                const hy1 = await hyCap(hyParts[1], { index: 1, count: 2 });
+                report.hotYards[0].cardText = hy0.text;
+                report.hotYards[1].cardText = hy1.text;
+                [hy0, hy1].forEach(function(r) {
+                  report.inputTokens += r.usage.input; report.outputTokens += r.usage.output;
+                  report.cacheReadTokens += r.usage.cacheRead; report.cacheWriteTokens += r.usage.cacheWrite;
+                  if (r.usage.input || r.usage.output) report.callLog.push({ type: 'hotyard-card-rewrite', label: 'Hot Yard Intel Card (length rewrite)', inputTokens: r.usage.input, outputTokens: r.usage.output, cacheReadTokens: r.usage.cacheRead, cacheWriteTokens: r.usage.cacheWrite });
+                  if (r.warning) hyWarnings.push(r.warning);
+                });
+              } else {
+                report.errors.push('hotYardCard: expected 2 yard texts, got ' + hyParts.length + ' — no Hot Yard cards stored');
+              }
+            } else {
+              const hy0 = await hyCap(hyResp.text, null);
+              report.hotYards[0].cardText = hy0.text;
+              report.inputTokens += hy0.usage.input; report.outputTokens += hy0.usage.output;
+              report.cacheReadTokens += hy0.usage.cacheRead; report.cacheWriteTokens += hy0.usage.cacheWrite;
+              if (hy0.usage.input || hy0.usage.output) report.callLog.push({ type: 'hotyard-card-rewrite', label: 'Hot Yard Intel Card (length rewrite)', inputTokens: hy0.usage.input, outputTokens: hy0.usage.output, cacheReadTokens: hy0.usage.cacheRead, cacheWriteTokens: hy0.usage.cacheWrite });
+              if (hy0.warning) hyWarnings.push(hy0.warning);
+            }
+            hyWarnings.forEach(function(w) { report.warnings.push(w); console.log('[daily-build] ' + w); });
+            report.hotYardCard = report.hotYards[0].cardText || null;
+          }
+          report.inputTokens += hyResp.inputTokens || 0;
+          report.outputTokens += hyResp.outputTokens || 0;
+          report.cacheReadTokens += hyResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += hyResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'hotyard-card', label: 'Hot Yard Intel Card',
+            inputTokens: hyResp.inputTokens || 0, outputTokens: hyResp.outputTokens || 0,
+            cacheReadTokens: hyResp.cacheReadTokens || 0, cacheWriteTokens: hyResp.cacheWriteTokens || 0
+          });
+        } catch (eHYC) {
+          console.log('[daily-build] hotYardCard: ' + eHYC.message);
+          report.errors.push('hotYardCard: ' + eHYC.message);
+          report.hotYardCard = null;
+        } finally {
+          if (hyTimer) clearTimeout(hyTimer);
+        }
+      }
+    } catch (eHY) {
+      report.errors.push('hotYard: ' + eHY.message);
+      report.hotYards = [];
+      report.hotYard = null;
+      report.hotYardCard = null;
+    }
+    // 4.5 Big Race of the Day — the single highest-prize race among today's
+    // successfully analysed races (report.analyses, populated by step 4
+    // above). Only races with a completed analysis are eligible, since
+    // raceIntelligence has to come from there. race.prize is whatever the
+    // Racing API returns (e.g. "£8,514") — not guaranteed numeric — so it's
+    // parsed down to digits only for comparison; a race with no parseable
+    // prize sorts as 0, never wins over one that does.
+    try {
+      const parsePrizeAmount = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+      // A prize string with more than one distinct number in it (e.g. a
+      // "£8,514 - £2,564" range, or a 1st/2nd breakdown) needs to be told
+      // apart from a single clean value that merely uses comma
+      // thousands-grouping (e.g. "£1,500,000"). Thousands-separator commas —
+      // a digit, a comma, then exactly 3 digits not followed by a further
+      // digit — are stripped first so they're never counted as a group
+      // boundary; what's left is split into digit runs. More than one run
+      // means the string genuinely names multiple numbers, so parsePrizeAmount
+      // would otherwise concatenate them into one garbage figure.
+      const hasMultiplePrizeValues = s => {
+        const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+        const groups = noThousandsCommas.match(/\d+/g) || [];
+        return groups.length > 1;
+      };
+      let bigRaceCandidate = null;
+      let bigRaceTop = -1;
+      racecards.forEach(function(race) {
+        const t24label = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
+        const raceLabel = `${race.course} ${t24label}`;
+        const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
+        if (!analysisEntry || !analysisEntry.raceIntelligence) return;
+        if (hasMultiplePrizeValues(race.prize)) return;
+        const prizeAmount = parsePrizeAmount(race.prize);
+        if (prizeAmount > bigRaceTop) {
+          bigRaceTop = prizeAmount;
+          bigRaceCandidate = { race, t24label, analysisEntry };
+        }
+      });
+      if (bigRaceCandidate) {
+        report.bigRace = {
+          course: bigRaceCandidate.race.course,
+          time: bigRaceCandidate.t24label,
+          raceName: (function(){
+            var n=String(bigRaceCandidate.race.race_name||'');
+            n=n.replace(/\s*\(GBB Race\)/gi,'');
+            n=n.replace(/\s*\(GBB\)\s*/gi,'');
+            n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
+            return n.trim();
+          })(),
+          prize: bigRaceCandidate.race.prize || '',
+          runners: bigRaceCandidate.race.runners
+            ? bigRaceCandidate.race.runners.filter(function(r){return !r.is_non_runner;}).length
+            : (bigRaceCandidate.race.field_size||0),
+          distance: bigRaceCandidate.race.distance||'',
+          going: bigRaceCandidate.race.going||'',
+          raceClass: bigRaceCandidate.race.race_class||'',
+          raceIntelligence: (bigRaceCandidate.analysisEntry.strongestSelection && bigRaceCandidate.analysisEntry.strongestSelection.pullQuote) || bigRaceCandidate.analysisEntry.raceIntelligence,
+          courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
+        };
+        // Dedicated Big Race preview — a race-level briefing rather than the
+        // selection's pullQuote (which argues for one horse). Built exactly
+        // like the C&D+G card: empty system prompt, no search, 400 tokens,
+        // 25s ceiling, tokens into the accumulators. On any failure or empty
+        // response the initial raceIntelligence assignment above stands.
+        const BIG_RACE_CARD_TIMEOUT_MS = 25000;
+        let brcTimer = null;
+        try {
+          const brRunners = (bigRaceCandidate.race.runners || []).filter(function(r) { return !r.is_non_runner; });
+          const brRunnerLines = brRunners.map(function(r) {
+            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+            const sp = oddsArr
+              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+            const parts = [r.horse || r.name || 'Unknown'];
+            if (r.trainer) parts.push('trainer ' + r.trainer);
+            if (r.jockey) parts.push('jockey ' + r.jockey);
+            parts.push('price ' + sp);
+            if (r.form) parts.push('recent form ' + r.form);
+            return parts.join(', ');
+          });
+          const brDetails = [
+            'Race: ' + report.bigRace.raceName,
+            'Course: ' + report.bigRace.course,
+            'Time: ' + report.bigRace.time,
+            'Distance: ' + (report.bigRace.distance || 'unknown'),
+            'Going: ' + (report.bigRace.going || 'unknown'),
+            'Class/grade: ' + (report.bigRace.raceClass || 'unknown'),
+            'Prize: ' + (report.bigRace.prize || 'unknown'),
+            'Runners: ' + report.bigRace.runners
+          ].join('. ');
+          const bigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
+            ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
+            ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
+            ' Write 45 to 50 words, never more than 50.' +
+            ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
+            ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
+            ' Open with what the race is and the shape of the field.' +
+            ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
+            ' Note the key filter for the race today (going, trip or class).' +
+            ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
+            ' The race: ' + brDetails + '. The runners: ' + brRunnerLines.join('; ');
+          const brcResp = await Promise.race([
+            callClaude('', bigRacePrompt, 400, true),
+            new Promise(function(_, reject) {
+              brcTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_CARD_TIMEOUT_MS);
+            })
+          ]);
+          if (brcResp.text && brcResp.text.trim()) {
+            const brFixed = await fixCardLength('Big Race preview', bigRacePrompt, brcResp.text, BIG_RACE_CARD_TIMEOUT_MS);
+            report.bigRace.raceIntelligence = brFixed.text;
+            report.inputTokens += brFixed.usage.input; report.outputTokens += brFixed.usage.output;
+            report.cacheReadTokens += brFixed.usage.cacheRead; report.cacheWriteTokens += brFixed.usage.cacheWrite;
+            if (brFixed.usage.input || brFixed.usage.output) {
+              report.callLog.push({ type: 'bigrace-card-rewrite', label: 'Big Race Preview (length rewrite)', inputTokens: brFixed.usage.input, outputTokens: brFixed.usage.output, cacheReadTokens: brFixed.usage.cacheRead, cacheWriteTokens: brFixed.usage.cacheWrite });
+            }
+            if (brFixed.warning) { report.warnings.push(brFixed.warning); console.log('[daily-build] ' + brFixed.warning); }
+          }
+          report.inputTokens += brcResp.inputTokens || 0;
+          report.outputTokens += brcResp.outputTokens || 0;
+          report.cacheReadTokens += brcResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += brcResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'bigrace-card', label: 'Big Race Preview',
+            inputTokens: brcResp.inputTokens || 0, outputTokens: brcResp.outputTokens || 0,
+            cacheReadTokens: brcResp.cacheReadTokens || 0, cacheWriteTokens: brcResp.cacheWriteTokens || 0
+          });
+        } catch (eBRC) {
+          console.log('[daily-build] bigRace preview: ' + eBRC.message);
+          report.errors.push('bigRace preview: ' + eBRC.message);
+        } finally {
+          if (brcTimer) clearTimeout(brcTimer);
+        }
+        // Fallback text (the selection's pullQuote) stands when the card call
+        // fails or returns nothing: hold it to the same 50-word cap.
+        if (pullQuoteWordCount(report.bigRace.raceIntelligence) > 50) report.bigRace.raceIntelligence = trimPullQuoteToSentence(report.bigRace.raceIntelligence, 50);
+        // Short display name for the card title — one small Claude call. Falls
+        // back to the full raceName on any failure or empty response so the
+        // card always has a title. Tokens roll into the report accumulators
+        // like every other card call.
+        report.bigRace.raceNameShort = report.bigRace.raceName;
+        // Hard 20s ceiling on this call, same pattern as the Hot Yard card
+        // call above — apiPost's socket timeout only emits an event (never
+        // destroys the socket), so a hung Anthropic call here would
+        // otherwise stall the whole build. On timeout the short name is
+        // skipped and the fallback full raceName (set above) stands.
+        const BIG_RACE_NAME_TIMEOUT_MS = 20000;
+        let brnTimer = null;
+        try {
+          const shortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
+            ' Keep the key identity words — drop sponsor names.' +
+            ' For Group/Grade/Listed races keep the grade in' +
+            ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
+            ' Return only the shortened name, nothing else.' +
+            ' Race name: ' + report.bigRace.raceName;
+          const shortResp = await Promise.race([
+            callClaude('', shortNamePrompt, 60, true),
+            new Promise(function(_, reject) {
+              brnTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_NAME_TIMEOUT_MS);
+            })
+          ]);
+          const shortText = (shortResp.text || '').trim();
+          if (shortText) report.bigRace.raceNameShort = shortText;
+          report.inputTokens += shortResp.inputTokens || 0;
+          report.outputTokens += shortResp.outputTokens || 0;
+          report.cacheReadTokens += shortResp.cacheReadTokens || 0;
+          report.cacheWriteTokens += shortResp.cacheWriteTokens || 0;
+          report.callLog.push({
+            type: 'bigrace-name', label: 'Big Race Short Name',
+            inputTokens: shortResp.inputTokens || 0, outputTokens: shortResp.outputTokens || 0,
+            cacheReadTokens: shortResp.cacheReadTokens || 0, cacheWriteTokens: shortResp.cacheWriteTokens || 0
+          });
+        } catch (eShort) {
+          console.log('[daily-build] bigRace raceNameShort: ' + eShort.message);
+          report.errors.push('bigRace raceNameShort: ' + eShort.message);
+          report.bigRace.raceNameShort = report.bigRace.raceName;
+        } finally {
+          if (brnTimer) clearTimeout(brnTimer);
+        }
+      }
+    } catch (e) {
+      report.errors.push('bigRace: ' + e.message);
+    }
+
+    // 4.55 Tomorrow's Big Race of the Day — the highest-prize race on
+    // tomorrow's cached card (racecards:{tomorrow}, the Redis meetings shape
+    // fetch-future-cards-background.js writes at 23:00, so it is present at
+    // this build). No analysis requirement — tomorrow isn't analysed yet.
+    // Fields map onto the same names report.bigRace uses; same preview and
+    // short-name calls, ceilings and token accounting, with their own callLog
+    // types (bigrace-tomorrow-card / bigrace-tomorrow-name). Left undefined
+    // when tomorrow's card is missing or holds no race with a parseable prize.
+    // report.bigRace above is not touched.
+    try {
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const tmCard = await redisGet('racecards:' + tomorrowStr);
+      if (tmCard && Array.isArray(tmCard.meetings) && tmCard.meetings.length) {
+        // Same prize rules as today's block (its helpers are scoped to that try).
+        const parsePrizeAmountT = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+        const hasMultiplePrizeValuesT = s => {
+          const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+          const groups = noThousandsCommas.match(/\d+/g) || [];
+          return groups.length > 1;
+        };
+        let tmCandidate = null;
+        let tmTop = -1;
+        tmCard.meetings.forEach(function(m) {
+          (m.races || []).forEach(function(race) {
+            if (hasMultiplePrizeValuesT(race.prize)) return;
+            const amt = parsePrizeAmountT(race.prize);
+            if (amt > tmTop) { tmTop = amt; tmCandidate = { meeting: m, race: race }; }
+          });
+        });
+        if (tmCandidate) {
+          const tmM = tmCandidate.meeting, tmR = tmCandidate.race;
+          const tmRunners = (tmR.runners || []).filter(function(r) { return !r.nonRunner; });
+          report.bigRaceTomorrow = {
+            date: tomorrowStr,
+            course: tmM.name || '',
+            time: tmR.t || '',
+            raceName: (function(){
+              var n=String(tmR.name||'');
+              n=n.replace(/\s*\(GBB Race\)/gi,'');
+              n=n.replace(/\s*\(GBB\)\s*/gi,'');
+              n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
+              return n.trim();
+            })(),
+            prize: tmR.prize || '',
+            runners: tmRunners.length || tmR.r || 0,
+            distance: tmR.dist || '',
+            going: tmR.going || tmM.going || '',
+            raceClass: tmR.class || '',
+            raceIntelligence: '',
+            courseId: tmM.id || tmM.name || ''
+          };
+          // Preview — same call, ceiling and accounting as today's bigrace-card;
+          // "today" in the prompt becomes "tomorrow". Runner lines come from
+          // the cached card's price/form fields (no odds arrays on this shape).
+          const TM_BIG_RACE_CARD_TIMEOUT_MS = 25000;
+          let tbrcTimer = null;
+          try {
+            const tmRunnerLines = tmRunners.map(function(r) {
+              const parts = [r.name || 'Unknown'];
+              if (r.trainer) parts.push('trainer ' + r.trainer);
+              if (r.jockey) parts.push('jockey ' + r.jockey);
+              parts.push('price ' + (r.price || 'SP'));
+              if (r.form) parts.push('recent form ' + r.form);
+              return parts.join(', ');
+            });
+            const tmDetails = [
+              'Race: ' + report.bigRaceTomorrow.raceName,
+              'Course: ' + report.bigRaceTomorrow.course,
+              'Time: ' + report.bigRaceTomorrow.time,
+              'Distance: ' + (report.bigRaceTomorrow.distance || 'unknown'),
+              'Going: ' + (report.bigRaceTomorrow.going || 'unknown'),
+              'Class/grade: ' + (report.bigRaceTomorrow.raceClass || 'unknown'),
+              'Prize: ' + (report.bigRaceTomorrow.prize || 'unknown'),
+              'Runners: ' + report.bigRaceTomorrow.runners
+            ].join('. ');
+            const tmBigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
+              ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
+              ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
+              ' Write 45 to 50 words, never more than 50.' +
+              ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
+              ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
+              ' Open with what the race is and the shape of the field.' +
+              ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
+              ' Note the key filter for the race tomorrow (going, trip or class).' +
+              ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
+              ' The race: ' + tmDetails + '. The runners: ' + tmRunnerLines.join('; ');
+            const tbrcResp = await Promise.race([
+              callClaude('', tmBigRacePrompt, 400, true),
+              new Promise(function(_, reject) {
+                tbrcTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_CARD_TIMEOUT_MS);
+              })
+            ]);
+            if (tbrcResp.text && tbrcResp.text.trim()) {
+              const tbrFixed = await fixCardLength('Tomorrow Big Race preview', tmBigRacePrompt, tbrcResp.text, TM_BIG_RACE_CARD_TIMEOUT_MS);
+              report.bigRaceTomorrow.raceIntelligence = tbrFixed.text;
+              report.inputTokens += tbrFixed.usage.input; report.outputTokens += tbrFixed.usage.output;
+              report.cacheReadTokens += tbrFixed.usage.cacheRead; report.cacheWriteTokens += tbrFixed.usage.cacheWrite;
+              if (tbrFixed.usage.input || tbrFixed.usage.output) {
+                report.callLog.push({ type: 'bigrace-tomorrow-card-rewrite', label: 'Tomorrow Big Race Preview (length rewrite)', inputTokens: tbrFixed.usage.input, outputTokens: tbrFixed.usage.output, cacheReadTokens: tbrFixed.usage.cacheRead, cacheWriteTokens: tbrFixed.usage.cacheWrite });
+              }
+              if (tbrFixed.warning) { report.warnings.push(tbrFixed.warning); console.log('[daily-build] ' + tbrFixed.warning); }
+            }
+            report.inputTokens += tbrcResp.inputTokens || 0;
+            report.outputTokens += tbrcResp.outputTokens || 0;
+            report.cacheReadTokens += tbrcResp.cacheReadTokens || 0;
+            report.cacheWriteTokens += tbrcResp.cacheWriteTokens || 0;
+            report.callLog.push({
+              type: 'bigrace-tomorrow-card', label: 'Tomorrow Big Race Preview',
+              inputTokens: tbrcResp.inputTokens || 0, outputTokens: tbrcResp.outputTokens || 0,
+              cacheReadTokens: tbrcResp.cacheReadTokens || 0, cacheWriteTokens: tbrcResp.cacheWriteTokens || 0
+            });
+          } catch (eTBRC) {
+            console.log('[daily-build] bigRaceTomorrow preview: ' + eTBRC.message);
+            report.errors.push('bigRaceTomorrow preview: ' + eTBRC.message);
+          } finally {
+            if (tbrcTimer) clearTimeout(tbrcTimer);
+          }
+          // Same cap on whatever text stands if the card call failed.
+          if (pullQuoteWordCount(report.bigRaceTomorrow.raceIntelligence) > 50) report.bigRaceTomorrow.raceIntelligence = trimPullQuoteToSentence(report.bigRaceTomorrow.raceIntelligence, 50);
+          // Short display name — same call and ceiling as today's bigrace-name.
+          report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
+          const TM_BIG_RACE_NAME_TIMEOUT_MS = 20000;
+          let tbrnTimer = null;
+          try {
+            const tmShortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
+              ' Keep the key identity words — drop sponsor names.' +
+              ' For Group/Grade/Listed races keep the grade in' +
+              ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
+              ' Return only the shortened name, nothing else.' +
+              ' Race name: ' + report.bigRaceTomorrow.raceName;
+            const tmShortResp = await Promise.race([
+              callClaude('', tmShortNamePrompt, 60, true),
+              new Promise(function(_, reject) {
+                tbrnTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_NAME_TIMEOUT_MS);
+              })
+            ]);
+            const tmShortText = (tmShortResp.text || '').trim();
+            if (tmShortText) report.bigRaceTomorrow.raceNameShort = tmShortText;
+            report.inputTokens += tmShortResp.inputTokens || 0;
+            report.outputTokens += tmShortResp.outputTokens || 0;
+            report.cacheReadTokens += tmShortResp.cacheReadTokens || 0;
+            report.cacheWriteTokens += tmShortResp.cacheWriteTokens || 0;
+            report.callLog.push({
+              type: 'bigrace-tomorrow-name', label: 'Tomorrow Big Race Short Name',
+              inputTokens: tmShortResp.inputTokens || 0, outputTokens: tmShortResp.outputTokens || 0,
+              cacheReadTokens: tmShortResp.cacheReadTokens || 0, cacheWriteTokens: tmShortResp.cacheWriteTokens || 0
+            });
+          } catch (eTShort) {
+            console.log('[daily-build] bigRaceTomorrow raceNameShort: ' + eTShort.message);
+            report.errors.push('bigRaceTomorrow raceNameShort: ' + eTShort.message);
+            report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
+          } finally {
+            if (tbrnTimer) clearTimeout(tbrnTimer);
+          }
+        }
+      } else {
+        console.log('[daily-build] bigRaceTomorrow: no racecards:' + tomorrowStr + ' — card skipped');
+      }
+    } catch (e) {
+      report.errors.push('bigRaceTomorrow: ' + e.message);
+    }
+
+    // 4.6 C&D+G horses — every runner flagged isCandDGoing on today's cached
+    // racecard. That flag (plus cdgWinGoing/cdgWinDate) is written directly
+    // onto racecards:{date} by refresh-prices-background.js's hourly recheck
+    // — this file has no other access to it, since racecards.js's own tag
+    // computation runs at request time only and is never persisted. A
+    // missing key, unexpected shape, or zero matches all just yield an empty
+    // array; this never blocks or errors the rest of the build.
+    report.candgHorses = [];
+    // Distance per horse (race.dist) isn't part of the stored candgHorses
+    // shape — Change 2/3 downstream only need the count and card text — but
+    // the card prompt below is required to name each horse's distance, so
+    // it's captured here into a local list used only for the prompt.
+    const candgHorseLines = [];
+    try {
+      const cdgCards = await redisGet('racecards:' + today);
+      (cdgCards && cdgCards.meetings || []).forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(ru) {
+            if (!ru.isCandDGoing) return;
+            report.candgHorses.push({
+              horseName: ru.name || '',
+              course: m.name || '',
+              time: race.t || '',
+              prize: race.prize || '',
+              todayGoing: race.going || '',
+              winningGoing: ru.cdgWinGoing || '',
+              winDate: ru.cdgWinDate || ''
+            });
+            candgHorseLines.push(
+              (ru.name || 'Unknown') + ' — ' + (m.name || '') + ', ' + (race.dist || '') +
+              ", today's going: " + (race.going || 'n/a') +
+              ', won here on this going on ' + (ru.cdgWinDate || 'an earlier run') +
+              ' (going that day: ' + (ru.cdgWinGoing || 'n/a') + ')'
+            );
+          });
+        });
+      });
+    } catch (e) {
+      report.errors.push('candgHorses: ' + e.message);
+    }
+
+    // 4.7 C&D+G intel card — one AI call turning today's candgHorses list into
+    // DI card copy. Only fires when at least one horse qualifies; stays null
+    // on an empty list or any call failure, per spec. Its tokens are folded
+    // into report's today accumulators (same convention as the race-analysis
+    // and pullQuote-condense calls above) so the daily cost total stays
+    // accurate.
+    report.candgCard = null;
+    if (report.candgHorses.length) {
+      // Hard 25s ceiling on this call, same pattern as the Hot Yard card
+      // call above — apiPost's socket timeout only emits an event (never
+      // destroys the socket), so a hung Anthropic call here would otherwise
+      // stall the whole build. On timeout the card is skipped (candgCard
+      // stays null) and the build carries on.
+      const CANDG_CARD_TIMEOUT_MS = 25000;
+      let candgTimer = null;
+      try {
+        const candgPrompt = 'You are an expert horse racing analyst writing a card for' +
+          ' Racing Edge. Plain text only — no markdown, no asterisks,' +
+          ' no bold, no headers, no bullet points. Do not begin with' +
+          ' a label, heading or title — start directly with the first' +
+          ' sentence. Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
+          ' No tipster language. No opinions. No prices or odds.' +
+          ' Open with the total number of qualifiers and the venues' +
+          ' they run at today.' + NO_SITE_CTA +
+          ' The horses are: ' + candgHorseLines.join('; ');
+
+        const candgResp = await Promise.race([
+          callClaude('', candgPrompt, 400, true),
+          new Promise(function(_, reject) {
+            candgTimer = setTimeout(function() { reject(new Error('timed out after ' + (CANDG_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CANDG_CARD_TIMEOUT_MS);
+          })
+        ]);
+        if (candgResp.text && candgResp.text.trim()) {
+          const candgFixed = await fixCardLength('C&D+G card', candgPrompt, candgResp.text, CANDG_CARD_TIMEOUT_MS);
+          report.candgCard = candgFixed.text;
+          report.inputTokens += candgFixed.usage.input; report.outputTokens += candgFixed.usage.output;
+          report.cacheReadTokens += candgFixed.usage.cacheRead; report.cacheWriteTokens += candgFixed.usage.cacheWrite;
+          if (candgFixed.usage.input || candgFixed.usage.output) {
+            report.callLog.push({ type: 'candg-card-rewrite', label: 'C&D+G Intel Card (length rewrite)', inputTokens: candgFixed.usage.input, outputTokens: candgFixed.usage.output, cacheReadTokens: candgFixed.usage.cacheRead, cacheWriteTokens: candgFixed.usage.cacheWrite });
+          }
+          if (candgFixed.warning) { report.warnings.push(candgFixed.warning); console.log('[daily-build] ' + candgFixed.warning); }
+        }
+        report.inputTokens += candgResp.inputTokens || 0;
+        report.outputTokens += candgResp.outputTokens || 0;
+        report.cacheReadTokens += candgResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += candgResp.cacheWriteTokens || 0;
+        report.callLog.push({
+          type: 'candg-card', label: 'C&D+G Intel Card',
+          inputTokens: candgResp.inputTokens || 0, outputTokens: candgResp.outputTokens || 0,
+          cacheReadTokens: candgResp.cacheReadTokens || 0, cacheWriteTokens: candgResp.cacheWriteTokens || 0
+        });
+      } catch (e) {
+        console.log('[daily-build] candgCard: ' + e.message);
+        report.errors.push('candgCard: ' + e.message);
+        report.candgCard = null;
+      } finally {
+        if (candgTimer) clearTimeout(candgTimer);
+      }
+    }
+
+    // 4.8 Ground Lover card — every runner on today's card that has WON on
+    // exactly today's official going within its last six runs, on a day whose
+    // going is Yielding / Yielding To Soft / Soft / Soft To Heavy / Heavy (never
+    // Good To Soft or faster). The rule lives in racecards.js computeRunnerTags
+    // (isGroundLover) and is applied here by calling its exported
+    // enrichRunnerTags on today's stored card — the same call get-results.js
+    // makes — so the card and the racecard chip can never disagree. The tag
+    // is never persisted, so this is recomputed each build. Qualifiers are
+    // grouped by venue for the copy; Yielding qualifiers in 16+ fields are
+    // flagged as the each-way profile (the site's best-performing subset).
+    report.groundLoverHorses = [];
+    report.groundLoverCard = null;
+    const glVenues = {};
+    try {
+      const glCards = await redisGet('racecards:' + today);
+      const glMeetings = (glCards && Array.isArray(glCards.meetings)) ? glCards.meetings : [];
+      if (glMeetings.length) {
+        try { await require('./racecards.js').enrichRunnerTags(glMeetings, today); } catch (eTag) { report.errors.push('groundLover tags: ' + eTag.message); }
+        const glPrimary = function(g) { return String(g || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim(); };
+        for (const m of glMeetings) {
+          for (const race of (m.races || [])) {
+            const fieldSize = (race.runners || []).filter(function(r) { return !r.is_non_runner; }).length;
+            for (const ru of (race.runners || [])) {
+              if (!ru.isGroundLover) continue;
+              // The qualifying win: most recent of the last six runs that was a
+              // win on exactly today's going (same rule computeRunnerTags applied).
+              let win = null;
+              try {
+                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
+                const dayKey = glPrimary(race.going);
+                (Array.isArray(hist) ? hist.slice(0, 6) : []).some(function(h) {
+                  if (String(h.pos) !== '1' || glPrimary(h.going) !== dayKey) return false;
+                  win = { date: h.date || '', course: h.course || '', going: h.going || '', dist: h.dist || '' }; return true;
+                });
+              } catch (eH) { /* a missing history just leaves the win detail blank */ }
+              const goingKey = glPrimary(race.going);
+              const ewProfile = /^yielding/.test(goingKey) && fieldSize >= 16;
+              report.groundLoverHorses.push({
+                horseName: ru.name || '', course: m.name || '', time: race.t || '', dist: race.dist || '',
+                todayGoing: race.going || '', fieldSize: fieldSize, ewProfile: ewProfile,
+                winDate: win ? win.date : '', winCourse: win ? win.course : '', winGoing: win ? win.going : ''
+              });
+              const vk = m.name || 'Unknown';
+              if (!glVenues[vk]) glVenues[vk] = { going: race.going || '', count: 0 };
+              glVenues[vk].count++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      report.errors.push('groundLoverHorses: ' + e.message);
+    }
+
+    if (report.groundLoverHorses.length) {
+      const GL_CARD_TIMEOUT_MS = 25000;
+      let glTimer = null;
+      try {
+        // Distance for the copy: leading zero miles and trailing yards dropped
+        // ('0m6f212y' -> '6f', '1m6f0y' -> '1m6f'), the same convention the
+        // form-summary style rules enforce, so the model never reads yards aloud.
+        const glDist = function(d) { return String(d || '').replace(/^0m/, '').replace(/\d+y$/, '').replace(/(\d+)m0f$/, '$1m') || String(d || ''); };
+        const glTotal = report.groundLoverHorses.length;
+        const glEwCount = report.groundLoverHorses.filter(function(h) { return h.ewProfile; }).length;
+        const glOpening = glTotal + (glTotal === 1 ? ' Ground Lover qualifier has been identified today' : ' Ground Lover qualifiers have been identified today');
+        const venueLine = Object.keys(glVenues).map(function(v) { return v + ' (' + glVenues[v].going + '): ' + glVenues[v].count + (glVenues[v].count === 1 ? ' qualifier' : ' qualifiers'); }).join('; ');
+        const horseLines = report.groundLoverHorses.map(function(h) {
+          return h.horseName + ' — ' + h.course + ' ' + h.time + ', ' + glDist(h.dist) + ', field of ' + h.fieldSize + ' runners, today\'s going ' + h.todayGoing
+            + (h.winDate ? ', won on ' + h.winGoing + ' at ' + h.winCourse + ' on ' + h.winDate : ', has won on this going in its last six runs')
+            + (h.ewProfile ? ' [EACH-WAY PROFILE: yes]' : ' [each-way profile: no]');
+        });
+        const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
+          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
+          ' headers, no bullet points. Do not begin with a label, heading or title.' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
+          ' opinions. No prices or odds.' +
+          ' A Ground Lover is a horse that has already won on exactly today\'s official' +
+          ' going within its last six runs, on a day of genuine give underfoot.' +
+          ' There are exactly ' + glTotal + ' qualifiers today. Your first sentence must' +
+          ' begin with these exact words: "' + glOpening + '". Never state, infer or repeat' +
+          ' any other number as a qualifier count. A field size is the number of' +
+          ' runners in a race and must never be described as a number of qualifiers.' +
+          ' Then go venue by venue: name the venue, today\'s official going there, and' +
+          ' how many of the ' + glTotal + ' qualifiers run there.' +
+          (glEwCount > 0
+            ? ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
+              ' going is Yielding and its field has 16 or more runners. The words each-way' +
+              ' may be used only about a horse carrying that mark, and never, in any form,' +
+              ' positive or negative, about any other horse.'
+            : ' No horse today carries the each-way profile mark, so the words each-way,' +
+              ' or any reference to an each-way profile, must not appear anywhere in the' +
+              ' output, not even to say a horse lacks one.') + NO_SITE_CTA +
+          ' Today\'s venues: ' + venueLine + '. The horses are: ' + horseLines.join('; ');
+        const glResp = await Promise.race([
+          callClaude('', glPrompt, 400, true),
+          new Promise(function(_, reject) {
+            glTimer = setTimeout(function() { reject(new Error('timed out after ' + (GL_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, GL_CARD_TIMEOUT_MS);
+          })
+        ]);
+        if (glResp.text && glResp.text.trim()) {
+          const glFixed = await fixCardLength('Ground Lover card', glPrompt, glResp.text, GL_CARD_TIMEOUT_MS);
+          report.groundLoverCard = glFixed.text;
+          report.inputTokens += glFixed.usage.input; report.outputTokens += glFixed.usage.output;
+          report.cacheReadTokens += glFixed.usage.cacheRead; report.cacheWriteTokens += glFixed.usage.cacheWrite;
+          if (glFixed.usage.input || glFixed.usage.output) {
+            report.callLog.push({ type: 'groundlover-card-rewrite', label: 'Ground Lover Intel Card (length rewrite)', inputTokens: glFixed.usage.input, outputTokens: glFixed.usage.output, cacheReadTokens: glFixed.usage.cacheRead, cacheWriteTokens: glFixed.usage.cacheWrite });
+          }
+          if (glFixed.warning) { report.warnings.push(glFixed.warning); console.log('[daily-build] ' + glFixed.warning); }
+        }
+        report.inputTokens += glResp.inputTokens || 0;
+        report.outputTokens += glResp.outputTokens || 0;
+        report.cacheReadTokens += glResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += glResp.cacheWriteTokens || 0;
+        report.callLog.push({
+          type: 'groundlover-card', label: 'Ground Lover Intel Card',
+          inputTokens: glResp.inputTokens || 0, outputTokens: glResp.outputTokens || 0,
+          cacheReadTokens: glResp.cacheReadTokens || 0, cacheWriteTokens: glResp.cacheWriteTokens || 0
+        });
+      } catch (e) {
+        console.log('[daily-build] groundLoverCard: ' + e.message);
+        report.errors.push('groundLoverCard: ' + e.message);
+        report.groundLoverCard = null;
+      } finally {
+        if (glTimer) clearTimeout(glTimer);
+      }
+    }
+
+    // 4.9 Class Drop card — copy of the Ground Lover card's own pattern
+    // (4.8 above): its own redisGet('racecards:'+today) + enrichRunnerTags
+    // call, no card when there are no qualifiers, one Claude call in the
+    // same style/length/trimming. Qualifiers are every GB runner for whom
+    // racecards.js's provenClassDropDetail (the exact T1-T4 rule the
+    // isProvenClassDrop tag itself uses — reused, not reimplemented) returns
+    // a detail object; the tag is never persisted, so this is recomputed
+    // each build exactly like Ground Lover's own isGroundLover check.
+    report.classDropHorses = [];
+    report.classDropCard = null;
+    function cdOrdinal(n) {
+      n = parseInt(n, 10);
+      if (isNaN(n)) return String(n);
+      const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+    function cdPosOf(pos, ran) {
+      const p = parseInt(pos, 10);
+      return (isNaN(p) ? pos : cdOrdinal(p)) + ' of ' + (ran || '?');
+    }
+    const CD_DROP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function cdDate(d) {
+      const p = String(d || '').split('-');
+      return p.length === 3 ? (p[2] + ' ' + (CD_DROP_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (d || '');
+    }
+    try {
+      const cdCards = await redisGet('racecards:' + today);
+      const cdMeetings = (cdCards && Array.isArray(cdCards.meetings)) ? cdCards.meetings : [];
+      if (cdMeetings.length) {
+        try { await require('./racecards.js').enrichRunnerTags(cdMeetings, today); } catch (eTag) { report.errors.push('classDrop tags: ' + eTag.message); }
+        const provenClassDropDetail = require('./racecards.js').provenClassDropDetail;
+        for (const m of cdMeetings) {
+          if (m.flag !== 'GB') continue;
+          for (const race of (m.races || [])) {
+            const nonNR = (race.runners || []).filter(function(r) { return !r.is_non_runner && !(r.nonRunner === true || r.price === 'NR'); });
+            for (const ru of nonNR) {
+              if (!ru.isProvenClassDrop || !ru.horse_id) continue;
+              let detail = null;
+              try {
+                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
+                detail = provenClassDropDetail(ru, race, nonNR, Array.isArray(hist) ? hist : []);
+              } catch (eH) { /* missing history leaves this qualifier out — never errors */ }
+              if (!detail) continue;
+              report.classDropHorses.push({
+                horseName: ru.name || '', course: m.name || '', time: race.t || '',
+                lastRunClassNum: detail.lastRunClassNum, todayClassNum: detail.todayClassNum,
+                qualifyingRuns: detail.qualifyingRuns, lastRun: detail.lastRun,
+                ratingRank: detail.ratingRank, ratedFieldSize: detail.ratedFieldSize
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      report.errors.push('classDropHorses: ' + e.message);
+    }
+
+    if (report.classDropHorses.length) {
+      const CD_DROP_CARD_TIMEOUT_MS = 25000;
+      let cdTimer = null;
+      try {
+        const cdTotal = report.classDropHorses.length;
+        const cdOpening = cdTotal + (cdTotal === 1 ? ' Class Drop qualifier has been identified today' : ' Class Drop qualifiers have been identified today');
+        const horseLines = report.classDropHorses.map(function(h) {
+          const runsText = h.qualifyingRuns.map(function(r) { return cdPosOf(r.pos, r.ran) + ', ' + (r.race_class || '') + ', ' + (r.course || '') + ', ' + cdDate(r.date); }).join('; ');
+          return h.horseName + ' — ' + h.course + ' ' + h.time + ', dropping from Class ' + h.lastRunClassNum + ' to Class ' + h.todayClassNum + '.'
+            + ' Proven at the higher level: ' + runsText + '.'
+            + ' Last run: ' + cdPosOf(h.lastRun.pos, h.lastRun.ran) + ', Class ' + h.lastRunClassNum + ', ' + (h.lastRun.course || '') + ', ' + cdDate(h.lastRun.date) + '.'
+            + ' Rated ' + cdOrdinal(h.ratingRank) + ' of ' + h.ratedFieldSize + ' rated runners in today\'s race.';
+        });
+        const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
+          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
+          ' headers, no bullet points. Do not begin with a label, heading or title.' +
+          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
+          ' opinions. No prices, odds or betting words.' +
+          ' A Class Drop horse is dropping exactly one class today, has finished in' +
+          ' the top 3 at least twice at the higher class level within its last six' +
+          ' runs, finished in the top half of the field last time out, and is rated' +
+          ' among today\'s top 3 in its race.' +
+          ' There are exactly ' + cdTotal + ' qualifiers today. Your first sentence must' +
+          ' begin with these exact words: "' + cdOpening + '". Never state, infer or repeat' +
+          ' any other number as a qualifier count.' +
+          ' Use only the facts given for each horse — never invent a reason for the class' +
+          ' drop or the form shown. Write finishing positions as "3rd of 9".' +
+          ' Describe the qualifying evidence using the facts given — the class move, the placings at the higher class, the last run and the rating rank — without naming any horse.' +
+          NO_SITE_CTA +
+          ' The horses are: ' + horseLines.join('; ');
+        const cdResp = await Promise.race([
+          callClaude('', cdPrompt, 400, true),
+          new Promise(function(_, reject) {
+            cdTimer = setTimeout(function() { reject(new Error('timed out after ' + (CD_DROP_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CD_DROP_CARD_TIMEOUT_MS);
+          })
+        ]);
+        if (cdResp.text && cdResp.text.trim()) {
+          const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS);
+          report.classDropCard = cdFixed.text;
+          report.inputTokens += cdFixed.usage.input; report.outputTokens += cdFixed.usage.output;
+          report.cacheReadTokens += cdFixed.usage.cacheRead; report.cacheWriteTokens += cdFixed.usage.cacheWrite;
+          if (cdFixed.usage.input || cdFixed.usage.output) {
+            report.callLog.push({ type: 'classdrop-card-rewrite', label: 'Class Drop Intel Card (length rewrite)', inputTokens: cdFixed.usage.input, outputTokens: cdFixed.usage.output, cacheReadTokens: cdFixed.usage.cacheRead, cacheWriteTokens: cdFixed.usage.cacheWrite });
+          }
+          if (cdFixed.warning) { report.warnings.push(cdFixed.warning); console.log('[daily-build] ' + cdFixed.warning); }
+        }
+        report.inputTokens += cdResp.inputTokens || 0;
+        report.outputTokens += cdResp.outputTokens || 0;
+        report.cacheReadTokens += cdResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += cdResp.cacheWriteTokens || 0;
+        report.callLog.push({
+          type: 'classdrop-card', label: 'Class Drop Intel Card',
+          inputTokens: cdResp.inputTokens || 0, outputTokens: cdResp.outputTokens || 0,
+          cacheReadTokens: cdResp.cacheReadTokens || 0, cacheWriteTokens: cdResp.cacheWriteTokens || 0
+        });
+      } catch (e) {
+        console.log('[daily-build] classDropCard: ' + e.message);
+        report.errors.push('classDropCard: ' + e.message);
+        report.classDropCard = null;
+      } finally {
+        if (cdTimer) clearTimeout(cdTimer);
+      }
+    }
+}
+module.exports.runDailyIntelligenceCards = runDailyIntelligenceCards;
 
 exports.handler = async function(event) {
   console.log('[BUILD START]', new Date().toISOString(), 'ctx:', process.env.CONTEXT, 'scheduled:', !event.httpMethod);
@@ -2059,314 +3141,6 @@ exports.handler = async function(event) {
 //     }
     try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
 
-    // 3.5 Trainer form table — a full leaderboard of today's trainers by 14-day strike
-    // rate. Placed here, outside the cache-check above, so it runs unconditionally on
-    // every build regardless of whether Daily Intelligence (and therefore the Hot Yard
-    // signal, which only runs inside generateIntelligence()) was served from cache or
-    // regenerated — Hot Yard's own trainerFormMap/trainerFormCandidates are local to
-    // that function and never computed at all on a cache hit, so this does its own
-    // independent pass over racecards instead of depending on that data.
-    // Hot Yard card inputs — filled from the stored table rows below (step
-    // 3.6) once the table write succeeds; both report fields default to null
-    // so a failed table write, no qualifier, or a failed AI call all leave
-    // the card cleanly absent rather than half-populated.
-    report.hotYard = null;
-    report.hotYardCard = null;
-    report.hotYards = [];
-    let hotYardSource = [];
-    // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
-    // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
-    // _buildPopularTrainers list). Needed here so every elite yard running
-    // today is guaranteed a slot in the stored table below, regardless of
-    // where they rank by 14-day strike rate, and reused by the Hot Yard card
-    // qualifier filter in step 3.6. Stored lowercase to match the
-    // case-insensitive comparisons used against it.
-    const ELITE_TRAINERS_LC = [
-      "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
-      'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
-      'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
-      'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
-      'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
-      'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
-      'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
-      'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
-      'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
-      "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
-      'Sir Mark Prescott Bt'
-    ].map(function(t) { return t.toLowerCase(); });
-    try {
-      const trainerTableMap = {};
-      racecards.forEach(function(race) {
-        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-          const t14 = r.trainer_14_days || {};
-          const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
-          if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
-            trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
-          }
-        });
-      });
-
-      // Top 15, not 30: each stored trainer costs one paced Racing API call in
-      // the 7-day loop below (~500-800ms each), all spent BEFORE race analysis
-      // starts — trimming 30 -> 15 reclaims ~2 minutes of the 15-minute build
-      // budget (2026-08-25: a 26-race cold-cache day timed out). The display
-      // caps at 15 rows and now requires 5+ runners in-window, so the trimmed
-      // tail is invisible in the 14-day view; only edge case is a yard ranked
-      // 16-30 by 14-day SR that would have made the 7-day toggle's top 15.
-      const trainerTableTop15 = Object.values(trainerTableMap).sort(function(a, b) {
-        return b.pct - a.pct;
-      }).slice(0, 15);
-
-      // Every elite trainer running today, independent of their 14-day rank —
-      // built straight from today's racecards (not from trainerTableTop15) so
-      // an elite yard is included even when it wouldn't otherwise crack the
-      // top 15, or even the >=3-runs floor trainerTableMap requires. This is
-      // what racecards.js's Hot Yard tag actually needs; the homepage's top-15
-      // display list (trainerTableTop15, used below to build the stored rows
-      // and read unchanged elsewhere) is untouched by this addition.
-      const eliteTodayMap = {};
-      racecards.forEach(function(race) {
-        (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-          const nameLc = (r.trainer || '').toLowerCase().trim();
-          if (!nameLc || !r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINERS_LC.indexOf(nameLc) === -1) return;
-          const existing = trainerTableMap[r.trainer];
-          if (existing) { eliteTodayMap[r.trainer] = existing; return; }
-          const t14 = r.trainer_14_days || {};
-          eliteTodayMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
-        });
-      });
-
-      // Rows to actually fetch 7-day stats for and store: the top-15 display
-      // set plus any elite trainer running today not already in it. Storing
-      // (not displaying) all 39 is what Change 2 asks for — the homepage
-      // table continues to read only trainerTableTop15-derived rows.
-      const trainerTableStoreMap = {};
-      trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer] = e; });
-      Object.keys(eliteTodayMap).forEach(function(name) { if (!trainerTableStoreMap[name]) trainerTableStoreMap[name] = eliteTodayMap[name]; });
-      const trainerTableToStore = Object.values(trainerTableStoreMap);
-
-      // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
-      // window comes from the trainers results endpoint (same endpoint and
-      // pattern as the Hot Yard 60-day baseline): one date-ranged call per
-      // stored trainer, runs/wins counted from the flat results list. A failed
-      // call leaves that trainer's 7d fields at zero — the table write must
-      // never fail because one trainer lookup did.
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      for (const entry of trainerTableToStore) {
-        entry.runs7 = 0; entry.wins7 = 0; entry.pct7 = 0;
-        // Venues each 7-day win came from — only consumed by the Hot Yard
-        // card prompt (step 3.6); not part of the stored table shape.
-        entry.winVenues7 = [];
-        if (!entry.trainer_id) continue;
-        try {
-          const data7 = await apiGet('api.theracingapi.com',
-            '/v1/trainers/' + encodeURIComponent(entry.trainer_id) + '/results?start_date=' + sevenDaysAgo + '&end_date=' + today,
-            { 'Authorization': 'Basic ' + RACING_AUTH }
-          );
-          await new Promise(resolve => setTimeout(resolve, 200));
-          // Race objects with runners nested inside race.runners[] — the same
-          // shape fetchHorseHistory handles. Match this trainer's runners by
-          // trainer_id; position lives on the runner, never at the race's top
-          // level (the old top-level read counted 0 wins for every trainer,
-          // found 2026-08-17). Per-runner counting also fixes runs7 when a
-          // yard fields two horses in one race.
-          const results7 = data7.results || [];
-          let runs7 = 0, wins7 = 0;
-          results7.forEach(function(race) {
-            (race.runners || []).forEach(function(runner) {
-              if ((runner.trainer_id || '') !== entry.trainer_id) return;
-              runs7++;
-              if (String(runner.position) === '1') {
-                wins7++;
-                if (race.course && entry.winVenues7.indexOf(race.course) === -1) entry.winVenues7.push(race.course);
-              }
-            });
-          });
-          entry.runs7 = runs7;
-          entry.wins7 = wins7;
-          entry.pct7 = entry.runs7 > 0 ? Math.round(entry.wins7 / entry.runs7 * 100) : 0;
-        } catch (e7) {
-          console.log('[daily-build] trainer-form 7d fetch failed for ' + entry.trainer + ': ' + e7.message);
-        }
-      }
-
-      const trainerFormTable = trainerTableToStore.map(function(entry) {
-        return {
-          trainerName: entry.trainer,
-          runners14d: entry.runs,
-          winners14d: entry.wins,
-          strikeRate: entry.pct, // kept under its original name so cached frontends still read it
-          strikeRate14d: entry.pct,
-          runners7d: entry.runs7,
-          winners7d: entry.wins7,
-          strikeRate7d: entry.pct7
-        };
-      });
-
-      await redisSet('trainer-form:table:' + today, trainerFormTable);
-
-      // Snapshot for the Hot Yard card (step 3.6) — same rows as the stored
-      // table plus each yard's 7-day winning venues, which the table itself
-      // doesn't carry.
-      hotYardSource = trainerTableToStore.map(function(entry) {
-        return {
-          trainerName: entry.trainer,
-          runners7d: entry.runs7,
-          winners7d: entry.wins7,
-          strikeRate7d: entry.pct7,
-          strikeRate14d: entry.pct,
-          winVenues7: entry.winVenues7 || []
-        };
-      });
-    } catch (e) {
-      console.log('[daily-build] trainer-form:table write failed: ' + e.message);
-    }
-
-    // 3.6 Hot Yard card — the yard(s) the site's own Trainer Form table would
-    // show green with an upward trend, so the card can never disagree with the
-    // table: 7-day strike rate >= 30 (the table's green threshold in
-    // index.html _trainerFormSrColor), and — only while the 14-day rate is below
-    // 30 — a 7-day rate more than 3 points above it (the table's green up-arrow
-    // rule; a yard green over both windows needs no arrow), and EITHER on the elite
-    // whitelist (no minimum-runs test) OR 9+ runners in the 7-day window. Rates
-    // are rounded exactly as the table rounds them. Up to two qualifiers, best
-    // 7-day rate first. No qualifier means no Hot Yard card that day — never a
-    // fallback to the best available below the bar. The racecard chip rule in
-    // racecards.js is separate and untouched. report.hotYards holds 0-2 yards;
-    // report.hotYard is the first of them (or null) for readers of the old shape.
-    try {
-      const hyRound = function(v) { return Math.round(Number(v) || 0); };
-      const hotYardQualifiers = hotYardSource.filter(function(t) {
-        const name = (t.trainerName || '').toLowerCase().trim();
-        const sr7 = hyRound(t.strikeRate7d), sr14 = hyRound(t.strikeRate14d);
-        const elite = ELITE_TRAINERS_LC.indexOf(name) !== -1;
-        // Trend test only while the 14-day rate is below green: a yard already at
-        // 30+ over both windows is sustained green and qualifies without an arrow.
-        const trendOk = sr14 >= 30 || sr7 > sr14 + 3;
-        return sr7 >= 30 && trendOk && (elite || Number(t.runners7d) >= 9);
-      }).sort(function(a, b) { return hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d); }).slice(0, 2);
-
-      const runnersTodayFor = function(trainerName) {
-        const nameLc = (trainerName || '').toLowerCase().trim();
-        const out = [];
-        racecards.forEach(function(race) {
-          const t24 = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
-          (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-            if ((r.trainer || '').toLowerCase().trim() !== nameLc) return;
-            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-            const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
-            out.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
-          });
-        });
-        return out;
-      };
-
-      report.hotYards = hotYardQualifiers.map(function(t) {
-        return {
-          trainerName: t.trainerName,
-          runners7d: t.runners7d,
-          winners7d: t.winners7d,
-          strikeRate7d: t.strikeRate7d,
-          strikeRate14d: t.strikeRate14d,
-          runnersToday: runnersTodayFor(t.trainerName),
-          winVenues7: t.winVenues7 || []
-        };
-      });
-      report.hotYard = report.hotYards[0] || null;
-
-      if (report.hotYards.length) {
-        const yardBlocks = report.hotYards.map(function(y, i) {
-          const runnersLine = y.runnersToday.length
-            ? y.runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
-            : 'none declared';
-          const venueLine = y.winVenues7.length ? ' Winning venues last 7 days: ' + y.winVenues7.join(', ') + '.' : '';
-          return 'Yard ' + (i + 1) + (i === 0 ? ' (best)' : '') + ': ' + y.trainerName + '.'
-            + ' Last 7 days: ' + y.runners7d + ' runners, ' + y.winners7d + ' winners, ' + y.strikeRate7d + '% strike rate'
-            + ' (14-day rate ' + hyRound(y.strikeRate14d) + '%).' + venueLine
-            + ' Today\'s runners: ' + runnersLine + '.';
-        });
-        const anyVenues = report.hotYards.some(function(y) { return y.winVenues7.length > 0; });
-        const hotYardPrompt = 'You are an expert horse racing analyst writing a Hot Yard' +
-          ' card for Racing Edge. Plain text only — no asterisks, no' +
-          ' markdown, no bold, no headers. Do not begin with a' +
-          ' trainer name, a label, or any heading — start directly' +
-          ' with the first sentence of the card.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
-          ' No opinions, no predictions. No prices or odds.' +
-          (report.hotYards.length === 2
-            ? ' Two yards qualify today: write a separate card text for each yard, the best yard first, each text covering only its own yard and following the length rule on its own. Put a line containing only === between the two texts and write nothing else.'
-            : ' One yard qualifies today.') +
-          ' For each yard cover its recent form stats' + (anyVenues ? ', the venues its winners came from' : '') +
-          '.' + NO_SITE_CTA +
-          ' The data: ' + yardBlocks.join(' ');
-
-
-        // Hard 25s ceiling on this call. It runs BEFORE race analysis, and
-        // apiPost's socket timeout only emits an event (never destroys the
-        // socket), so a hung Anthropic call here would otherwise stall the
-        // whole build. On timeout the card is skipped (hotYardCard stays
-        // null), the timeout is logged, and the build carries on — the
-        // underlying request is left to finish or fail on its own.
-        const HOT_YARD_CALL_TIMEOUT_MS = 25000;
-        let hyTimer = null;
-        try {
-          const hyResp = await Promise.race([
-            callClaude('', hotYardPrompt, 400, true),
-            new Promise(function(_, reject) {
-              hyTimer = setTimeout(function() { reject(new Error('timed out after ' + (HOT_YARD_CALL_TIMEOUT_MS / 1000) + 's — skipped')); }, HOT_YARD_CALL_TIMEOUT_MS);
-            })
-          ]);
-          if (hyResp.text && hyResp.text.trim()) {
-            // One card per yard: each yard's text is stored on its own hotYards
-            // entry (cardText). With two yards the call returns the two texts
-            // split by a line holding only "===", split BEFORE stripSiteCta
-            // (which would glue the lines together). If the separator is
-            // missing the texts cannot be told apart, so neither yard gets a
-            // card rather than showing a merged text.
-            const hyCap = function(t) {
-              let s = stripSiteCta(t);
-              if (pullQuoteWordCount(s) > 50) s = trimPullQuoteToSentence(s, 50);
-              return s;
-            };
-            if (report.hotYards.length === 2) {
-              const hyParts = hyResp.text.split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean);
-              if (hyParts.length === 2) {
-                report.hotYards[0].cardText = hyCap(hyParts[0]);
-                report.hotYards[1].cardText = hyCap(hyParts[1]);
-              } else {
-                report.errors.push('hotYardCard: expected 2 yard texts, got ' + hyParts.length + ' — no Hot Yard cards stored');
-              }
-            } else {
-              report.hotYards[0].cardText = hyCap(hyResp.text);
-            }
-            report.hotYardCard = report.hotYards[0].cardText || null;
-          }
-          report.inputTokens += hyResp.inputTokens || 0;
-          report.outputTokens += hyResp.outputTokens || 0;
-          report.cacheReadTokens += hyResp.cacheReadTokens || 0;
-          report.cacheWriteTokens += hyResp.cacheWriteTokens || 0;
-          report.callLog.push({
-            type: 'hotyard-card', label: 'Hot Yard Intel Card',
-            inputTokens: hyResp.inputTokens || 0, outputTokens: hyResp.outputTokens || 0,
-            cacheReadTokens: hyResp.cacheReadTokens || 0, cacheWriteTokens: hyResp.cacheWriteTokens || 0
-          });
-        } catch (eHYC) {
-          console.log('[daily-build] hotYardCard: ' + eHYC.message);
-          report.errors.push('hotYardCard: ' + eHYC.message);
-          report.hotYardCard = null;
-        } finally {
-          if (hyTimer) clearTimeout(hyTimer);
-        }
-      }
-    } catch (eHY) {
-      report.errors.push('hotYard: ' + eHY.message);
-      report.hotYards = [];
-      report.hotYard = null;
-      report.hotYardCard = null;
-    }
-
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
     if (RUN_FULL_BUILD) {
     const BATCH = 4;
@@ -2415,674 +3189,7 @@ exports.handler = async function(event) {
     }
     }
 
-    // 4.5 Big Race of the Day — the single highest-prize race among today's
-    // successfully analysed races (report.analyses, populated by step 4
-    // above). Only races with a completed analysis are eligible, since
-    // raceIntelligence has to come from there. race.prize is whatever the
-    // Racing API returns (e.g. "£8,514") — not guaranteed numeric — so it's
-    // parsed down to digits only for comparison; a race with no parseable
-    // prize sorts as 0, never wins over one that does.
-    try {
-      const parsePrizeAmount = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
-      // A prize string with more than one distinct number in it (e.g. a
-      // "£8,514 - £2,564" range, or a 1st/2nd breakdown) needs to be told
-      // apart from a single clean value that merely uses comma
-      // thousands-grouping (e.g. "£1,500,000"). Thousands-separator commas —
-      // a digit, a comma, then exactly 3 digits not followed by a further
-      // digit — are stripped first so they're never counted as a group
-      // boundary; what's left is split into digit runs. More than one run
-      // means the string genuinely names multiple numbers, so parsePrizeAmount
-      // would otherwise concatenate them into one garbage figure.
-      const hasMultiplePrizeValues = s => {
-        const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
-        const groups = noThousandsCommas.match(/\d+/g) || [];
-        return groups.length > 1;
-      };
-      let bigRaceCandidate = null;
-      let bigRaceTop = -1;
-      racecards.forEach(function(race) {
-        const t24label = (function(offDt){ if(!offDt) return race.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:race.off_time||''; })(race.off_dt);
-        const raceLabel = `${race.course} ${t24label}`;
-        const analysisEntry = report.analyses.find(function(a){ return a.race === raceLabel; });
-        if (!analysisEntry || !analysisEntry.raceIntelligence) return;
-        if (hasMultiplePrizeValues(race.prize)) return;
-        const prizeAmount = parsePrizeAmount(race.prize);
-        if (prizeAmount > bigRaceTop) {
-          bigRaceTop = prizeAmount;
-          bigRaceCandidate = { race, t24label, analysisEntry };
-        }
-      });
-      if (bigRaceCandidate) {
-        report.bigRace = {
-          course: bigRaceCandidate.race.course,
-          time: bigRaceCandidate.t24label,
-          raceName: (function(){
-            var n=String(bigRaceCandidate.race.race_name||'');
-            n=n.replace(/\s*\(GBB Race\)/gi,'');
-            n=n.replace(/\s*\(GBB\)\s*/gi,'');
-            n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
-            return n.trim();
-          })(),
-          prize: bigRaceCandidate.race.prize || '',
-          runners: bigRaceCandidate.race.runners
-            ? bigRaceCandidate.race.runners.filter(function(r){return !r.is_non_runner;}).length
-            : (bigRaceCandidate.race.field_size||0),
-          distance: bigRaceCandidate.race.distance||'',
-          going: bigRaceCandidate.race.going||'',
-          raceClass: bigRaceCandidate.race.race_class||'',
-          raceIntelligence: (bigRaceCandidate.analysisEntry.strongestSelection && bigRaceCandidate.analysisEntry.strongestSelection.pullQuote) || bigRaceCandidate.analysisEntry.raceIntelligence,
-          courseId: bigRaceCandidate.race.course_id || bigRaceCandidate.race.course
-        };
-        // Dedicated Big Race preview — a race-level briefing rather than the
-        // selection's pullQuote (which argues for one horse). Built exactly
-        // like the C&D+G card: empty system prompt, no search, 400 tokens,
-        // 25s ceiling, tokens into the accumulators. On any failure or empty
-        // response the initial raceIntelligence assignment above stands.
-        const BIG_RACE_CARD_TIMEOUT_MS = 25000;
-        let brcTimer = null;
-        try {
-          const brRunners = (bigRaceCandidate.race.runners || []).filter(function(r) { return !r.is_non_runner; });
-          const brRunnerLines = brRunners.map(function(r) {
-            const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-            const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
-            const parts = [r.horse || r.name || 'Unknown'];
-            if (r.trainer) parts.push('trainer ' + r.trainer);
-            if (r.jockey) parts.push('jockey ' + r.jockey);
-            parts.push('price ' + sp);
-            if (r.form) parts.push('recent form ' + r.form);
-            return parts.join(', ');
-          });
-          const brDetails = [
-            'Race: ' + report.bigRace.raceName,
-            'Course: ' + report.bigRace.course,
-            'Time: ' + report.bigRace.time,
-            'Distance: ' + (report.bigRace.distance || 'unknown'),
-            'Going: ' + (report.bigRace.going || 'unknown'),
-            'Class/grade: ' + (report.bigRace.raceClass || 'unknown'),
-            'Prize: ' + (report.bigRace.prize || 'unknown'),
-            'Runners: ' + report.bigRace.runners
-          ].join('. ');
-          const bigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
-            ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
-            ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-            ' Write 45 to 50 words, never more than 50.' +
-            ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
-            ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
-            ' Open with what the race is and the shape of the field.' +
-            ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
-            ' Note the key filter for the race today (going, trip or class).' +
-            ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
-            ' The race: ' + brDetails + '. The runners: ' + brRunnerLines.join('; ');
-          const brcResp = await Promise.race([
-            callClaude('', bigRacePrompt, 400, true),
-            new Promise(function(_, reject) {
-              brcTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_CARD_TIMEOUT_MS);
-            })
-          ]);
-          if (brcResp.text && brcResp.text.trim()) {
-            let brText = stripSiteCta(brcResp.text);
-            if (pullQuoteWordCount(brText) > 50) brText = trimPullQuoteToSentence(brText, 50);
-            report.bigRace.raceIntelligence = brText;
-          }
-          report.inputTokens += brcResp.inputTokens || 0;
-          report.outputTokens += brcResp.outputTokens || 0;
-          report.cacheReadTokens += brcResp.cacheReadTokens || 0;
-          report.cacheWriteTokens += brcResp.cacheWriteTokens || 0;
-          report.callLog.push({
-            type: 'bigrace-card', label: 'Big Race Preview',
-            inputTokens: brcResp.inputTokens || 0, outputTokens: brcResp.outputTokens || 0,
-            cacheReadTokens: brcResp.cacheReadTokens || 0, cacheWriteTokens: brcResp.cacheWriteTokens || 0
-          });
-        } catch (eBRC) {
-          console.log('[daily-build] bigRace preview: ' + eBRC.message);
-          report.errors.push('bigRace preview: ' + eBRC.message);
-        } finally {
-          if (brcTimer) clearTimeout(brcTimer);
-        }
-        // Fallback text (the selection's pullQuote) stands when the card call
-        // fails or returns nothing: hold it to the same 50-word cap.
-        if (pullQuoteWordCount(report.bigRace.raceIntelligence) > 50) report.bigRace.raceIntelligence = trimPullQuoteToSentence(report.bigRace.raceIntelligence, 50);
-        // Short display name for the card title — one small Claude call. Falls
-        // back to the full raceName on any failure or empty response so the
-        // card always has a title. Tokens roll into the report accumulators
-        // like every other card call.
-        report.bigRace.raceNameShort = report.bigRace.raceName;
-        // Hard 20s ceiling on this call, same pattern as the Hot Yard card
-        // call above — apiPost's socket timeout only emits an event (never
-        // destroys the socket), so a hung Anthropic call here would
-        // otherwise stall the whole build. On timeout the short name is
-        // skipped and the fallback full raceName (set above) stands.
-        const BIG_RACE_NAME_TIMEOUT_MS = 20000;
-        let brnTimer = null;
-        try {
-          const shortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
-            ' Keep the key identity words — drop sponsor names.' +
-            ' For Group/Grade/Listed races keep the grade in' +
-            ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
-            ' Return only the shortened name, nothing else.' +
-            ' Race name: ' + report.bigRace.raceName;
-          const shortResp = await Promise.race([
-            callClaude('', shortNamePrompt, 60, true),
-            new Promise(function(_, reject) {
-              brnTimer = setTimeout(function() { reject(new Error('timed out after ' + (BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, BIG_RACE_NAME_TIMEOUT_MS);
-            })
-          ]);
-          const shortText = (shortResp.text || '').trim();
-          if (shortText) report.bigRace.raceNameShort = shortText;
-          report.inputTokens += shortResp.inputTokens || 0;
-          report.outputTokens += shortResp.outputTokens || 0;
-          report.cacheReadTokens += shortResp.cacheReadTokens || 0;
-          report.cacheWriteTokens += shortResp.cacheWriteTokens || 0;
-          report.callLog.push({
-            type: 'bigrace-name', label: 'Big Race Short Name',
-            inputTokens: shortResp.inputTokens || 0, outputTokens: shortResp.outputTokens || 0,
-            cacheReadTokens: shortResp.cacheReadTokens || 0, cacheWriteTokens: shortResp.cacheWriteTokens || 0
-          });
-        } catch (eShort) {
-          console.log('[daily-build] bigRace raceNameShort: ' + eShort.message);
-          report.errors.push('bigRace raceNameShort: ' + eShort.message);
-          report.bigRace.raceNameShort = report.bigRace.raceName;
-        } finally {
-          if (brnTimer) clearTimeout(brnTimer);
-        }
-      }
-    } catch (e) {
-      report.errors.push('bigRace: ' + e.message);
-    }
-
-    // 4.55 Tomorrow's Big Race of the Day — the highest-prize race on
-    // tomorrow's cached card (racecards:{tomorrow}, the Redis meetings shape
-    // fetch-future-cards-background.js writes at 23:00, so it is present at
-    // this build). No analysis requirement — tomorrow isn't analysed yet.
-    // Fields map onto the same names report.bigRace uses; same preview and
-    // short-name calls, ceilings and token accounting, with their own callLog
-    // types (bigrace-tomorrow-card / bigrace-tomorrow-name). Left undefined
-    // when tomorrow's card is missing or holds no race with a parseable prize.
-    // report.bigRace above is not touched.
-    try {
-      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      const tmCard = await redisGet('racecards:' + tomorrowStr);
-      if (tmCard && Array.isArray(tmCard.meetings) && tmCard.meetings.length) {
-        // Same prize rules as today's block (its helpers are scoped to that try).
-        const parsePrizeAmountT = s => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
-        const hasMultiplePrizeValuesT = s => {
-          const noThousandsCommas = String(s || '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
-          const groups = noThousandsCommas.match(/\d+/g) || [];
-          return groups.length > 1;
-        };
-        let tmCandidate = null;
-        let tmTop = -1;
-        tmCard.meetings.forEach(function(m) {
-          (m.races || []).forEach(function(race) {
-            if (hasMultiplePrizeValuesT(race.prize)) return;
-            const amt = parsePrizeAmountT(race.prize);
-            if (amt > tmTop) { tmTop = amt; tmCandidate = { meeting: m, race: race }; }
-          });
-        });
-        if (tmCandidate) {
-          const tmM = tmCandidate.meeting, tmR = tmCandidate.race;
-          const tmRunners = (tmR.runners || []).filter(function(r) { return !r.nonRunner; });
-          report.bigRaceTomorrow = {
-            date: tomorrowStr,
-            course: tmM.name || '',
-            time: tmR.t || '',
-            raceName: (function(){
-              var n=String(tmR.name||'');
-              n=n.replace(/\s*\(GBB Race\)/gi,'');
-              n=n.replace(/\s*\(GBB\)\s*/gi,'');
-              n=n.replace(/^.+?\s+(?:Sponsored By|In Association With|Supporting|Supports|Powered By|Presented By)\s+[^(]+?(?=\s+(?:Stakes|Handicap|Chase|Hurdle|Novice|Maiden|Bumper|Cup|Trophy|Plate|Series|Qualifier|Race))/i,'');
-              return n.trim();
-            })(),
-            prize: tmR.prize || '',
-            runners: tmRunners.length || tmR.r || 0,
-            distance: tmR.dist || '',
-            going: tmR.going || tmM.going || '',
-            raceClass: tmR.class || '',
-            raceIntelligence: '',
-            courseId: tmM.id || tmM.name || ''
-          };
-          // Preview — same call, ceiling and accounting as today's bigrace-card;
-          // "today" in the prompt becomes "tomorrow". Runner lines come from
-          // the cached card's price/form fields (no odds arrays on this shape).
-          const TM_BIG_RACE_CARD_TIMEOUT_MS = 25000;
-          let tbrcTimer = null;
-          try {
-            const tmRunnerLines = tmRunners.map(function(r) {
-              const parts = [r.name || 'Unknown'];
-              if (r.trainer) parts.push('trainer ' + r.trainer);
-              if (r.jockey) parts.push('jockey ' + r.jockey);
-              parts.push('price ' + (r.price || 'SP'));
-              if (r.form) parts.push('recent form ' + r.form);
-              return parts.join(', ');
-            });
-            const tmDetails = [
-              'Race: ' + report.bigRaceTomorrow.raceName,
-              'Course: ' + report.bigRaceTomorrow.course,
-              'Time: ' + report.bigRaceTomorrow.time,
-              'Distance: ' + (report.bigRaceTomorrow.distance || 'unknown'),
-              'Going: ' + (report.bigRaceTomorrow.going || 'unknown'),
-              'Class/grade: ' + (report.bigRaceTomorrow.raceClass || 'unknown'),
-              'Prize: ' + (report.bigRaceTomorrow.prize || 'unknown'),
-              'Runners: ' + report.bigRaceTomorrow.runners
-            ].join('. ');
-            const tmBigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
-              ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
-              ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-              ' Write 45 to 50 words, never more than 50.' +
-              ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
-              ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
-              ' Open with what the race is and the shape of the field.' +
-              ' Then name the three or four horses with the strongest claims, one short factual sentence each covering the angle that matters for that horse — form, trainer, going, trip or class.' +
-              ' Note the key filter for the race tomorrow (going, trip or class).' +
-              ' Close with the single factor most likely to decide the race, stated about the horses.' + NO_SITE_CTA +
-              ' The race: ' + tmDetails + '. The runners: ' + tmRunnerLines.join('; ');
-            const tbrcResp = await Promise.race([
-              callClaude('', tmBigRacePrompt, 400, true),
-              new Promise(function(_, reject) {
-                tbrcTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_CARD_TIMEOUT_MS);
-              })
-            ]);
-            if (tbrcResp.text && tbrcResp.text.trim()) {
-              let tbrText = stripSiteCta(tbrcResp.text);
-              if (pullQuoteWordCount(tbrText) > 50) tbrText = trimPullQuoteToSentence(tbrText, 50);
-              report.bigRaceTomorrow.raceIntelligence = tbrText;
-            }
-            report.inputTokens += tbrcResp.inputTokens || 0;
-            report.outputTokens += tbrcResp.outputTokens || 0;
-            report.cacheReadTokens += tbrcResp.cacheReadTokens || 0;
-            report.cacheWriteTokens += tbrcResp.cacheWriteTokens || 0;
-            report.callLog.push({
-              type: 'bigrace-tomorrow-card', label: 'Tomorrow Big Race Preview',
-              inputTokens: tbrcResp.inputTokens || 0, outputTokens: tbrcResp.outputTokens || 0,
-              cacheReadTokens: tbrcResp.cacheReadTokens || 0, cacheWriteTokens: tbrcResp.cacheWriteTokens || 0
-            });
-          } catch (eTBRC) {
-            console.log('[daily-build] bigRaceTomorrow preview: ' + eTBRC.message);
-            report.errors.push('bigRaceTomorrow preview: ' + eTBRC.message);
-          } finally {
-            if (tbrcTimer) clearTimeout(tbrcTimer);
-          }
-          // Same cap on whatever text stands if the card call failed.
-          if (pullQuoteWordCount(report.bigRaceTomorrow.raceIntelligence) > 50) report.bigRaceTomorrow.raceIntelligence = trimPullQuoteToSentence(report.bigRaceTomorrow.raceIntelligence, 50);
-          // Short display name — same call and ceiling as today's bigrace-name.
-          report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
-          const TM_BIG_RACE_NAME_TIMEOUT_MS = 20000;
-          let tbrnTimer = null;
-          try {
-            const tmShortNamePrompt = 'Shorten this horse race name to 5 words or fewer.' +
-              ' Keep the key identity words — drop sponsor names.' +
-              ' For Group/Grade/Listed races keep the grade in' +
-              ' brackets abbreviated: (Gr1) (Gr2) (Gr3) (Listed).' +
-              ' Return only the shortened name, nothing else.' +
-              ' Race name: ' + report.bigRaceTomorrow.raceName;
-            const tmShortResp = await Promise.race([
-              callClaude('', tmShortNamePrompt, 60, true),
-              new Promise(function(_, reject) {
-                tbrnTimer = setTimeout(function() { reject(new Error('timed out after ' + (TM_BIG_RACE_NAME_TIMEOUT_MS / 1000) + 's — skipped')); }, TM_BIG_RACE_NAME_TIMEOUT_MS);
-              })
-            ]);
-            const tmShortText = (tmShortResp.text || '').trim();
-            if (tmShortText) report.bigRaceTomorrow.raceNameShort = tmShortText;
-            report.inputTokens += tmShortResp.inputTokens || 0;
-            report.outputTokens += tmShortResp.outputTokens || 0;
-            report.cacheReadTokens += tmShortResp.cacheReadTokens || 0;
-            report.cacheWriteTokens += tmShortResp.cacheWriteTokens || 0;
-            report.callLog.push({
-              type: 'bigrace-tomorrow-name', label: 'Tomorrow Big Race Short Name',
-              inputTokens: tmShortResp.inputTokens || 0, outputTokens: tmShortResp.outputTokens || 0,
-              cacheReadTokens: tmShortResp.cacheReadTokens || 0, cacheWriteTokens: tmShortResp.cacheWriteTokens || 0
-            });
-          } catch (eTShort) {
-            console.log('[daily-build] bigRaceTomorrow raceNameShort: ' + eTShort.message);
-            report.errors.push('bigRaceTomorrow raceNameShort: ' + eTShort.message);
-            report.bigRaceTomorrow.raceNameShort = report.bigRaceTomorrow.raceName;
-          } finally {
-            if (tbrnTimer) clearTimeout(tbrnTimer);
-          }
-        }
-      } else {
-        console.log('[daily-build] bigRaceTomorrow: no racecards:' + tomorrowStr + ' — card skipped');
-      }
-    } catch (e) {
-      report.errors.push('bigRaceTomorrow: ' + e.message);
-    }
-
-    // 4.6 C&D+G horses — every runner flagged isCandDGoing on today's cached
-    // racecard. That flag (plus cdgWinGoing/cdgWinDate) is written directly
-    // onto racecards:{date} by refresh-prices-background.js's hourly recheck
-    // — this file has no other access to it, since racecards.js's own tag
-    // computation runs at request time only and is never persisted. A
-    // missing key, unexpected shape, or zero matches all just yield an empty
-    // array; this never blocks or errors the rest of the build.
-    report.candgHorses = [];
-    // Distance per horse (race.dist) isn't part of the stored candgHorses
-    // shape — Change 2/3 downstream only need the count and card text — but
-    // the card prompt below is required to name each horse's distance, so
-    // it's captured here into a local list used only for the prompt.
-    const candgHorseLines = [];
-    try {
-      const cdgCards = await redisGet('racecards:' + today);
-      (cdgCards && cdgCards.meetings || []).forEach(function(m) {
-        (m.races || []).forEach(function(race) {
-          (race.runners || []).forEach(function(ru) {
-            if (!ru.isCandDGoing) return;
-            report.candgHorses.push({
-              horseName: ru.name || '',
-              course: m.name || '',
-              time: race.t || '',
-              prize: race.prize || '',
-              todayGoing: race.going || '',
-              winningGoing: ru.cdgWinGoing || '',
-              winDate: ru.cdgWinDate || ''
-            });
-            candgHorseLines.push(
-              (ru.name || 'Unknown') + ' — ' + (m.name || '') + ', ' + (race.dist || '') +
-              ", today's going: " + (race.going || 'n/a') +
-              ', won here on this going on ' + (ru.cdgWinDate || 'an earlier run') +
-              ' (going that day: ' + (ru.cdgWinGoing || 'n/a') + ')'
-            );
-          });
-        });
-      });
-    } catch (e) {
-      report.errors.push('candgHorses: ' + e.message);
-    }
-
-    // 4.7 C&D+G intel card — one AI call turning today's candgHorses list into
-    // DI card copy. Only fires when at least one horse qualifies; stays null
-    // on an empty list or any call failure, per spec. Its tokens are folded
-    // into report's today accumulators (same convention as the race-analysis
-    // and pullQuote-condense calls above) so the daily cost total stays
-    // accurate.
-    report.candgCard = null;
-    if (report.candgHorses.length) {
-      // Hard 25s ceiling on this call, same pattern as the Hot Yard card
-      // call above — apiPost's socket timeout only emits an event (never
-      // destroys the socket), so a hung Anthropic call here would otherwise
-      // stall the whole build. On timeout the card is skipped (candgCard
-      // stays null) and the build carries on.
-      const CANDG_CARD_TIMEOUT_MS = 25000;
-      let candgTimer = null;
-      try {
-        const candgPrompt = 'You are an expert horse racing analyst writing a card for' +
-          ' Racing Edge. Plain text only — no markdown, no asterisks,' +
-          ' no bold, no headers, no bullet points. Do not begin with' +
-          ' a label, heading or title — start directly with the first' +
-          ' sentence. Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
-          ' No tipster language. No opinions. No prices or odds.' +
-          ' Open with the total number of qualifiers and the venues' +
-          ' they run at today.' + NO_SITE_CTA +
-          ' The horses are: ' + candgHorseLines.join('; ');
-
-        const candgResp = await Promise.race([
-          callClaude('', candgPrompt, 400, true),
-          new Promise(function(_, reject) {
-            candgTimer = setTimeout(function() { reject(new Error('timed out after ' + (CANDG_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CANDG_CARD_TIMEOUT_MS);
-          })
-        ]);
-        if (candgResp.text && candgResp.text.trim()) {
-          let candgText = stripSiteCta(candgResp.text);
-          if (pullQuoteWordCount(candgText) > 50) candgText = trimPullQuoteToSentence(candgText, 50);
-          report.candgCard = candgText;
-        }
-        report.inputTokens += candgResp.inputTokens || 0;
-        report.outputTokens += candgResp.outputTokens || 0;
-        report.cacheReadTokens += candgResp.cacheReadTokens || 0;
-        report.cacheWriteTokens += candgResp.cacheWriteTokens || 0;
-        report.callLog.push({
-          type: 'candg-card', label: 'C&D+G Intel Card',
-          inputTokens: candgResp.inputTokens || 0, outputTokens: candgResp.outputTokens || 0,
-          cacheReadTokens: candgResp.cacheReadTokens || 0, cacheWriteTokens: candgResp.cacheWriteTokens || 0
-        });
-      } catch (e) {
-        console.log('[daily-build] candgCard: ' + e.message);
-        report.errors.push('candgCard: ' + e.message);
-        report.candgCard = null;
-      } finally {
-        if (candgTimer) clearTimeout(candgTimer);
-      }
-    }
-
-    // 4.8 Ground Lover card — every runner on today's card that has WON on
-    // exactly today's official going within its last six runs, on a day whose
-    // going is Yielding / Yielding To Soft / Soft / Soft To Heavy / Heavy (never
-    // Good To Soft or faster). The rule lives in racecards.js computeRunnerTags
-    // (isGroundLover) and is applied here by calling its exported
-    // enrichRunnerTags on today's stored card — the same call get-results.js
-    // makes — so the card and the racecard chip can never disagree. The tag
-    // is never persisted, so this is recomputed each build. Qualifiers are
-    // grouped by venue for the copy; Yielding qualifiers in 16+ fields are
-    // flagged as the each-way profile (the site's best-performing subset).
-    report.groundLoverHorses = [];
-    report.groundLoverCard = null;
-    const glVenues = {};
-    try {
-      const glCards = await redisGet('racecards:' + today);
-      const glMeetings = (glCards && Array.isArray(glCards.meetings)) ? glCards.meetings : [];
-      if (glMeetings.length) {
-        try { await require('./racecards.js').enrichRunnerTags(glMeetings, today); } catch (eTag) { report.errors.push('groundLover tags: ' + eTag.message); }
-        const glPrimary = function(g) { return String(g || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim(); };
-        for (const m of glMeetings) {
-          for (const race of (m.races || [])) {
-            const fieldSize = (race.runners || []).filter(function(r) { return !r.is_non_runner; }).length;
-            for (const ru of (race.runners || [])) {
-              if (!ru.isGroundLover) continue;
-              // The qualifying win: most recent of the last six runs that was a
-              // win on exactly today's going (same rule computeRunnerTags applied).
-              let win = null;
-              try {
-                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
-                const dayKey = glPrimary(race.going);
-                (Array.isArray(hist) ? hist.slice(0, 6) : []).some(function(h) {
-                  if (String(h.pos) !== '1' || glPrimary(h.going) !== dayKey) return false;
-                  win = { date: h.date || '', course: h.course || '', going: h.going || '', dist: h.dist || '' }; return true;
-                });
-              } catch (eH) { /* a missing history just leaves the win detail blank */ }
-              const goingKey = glPrimary(race.going);
-              const ewProfile = /^yielding/.test(goingKey) && fieldSize >= 16;
-              report.groundLoverHorses.push({
-                horseName: ru.name || '', course: m.name || '', time: race.t || '', dist: race.dist || '',
-                todayGoing: race.going || '', fieldSize: fieldSize, ewProfile: ewProfile,
-                winDate: win ? win.date : '', winCourse: win ? win.course : '', winGoing: win ? win.going : ''
-              });
-              const vk = m.name || 'Unknown';
-              if (!glVenues[vk]) glVenues[vk] = { going: race.going || '', count: 0 };
-              glVenues[vk].count++;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      report.errors.push('groundLoverHorses: ' + e.message);
-    }
-
-    if (report.groundLoverHorses.length) {
-      const GL_CARD_TIMEOUT_MS = 25000;
-      let glTimer = null;
-      try {
-        // Distance for the copy: leading zero miles and trailing yards dropped
-        // ('0m6f212y' -> '6f', '1m6f0y' -> '1m6f'), the same convention the
-        // form-summary style rules enforce, so the model never reads yards aloud.
-        const glDist = function(d) { return String(d || '').replace(/^0m/, '').replace(/\d+y$/, '').replace(/(\d+)m0f$/, '$1m') || String(d || ''); };
-        const glTotal = report.groundLoverHorses.length;
-        const glEwCount = report.groundLoverHorses.filter(function(h) { return h.ewProfile; }).length;
-        const glOpening = glTotal + (glTotal === 1 ? ' Ground Lover qualifier has been identified today' : ' Ground Lover qualifiers have been identified today');
-        const venueLine = Object.keys(glVenues).map(function(v) { return v + ' (' + glVenues[v].going + '): ' + glVenues[v].count + (glVenues[v].count === 1 ? ' qualifier' : ' qualifiers'); }).join('; ');
-        const horseLines = report.groundLoverHorses.map(function(h) {
-          return h.horseName + ' — ' + h.course + ' ' + h.time + ', ' + glDist(h.dist) + ', field of ' + h.fieldSize + ' runners, today\'s going ' + h.todayGoing
-            + (h.winDate ? ', won on ' + h.winGoing + ' at ' + h.winCourse + ' on ' + h.winDate : ', has won on this going in its last six runs')
-            + (h.ewProfile ? ' [EACH-WAY PROFILE: yes]' : ' [each-way profile: no]');
-        });
-        const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
-          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
-          ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
-          ' opinions. No prices or odds.' +
-          ' A Ground Lover is a horse that has already won on exactly today\'s official' +
-          ' going within its last six runs, on a day of genuine give underfoot.' +
-          ' There are exactly ' + glTotal + ' qualifiers today. Your first sentence must' +
-          ' begin with these exact words: "' + glOpening + '". Never state, infer or repeat' +
-          ' any other number as a qualifier count. A field size is the number of' +
-          ' runners in a race and must never be described as a number of qualifiers.' +
-          ' Then go venue by venue: name the venue, today\'s official going there, and' +
-          ' how many of the ' + glTotal + ' qualifiers run there.' +
-          (glEwCount > 0
-            ? ' Each-way profile: a horse is marked EACH-WAY PROFILE: yes only when today\'s' +
-              ' going is Yielding and its field has 16 or more runners. The words each-way' +
-              ' may be used only about a horse carrying that mark, and never, in any form,' +
-              ' positive or negative, about any other horse.'
-            : ' No horse today carries the each-way profile mark, so the words each-way,' +
-              ' or any reference to an each-way profile, must not appear anywhere in the' +
-              ' output, not even to say a horse lacks one.') + NO_SITE_CTA +
-          ' Today\'s venues: ' + venueLine + '. The horses are: ' + horseLines.join('; ');
-        const glResp = await Promise.race([
-          callClaude('', glPrompt, 400, true),
-          new Promise(function(_, reject) {
-            glTimer = setTimeout(function() { reject(new Error('timed out after ' + (GL_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, GL_CARD_TIMEOUT_MS);
-          })
-        ]);
-        if (glResp.text && glResp.text.trim()) {
-          // Strip any site pointer, then trim to the 110-word cap on a sentence
-          // boundary with the same helper the pull quotes use (the model overshot
-          // to 124 words on the first live run).
-          let glText = stripSiteCta(glResp.text);
-          if (pullQuoteWordCount(glText) > 50) glText = trimPullQuoteToSentence(glText, 50);
-          report.groundLoverCard = glText;
-        }
-        report.inputTokens += glResp.inputTokens || 0;
-        report.outputTokens += glResp.outputTokens || 0;
-        report.cacheReadTokens += glResp.cacheReadTokens || 0;
-        report.cacheWriteTokens += glResp.cacheWriteTokens || 0;
-        report.callLog.push({
-          type: 'groundlover-card', label: 'Ground Lover Intel Card',
-          inputTokens: glResp.inputTokens || 0, outputTokens: glResp.outputTokens || 0,
-          cacheReadTokens: glResp.cacheReadTokens || 0, cacheWriteTokens: glResp.cacheWriteTokens || 0
-        });
-      } catch (e) {
-        console.log('[daily-build] groundLoverCard: ' + e.message);
-        report.errors.push('groundLoverCard: ' + e.message);
-        report.groundLoverCard = null;
-      } finally {
-        if (glTimer) clearTimeout(glTimer);
-      }
-    }
-
-    // 4.9 Class Drop card — copy of the Ground Lover card's own pattern
-    // (4.8 above): its own redisGet('racecards:'+today) + enrichRunnerTags
-    // call, no card when there are no qualifiers, one Claude call in the
-    // same style/length/trimming. Qualifiers are every GB runner for whom
-    // racecards.js's provenClassDropDetail (the exact T1-T4 rule the
-    // isProvenClassDrop tag itself uses — reused, not reimplemented) returns
-    // a detail object; the tag is never persisted, so this is recomputed
-    // each build exactly like Ground Lover's own isGroundLover check.
-    report.classDropHorses = [];
-    report.classDropCard = null;
-    function cdOrdinal(n) {
-      n = parseInt(n, 10);
-      if (isNaN(n)) return String(n);
-      const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    }
-    function cdPosOf(pos, ran) {
-      const p = parseInt(pos, 10);
-      return (isNaN(p) ? pos : cdOrdinal(p)) + ' of ' + (ran || '?');
-    }
-    const CD_DROP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    function cdDate(d) {
-      const p = String(d || '').split('-');
-      return p.length === 3 ? (p[2] + ' ' + (CD_DROP_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (d || '');
-    }
-    try {
-      const cdCards = await redisGet('racecards:' + today);
-      const cdMeetings = (cdCards && Array.isArray(cdCards.meetings)) ? cdCards.meetings : [];
-      if (cdMeetings.length) {
-        try { await require('./racecards.js').enrichRunnerTags(cdMeetings, today); } catch (eTag) { report.errors.push('classDrop tags: ' + eTag.message); }
-        const provenClassDropDetail = require('./racecards.js').provenClassDropDetail;
-        for (const m of cdMeetings) {
-          if (m.flag !== 'GB') continue;
-          for (const race of (m.races || [])) {
-            const nonNR = (race.runners || []).filter(function(r) { return !r.is_non_runner && !(r.nonRunner === true || r.price === 'NR'); });
-            for (const ru of nonNR) {
-              if (!ru.isProvenClassDrop || !ru.horse_id) continue;
-              let detail = null;
-              try {
-                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
-                detail = provenClassDropDetail(ru, race, nonNR, Array.isArray(hist) ? hist : []);
-              } catch (eH) { /* missing history leaves this qualifier out — never errors */ }
-              if (!detail) continue;
-              report.classDropHorses.push({
-                horseName: ru.name || '', course: m.name || '', time: race.t || '',
-                lastRunClassNum: detail.lastRunClassNum, todayClassNum: detail.todayClassNum,
-                qualifyingRuns: detail.qualifyingRuns, lastRun: detail.lastRun,
-                ratingRank: detail.ratingRank, ratedFieldSize: detail.ratedFieldSize
-              });
-            }
-          }
-        }
-      }
-    } catch (e) {
-      report.errors.push('classDropHorses: ' + e.message);
-    }
-
-    if (report.classDropHorses.length) {
-      const CD_DROP_CARD_TIMEOUT_MS = 25000;
-      let cdTimer = null;
-      try {
-        const cdTotal = report.classDropHorses.length;
-        const cdOpening = cdTotal + (cdTotal === 1 ? ' Class Drop qualifier has been identified today' : ' Class Drop qualifiers have been identified today');
-        const horseLines = report.classDropHorses.map(function(h) {
-          const runsText = h.qualifyingRuns.map(function(r) { return cdPosOf(r.pos, r.ran) + ', ' + (r.race_class || '') + ', ' + (r.course || '') + ', ' + cdDate(r.date); }).join('; ');
-          return h.horseName + ' — ' + h.course + ' ' + h.time + ', dropping from Class ' + h.lastRunClassNum + ' to Class ' + h.todayClassNum + '.'
-            + ' Proven at the higher level: ' + runsText + '.'
-            + ' Last run: ' + cdPosOf(h.lastRun.pos, h.lastRun.ran) + ', Class ' + h.lastRunClassNum + ', ' + (h.lastRun.course || '') + ', ' + cdDate(h.lastRun.date) + '.'
-            + ' Rated ' + cdOrdinal(h.ratingRank) + ' of ' + h.ratedFieldSize + ' rated runners in today\'s race.';
-        });
-        const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
-          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
-          ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
-          ' opinions. No prices, odds or betting words.' +
-          ' A Class Drop horse is dropping exactly one class today, has finished in' +
-          ' the top 3 at least twice at the higher class level within its last six' +
-          ' runs, finished in the top half of the field last time out, and is rated' +
-          ' among today\'s top 3 in its race.' +
-          ' There are exactly ' + cdTotal + ' qualifiers today. Your first sentence must' +
-          ' begin with these exact words: "' + cdOpening + '". Never state, infer or repeat' +
-          ' any other number as a qualifier count.' +
-          ' Use only the facts given for each horse — never invent a reason for the class' +
-          ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-          NO_SITE_CTA +
-          ' The horses are: ' + horseLines.join('; ');
-        const cdResp = await Promise.race([
-          callClaude('', cdPrompt, 400, true),
-          new Promise(function(_, reject) {
-            cdTimer = setTimeout(function() { reject(new Error('timed out after ' + (CD_DROP_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CD_DROP_CARD_TIMEOUT_MS);
-          })
-        ]);
-        if (cdResp.text && cdResp.text.trim()) {
-          let cdText = stripSiteCta(cdResp.text);
-          if (pullQuoteWordCount(cdText) > 50) cdText = trimPullQuoteToSentence(cdText, 50);
-          report.classDropCard = cdText;
-        }
-        report.inputTokens += cdResp.inputTokens || 0;
-        report.outputTokens += cdResp.outputTokens || 0;
-        report.cacheReadTokens += cdResp.cacheReadTokens || 0;
-        report.cacheWriteTokens += cdResp.cacheWriteTokens || 0;
-        report.callLog.push({
-          type: 'classdrop-card', label: 'Class Drop Intel Card',
-          inputTokens: cdResp.inputTokens || 0, outputTokens: cdResp.outputTokens || 0,
-          cacheReadTokens: cdResp.cacheReadTokens || 0, cacheWriteTokens: cdResp.cacheWriteTokens || 0
-        });
-      } catch (e) {
-        console.log('[daily-build] classDropCard: ' + e.message);
-        report.errors.push('classDropCard: ' + e.message);
-        report.classDropCard = null;
-      } finally {
-        if (cdTimer) clearTimeout(cdTimer);
-      }
-    }
+    await runDailyIntelligenceCards(today, racecards, report, { updateTrainerFormTable: true });
 
     // 5. Generate per-horse form summaries and race form overviews
     // Use cached racecard data (stored at step 2 from morning fetch) so runner lists
