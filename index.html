@@ -16248,13 +16248,18 @@ function _bigRaceDateLabel(ds){
   return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
 }
 // One swipe, one card — homepage Daily Intelligence and Latest Results, touch
-// devices only. CSS scroll-snap alone still lets a hard swipe skip several
-// cards on mobile, so the browser's own sideways panning is switched off
-// (touch-action:pan-y — vertical page scroll is unaffected) and the swipe is
-// turned into a smooth scroll to exactly the next / previous card. Listeners
-// sit on the container, so cards replaced by a refresh re-render are covered,
-// and the refresh code's own scrollLeft restore is untouched. Mouse and
-// trackpad scrolling is unchanged (touch-action does not apply to them).
+// devices only. The browser's own sideways panning is switched off
+// (touch-action:pan-y — vertical page scroll is unaffected) and the carousel is
+// dragged live by script: once a touch is clearly horizontal (over 8px and more
+// sideways than vertical) scrollLeft follows the finger 1:1, held to one card
+// either side of the card the drag started on. On release it goes to the next /
+// previous card if the drag passed 20% of a card or the finger was flicking
+// (over 0.3px/ms), else back to the start card, finishing with a short
+// requestAnimationFrame ease-out (120-250ms). scroll-snap-type is turned off
+// for the drag and the finish and restored when the finish ends, so the
+// browser's snapping never fights it. Listeners sit on the container, so cards
+// replaced by a refresh re-render are covered, and the refresh code's own
+// scrollLeft restore is untouched. Mouse and trackpad scrolling is unchanged.
 (function(){
   function init(){
     var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
@@ -16264,35 +16269,82 @@ function _bigRaceDateLabel(ds){
       if(!el||el._oneCardSwipe) return;
       el._oneCardSwipe=true;
       el.style.touchAction='pan-y';
-      var st=null, lastIdx=-1, lastAt=0;
+      var snapOrig=el.style.scrollSnapType;   // restored when the finish animation ends
+      var st=null, anim=null, suppressUntil=0;
       function cards(){ return Array.prototype.filter.call(el.children,function(c){ return c.offsetWidth>0; }); }
       function padLeft(){ return parseFloat(getComputedStyle(el).scrollPaddingLeft)||0; }
+      function maxLeft(){ return Math.max(0,el.scrollWidth-el.clientWidth); }
+      function clampL(v){ return Math.max(0,Math.min(maxLeft(),v)); }
       // Index of the card whose left edge is nearest the snap position.
       function snappedIndex(list){
         var base=el.getBoundingClientRect().left+padLeft(), best=0, bd=Infinity;
         list.forEach(function(c,i){ var d=Math.abs(c.getBoundingClientRect().left-base); if(d<bd){bd=d;best=i;} });
         return best;
       }
+      function stopAnim(){ if(anim){ cancelAnimationFrame(anim.raf); anim=null; } }
+      function animateTo(target,dur,idx){
+        stopAnim();
+        var from=el.scrollLeft, t0=null, a={raf:0,idx:idx};
+        if(Math.abs(target-from)<1){ el.scrollLeft=target; el.style.scrollSnapType=snapOrig; return; }
+        anim=a;
+        function step(ts){
+          if(anim!==a) return;
+          if(t0===null) t0=ts;
+          var p=Math.min(1,(ts-t0)/dur), e=1-Math.pow(1-p,3);
+          el.scrollLeft=from+(target-from)*e;
+          if(p<1){ a.raf=requestAnimationFrame(step); }
+          else { anim=null; el.scrollLeft=target; el.style.scrollSnapType=snapOrig; }
+        }
+        a.raf=requestAnimationFrame(step);
+      }
+      // End of a horizontal drag: forceDir (0) = just return to the start card.
+      function release(forceDir){
+        var s=st; st=null;
+        if(!s||s.mode!=='h') return;
+        suppressUntil=Date.now()+350;   // swallow the click a drag can leave behind
+        var now=Date.now(), recent=s.s.filter(function(p){ return now-p.t<=100; });
+        var v=0;   // finger speed in px/ms; negative = leftwards
+        if(recent.length>1){ var p0=recent[0], p1=recent[recent.length-1]; if(p1.t>p0.t) v=(p1.x-p0.x)/(p1.t-p0.t); }
+        var disp=el.scrollLeft-s.pos[s.idx], dir=0;
+        if(forceDir!==undefined) dir=forceDir;
+        else if(Math.abs(v)>0.3) dir=v<0?1:-1;
+        else if(Math.abs(disp)>0.2*s.w) dir=disp>0?1:-1;
+        var to=Math.max(0,Math.min(s.pos.length-1,s.idx+dir));
+        var target=s.pos[to];
+        var dur=120+Math.min(130,Math.abs(target-el.scrollLeft)*0.3);
+        if(Math.abs(v)>0.3) dur-=Math.min(80,Math.abs(v)*60);
+        animateTo(target,Math.max(120,Math.min(250,dur)),to);
+      }
       el.addEventListener('touchstart',function(e){
-        if(e.touches.length!==1){ st=null; return; }
+        if(e.touches.length!==1){ if(st&&st.mode==='h') release(0); st=null; return; }
         var list=cards(); if(!list.length){ st=null; return; }
-        // A previous swipe's smooth scroll may still be running: count from the
-        // card it was heading to, so a quick second swipe is still one card.
-        var idx=(Date.now()-lastAt<600&&lastIdx>=0)?lastIdx:snappedIndex(list);
-        st={x:e.touches[0].clientX,y:e.touches[0].clientY,idx:idx};
+        var base=el.getBoundingClientRect().left+padLeft(), sl=el.scrollLeft;
+        // Absolute scroll position of every card's snap point (unchanged by scrolling).
+        var pos=list.map(function(c){ return clampL(sl+c.getBoundingClientRect().left-base); });
+        // A finish animation may still be running: count from the card it is heading to.
+        var idx=anim?Math.min(anim.idx,list.length-1):snappedIndex(list);
+        var t=e.touches[0];
+        st={x:t.clientX,y:t.clientY,idx:idx,pos:pos,w:list[idx].offsetWidth,mode:null,ax:0,al:0,s:[]};
       },{passive:true});
-      el.addEventListener('touchend',function(e){
-        if(!st) return;
-        var t=e.changedTouches[0], dx=t.clientX-st.x, dy=t.clientY-st.y, from=st.idx;
-        st=null;
-        if(Math.abs(dx)<=30||Math.abs(dx)<=Math.abs(dy)) return;   // tap or mainly vertical: leave it alone
-        var list=cards(); if(!list.length) return;
-        var to=Math.max(0,Math.min(list.length-1,from+(dx<0?1:-1)));
-        lastIdx=to; lastAt=Date.now();
-        var target=el.scrollLeft+(list[to].getBoundingClientRect().left-(el.getBoundingClientRect().left+padLeft()));
-        el.scrollTo({left:Math.max(0,target),behavior:'smooth'});
+      el.addEventListener('touchmove',function(e){
+        if(!st||st.mode==='v') return;
+        if(e.touches.length!==1){ if(st.mode==='h') release(0); st=null; return; }
+        var t=e.touches[0], dx=t.clientX-st.x, dy=t.clientY-st.y;
+        if(!st.mode){
+          if(Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)){
+            st.mode='h'; stopAnim(); el.style.scrollSnapType='none';
+            st.ax=t.clientX; st.al=el.scrollLeft;   // the carousel follows from here, 1:1
+          } else if(Math.abs(dy)>8&&Math.abs(dy)>=Math.abs(dx)){ st.mode='v'; return; }
+          else return;
+        }
+        var lo=st.pos[Math.max(0,st.idx-1)], hi=st.pos[Math.min(st.pos.length-1,st.idx+1)];
+        el.scrollLeft=Math.max(lo,Math.min(hi,st.al-(t.clientX-st.ax)));
+        var now=Date.now(); st.s.push({x:t.clientX,t:now});
+        while(st.s.length>1&&now-st.s[0].t>100) st.s.shift();
       },{passive:true});
-      el.addEventListener('touchcancel',function(){ st=null; },{passive:true});
+      el.addEventListener('touchend',function(){ if(st&&st.mode==='h') release(); else st=null; },{passive:true});
+      el.addEventListener('touchcancel',function(){ if(st&&st.mode==='h') release(0); else st=null; },{passive:true});
+      el.addEventListener('click',function(e){ if(Date.now()<suppressUntil){ e.stopPropagation(); e.preventDefault(); } },true);
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
