@@ -63,24 +63,23 @@ exports.handler = async function(event) {
       summaries[r.id] = (typeof r.data === 'string') ? { summary: r.data } : r.data;
     });
 
-    // form-sections:{id} (the new production engine, Going is its first
-    // section) overrides .going wherever it has an answer, in place of the
-    // old text engine's own Going sub-section; absent, .going is left unset
-    // so the Form tab shows nothing rather than a stale or placeholder text.
+    // form-sections:{id} (the new production engine) is now the ONLY source
+    // for .going and .trip — Change A: never fall back to the old text
+    // engine's own Going/Trip sub-sections. Absent, the field is left unset
+    // so the Form tab shows "Coming soon." rather than stale or placeholder
+    // text. .track is always stripped below regardless of what the old
+    // engine wrote — Track is never shown, on any date, Track generation is
+    // not built. Redis itself is untouched; this only shapes the response.
     const sectionsVals = await Promise.all(horseIds.map(function(id) { return redisGet('form-sections:' + id); }));
     horseIds.forEach(function(id, i) {
       const going = sectionsVals[i] && sectionsVals[i].going;
-      if (summaries[id]) summaries[id].going = going || undefined;
-      else if (going) summaries[id] = { going: going };
-
-      // Trip trial overlay — ONLY when form-sections:{id}.trip exists (just
-      // the horses in the 4 trial races). Where it doesn't, .trip is left
-      // completely untouched, so every horse outside the trial keeps
-      // whatever Trip text the old text engine already gives it.
       const trip = sectionsVals[i] && sectionsVals[i].trip;
-      if (trip) {
-        if (summaries[id]) summaries[id].trip = trip;
-        else summaries[id] = { trip: trip };
+      if (summaries[id]) {
+        summaries[id].going = going || undefined;
+        summaries[id].trip = trip || undefined;
+        delete summaries[id].track;
+      } else if (going || trip) {
+        summaries[id] = { going: going || undefined, trip: trip || undefined };
       }
     });
 

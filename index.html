@@ -11838,15 +11838,15 @@ function _renderFormSections(s,part){
     var _tab=function(id,label,active){
       return '<div id="'+_uid+'-tab-'+id+'" onclick="_nrFsShow(\''+_uid+'\',\''+id+'\')" style="flex:1;text-align:center;font-size:11px;font-weight:'+(active?'600':'500')+';color:'+(active?'#1e9e6b':'#9ca3af')+';border-bottom:2px solid '+(active?'#1e9e6b':'transparent')+';padding:8px 4px 6px;margin-bottom:-1px;cursor:pointer;white-space:nowrap">'+label+'</div>';
     };
-    var _pane=function(id,text,active){
-      // Going (id 'g') is the first form-sections production section: when it
-      // has no stored text yet, the pane is left empty rather than showing
-      // the "coming soon" placeholder the other two (still unbuilt) panes
-      // use. Trip/Track are unchanged.
-      var _empty=(id==='g')?'':'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">Form summary coming soon.</div>';
+    // Change A — Track always shows its own placeholder, on every horse,
+    // every date: s.track (whatever the old text engine stored) is never
+    // read here. Trip and Going show only the new form-sections text
+    // (already the only thing get-form-summaries.js sends for either); with
+    // no text yet, both show "Coming soon."
+    var _pane=function(id,text,active,placeholder){
       return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
         +(text?'<div style="font-size:13px;color:#374151;line-height:1.5">'+_esc(text)+'</div>'
-               :_empty)
+               :'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">'+placeholder+'</div>')
         +'</div>';
     };
     var tabs='<div style="display:flex;border-bottom:1px solid #d9efe4">'
@@ -11855,9 +11855,9 @@ function _renderFormSections(s,part){
       +_tab('k','Track',false)
       +'</div>';
     var panes='<div style="margin:6px 0px 5px;padding:10px 12px;background:#fff;border-top:0.5px solid #d9efe4;border-bottom:0.5px solid #d9efe4">'
-      +_pane('t',s.trip,true)
-      +_pane('g',s.going,false)
-      +_pane('k',s.track,false)
+      +_pane('t',s.trip,true,'Coming soon.')
+      +_pane('g',s.going,false,'Coming soon.')
+      +_pane('k',null,false,'Track analysis coming soon.')
       +'</div>';
     return tabs+panes;
   }
