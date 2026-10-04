@@ -13560,21 +13560,26 @@ function rcToggleVerdict(mid,time,mname){
   if(typeof nrRenderCard==='function') nrRenderCard();
   if(typeof renderRcSingleList==='function') renderRcSingleList();
 }
-// Future data shape, read from the cached race analysis entry for this runner:
+// Data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
-// (a bare string is accepted as the text). Nothing writes it yet, so today the
-// tag bubble never renders and the text slot shows its placeholder. The old
-// runnerAnalysis[i].analysis text is deliberately NOT used here.
+// (a bare string is accepted as the text) — still takes priority when present,
+// including the tag bubble, exactly as before. Nothing writes .verdict yet, so
+// in practice every runner falls through to runnerAnalysis[i].analysis — the
+// 10:30 build's existing per-horse text — shown as the verdict with no tag
+// (a tag is a .verdict-only concept). The placeholder shows only when a
+// runner has neither: no .verdict.text and no .analysis (an unanalysed race —
+// tomorrow's card, or today's before the build has run).
 function _verdictBlockHtml(mid,time,mname,ru){
   if(!_rcVerdictOpen[mid+'-'+time]) return '';
-  var v=null;
+  var hit=null;
   var a=_cachedRaceAnalyses[((mname||'')+' '+(time||'')).toLowerCase().trim()];
   if(a&&Array.isArray(a.runnerAnalysis)){
     var target=(ru.name||'').toLowerCase().trim();
-    var hit=a.runnerAnalysis.filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0];
-    if(hit&&hit.verdict) v=hit.verdict;
+    hit=a.runnerAnalysis.filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0]||null;
   }
-  var vText=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
+  var v=(hit&&hit.verdict)?hit.verdict:null;
+  var vFromVerdict=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
+  var vText=vFromVerdict||((hit&&hit.analysis)?String(hit.analysis).trim():'');
   var tag=(v&&typeof v==='object'&&v.tag&&v.tag.label&&v.tag.text)?v.tag:null;
   // Icon by tag type (ti-flame / ti-map-pin / ti-droplet), drawn inline since no
   // icon font is loaded on the page. Rendered only when a tag is present AND
