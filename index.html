@@ -18438,24 +18438,38 @@ function _fetchHomeResults(){
   return p;
 }
 
-// Shared 240px result-card builder — used by the homepage Latest Results
-// strip (renderHomeResultsStrip) and the Results page's per-venue card rows
-// (renderResultsPage). One {venue, flag, race} item + the date's pickMap in,
-// one card's HTML out — top 4 finishers only, no footer stats, no profile
-// panels (see renderResultsPage for the fuller per-race view, deferred).
-function _buildResultCard(item,pickMap,bulked){
+// Shared result-card builder — used by the Results page's per-venue card
+// rows (renderResultsPage, bulked=true, 280px, the full card with meta line
+// and footer) and the homepage Latest Results strip (renderHomeResultsStrip,
+// bulked=true, opts.home=true, 240px — the same full card, just narrower,
+// with its own one-line time+venue header and the race name on the line
+// below instead of the Results page's time+divider+race-name header) and
+// the plain compact card (bulked falsy, 240px, top-4-only, no meta/footer —
+// unused today but kept for any future caller). One {venue, flag, race}
+// item + the date's pickMap in, one card's HTML out.
+// opts (optional): {home:true} selects the home-strip header variant above.
+// The Results page passes no opts.
+function _buildResultCard(item,pickMap,bulked,opts){
+  opts=opts||{};
   var race=item.race;
   var top4=race.runners.filter(function(r){var p=parseInt(r.pos);return p>=1&&p<=4;}).slice(0,4);
   if(!top4.length) return '';
   var favNames=_resFavNames(race.runners);
   var ordinals=['1st','2nd','3rd','4th'];
   var html='';
-  html+='<div style="flex-shrink:0;scroll-snap-align:start;'+(bulked?'':'scroll-snap-stop:always;')+'width:'+(bulked?280:240)+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+  html+='<div style="flex-shrink:0;scroll-snap-align:start;'+((bulked&&!opts.home)?'':'scroll-snap-stop:always;')+'width:'+(opts.home?240:(bulked?280:240))+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
   // Header: compact (homepage strip) keeps the original "time · venue" line
   // untouched. Bulked (Results page) drops the venue — the venue heading
   // already sits above this row — and puts the race name on the same line
   // as the time instead, separated by a thin divider.
-  if(bulked){
+  if(bulked&&opts.home){
+    // Home strip only: time + venue on one line (same style the plain
+    // homepage card below uses for its own time+venue line), race name on
+    // its own line underneath — the only header difference from the
+    // Results page's own bulked card.
+    html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
+    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+escHtml(race.name)+'</div>';
+  } else if(bulked){
     html+='<div style="display:flex;align-items:center;margin-bottom:2px;white-space:nowrap;overflow:hidden">';
     html+='<span style="font-size:14px;font-weight:700;color:#0b1628;flex-shrink:0">'+escHtml(race.time)+'</span>';
     if(race.name) html+='<span style="width:1px;height:13px;background:#e0e4ea;display:inline-block;vertical-align:middle;margin:0 8px;flex-shrink:0"></span><span style="font-size:12px;font-weight:600;color:#0b1628;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">'+escHtml(race.name)+'</span>';
@@ -18561,7 +18575,7 @@ function renderHomeResultsStrip(){
     });
     var html='';
     racesWithResults.forEach(function(item){
-      html+=_buildResultCard(item,_pickMap);
+      html+=_buildResultCard(item,_pickMap,true,{home:true});
     });
 
     // Preserve the reader's place across the 90s poll re-render — with
