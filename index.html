@@ -15995,6 +15995,11 @@ function loadDailyBuild(){
 
       // NAP / NB record stats ride on the same response (absent = no pill).
       PICK_RECORDS=(data.records&&typeof data.records==='object')?data.records:null;
+      // Set before renderRacingPicks() below so phase3SeasonRecord() sees the
+      // real figures on the very first draw, not the null it's initialised to
+      // — otherwise the season record block never appears, nothing re-renders
+      // the cards after this.
+      PUBLIC_PHASE3=data.phase3||null;
 
       // Map analyses to RACING_PICKS format
       if(data.picks&&data.picks.length){
@@ -16034,7 +16039,6 @@ function loadDailyBuild(){
       // need it: race times are date-less HH:MM, so without this a card can't
       // tell "06:00 the morning after" from "pre-race on its own morning".
       window._intelPicksDate=data.date||'';
-      PUBLIC_PHASE3=data.phase3||null;
       BIG_RACE=data.bigRace||null;
       BIG_RACE_TOMORROW=data.bigRaceTomorrow||null;
       CANDG_CARD=data.candgCard||null;
