@@ -40,6 +40,11 @@ const CONCURRENCY = 3;
 // direct /v1/messages calls, not Batch API requests, so the batch 50%
 // discount used by text-engine-collect-background.js's costOf() doesn't apply.
 const PRICE = { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 };
+// Hard cost cap for the goingtrip whole-card run — checked after every
+// CONCURRENCY-sized chunk (finer-grained than the hop boundary, which only
+// persists usage every ~780s), so a run can actually stop cleanly near the
+// requested ceiling rather than only being observable between hops.
+const GOINGTRIP_COST_CAP_USD = 9.00;
 function costOf(u) { return +((u.input * PRICE.input + u.output * PRICE.output + u.cacheWrite * PRICE.cacheWrite + u.cacheRead * PRICE.cacheRead) / 1e6).toFixed(4); }
 function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 function addUsage(a, b) { return { input: a.input + b.input, output: a.output + b.output, cacheWrite: a.cacheWrite + b.cacheWrite, cacheRead: a.cacheRead + b.cacheRead }; }
@@ -736,7 +741,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
     }
 
     const totalEligible = (state && state.totalEligible) || remaining.length + results.length;
-    let timedOut = false;
+    let timedOut = false, costCapped = false, costAtStop = 0;
 
     while (remaining.length) {
       if (Date.now() - startTime > TIMEOUT_MS) { timedOut = true; break; }
@@ -772,6 +777,28 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         if (r.regenerated) regeneratedCount++;
       });
       remaining = remaining.slice(CONCURRENCY);
+
+      costAtStop = costOf(usage) + costOf(usage2);
+      if (costAtStop >= GOINGTRIP_COST_CAP_USD) { costCapped = true; break; }
+    }
+
+    if (costCapped) {
+      remaining.forEach(function(h) { failed.push({ horse_id: h.horse_id, horseName: h.name, error: 'not processed — goingtrip hard cost cap ($' + GOINGTRIP_COST_CAP_USD.toFixed(2) + ') reached at $' + costAtStop.toFixed(4) }); });
+      const coverage = {
+        date: date, completedAt: new Date().toISOString(), totalEligible: totalEligible,
+        templated: templated, bothGenerated: bothGenerated, partialGenerated: partialGenerated,
+        passedFirstTime: passedFirstTimeCount, failedCount: failed.length, failed: failed, results: results,
+        retriedCount: firstPassFailCount, secondCheckFailCount: secondCheckFailCount, regeneratedCount: regeneratedCount,
+        cacheReadCalls: cacheReadCount, cacheActive: cacheReadCount > 0,
+        usage: usage, costUSD: costOf(usage), usage2: usage2, cost2USD: costOf(usage2),
+        totalCostUSD: +costAtStop.toFixed(4), hops: hop + 1, pricing: PRICE,
+        costCapped: true, costCapUSD: GOINGTRIP_COST_CAP_USD, remainingAtStop: remaining.length
+      };
+      await E.redisSet('form-sections:coverage:goingtrip:' + date, coverage);
+      await E.redisSet('form-sections:goingtrip:worklist:' + date, null);
+      try { await E.redisSet('form-sections:goingtrip:lock:' + date, null); } catch (ue) {}
+      console.log('[form-sections:goingtrip] COST CAP REACHED', JSON.stringify({ date: date, costAtStop: costAtStop, remaining: remaining.length }));
+      return { statusCode: 200, headers, body: JSON.stringify({ status: 'cost_capped', coverage: coverage }) };
     }
 
     if (timedOut && remaining.length) {
