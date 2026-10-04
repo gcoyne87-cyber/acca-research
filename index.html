@@ -3086,6 +3086,60 @@ window.addEventListener('load',function(){
       ptRenderTypeRows(getRecs());
     };
 
+    // Phase 3 — shared by the Winners section's Phase 3 rows (ptRenderTypeRows
+    // below) AND the NAP/NB "season record" block on the Today's Selections
+    // cards (renderHomeSelections/renderRacingPicks, further down the page) —
+    // one calculation, read from the same tracker data (getRecs()), so both
+    // always show the identical number; never a second copy of this logic.
+    // PHASE3_FREEZE_DATE is the rollout date for the 6 live signal rows (and
+    // Phase 3 itself): anything dated before this is historical/frozen data
+    // only; from this date on, matching records feed the live rows/cards.
+    var PHASE3_FREEZE_DATE='2026-08-03';
+    function phase3ParseDec(pr){
+      if(!pr||pr==='SP'||pr==='—') return 0;
+      var p=String(pr).trim();
+      if(p.toLowerCase()==='evs'||p.toLowerCase()==='evens') return 2;
+      var s=p.split('/');
+      if(s.length===2){var n=parseFloat(s[0]),d=parseFloat(s[1]);if(!isNaN(n)&&!isNaN(d)&&d>0) return n/d+1;}
+      var dec=parseFloat(p);
+      return isNaN(dec)?0:dec;
+    }
+    function phase3DecToFrac(d){
+      if(d<=1) return '—';
+      var o=d-1;
+      var t=[[1,5],[1,4],[1,3],[2,5],[1,2],[8,13],[4,6],[8,11],[4,5],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],[9,4],[5,2],[11,4],[3,1],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[8,1],[9,1],[10,1],[12,1],[14,1],[16,1],[20,1],[25,1],[33,1],[50,1]];
+      var b=t[0],bd=Infinity;
+      t.forEach(function(f){var df=Math.abs(o-f[0]/f[1]);if(df<bd){bd=df;b=f;}});
+      return b[0]+'/'+b[1];
+    }
+    // d.total counts every matching rec (settled or not); raced (used for
+    // strike rate elsewhere) is wins+placed+losses only.
+    function computeRow(recs,key,wantLive){
+      var d={wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
+      (recs||[]).forEach(function(r){
+        if((r.type||'')!==key) return;
+        var isLive=(r.date||'')>=PHASE3_FREEZE_DATE;
+        if(isLive!==wantLive) return;
+        d.total++;
+        if(r.result==='W'){ d.wins++; var dec=phase3ParseDec(r.sp||r.price||''); if(dec>0){d.psum+=dec;d.pcount++;} }
+        else if(r.result==='P') d.placed++;
+        else if(r.result==='L') d.losses++;
+      });
+      return d;
+    }
+    // NAP/NB season record for the Today's Selections cards — Phase 3
+    // (post-freeze) record for the given slot type, via the exact same
+    // computeRow the Winners tab's Phase 3 rows use. null when there is no
+    // settled Phase 3 data yet for that slot — callers must hide the block
+    // rather than show a placeholder.
+    function phase3SeasonRecord(key){
+      var d=computeRow(getRecs(),key,true);
+      var raced=d.wins+d.placed+d.losses;
+      if(!raced) return null;
+      var avgDec=d.pcount?d.psum/d.pcount:0;
+      return { sr:Math.round(d.wins/raced*100), wins:d.wins, placed:d.placed, raced:raced, avgStr:avgDec?phase3DecToFrac(avgDec):'—' };
+    }
+
     function ptRenderTypeRows(recs){
       var el=document.getElementById('pt-type-rows');
       if(!el) return;
@@ -3094,8 +3148,7 @@ window.addEventListener('load',function(){
       // signal rows instead. This is what keeps the frozen "Tipster" row permanently
       // separate from the new live "Tipster Consensus" row below, even though they
       // share the exact same underlying type string in recs.
-      var FREEZE_DATE='2026-08-03';
-      // Frozen forever — untouched by anything dated on/after FREEZE_DATE.
+      // Frozen forever — untouched by anything dated on/after PHASE3_FREEZE_DATE.
       var FROZEN_TYPES=[
         {key:'NB',label:'NB',color:'#3b82f6'},
         {key:'NAP',label:'NAP',color:'#d4af37'},
@@ -3103,47 +3156,17 @@ window.addEventListener('load',function(){
         {key:'Strongest',label:'Strongest',color:'#8b5cf6'}
       ];
       // Live — auto-populated by fetchToday() going forward, restricted to
-      // FREEZE_DATE onward so historical data above is never touched.
+      // PHASE3_FREEZE_DATE onward so historical data above is never touched.
       var LIVE_TYPES=[
         {key:'Course and Distance',label:'Course & Dist',color:'#6366f1'},
         {key:'Class Drop',label:'Class Drop',color:'#f59e0b'}
       ];
-      function parseDec(pr){
-        if(!pr||pr==='SP'||pr==='—') return 0;
-        var p=String(pr).trim();
-        if(p.toLowerCase()==='evs'||p.toLowerCase()==='evens') return 2;
-        var s=p.split('/');
-        if(s.length===2){var n=parseFloat(s[0]),d=parseFloat(s[1]);if(!isNaN(n)&&!isNaN(d)&&d>0) return n/d+1;}
-        var dec=parseFloat(p);
-        return isNaN(dec)?0:dec;
-      }
-      function decToFrac(d){
-        if(d<=1) return '—';
-        var o=d-1;
-        var t=[[1,5],[1,4],[1,3],[2,5],[1,2],[8,13],[4,6],[8,11],[4,5],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],[9,4],[5,2],[11,4],[3,1],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[8,1],[9,1],[10,1],[12,1],[14,1],[16,1],[20,1],[25,1],[33,1],[50,1]];
-        var b=t[0],bd=Infinity;
-        t.forEach(function(f){var df=Math.abs(o-f[0]/f[1]);if(df<bd){bd=df;b=f;}});
-        return b[0]+'/'+b[1];
-      }
-      function computeRow(key,wantLive){
-        var d={wins:0,placed:0,losses:0,total:0,psum:0,pcount:0};
-        recs.forEach(function(r){
-          if((r.type||'')!==key) return;
-          var isLive=(r.date||'')>=FREEZE_DATE;
-          if(isLive!==wantLive) return;
-          d.total++;
-          if(r.result==='W'){ d.wins++; var dec=parseDec(r.sp||r.price||''); if(dec>0){d.psum+=dec;d.pcount++;} }
-          else if(r.result==='P') d.placed++;
-          else if(r.result==='L') d.losses++;
-        });
-        return d;
-      }
       function strikeRate(d){ var raced=d.wins+d.placed+d.losses; return raced?d.wins/raced:0; }
       function rowHtml(t,d){
         var raced=d.wins+d.placed+d.losses;
         var sr=raced?Math.round(d.wins/raced*100):0;
         var avgDec=d.pcount?d.psum/d.pcount:0;
-        var avgStr=avgDec?decToFrac(avgDec):'—';
+        var avgStr=avgDec?phase3DecToFrac(avgDec):'—';
         var html='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-top:1px solid #e4e8f0">';
         html+='<div style="width:6px;height:6px;border-radius:50%;background:'+t.color+';flex-shrink:0"></div>';
         html+='<span style="font-size:11px;font-weight:700;color:#0D1B3E;width:76px;flex-shrink:0">'+t.label+'</span>';
@@ -3159,16 +3182,17 @@ window.addEventListener('load',function(){
         return html;
       }
       var frozenHtml='';
-      FROZEN_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,false)}; })
+      FROZEN_TYPES.map(function(t){ return {t:t,d:computeRow(recs,t.key,false)}; })
         .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
         .forEach(function(x){ frozenHtml+=rowHtml(x.t,x.d); });
       var liveHtml='';
-      LIVE_TYPES.map(function(t){ return {t:t,d:computeRow(t.key,true)}; })
+      LIVE_TYPES.map(function(t){ return {t:t,d:computeRow(recs,t.key,true)}; })
         .sort(function(a,b){ return strikeRate(b.d)-strikeRate(a.d); })
         .forEach(function(x){ liveHtml+=rowHtml(x.t,x.d); });
       // Phase 3 — the daily top-5 by confidence from the NAP/NB build. Live-era
-      // (post-FREEZE_DATE) recs only, same computeRow the other rows use — the
-      // frozen Phase 1 NAP/NB rows are pre-FREEZE_DATE and can never overlap.
+      // (post-PHASE3_FREEZE_DATE) recs only, same computeRow the other rows
+      // use (and the same one the card season-record block above uses) — the
+      // frozen Phase 1 NAP/NB rows are pre-freeze and can never overlap.
       // Rendered in rank order (NAP first), not strike-rate order — the rank IS
       // the row's identity here.
       var PHASE3_TYPES=[
@@ -3179,7 +3203,7 @@ window.addEventListener('load',function(){
         {key:'Intel 5',label:'Intel 5',color:'#8b5cf6'}
       ];
       var phase3Html='';
-      PHASE3_TYPES.forEach(function(t){ phase3Html+=rowHtml(t,computeRow(t.key,true)); });
+      PHASE3_TYPES.forEach(function(t){ phase3Html+=rowHtml(t,computeRow(recs,t.key,true)); });
       // Labelled boxes — subtle border, small gap; row markup above is
       // untouched, only wrapped.
       var boxStyle='border:1px solid #e4e8f0;border-radius:8px;padding:2px 8px 4px';
@@ -17298,6 +17322,12 @@ function renderRacingPicks(){
     if(p.trainer) fullMetaParts.push(escHtml(p.trainer));
     if(p.form) fullMetaParts.push(escHtml(p.form));
     var badgeLabel=pillLabels[i]||('PICK '+(i+1));
+    // Season record — live Phase 3 figures for this slot (NAP for i===0, NB
+    // otherwise), via the same computeRow the Winners tab's Phase 3 rows
+    // use (see phase3SeasonRecord near ptRenderTypeRows). null when there's
+    // no settled Phase 3 data yet for this slot — the whole block is then
+    // omitted rather than showing a placeholder.
+    var _p3=(typeof phase3SeasonRecord==='function')?phase3SeasonRecord(i===0?'NAP':'NB'):null;
     return '<div style="position:relative;padding-top:14px">'
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+badgeLabel+'</span>'
@@ -17309,11 +17339,13 @@ function renderRacingPicks(){
         +'<div style="padding:20px 14px 14px">'
           +'<div style="position:relative;margin:2px 0 4px">'
             +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:6px;text-transform:uppercase">'+escHtml(courseName)+' &middot; '+escHtml(fullPickTime)+'</div>'
-            +'<div style="position:absolute;top:0;right:0;text-align:right">'
+            +(_p3?(
+              '<div style="position:absolute;top:0;right:0;text-align:right">'
               +'<div style="font-size:10px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em;font-weight:700;line-height:1">season '+(i===0?'NAP':'NB')+' record</div>'
-              +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">55%</div>'
-              +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">31W-15P-56R &middot; avg 13/10</div>'
-            +'</div>'
+              +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">'+_p3.sr+'%</div>'
+              +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">'+_p3.wins+'W-'+_p3.placed+'P-'+_p3.raced+'R &middot; avg '+_p3.avgStr+'</div>'
+              +'</div>'
+            ):'')
           +'</div>'
           +(function(){
             // Live price first — read from the same RC_MEETINGS runner the
@@ -17394,6 +17426,12 @@ function renderHomeSelections(el){
     var gi=_gi(p);
     var jt=[];if(p.jockey)jt.push(escHtml(p.jockey));if(p.trainer)jt.push(escHtml(p.trainer));
     var metaLine=jt.join(' &middot; ')+(p.form?(jt.length?' &middot; ':'')+escHtml(p.form):'');
+    // Season record — live Phase 3 figures for this slot (NAP for i===0, NB
+    // otherwise), via the same computeRow the Winners tab's Phase 3 rows
+    // use (see phase3SeasonRecord near ptRenderTypeRows). null when there's
+    // no settled Phase 3 data yet for this slot — the whole block is then
+    // omitted rather than showing a placeholder.
+    var _p3=(typeof phase3SeasonRecord==='function')?phase3SeasonRecord(i===0?'NAP':'NB'):null;
     return '<div style="position:relative;padding-top:14px">'
       +'<div style="position:absolute;top:14px;left:14px;transform:translateY(-50%);z-index:10">'
           +'<span style="background:#d4af37;color:#0D1B3E;font-size:13px;font-weight:900;letter-spacing:.05em;padding:4px 12px;border-radius:7px;text-transform:uppercase;line-height:1;white-space:nowrap">'+pillLabels[i]+'</span>'
@@ -17404,11 +17442,13 @@ function renderHomeSelections(el){
           +'<div style="padding:20px 14px 14px">'
             +'<div style="position:relative;margin:2px 0 4px">'
               +'<div style="display:inline-block;background:linear-gradient(to right,rgba(212,175,55,0.18) 0%,transparent 100%);color:#d4af37;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 20px 3px 0;margin-bottom:6px;text-transform:uppercase">'+escHtml(gi.course)+' &middot; '+escHtml(gi.time)+'</div>'
-              +'<div style="position:absolute;top:0;right:0;text-align:right">'
+              +(_p3?(
+                '<div style="position:absolute;top:0;right:0;text-align:right">'
                 +'<div style="font-size:10px;color:#7fd99a;text-transform:uppercase;letter-spacing:0.03em;font-weight:700;line-height:1">season '+(i===0?'NAP':'NB')+' record</div>'
-                +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">55%</div>'
-                +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">31W-15P-56R &middot; avg 13/10</div>'
-              +'</div>'
+                +'<div style="font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-top:2px">'+_p3.sr+'%</div>'
+                +'<div style="font-size:10px;color:#9aa5b8;margin-top:1px">'+_p3.wins+'W-'+_p3.placed+'P-'+_p3.raced+'R &middot; avg '+_p3.avgStr+'</div>'
+                +'</div>'
+              ):'')
             +'</div>'
             +(function(){
               // Live price first — read from the same RC_MEETINGS runner the
