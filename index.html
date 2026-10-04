@@ -11831,7 +11831,7 @@ function _renderFormSections(s,part){
       +'</div>';
   }
   if(part==='card'){
-    // Always four tabs and four panes, whatever is stored: a tab whose text is
+    // Always three tabs and three panes, whatever is stored: a tab whose text is
     // missing shows the placeholder inside the same flush pane, so the strip
     // never disappears and the layout is identical for every horse.
     var _uid='nrfs'+Math.random().toString(36).slice(2,7);
@@ -11841,8 +11841,8 @@ function _renderFormSections(s,part){
     var _pane=function(id,text,active){
       // Going (id 'g') is the first form-sections production section: when it
       // has no stored text yet, the pane is left empty rather than showing
-      // the "coming soon" placeholder the other three (still unbuilt) panes
-      // use. Recent form/Trip/Track are unchanged.
+      // the "coming soon" placeholder the other two (still unbuilt) panes
+      // use. Trip/Track are unchanged.
       var _empty=(id==='g')?'':'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">Form summary coming soon.</div>';
       return '<div id="'+_uid+'-pane-'+id+'" style="display:'+(active?'block':'none')+'">'
         +(text?'<div style="font-size:13px;color:#374151;line-height:1.5">'+_esc(text)+'</div>'
@@ -11850,15 +11850,13 @@ function _renderFormSections(s,part){
         +'</div>';
     };
     var tabs='<div style="display:flex;border-bottom:1px solid #d9efe4">'
-      +_tab('r','Recent form',true)
+      +_tab('t','Trip',true)
       +_tab('g','Going',false)
-      +_tab('t','Trip',false)
       +_tab('k','Track',false)
       +'</div>';
     var panes='<div style="margin:6px 0px 5px;padding:10px 12px;background:#fff;border-top:0.5px solid #d9efe4;border-bottom:0.5px solid #d9efe4">'
-      +_pane('r',s.recentForm,true)
+      +_pane('t',s.trip,true)
       +_pane('g',s.going,false)
-      +_pane('t',s.trip,false)
       +_pane('k',s.track,false)
       +'</div>';
     return tabs+panes;
@@ -11867,7 +11865,7 @@ function _renderFormSections(s,part){
 }
 
 function _nrFsShow(uid,id){
-  ['r','g','t','k'].forEach(function(x){
+  ['t','g','k'].forEach(function(x){
     var tab=document.getElementById(uid+'-tab-'+x);
     var pane=document.getElementById(uid+'-pane-'+x);
     if(!tab||!pane)return;
