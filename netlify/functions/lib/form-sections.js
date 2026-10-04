@@ -108,6 +108,20 @@ function classifyGoing(raw) {
     const isAbbrev = compactKey(trimmed) === compactKey(direct.name) && trimmed !== direct.name;
     return { name: direct.name, rank: direct.rank, surface: direct.surface, raw: trimmed, isCompound: false, unranked: false, abbreviationOf: isAbbrev ? trimmed : null };
   }
+  // Change (refine) Fix 1 — canonicalisation: the raw API sometimes writes a
+  // two-step going with a slash instead of "to" (e.g. "Standard / Slow" for
+  // the scale's own "Standard to Slow"). compactKey() alone can't catch this
+  // — it strips the slash to nothing ("standardslow") rather than reading it
+  // as "to" ("standardtoslow") — so try that substitution before falling
+  // through to the general compound-going split below. A genuine two-zone
+  // compound (e.g. ground that was soft in one place, heavy in another)
+  // lands on the same canonical name either way, since "Soft to Heavy" is
+  // itself a real step on the scale with the same meaning.
+  const slashAsTo = trimmed.replace(/\s*\/\s*/g, ' to ');
+  if (slashAsTo !== trimmed) {
+    const viaSlash = SCALE_LOOKUP[compactKey(slashAsTo)];
+    if (viaSlash) return { name: viaSlash.name, rank: viaSlash.rank, surface: viaSlash.surface, raw: trimmed, isCompound: false, unranked: false, abbreviationOf: null };
+  }
   const parts = trimmed.split(/[,/(]/);
   if (parts.length > 1) {
     const first = parts[0].trim();
@@ -215,13 +229,38 @@ function goingNeverRunAW(groups) {
   return { line: missing.length ? 'Never run on (all-weather): ' + missing.join(', ') : null, names: missing };
 }
 
-function buildGoingBlock(groups, neverRun, neverRunAW) {
+// Change (refine) Fix 2 — sums runs/wins/places across a set of going
+// groups, for the Totals line below. Shared by the turf/all-weather/window
+// clauses so all three are computed the same way.
+function sumGoingFigures(arr) {
+  return {
+    runs: arr.reduce(function(s, g) { return s + g.runs; }, 0),
+    wins: arr.reduce(function(s, g) { return s + g.wins; }, 0),
+    places: arr.reduce(function(s, g) { return s + g.places; }, 0)
+  };
+}
+function goingTotalsClause(label, f) {
+  return label + ' ' + f.runs + ' run' + (f.runs === 1 ? '' : 's') + ', ' + f.wins + ' win' + (f.wins === 1 ? '' : 's') + ', ' + f.places + ' place' + (f.places === 1 ? '' : 's');
+}
+function buildGoingBlock(groups, neverRun, neverRunAW, windowSize) {
   const lines = groups.map(function(g) {
     const bestClause = g.best ? ' Best: ' + g.best + '.' : '';
     return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ', ' + g.topThree + ' in the top three.' + bestClause + ' Results: ' + g.results.join('; ') + '.';
   });
   if (neverRun && neverRun.line) lines.push(neverRun.line);
   if (neverRunAW && neverRunAW.line) lines.push(neverRunAW.line);
+  // Change (refine) Fix 2 — printed totals so the model (and the checker)
+  // never has to add group figures together itself. A surface with no runs
+  // in the window is omitted entirely, per spec.
+  const turfGroups = groups.filter(function(g) { return g.surface === 'turf'; });
+  const awGroups = groups.filter(function(g) { return g.surface === 'all-weather'; });
+  const windowFigures = sumGoingFigures(groups);
+  if (typeof windowSize === 'number') windowFigures.runs = windowSize;
+  const totalsClauses = [];
+  if (turfGroups.length) totalsClauses.push(goingTotalsClause('turf', sumGoingFigures(turfGroups)));
+  if (awGroups.length) totalsClauses.push(goingTotalsClause('all-weather', sumGoingFigures(awGroups)));
+  totalsClauses.push(goingTotalsClause('window', windowFigures));
+  lines.push('Totals: ' + totalsClauses.join('; ') + '.');
   return lines.join('\n');
 }
 
@@ -239,7 +278,7 @@ function buildEnvelope(horse, windowResult, blocks) {
 }
 
 function buildGoingEnvelope(horse, windowResult, groups, neverRun, neverRunAW) {
-  return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun, neverRunAW) }]);
+  return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun, neverRunAW, windowResult.size) }]);
 }
 
 // ── TRIP — joins Going in this engine; built as its own block so Going,
@@ -383,8 +422,28 @@ function staminaLines(groups) {
 // removed from the block entirely (the function that built it is deleted,
 // not just unused — nothing in the data block restates "longest tried" as
 // its own line any more; the stamina line still carries that figure).
+// Change (refine) Fix 2 — one printed Totals line per race type, same type
+// order staminaLines already uses, so the model and checker both have a
+// printed per-type runs/wins/places figure instead of needing to sum group
+// lines themselves.
+function tripTotalsLines(groups) {
+  const byType = {};
+  groups.forEach(function(g) { if (!byType[g.type]) byType[g.type] = []; byType[g.type].push(g); });
+  const types = Object.keys(byType).sort(function(a, b) {
+    const ta = TRIP_TYPE_ORDER.indexOf(a), tb = TRIP_TYPE_ORDER.indexOf(b);
+    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
+    return ra - rb;
+  });
+  return types.map(function(type) {
+    const tGroups = byType[type];
+    const runs = tGroups.reduce(function(s, g) { return s + g.runs; }, 0);
+    const wins = tGroups.reduce(function(s, g) { return s + g.wins; }, 0);
+    const places = tGroups.reduce(function(s, g) { return s + g.places; }, 0);
+    return 'Totals (' + type + '): ' + runs + ' run' + (runs === 1 ? '' : 's') + ', ' + wins + ' win' + (wins === 1 ? '' : 's') + ', ' + places + ' place' + (places === 1 ? '' : 's') + '.';
+  });
+}
 function buildTripBlock(groups) {
-  return buildTripGroupLines(groups).concat(staminaLines(groups)).join('\n');
+  return buildTripGroupLines(groups).concat(staminaLines(groups)).concat(tripTotalsLines(groups)).join('\n');
 }
 function buildTripEnvelope(horse, windowResult, groups) {
   return buildEnvelope(horse, windowResult, [{ heading: 'TRIP DATA', text: buildTripBlock(groups) }]);
@@ -426,36 +485,48 @@ const MAX_TOKENS = 200;
 // TRACK_SECTION) + one combined OUTPUT line, and Going will move onto
 // SHARED_RULES at that point (dropping its own, slightly different RULES
 // FOR EVERY SECTION list above in favour of this shared one).
+// Refined (post-2026-10-05-run fixes) — replaces the previous SHARED_RULES
+// verbatim per the refine spec: rule 2 now names every place a number may
+// come from (group/Totals/WINDOW/result lines) instead of just "figures
+// exactly as given"; rule 5 adds weakest/poorest to the worst ban; rule 11
+// adds "so far"/"to date"; rule 12 (new) requires copying going/distance
+// names letter for letter from the data block — this is what FIX 1's
+// canonicalised data block makes possible to enforce.
 const SHARED_RULES = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
 "The reader can already see every result in the form table. Your job is the next step: tell them what those results mean. The counting and comparing is done for you in the data block, so use those figures. Lead with what the record says about this horse, and back it with one or two results. Do not walk through every result.\n\n" +
 "A good read is specific to the horse: what suits it, what doesn't, where its best runs come from. If the record shows nothing clear, that is the read: say so plainly and say why (results are poor whatever the conditions, or too few runs to judge). Never fill a gap the data does not support. Every horse is different, so every text should sound different. Do not open with a stock phrase.\n\n" +
 "RULES FOR EVERY SECTION\n" +
 "1. Use only what is in the data block. No outside knowledge of horses, courses or people.\n" +
-"2. Use figures exactly as given. Never add figures from different categories together or work out totals or percentages. You may use the window size from the WINDOW line.\n" +
+"2. Every number you write must be printed in the data block: a group line, a Totals line, the WINDOW line or a result. Never add up, derive or estimate a number yourself. If the number you want is not printed, do not write it. Words like both, all, each, every and only are number claims: use them only when a printed line shows them to be true.\n" +
 "3. A place is a 2nd or 3rd. A win is not a place; 4th or worse is not a place.\n" +
 "4. Write positions as '3rd of 9'. All numbers as digits.\n" +
-"5. Call a run 'best' only when the data labels it Best there, never best overall. Call a run 'last' only when the horse finished last of the field. Never call a run the worst.\n" +
+"5. Call a run 'best' only when the data labels it Best there, never best overall. Call a run 'last' only when the horse finished last of the field. Never call any run, going or distance the worst, weakest or poorest.\n" +
 "6. One run at the same going or distance is not enough to call a preference, or to say the horse handles or suits it.\n" +
 "7. Never mention a future race, today, or what will suit.\n" +
 "8. Never give a reason for a run: no injury, draw, pace or fitness, and no explanations like 'too sharp', 'didn't stay', 'outpaced', 'found it too far' or 'found it too short'.\n" +
 "9. No betting words: backed, value, each-way, price, odds, market, favourite.\n" +
 "10. Plain prose. No headings, bullets or quotation marks.\n" +
-"11. Never say or imply anything about the horse's entire career, career so far, or ever — the data covers recent runs only, not the whole career.\n\n" +
+"11. Never say or imply anything about the horse's entire career, career so far, or ever — the data covers recent runs only, not the whole career. Do not write 'so far' or 'to date'.\n" +
+"12. Copy every going name and every distance exactly as printed in the data block, letter for letter. Never use a going or distance name that is not printed there.\n\n" +
 "'In the top three' means the horse finished 1st, 2nd or 3rd. Use it to judge where the horse runs well.";
 
-// The current live Going section text, extracted verbatim from
-// FORM_SECTIONS_PROMPT above (its "GOING (from GOING DATA)..." paragraph).
-// Unchanged, unused by the live runner today — exported only for the future
-// merged-call note above.
+// Refined GOING_SECTION — Good to Soft and Yielding are now listed as the
+// two separate (same-rank) scale steps the data itself prints, with an
+// explicit "same ground" note, replacing the old merged "Good to Soft or
+// Yielding (the same ground)" phrasing. Also adds the explicit
+// faster/softer comparison rule.
 const GOING_SECTION = "GOING (from GOING DATA): how the horse has run on different ground.\n" +
-"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft or Yielding (the same ground), Yielding to Soft, Soft, Soft to Heavy, Heavy. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. Never compare turf with all-weather.\n" +
-"Name goings it has not run on only from the 'Never run on' lines.\n" +
+"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy. Good to Soft and Yielding describe the same ground. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. You may say one going is faster or softer than another only when this scale shows it, and only within the same surface. Never compare turf with all-weather.\n" +
+"Name goings the horse has not run on only from the 'Never run on' lines.\n" +
 "Ground only: no courses, distances, trainers, jockeys or class, except a course inside a result.\n" +
 "30 to 45 words.";
 
+// Refined TRIP_SECTION — "the group figures" -> "the horse's record is
+// strongest using the group figures" and a new sentence restricting
+// longest/shortest/furthest claims to the stamina line's own four facts.
 const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and how far it has proven itself.\n" +
 "Distances are grouped to the nearest furlong and kept apart by race type (Flat, NH Flat, Hurdle, Chase). Never compare distances across race types. Write every distance exactly as it appears in the data, for example 2m4f or 1m2f. Never write a distance in words.\n" +
-"Say where the horse has done its best work and how far it has proven itself, using the distance figures and the stamina line. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
+"Say where the horse's record is strongest using the group figures, and how far it is proven using the stamina line. The only longest/shortest/furthest claims you may make are the stamina line's own facts (longest won, longest placed, longest tried, shortest tried), restated as that line gives them. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
 "If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
 "Never say whether the horse will or won't stay a distance it has not run. Only mention a distance the horse has not run when it genuinely matters to the read; do not end with a statement about untested distances by default.\n" +
 "Mention only distances in the data.\n" +
@@ -484,7 +555,11 @@ const TRIP_SECOND_CHECK_MAX_TOKENS = 300;
 // against both data blocks. Track is not part of this call (not built).
 const GOINGTRIP_PROMPT = SHARED_RULES + "\n\n" + GOING_SECTION + "\n\n" + TRIP_SECTION + "\n\nOUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\"}";
 const GOINGTRIP_MAX_TOKENS = 400;
-const GOINGTRIP_SECOND_CHECK_PROMPT = "You check two short paragraphs about a racehorse — a GOING paragraph and a TRIP paragraph — each against its own data block below. Read every sentence of both paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison (longer, shorter, furthest, every, each, both, only) and any statement about where the horse runs well or badly. A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP data, or a TRIP sentence against the GOING data. A sentence that claims or implies anything about the horse's entire career, career so far, or ever (rather than just the runs in this data) is never supported — the data covers recent runs only. Ignore style and length. Do not suggest rewrites. Return strict JSON only: {\"supported\": true} if every sentence in both paragraphs is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry: every unsupported sentence from either paragraph, which section it is from, and exactly what is wrong with it.";
+// Refined (post-2026-10-05-run fixes) — gives the second check the same
+// going scale the writer prompt has (so it can verify faster/softer
+// comparisons), explicitly admits Totals/stamina/WINDOW numbers, and adds a
+// self-review step before answering.
+const GOINGTRIP_SECOND_CHECK_PROMPT = "You check two short paragraphs about a racehorse — a GOING paragraph and a TRIP paragraph — each against its own data block below. Read every sentence of both paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison and any statement about where the horse runs well or badly. Numbers may come from any printed line, including the Totals, stamina and WINDOW lines. For GOING sentences, this scale orders ground from fastest to slowest — turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy; all-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow — so a sentence calling one going faster or softer than another is supported when this scale shows it and both are on the same surface. A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP data, or a TRIP sentence against the GOING data. A sentence that claims or implies anything about the horse's entire career (rather than just the runs in this data) is never supported. Ignore style and length. Do not suggest rewrites. Before answering, re-read each problem you have listed: if on re-reading the sentence is actually supported, remove it from the list. If no problems remain, return supported true. Return strict JSON only: {\"supported\": true} if every sentence in both paragraphs is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry.";
 const GOINGTRIP_SECOND_CHECK_MAX_TOKENS = 400;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
@@ -561,9 +636,18 @@ function validateGoing(text, block) {
   // size; (4) hidden totals — "all N", bare "both" (implies 2), "other N" —
   // checked the same loose way, since these words don't name which figure
   // they mean.
+  // Refine Fix 5.2 — the printed Totals line (turf/all-weather/window sums)
+  // is itself a valid source for a number, same as any group's own figure.
   const counts = { run: {}, win: {}, place: {}, topThree: {} };
   groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
-  function matchesAnyGoingFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }); }
+  [groups.filter(function(g) { return g.surface === 'turf'; }), groups.filter(function(g) { return g.surface === 'all-weather'; }), groups].forEach(function(arr) {
+    if (!arr.length) return;
+    counts.run[sumGoingFigures(arr).runs] = true;
+    counts.win[sumGoingFigures(arr).wins] = true;
+    counts.place[sumGoingFigures(arr).places] = true;
+  });
+  if (windowSize !== null) counts.run[windowSize] = true;
+  function matchesAnyGoingFigure(n) { return n === windowSize || counts.run[n] || counts.win[n] || counts.place[n] || groups.some(function(g) { return g.topThree === n; }); }
 
   const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
   while ((m = reCount.exec(t)) !== null) {
@@ -611,8 +695,8 @@ function validateGoing(text, block) {
   ['best overall', 'best run in the window', 'best of the window', 'best in the window', 'career-best', 'best of his career', "best of her career"].forEach(function(phrase) {
     if (new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i').test(t)) fail('best-mislabelled', phrase);
   });
-  // "worst" is never allowed.
-  if (/\bworst\b/i.test(t)) fail('banned-format', 'worst');
+  // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
+  ['worst', 'weakest', 'poorest'].forEach(function(w) { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail('banned-format', w); });
   // "last" as a position claim must be a genuine last-of-field result.
   const lastOfFieldSizes = {};
   groups.forEach(function(g) { g.results.forEach(function(r) { const rm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (rm && rm[1] === rm[2]) lastOfFieldSizes[rm[2]] = true; }); });
@@ -706,8 +790,8 @@ function validateTrip(text, tripData) {
     if (new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i').test(t)) fail('best-mislabelled', phrase);
   });
 
-  // "worst" is never allowed.
-  if (/\bworst\b/i.test(t)) fail('banned-format', 'worst');
+  // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
+  ['worst', 'weakest', 'poorest'].forEach(function(w) { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail('banned-format', w); });
 
   // Trip round 2, Change 5: "last" as a position claim must be a genuine
   // last-of-field result in the data (pos === ran for some row); a count of
@@ -726,10 +810,18 @@ function validateTrip(text, tripData) {
   // it and the model is told to use that figure.
   const counts = { run: {}, win: {}, place: {}, topThree: {} };
   groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
-  function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }); }
-  const typeTotals = {};
-  groups.forEach(function(g) { typeTotals[g.type] = (typeTotals[g.type] || 0) + g.runs; });
+  const typeTotals = {}, typeTotalsWins = {}, typeTotalsPlaces = {};
+  groups.forEach(function(g) {
+    typeTotals[g.type] = (typeTotals[g.type] || 0) + g.runs;
+    typeTotalsWins[g.type] = (typeTotalsWins[g.type] || 0) + g.wins;
+    typeTotalsPlaces[g.type] = (typeTotalsPlaces[g.type] || 0) + g.places;
+  });
   function isAnyTypeTotal(n) { return Object.keys(typeTotals).some(function(k) { return typeTotals[k] === n; }); }
+  // Refine Fix 5.2 — the printed per-type Totals line's wins/places are
+  // also valid sources for a number.
+  function isAnyTypeWinTotal(n) { return Object.keys(typeTotalsWins).some(function(k) { return typeTotalsWins[k] === n; }); }
+  function isAnyTypePlaceTotal(n) { return Object.keys(typeTotalsPlaces).some(function(k) { return typeTotalsPlaces[k] === n; }); }
+  function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }) || isAnyTypeTotal(n) || isAnyTypeWinTotal(n) || isAnyTypePlaceTotal(n); }
   function typeKeyFromWord(w) {
     const lw = String(w || '').toLowerCase();
     if (lw === 'flat') return 'Flat';
@@ -746,7 +838,11 @@ function validateTrip(text, tripData) {
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
     if (kind === 'run') {
       if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n)) fail('count-not-given', m[0]);
-    } else if (n !== windowSize && !counts[kind][n]) fail('count-not-given', m[0]);
+    } else if (kind === 'win') {
+      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n)) fail('count-not-given', m[0]);
+    } else {
+      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n)) fail('count-not-given', m[0]);
+    }
   }
   // "N {race type} runs/starts" — must match that type's own total (or a
   // single group's run count, or the window size).
@@ -876,6 +972,17 @@ function validateTrip(text, tripData) {
   // result attached (same sentence) must be that type's longest (or
   // shortest) tried.
   const reDistTok = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi;
+  // Refine Fix 5.3 — a longest/furthest claim now passes when it matches ANY
+  // of the stamina line's own three "longest" facts for that type (longest
+  // won, longest placed, longest tried), not just longest tried — the same
+  // won/placed-filtered computation staminaLines() itself uses. "Shortest"
+  // still only ever means shortest tried, since that is the only "shortest"
+  // fact the stamina line prints.
+  function maxFacts(sameType) {
+    const wonGroups = sameType.filter(function(g) { return g.wins > 0; });
+    const placedGroups = sameType.filter(function(g) { return g.places > 0; });
+    return [longestF(wonGroups), longestF(placedGroups), longestF(sameType)].filter(function(f) { return f !== null; });
+  }
   function checkSuperlative(phrases, wantMax) {
     phrases.forEach(function(phrase) {
       const re = phraseRe(phrase);
@@ -886,16 +993,16 @@ function validateTrip(text, tripData) {
         const g = groups.find(function(gg) { return gg.distanceLabel.toLowerCase() === dm[0].toLowerCase(); });
         if (!g) continue;
         const sameType = groups.filter(function(gg) { return gg.type === g.type; });
-        const target = wantMax ? longestF(sameType) : shortestF(sameType);
-        if (g.furlongs !== target) fail('comparison-claim', '"' + phrase + '": "' + dm[0] + '" is not ' + g.type + '\'s ' + (wantMax ? 'longest' : 'shortest') + ' tried trip');
+        const ok = wantMax ? maxFacts(sameType).indexOf(g.furlongs) !== -1 : g.furlongs === shortestF(sameType);
+        if (!ok) fail('comparison-claim', '"' + phrase + '": "' + dm[0] + '" is not ' + g.type + '\'s longest won, placed or tried trip' + (wantMax ? '' : ' (shortest tried)'));
       }
       const localResRe = new RegExp(reResultTok.source, 'g'); let rm2;
       while ((rm2 = localResRe.exec(sent)) !== null) {
         const g = groupForResult(rm2[0]);
         if (!g) continue;
         const sameType = groups.filter(function(gg) { return gg.type === g.type; });
-        const target = wantMax ? longestF(sameType) : shortestF(sameType);
-        if (g.furlongs !== target) fail('comparison-claim', '"' + phrase + '": "' + rm2[0] + '" is not from ' + g.type + '\'s ' + (wantMax ? 'longest' : 'shortest') + ' tried group');
+        const ok = wantMax ? maxFacts(sameType).indexOf(g.furlongs) !== -1 : g.furlongs === shortestF(sameType);
+        if (!ok) fail('comparison-claim', '"' + phrase + '": "' + rm2[0] + '" is not from ' + g.type + '\'s longest won, placed or tried group' + (wantMax ? '' : ' (shortest tried)'));
       }
     });
   }
@@ -1017,5 +1124,8 @@ module.exports = {
   GOINGTRIP_PROMPT: GOINGTRIP_PROMPT,
   GOINGTRIP_MAX_TOKENS: GOINGTRIP_MAX_TOKENS,
   GOINGTRIP_SECOND_CHECK_PROMPT: GOINGTRIP_SECOND_CHECK_PROMPT,
-  GOINGTRIP_SECOND_CHECK_MAX_TOKENS: GOINGTRIP_SECOND_CHECK_MAX_TOKENS
+  GOINGTRIP_SECOND_CHECK_MAX_TOKENS: GOINGTRIP_SECOND_CHECK_MAX_TOKENS,
+  // Refine (post-2026-10-05-run fixes)
+  tripTotalsLines: tripTotalsLines,
+  sumGoingFigures: sumGoingFigures
 };

@@ -59,11 +59,32 @@ async function eligibleHorses(date) {
         if (!ru || !ru.horse_id || seen[ru.horse_id]) return;
         if (ru.nonRunner === true || ru.price === 'NR') return;
         seen[ru.horse_id] = true;
-        list.push({ horse_id: ru.horse_id, name: ru.name || 'Unknown', age: ru.age || '?', sex: ru.sex || 'unknown sex' });
+        list.push({ horse_id: ru.horse_id, name: ru.name || 'Unknown', age: ru.age || '?', sex: ru.sex || 'unknown sex', meeting: m.name || m.id });
       });
     });
   });
   return list;
+}
+
+// Sample-run support (cache probe / spot checks) — a random subset spread
+// across every meeting present, not the first N in card order. Round-robins
+// a shuffled per-meeting queue so a small n still touches every meeting it
+// can before any meeting gets a second horse.
+function sampleAcrossMeetings(list, n) {
+  if (!n || n >= list.length) return list;
+  const byMeeting = {};
+  list.forEach(function(h) { (byMeeting[h.meeting] = byMeeting[h.meeting] || []).push(h); });
+  const meetings = Object.keys(byMeeting);
+  meetings.forEach(function(m) {
+    const arr = byMeeting[m];
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  });
+  const out = []; let idx = 0;
+  while (out.length < n && meetings.some(function(m) { return byMeeting[m].length > idx; })) {
+    meetings.forEach(function(m) { if (out.length < n && byMeeting[m].length > idx) out.push(byMeeting[m][idx]); });
+    idx++;
+  }
+  return out;
 }
 
 // Trip trial — ?section=trip&races=<comma-separated "{meetingId}:{time}">.
@@ -389,21 +410,21 @@ async function processHorseGoingTrip(h, date) {
 
   if (!win.size) {
     await storeGoingTrip(h, win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: true, attempt: 0, usage: usage, usage2: usage2, windowInfo: win };
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: true, attempt: 0, usage: usage, usage2: usage2, firstWriteUsage: usage, windowInfo: win };
   }
 
   const goingGroupsList = F.goingGroups(win.rows);
   const neverRun = F.goingNeverRun(goingGroupsList);
   const neverRunAW = F.goingNeverRunAW(goingGroupsList);
   const goingBlock = { groups: goingGroupsList, neverRun: neverRun, neverRunAW: neverRunAW, windowSize: win.size };
-  const goingBlockText = 'GOING DATA\n' + F.buildGoingBlock(goingGroupsList, neverRun, neverRunAW);
+  const goingBlockText = 'GOING DATA\n' + F.buildGoingBlock(goingGroupsList, neverRun, neverRunAW, win.size);
 
   const tripGroupsList = F.tripGroups(win.rows, fullSorted);
   const tripData = { groups: tripGroupsList, windowSize: win.size, courses: F.courseNamesIn(win.rows) };
   const tripBlockText = 'TRIP DATA\n' + F.buildTripBlock(tripGroupsList);
 
   const envelope = F.buildEnvelope(h, win, [
-    { heading: 'GOING DATA', text: F.buildGoingBlock(goingGroupsList, neverRun, neverRunAW) },
+    { heading: 'GOING DATA', text: F.buildGoingBlock(goingGroupsList, neverRun, neverRunAW, win.size) },
     { heading: 'TRIP DATA', text: F.buildTripBlock(tripGroupsList) }
   ]);
 
@@ -425,6 +446,11 @@ async function processHorseGoingTrip(h, date) {
   // ── Pass 1: write, validate both texts, one retry (both) on a code failure ──
   let w = await write(envelope);
   if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 1, error: w.error, usage: usage, usage2: usage2, windowInfo: win };
+  // Cache probe support — a snapshot of usage right after this one call, so
+  // a caller can inspect cache_creation_input_tokens/cache_read_input_tokens
+  // on this horse's FIRST write call specifically, unaffected by any retry
+  // or second-check usage added later.
+  const firstWriteUsage = Object.assign({}, usage);
   let vG = F.validateGoing(w.text, goingBlock);
   let vT = F.validateTrip(w.text, tripData);
   let attempt = 1;
@@ -437,11 +463,11 @@ async function processHorseGoingTrip(h, date) {
     const retryText = envelope + '\n\nPREVIOUS ATTEMPT FAILED VALIDATION — every claim is checked in code against the data above. Failures:\n' + notes.join('\n') + '\nRewrite both going and trip so every position, going or distance name and count appears in the data exactly, with no new claims, staying inside the word limit.';
     w = await write(retryText);
     attempt = 2;
-    if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, error: 'retry ' + w.error, usage: usage, usage2: usage2, windowInfo: win };
+    if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, error: 'retry ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
     vG = F.validateGoing(w.text, goingBlock);
     vT = F.validateTrip(w.text, tripData);
     if (!vG.ok || !vT.ok) {
-      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures }, usage: usage, usage2: usage2, windowInfo: win };
+      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures }, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
     }
   }
 
@@ -449,10 +475,10 @@ async function processHorseGoingTrip(h, date) {
   let goingText = vG.going, tripText = vT.trip;
 
   const sc1 = await secondCheck(goingText, tripText);
-  if (sc1.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: attempt, codeCheckFirstFailures: codeCheckFirstFailures, error: 'second check ' + sc1.error, usage: usage, usage2: usage2, windowInfo: win };
+  if (sc1.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: attempt, codeCheckFirstFailures: codeCheckFirstFailures, error: 'second check ' + sc1.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
   if (sc1.supported) {
     await storeGoingTrip(h, win, goingText, tripText);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: false, attempt: attempt, usage: usage, usage2: usage2, wordCount: { going: vG.wordCount, trip: vT.wordCount }, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: true, windowInfo: win };
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: false, attempt: attempt, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, wordCount: { going: vG.wordCount, trip: vT.wordCount }, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: true, windowInfo: win };
   }
 
   // Second check found unsupported statements — rewrite ONLY the section(s)
@@ -479,7 +505,7 @@ async function processHorseGoingTrip(h, date) {
     const finalGoing = goingProblems.length ? null : goingText;
     const finalTrip = tripProblems.length ? null : tripText;
     await storeGoingTrip(h, win, finalGoing, finalTrip);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems, error: 'regen ' + w.error, usage: usage, usage2: usage2, windowInfo: win };
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems, error: 'regen ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
   }
 
   const vG2 = F.validateGoing(w.text, goingBlock);
@@ -514,7 +540,7 @@ async function processHorseGoingTrip(h, date) {
   await storeGoingTrip(h, win, finalGoing, finalTrip);
   return {
     horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip,
-    template: false, attempt: regenAttempt, usage: usage, usage2: usage2, cacheRead: usage.cacheRead > 0,
+    template: false, attempt: regenAttempt, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, cacheRead: usage.cacheRead > 0,
     codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems,
     secondCheckSecondSupported: sc2Supported, secondCheckSecondProblems: sc2Problems, regenerated: true, windowInfo: win
   };
@@ -733,15 +759,22 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
       secondCheckFailCount = state.secondCheckFailCount || 0; regeneratedCount = state.regeneratedCount || 0; passedFirstTimeCount = state.passedFirstTimeCount || 0;
     } else {
       remaining = await eligibleHorses(date);
+      // Sample-run support — ?sample=N limits this run to N horses spread
+      // across every meeting, not the full card. Only applied on a fresh
+      // start (hop 0); a chained hop's `remaining` already reflects it.
+      if (qs.sample) remaining = sampleAcrossMeetings(remaining, parseInt(qs.sample, 10) || remaining.length);
       results = []; templated = 0; bothGenerated = 0; partialGenerated = 0; failed = [];
       usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
       usage2 = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
       cacheReadCount = 0; firstPassFailCount = 0; secondCheckFailCount = 0; regeneratedCount = 0; passedFirstTimeCount = 0;
-      console.log('[form-sections:goingtrip]', remaining.length, 'eligible horses for', date);
+      console.log('[form-sections:goingtrip]', remaining.length, 'eligible horses for', date, qs.sample ? '(sampled to ' + qs.sample + ')' : '');
     }
 
+    // ?costCap=X overrides the default $9 hard cap for this run only.
+    const costCap = qs.costCap ? (parseFloat(qs.costCap) || GOINGTRIP_COST_CAP_USD) : GOINGTRIP_COST_CAP_USD;
     const totalEligible = (state && state.totalEligible) || remaining.length + results.length;
     let timedOut = false, costCapped = false, costAtStop = 0;
+    let cacheProbeChecked = false, cacheProbeFailed = false, cacheProbeDetail = null;
 
     while (remaining.length) {
       if (Date.now() - startTime > TIMEOUT_MS) { timedOut = true; break; }
@@ -751,7 +784,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         const emptyUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
         results.push({
           horse_id: r.horse_id, horseName: r.horseName, storedGoing: !!r.storedGoing, storedTrip: !!r.storedTrip, template: !!r.template, attempt: r.attempt,
-          wordCount: r.wordCount || null,
+          wordCount: r.wordCount || null, firstWriteUsage: r.firstWriteUsage || emptyUsage,
           codeCheckFirstFailures: r.codeCheckFirstFailures || null, codeCheckRetryFailures: r.codeCheckRetryFailures || null,
           secondCheckFirstSupported: r.secondCheckFirstSupported === undefined ? null : r.secondCheckFirstSupported,
           secondCheckFirstProblems: r.secondCheckFirstProblems || null,
@@ -778,12 +811,46 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
       });
       remaining = remaining.slice(CONCURRENCY);
 
+      // Cache probe (?cacheProbe=1) — CONCURRENCY is 3, so the first chunk
+      // (horses 1-3) fires all 3 calls simultaneously via Promise.all: none
+      // of them can read a cache the others haven't finished writing yet,
+      // so only the SECOND chunk onward (horses 4+, which only starts after
+      // chunk 1 fully completes) can empirically prove a cache read. Check
+      // as soon as that second chunk has landed (results.length >= 6).
+      if (qs.cacheProbe === '1' && !cacheProbeChecked && results.length >= 6) {
+        cacheProbeChecked = true;
+        const chunk2 = results.slice(3, 6);
+        const anyCacheRead = chunk2.some(function(r) { return r.firstWriteUsage && r.firstWriteUsage.cacheRead > 0; });
+        cacheProbeDetail = { chunk1FirstCallUsage: results[0].firstWriteUsage, chunk2Usages: chunk2.map(function(r) { return { horse_id: r.horse_id, firstWriteUsage: r.firstWriteUsage }; }) };
+        if (!anyCacheRead) {
+          cacheProbeFailed = true;
+          break;
+        }
+      }
+
       costAtStop = costOf(usage) + costOf(usage2);
-      if (costAtStop >= GOINGTRIP_COST_CAP_USD) { costCapped = true; break; }
+      if (costAtStop >= costCap) { costCapped = true; break; }
+    }
+
+    if (cacheProbeFailed) {
+      remaining.forEach(function(h) { failed.push({ horse_id: h.horse_id, horseName: h.name, error: 'not processed — cache probe failed, run stopped' }); });
+      const coverage = {
+        date: date, completedAt: new Date().toISOString(), totalEligible: totalEligible,
+        templated: templated, bothGenerated: bothGenerated, partialGenerated: partialGenerated,
+        passedFirstTime: passedFirstTimeCount, failedCount: failed.length, failed: failed, results: results,
+        usage: usage, costUSD: costOf(usage), usage2: usage2, cost2USD: costOf(usage2),
+        totalCostUSD: +(costOf(usage) + costOf(usage2)).toFixed(4), hops: hop + 1, pricing: PRICE,
+        cacheProbeFailed: true, cacheProbeDetail: cacheProbeDetail, remainingAtStop: remaining.length
+      };
+      await E.redisSet('form-sections:coverage:goingtrip:' + date, coverage);
+      await E.redisSet('form-sections:goingtrip:worklist:' + date, null);
+      try { await E.redisSet('form-sections:goingtrip:lock:' + date, null); } catch (ue) {}
+      console.log('[form-sections:goingtrip] CACHE PROBE FAILED — stopping.', JSON.stringify(cacheProbeDetail));
+      return { statusCode: 200, headers, body: JSON.stringify({ status: 'cache_probe_failed', coverage: coverage }) };
     }
 
     if (costCapped) {
-      remaining.forEach(function(h) { failed.push({ horse_id: h.horse_id, horseName: h.name, error: 'not processed — goingtrip hard cost cap ($' + GOINGTRIP_COST_CAP_USD.toFixed(2) + ') reached at $' + costAtStop.toFixed(4) }); });
+      remaining.forEach(function(h) { failed.push({ horse_id: h.horse_id, horseName: h.name, error: 'not processed — goingtrip hard cost cap ($' + costCap.toFixed(2) + ') reached at $' + costAtStop.toFixed(4) }); });
       const coverage = {
         date: date, completedAt: new Date().toISOString(), totalEligible: totalEligible,
         templated: templated, bothGenerated: bothGenerated, partialGenerated: partialGenerated,
@@ -792,7 +859,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         cacheReadCalls: cacheReadCount, cacheActive: cacheReadCount > 0,
         usage: usage, costUSD: costOf(usage), usage2: usage2, cost2USD: costOf(usage2),
         totalCostUSD: +costAtStop.toFixed(4), hops: hop + 1, pricing: PRICE,
-        costCapped: true, costCapUSD: GOINGTRIP_COST_CAP_USD, remainingAtStop: remaining.length
+        costCapped: true, costCapUSD: costCap, remainingAtStop: remaining.length
       };
       await E.redisSet('form-sections:coverage:goingtrip:' + date, coverage);
       await E.redisSet('form-sections:goingtrip:worklist:' + date, null);
@@ -808,7 +875,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         console.log('[form-sections:goingtrip] approaching timeout at hop', hop, '—', remaining.length, 'horse(s) still queued, chaining hop', hop + 1);
         await new Promise(function(resolve) {
           const req = https.request({
-            hostname: HOSTNAME, path: '/.netlify/functions/form-sections-run-background?date=' + date + '&section=goingtrip&hop=' + (hop + 1),
+            hostname: HOSTNAME, path: '/.netlify/functions/form-sections-run-background?date=' + date + '&section=goingtrip&hop=' + (hop + 1) + (qs.costCap ? '&costCap=' + encodeURIComponent(qs.costCap) : '') + (qs.cacheProbe ? '&cacheProbe=' + encodeURIComponent(qs.cacheProbe) : ''),
             method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
           }, function(res) { res.resume(); res.on('end', resolve); });
           req.on('error', function() { resolve(); });
