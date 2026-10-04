@@ -3127,17 +3127,20 @@ window.addEventListener('load',function(){
       });
       return d;
     }
-    // NAP/NB season record for the Today's Selections cards — Phase 3
-    // (post-freeze) record for the given slot type, via the exact same
-    // computeRow the Winners tab's Phase 3 rows use. null when there is no
-    // settled Phase 3 data yet for that slot — callers must hide the block
-    // rather than show a placeholder.
+    // NAP/NB season record for the Today's Selections cards — reads the
+    // PUBLIC Phase 3 figures (tracker:stats.phase3, via get-daily-build,
+    // PUBLIC_PHASE3), so this shows for every visitor, not only devices that
+    // have unlocked the Tracker (getRecs() is empty for everyone else). The
+    // server computes these with the exact same rule computeRow(recs,key,true)
+    // above does (see tracker-recs.js's phase3ComputeRow) — only avgDec->
+    // avgStr formatting happens here, via the same phase3DecToFrac the
+    // Winners tab's Phase 3 rows use. null when the public figures are
+    // missing or there's no settled Phase 3 data yet for that slot —
+    // callers must hide the block rather than show a placeholder.
     function phase3SeasonRecord(key){
-      var d=computeRow(getRecs(),key,true);
-      var raced=d.wins+d.placed+d.losses;
-      if(!raced) return null;
-      var avgDec=d.pcount?d.psum/d.pcount:0;
-      return { sr:Math.round(d.wins/raced*100), wins:d.wins, placed:d.placed, raced:raced, avgStr:avgDec?phase3DecToFrac(avgDec):'—' };
+      var slot=PUBLIC_PHASE3&&PUBLIC_PHASE3[String(key||'').toLowerCase()];
+      if(!slot||!slot.raced) return null;
+      return { sr:slot.sr, wins:slot.wins, placed:slot.placed, raced:slot.raced, avgStr:slot.avgDec?phase3DecToFrac(slot.avgDec):'—' };
     }
 
     function ptRenderTypeRows(recs){
@@ -15871,6 +15874,12 @@ function renderAiEdgeCarousel(){
 
 var AI_INTELLIGENCE=[];
 var INTEL_PICKS=[];
+// Public Phase 3 NAP/NB season figures (tracker:stats.phase3, via
+// get-daily-build) — read by phase3SeasonRecord so the season record block
+// on the Today's Selections cards shows for every visitor, not only devices
+// that have unlocked the Tracker. {nap:{wins,placed,losses,raced,sr,avgDec},
+// nb:{...}} or null until loadDailyBuild's fetch resolves.
+var PUBLIC_PHASE3=null;
 var BIG_RACE=null;
 var BIG_RACE_TOMORROW=null;  // report.bigRaceTomorrow — shown only when today's Big Race card is hidden/absent
 var CANDG_CARD=null;
@@ -16027,6 +16036,7 @@ function loadDailyBuild(){
       // need it: race times are date-less HH:MM, so without this a card can't
       // tell "06:00 the morning after" from "pre-race on its own morning".
       window._intelPicksDate=data.date||'';
+      PUBLIC_PHASE3=data.phase3||null;
       BIG_RACE=data.bigRace||null;
       BIG_RACE_TOMORROW=data.bigRaceTomorrow||null;
       CANDG_CARD=data.candgCard||null;

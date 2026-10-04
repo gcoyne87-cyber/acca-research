@@ -112,8 +112,12 @@ exports.handler = async function(event) {
     // NAP / NB record stats for the picks stat pill, written by tracker-recs
     // after every merge (tracker:stats). Passed through untouched; the field
     // is omitted entirely when the key is absent so the client renders no pill.
+    // phase3 (tracker:stats.phase3) rides alongside it, unauthenticated like
+    // the rest of this endpoint — it's what lets the season NAP/NB record on
+    // the Today's Selections cards show for every visitor, not just devices
+    // that have unlocked the Tracker (see phase3SeasonRecord in index.html).
     const trackerStats = await redisGet('tracker:stats');
-    const recordsField = (trackerStats && typeof trackerStats === 'object') ? { records: trackerStats } : {};
+    const recordsField = (trackerStats && typeof trackerStats === 'object') ? { records: trackerStats, phase3: trackerStats.phase3 || null } : {};
 
     return {
       statusCode: 200,

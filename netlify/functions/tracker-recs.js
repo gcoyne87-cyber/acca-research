@@ -104,10 +104,64 @@ function computeSlotStats(records, type) {
   };
 }
 
+// ── Phase 3 (public season record) ────────────────────────────────────────
+// Mirrors index.html's PHASE3_FREEZE_DATE / computeRow / phase3SeasonRecord
+// EXACTLY, so a visitor who has never unlocked the Tracker (getRecs() empty
+// client-side) still sees the identical NAP/NB season figures a synced
+// device's own computeRow(getRecs(),key,true) would produce. Same date
+// threshold, same type match, same win/placed/losses counting — every
+// matching record counts, no per-date dedupe (computeRow does none either,
+// unlike computeSlotStats above) — and the same SP-to-decimal parsing.
+// Raw numbers only (wins/placed/losses/raced/sr/avgDec); the client already
+// has phase3DecToFrac to turn avgDec into the "11/10" display string.
+const PHASE3_FREEZE_DATE = '2026-08-03';
+// Verbatim port of index.html's phase3ParseDec — deliberately NOT fracToDec
+// above, which differs (case-sensitive 'SP', different blank markers, no
+// bare-decimal fallback) and would not reproduce the client's numbers.
+function phase3ParseDec(pr) {
+  if (!pr || pr === 'SP' || pr === '—') return 0;
+  const p = String(pr).trim();
+  if (p.toLowerCase() === 'evs' || p.toLowerCase() === 'evens') return 2;
+  const s = p.split('/');
+  if (s.length === 2) { const n = parseFloat(s[0]), d = parseFloat(s[1]); if (!isNaN(n) && !isNaN(d) && d > 0) return n / d + 1; }
+  const dec = parseFloat(p);
+  return isNaN(dec) ? 0 : dec;
+}
+// Verbatim port of index.html's computeRow(recs,key,true) — wantLive is
+// always true here since Phase 3 only ever wants post-freeze records.
+function phase3ComputeRow(records, type) {
+  const d = { wins: 0, placed: 0, losses: 0, total: 0, psum: 0, pcount: 0 };
+  (records || []).forEach(function(r) {
+    if ((r.type || '') !== type) return;
+    if ((r.date || '') < PHASE3_FREEZE_DATE) return;
+    d.total++;
+    if (r.result === 'W') { d.wins++; const dec = phase3ParseDec(r.sp || r.price || ''); if (dec > 0) { d.psum += dec; d.pcount++; } }
+    else if (r.result === 'P') d.placed++;
+    else if (r.result === 'L') d.losses++;
+  });
+  return d;
+}
+function computePhase3Slot(records, type) {
+  const d = phase3ComputeRow(records, type);
+  const raced = d.wins + d.placed + d.losses;
+  return {
+    wins: d.wins,
+    placed: d.placed,
+    losses: d.losses,
+    raced: raced,
+    sr: raced ? Math.round(d.wins / raced * 100) : 0,
+    avgDec: d.pcount ? d.psum / d.pcount : 0
+  };
+}
+function computePhase3(records) {
+  return { nap: computePhase3Slot(records, 'NAP'), nb: computePhase3Slot(records, 'NB') };
+}
+
 function computeTrackerStats(records) {
   return {
     nap: computeSlotStats(records, 'NAP'),
     nb: computeSlotStats(records, 'NB'),
+    phase3: computePhase3(records),
     computedAt: new Date().toISOString()
   };
 }
