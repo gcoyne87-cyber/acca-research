@@ -390,7 +390,13 @@ function buildTripGroupLines(groups) {
 }
 
 // C. STAMINA LINE — one per race type present in the window.
-function staminaLines(groups) {
+// Bug fix (post-cache-probe) Fix 1 — staminaLines' own four per-type facts
+// (longestWon/longestPlaced/longestTried/shortestTried), exposed as
+// structured data instead of only as the formatted text line, so
+// validateTrip can check a "longest won"/"longest placed"/"longest tried"/
+// "shortest tried" claim against the EXACT value for that field, rather
+// than a loose "matches any of the three longest facts" membership test.
+function staminaFacts(groups) {
   const byType = {};
   groups.forEach(function(g) {
     if (!byType[g.type]) byType[g.type] = [];
@@ -414,7 +420,12 @@ function staminaLines(groups) {
     const longestPlaced = placedGroups.length ? longestOf(placedGroups) : 'none';
     const longestTried = longestOf(tGroups);
     const shortestTried = furlongsLabel(Math.min.apply(null, tGroups.map(function(g) { return g.furlongs === null ? Infinity : g.furlongs; })));
-    return type + ': ' + totalRuns + ' run' + (totalRuns === 1 ? '' : 's') + '; longest won ' + longestWon + '; longest placed ' + longestPlaced + '; longest tried ' + longestTried + '; shortest tried ' + shortestTried + '.';
+    return { type: type, totalRuns: totalRuns, longestWon: longestWon, longestPlaced: longestPlaced, longestTried: longestTried, shortestTried: shortestTried };
+  });
+}
+function staminaLines(groups) {
+  return staminaFacts(groups).map(function(f) {
+    return f.type + ': ' + f.totalRuns + ' run' + (f.totalRuns === 1 ? '' : 's') + '; longest won ' + f.longestWon + '; longest placed ' + f.longestPlaced + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.';
   });
 }
 
@@ -560,7 +571,7 @@ const GOINGTRIP_MAX_TOKENS = 400;
 // comparisons), explicitly admits Totals/stamina/WINDOW numbers, and adds a
 // self-review step before answering.
 const GOINGTRIP_SECOND_CHECK_PROMPT = "You check two short paragraphs about a racehorse — a GOING paragraph and a TRIP paragraph — each against its own data block below. Read every sentence of both paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison and any statement about where the horse runs well or badly. Numbers may come from any printed line, including the Totals, stamina and WINDOW lines. For GOING sentences, this scale orders ground from fastest to slowest — turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy; all-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow — so a sentence calling one going faster or softer than another is supported when this scale shows it and both are on the same surface. A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP data, or a TRIP sentence against the GOING data. A sentence that claims or implies anything about the horse's entire career (rather than just the runs in this data) is never supported. Ignore style and length. Do not suggest rewrites. Before answering, re-read each problem you have listed: if on re-reading the sentence is actually supported, remove it from the list. If no problems remain, return supported true. Return strict JSON only: {\"supported\": true} if every sentence in both paragraphs is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry.";
-const GOINGTRIP_SECOND_CHECK_MAX_TOKENS = 400;
+const GOINGTRIP_SECOND_CHECK_MAX_TOKENS = 1000;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
 // block: { groups, neverRun, neverRunAW } — the same groups/neverRun(AW)
@@ -968,46 +979,76 @@ function validateTrip(text, tripData) {
     }
   });
 
-  // (d) "the furthest"/"the longest"/"the shortest" — any distance or
-  // result attached (same sentence) must be that type's longest (or
-  // shortest) tried.
+  // (d) Bug fix (post-cache-probe) Fix 1 — "longest won"/"longest placed"/
+  // "longest tried"/"shortest tried" claims are checked by VALUE against
+  // the stamina line's own four named facts for that race type (via
+  // staminaFacts(), the same computation staminaLines() itself uses), not
+  // by requiring the stamina line's exact text or just membership in a
+  // loose set. A field whose fact is "none" (e.g. no wins at all, so
+  // longestWon is "none") never supports a claim naming a distance for it.
+  // "Both" with two of these phrases and one shared distance (e.g. "longest
+  // won and longest tried both at 7f") passes only when that one distance
+  // matches BOTH named fields.
   const reDistTok = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi;
-  // Refine Fix 5.3 — a longest/furthest claim now passes when it matches ANY
-  // of the stamina line's own three "longest" facts for that type (longest
-  // won, longest placed, longest tried), not just longest tried — the same
-  // won/placed-filtered computation staminaLines() itself uses. "Shortest"
-  // still only ever means shortest tried, since that is the only "shortest"
-  // fact the stamina line prints.
-  function maxFacts(sameType) {
-    const wonGroups = sameType.filter(function(g) { return g.wins > 0; });
-    const placedGroups = sameType.filter(function(g) { return g.places > 0; });
-    return [longestF(wonGroups), longestF(placedGroups), longestF(sameType)].filter(function(f) { return f !== null; });
+  const factsByType = {};
+  staminaFacts(groups).forEach(function(f) { factsByType[f.type] = f; });
+  const STAMINA_FIELD_DEFS = [
+    { re: /\blongest\s+won\b/gi, field: 'longestWon' },
+    { re: /\blongest\s+placed\b/gi, field: 'longestPlaced' },
+    { re: /\blongest\s+tried\b/gi, field: 'longestTried' },
+    { re: /\bshortest\s+tried\b/gi, field: 'shortestTried' }
+  ];
+  function distTokensWithPos(s) {
+    const re = new RegExp(reDistTok.source, 'gi'); let dm; const out = [];
+    while ((dm = re.exec(s)) !== null) out.push({ value: dm[0].toLowerCase(), index: dm.index });
+    return out;
   }
-  function checkSuperlative(phrases, wantMax) {
-    phrases.forEach(function(phrase) {
-      const re = phraseRe(phrase);
-      const sent = findSentence(re);
-      if (!sent) return;
-      const localDistRe = new RegExp(reDistTok.source, 'gi'); let dm;
-      while ((dm = localDistRe.exec(sent)) !== null) {
-        const g = groups.find(function(gg) { return gg.distanceLabel.toLowerCase() === dm[0].toLowerCase(); });
-        if (!g) continue;
-        const sameType = groups.filter(function(gg) { return gg.type === g.type; });
-        const ok = wantMax ? maxFacts(sameType).indexOf(g.furlongs) !== -1 : g.furlongs === shortestF(sameType);
-        if (!ok) fail('comparison-claim', '"' + phrase + '": "' + dm[0] + '" is not ' + g.type + '\'s longest won, placed or tried trip' + (wantMax ? '' : ' (shortest tried)'));
-      }
-      const localResRe = new RegExp(reResultTok.source, 'g'); let rm2;
-      while ((rm2 = localResRe.exec(sent)) !== null) {
-        const g = groupForResult(rm2[0]);
-        if (!g) continue;
-        const sameType = groups.filter(function(gg) { return gg.type === g.type; });
-        const ok = wantMax ? maxFacts(sameType).indexOf(g.furlongs) !== -1 : g.furlongs === shortestF(sameType);
-        if (!ok) fail('comparison-claim', '"' + phrase + '": "' + rm2[0] + '" is not from ' + g.type + '\'s longest won, placed or tried group' + (wantMax ? '' : ' (shortest tried)'));
-      }
+  function factTypesForSentence(sent) {
+    const named = typeWordsInSentence(sent);
+    return named.length ? named : Object.keys(factsByType);
+  }
+  function claimMatchesField(type, field, claimedDist) {
+    const f = factsByType[type];
+    if (!f) return false;
+    const actual = String(f[field] || '').toLowerCase();
+    return actual !== 'none' && actual === claimedDist;
+  }
+  sentences.forEach(function(sent) {
+    const fieldMatches = [];
+    STAMINA_FIELD_DEFS.forEach(function(fd) {
+      const re = new RegExp(fd.re.source, 'gi'); let fm;
+      while ((fm = re.exec(sent)) !== null) fieldMatches.push({ field: fd.field, index: fm.index });
     });
-  }
-  checkSuperlative(['the furthest', 'the longest', 'his longest', 'her longest'], true);
-  checkSuperlative(['the shortest'], false);
+    if (!fieldMatches.length) return;
+    fieldMatches.sort(function(a, b) { return a.index - b.index; });
+    const dists = distTokensWithPos(sent);
+    if (!dists.length) return;
+    const types = factTypesForSentence(sent);
+
+    if (/\bboth\b/i.test(sent) && fieldMatches.length === 2 && dists.length === 1) {
+      const claimed = dists[0].value;
+      const ok = types.some(function(type) { return claimMatchesField(type, fieldMatches[0].field, claimed) && claimMatchesField(type, fieldMatches[1].field, claimed); });
+      if (!ok) fail('comparison-claim', '"' + fieldMatches[0].field + ' and ' + fieldMatches[1].field + ' both at ' + claimed + '" does not match the stamina line');
+      return;
+    }
+
+    // Otherwise pair each field phrase with its nearest (by position)
+    // not-yet-used distance token in the same sentence.
+    const usedDist = {};
+    fieldMatches.forEach(function(fmatch) {
+      let best = null, bestDist = Infinity;
+      dists.forEach(function(d, di) {
+        if (usedDist[di]) return;
+        const dist = Math.abs(d.index - fmatch.index);
+        if (dist < bestDist) { bestDist = dist; best = di; }
+      });
+      if (best === null) return;
+      usedDist[best] = true;
+      const claimed = dists[best].value;
+      const ok = types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
+      if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none")');
+    });
+  });
 
   // (e) "both"/"all N"/"each of N" followed by results — the number of
   // results quoted in that sentence must match the stated count.
@@ -1108,6 +1149,7 @@ module.exports = {
   courseNamesIn: courseNamesIn,
   tripGroups: tripGroups,
   staminaLines: staminaLines,
+  staminaFacts: staminaFacts,
   buildTripBlock: buildTripBlock,
   buildTripEnvelope: buildTripEnvelope,
   NO_RUNS_TRIP_TEMPLATE: NO_RUNS_TRIP_TEMPLATE,
