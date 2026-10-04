@@ -18503,12 +18503,11 @@ function _buildResultCard(item,pickMap,bulked,opts){
   // already sits above this row — and puts the race name on the same line
   // as the time instead, separated by a thin divider.
   if(bulked&&opts.home){
-    // Home strip only: time + venue on one line (same style the plain
-    // homepage card below uses for its own time+venue line), race name on
-    // its own line underneath — the only header difference from the
-    // Results page's own bulked card.
-    html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
-    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+escHtml(race.name)+'</div>';
+    // Home strip only: time + venue on one line, both in the same bold navy
+    // (one heading, not time-plus-grey-label) — race name on its own line
+    // underneath in the same grey the meta line below uses, not navy.
+    html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.time)+' <span style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(item.venue)+'</span></div>';
+    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+escHtml(race.name)+'</div>';
   } else if(bulked){
     html+='<div style="display:flex;align-items:center;margin-bottom:2px;white-space:nowrap;overflow:hidden">';
     html+='<span style="font-size:14px;font-weight:700;color:#0b1628;flex-shrink:0">'+escHtml(race.time)+'</span>';
@@ -18568,8 +18567,10 @@ function _buildResultCard(item,pickMap,bulked,opts){
     if(race.ran) _footerLines.push('<b style="color:#0b1628">'+race.ran+' ran</b>'+(race.distances?' · Distances: '+escHtml(race.distances):''));
     if(race.winning_time) _footerLines.push('Winning time: <b style="color:#0b1628">'+escHtml(race.winning_time)+'</b>');
     var _winner=race.runners.find(function(r){return r.pos==='1';});
-    if(_winner&&_winner.jockey) _footerLines.push('Winning jockey: <b style="color:#0b1628">'+escHtml(_winner.jockey)+'</b>');
-    if(_winner&&_winner.trainer) _footerLines.push('Winning trainer: <b style="color:#0b1628">'+escHtml(_winner.trainer)+'</b>');
+    if(!opts.home){
+      if(_winner&&_winner.jockey) _footerLines.push('Winning jockey: <b style="color:#0b1628">'+escHtml(_winner.jockey)+'</b>');
+      if(_winner&&_winner.trainer) _footerLines.push('Winning trainer: <b style="color:#0b1628">'+escHtml(_winner.trainer)+'</b>');
+    }
     var _favParts=[];
     race.runners.forEach(function(r){
       if(!favNames[r.horse]) return;
