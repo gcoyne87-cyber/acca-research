@@ -1,31 +1,29 @@
-// form-sections.js — shared engine for the horse's per-section form texts.
-// Going is the first section built; Trip, Track and Recent Form are added
-// later as more labelled blocks under the same envelope and the same
-// FORM_SECTIONS_PROMPT (extended, never replaced, so the cache stays valid).
-// Not wired into text-engine-submit/collect-background.js, the old
-// form-summary job, or any schedule. Supersedes the earlier trial files
-// netlify/functions/going-trial.js and netlify/functions/lib/going-section.js
-// (both removed in this change) — same window/scale logic, carried over and
-// adjusted to this envelope format, prompt and validator signature.
+// form-sections.js — the goingtrip engine: code computes every fact, the
+// model only phrases them.
+//
+// Redesign (post-2026-10-06 probes): the previous design sent the model raw
+// data blocks (every result, every group line) and then policed what it
+// wrote with ~20 structural regex checks plus a second model call. Five
+// probes showed the checks and the writer drifting apart faster than they
+// could be reconciled. Now the data layer (sections A–C below, unchanged)
+// feeds three deterministic FACT ASSEMBLERS — buildGoingFacts,
+// buildTripFacts, buildTrackFacts — which decide everything the text may
+// say: which group leads, whether a comparison is justified, the stamina
+// facts with an explicit NONE, the thin-record line, and the course
+// character wording. The model's contract is phrasing only, and the
+// validator is reduced to voice rules plus one structural check: every
+// number token in the output must appear in that section's fact list.
 //
 // Reused from text-engine-submit-background.js's public helpers (unchanged):
 // posNum (finishing position as a number or null), stripParens (drops a
-// "(...)" course suffix). Not reused: primaryGoing() (collapses a going
-// string to its first term, the opposite of what a going data block needs —
-// compounds like "Standard / Slow" must survive whole). dayMonYear() isn't
-// exported from that file; reimplemented here (MON) rather than add an
-// export to a file this task must not touch the behaviour of.
+// "(...)" course suffix).
 const engineHelpers = require('../text-engine-submit-background.js').helpers;
 const posNum = engineHelpers.posNum;
 const stripParens = engineHelpers.stripParens;
 
-// Track — course-facts.json loaded once at module startup (Node caches
-// require() of a .json file the same as any other module), so every call
-// into buildTrackBlock reuses the same parsed object rather than re-reading
-// the file from disk. A missing/unparseable file degrades to an empty
-// object rather than throwing at module load, so Going/Trip keep working
-// even if course-facts.json is ever absent — every course then just reports
-// "(course character unknown)".
+// course-facts.json loaded once at module startup. A missing/unparseable
+// file degrades to an empty object so Going/Trip keep working — every course
+// then reports "(course character unknown)".
 let COURSE_FACTS = {};
 try { COURSE_FACTS = require('./course-facts.json'); } catch (e) { COURSE_FACTS = {}; }
 
@@ -35,10 +33,9 @@ function dayMonYear(iso) {
   return m ? parseInt(m[3], 10) + ' ' + MON[parseInt(m[2], 10) - 1] + ' ' + m[1] : String(iso || '');
 }
 
-// ── A. WINDOW — shared by every future section ─────────────────────────────
-// Interpretation note (disclosed): a row with no going string is excluded
-// BEFORE the 8-run cap is applied, not after — a useless row should not
-// consume one of the 8 slots that belongs to a usable result. Both counts
+// ── A. WINDOW — shared by Going and Trip ─────────────────────────────────
+// A row with no going string is excluded BEFORE the 8-run cap is applied —
+// a useless row should not consume one of the 8 slots. Both counts
 // (excludedNoGoing, limitApplied) are returned so this choice is visible.
 function sectionWindow(rows, runDate) {
   const withDate = (rows || []).filter(function(r) { return r && r.date; });
@@ -68,7 +65,7 @@ function sectionWindow(rows, runDate) {
   };
 }
 
-// ── B. THE GOING SCALE ──────────────────────────────────────────────────────
+// ── B. THE GOING SCALE ──────────────────────────────────────────────────
 const GOING_SCALE = {
   turf: [
     { name: 'Hard', rank: 1 },
@@ -106,10 +103,11 @@ const SCALE_LOOKUP = {};
 GOING_SCALE.turf.forEach(function(g) { SCALE_LOOKUP[compactKey(g.name)] = { name: g.name, rank: g.rank, surface: 'turf' }; });
 GOING_SCALE.allweather.forEach(function(g) { SCALE_LOOKUP[compactKey(g.name)] = { name: g.name, rank: g.rank, surface: 'all-weather' }; });
 
-// classifyGoing(): direct match -> canonical name/rank (an abbreviation is
-// reported via abbreviationOf); compound (comma/slash/paren, first segment
-// matches) -> the FULL raw string kept as its own name, ranked by that first
-// segment; neither -> kept as its own name, rank 'unranked', never dropped.
+// classifyGoing(): direct match -> canonical name/rank; a slash written for
+// "to" ("Standard / Slow") is canonicalised before the compound split;
+// compound (comma/slash/paren, first segment matches) -> the FULL raw string
+// kept as its own name, ranked by that first segment; neither -> kept as its
+// own name, rank 'unranked', never dropped.
 function classifyGoing(raw) {
   const trimmed = String(raw || '').trim();
   if (!trimmed) return null;
@@ -118,15 +116,6 @@ function classifyGoing(raw) {
     const isAbbrev = compactKey(trimmed) === compactKey(direct.name) && trimmed !== direct.name;
     return { name: direct.name, rank: direct.rank, surface: direct.surface, raw: trimmed, isCompound: false, unranked: false, abbreviationOf: isAbbrev ? trimmed : null };
   }
-  // Change (refine) Fix 1 — canonicalisation: the raw API sometimes writes a
-  // two-step going with a slash instead of "to" (e.g. "Standard / Slow" for
-  // the scale's own "Standard to Slow"). compactKey() alone can't catch this
-  // — it strips the slash to nothing ("standardslow") rather than reading it
-  // as "to" ("standardtoslow") — so try that substitution before falling
-  // through to the general compound-going split below. A genuine two-zone
-  // compound (e.g. ground that was soft in one place, heavy in another)
-  // lands on the same canonical name either way, since "Soft to Heavy" is
-  // itself a real step on the scale with the same meaning.
   const slashAsTo = trimmed.replace(/\s*\/\s*/g, ' to ');
   if (slashAsTo !== trimmed) {
     const viaSlash = SCALE_LOOKUP[compactKey(slashAsTo)];
@@ -141,12 +130,7 @@ function classifyGoing(raw) {
   return { name: trimmed, rank: 'unranked', surface: 'unknown', raw: trimmed, isCompound: false, unranked: true, abbreviationOf: null };
 }
 
-// ── C. GOING DATA BLOCK ─────────────────────────────────────────────────────
-// RR added (Trip round 2) — shared by both Going and Trip, since both read
-// from this one map. "rr"/"RR" both match: posWord() upper-cases the code
-// before this lookup. Never a win/place/top-three/Best candidate, same as
-// every other non-finisher code, since posNum() on a non-numeric code is
-// null and every downstream computation already excludes null positions.
+// ── C. RESULTS, GROUPS AND STATS ─────────────────────────────────────────
 const NON_FINISH_WORDS = { PU: 'pulled up', F: 'fell', UR: 'unseated rider', BD: 'brought down', RO: 'ran out', SU: 'slipped up', DSQ: 'disqualified', RR: 'refused to race' };
 function ordinal(n) {
   n = Number(n);
@@ -161,14 +145,17 @@ function posWord(pos) {
   if (NON_FINISH_WORDS[code]) return NON_FINISH_WORDS[code];
   return code.toLowerCase() || 'unknown result';
 }
-function formatResult(r) {
-  return posWord(r.pos) + ' of ' + (r.ran || '?') + ', ' + stripParens(r.course || '') + ', ' + dayMonYear(r.date);
+// "2nd of 9 at Brighton on 28 Sep 2026" — the prose form every fact line
+// uses, so the model can copy it straight into the text. withCourse=false
+// for a Track course line, where the course is already the line's subject.
+function formatResultProse(r, withCourse) {
+  const where = withCourse === false ? '' : ' at ' + stripParens(r.course || '');
+  return posWord(r.pos) + ' of ' + (r.ran || '?') + where + ' on ' + dayMonYear(r.date);
 }
 
 // "Best" ordering: lowest finishing position wins; a tie goes to the bigger
-// field (harder to achieve the same position in a bigger field); a further
-// tie goes to the more recent run. Non-finishers (no numeric position) are
-// never a candidate — a pulled-up run can't be anyone's "best" result.
+// field; a further tie goes to the more recent run. Non-finishers are never
+// a candidate.
 function compareForBest(a, b) {
   const pa = posNum(a.pos), pb = posNum(b.pos);
   if (pa === null && pb === null) return 0;
@@ -179,9 +166,15 @@ function compareForBest(a, b) {
   if (ra !== rb) return rb - ra;
   return String(b.date).localeCompare(String(a.date));
 }
+function statsOf(rows) {
+  const wins = rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
+  const places = rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
+  const bestRow = rows.slice().sort(compareForBest)[0];
+  return { runs: rows.length, wins: wins, places: places, topThree: wins + places, bestRow: (bestRow && posNum(bestRow.pos) !== null) ? bestRow : null };
+}
 
-// windowRows -> groups in display order: turf (rank asc), all-weather (rank
-// asc), unranked (first-seen order).
+// Going groups in scale order: turf (rank asc), all-weather (rank asc),
+// unranked (first-seen order).
 function goingGroups(windowRows) {
   const byName = {}; const order = [];
   (windowRows || []).forEach(function(r) {
@@ -192,22 +185,8 @@ function goingGroups(windowRows) {
   });
   const groups = order.map(function(name) {
     const g = byName[name];
-    const wins = g.rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
-    const places = g.rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
-    // "In the top three": 1st, 2nd or 3rd. Non-finishers (no numeric
-    // position) never count. Change B.8 — Going switches from top half to
-    // top three, the same way Trip's topThree already works.
-    const topThree = g.rows.filter(function(r) {
-      const p = posNum(r.pos);
-      return p !== null && p >= 1 && p <= 3;
-    }).length;
-    const bestRow = g.rows.slice().sort(compareForBest)[0];
-    const best = (bestRow && posNum(bestRow.pos) !== null) ? formatResult(bestRow) : null;
-    return {
-      name: g.name, rank: g.rank, surface: g.surface, isCompound: g.isCompound, unranked: g.unranked,
-      runs: g.rows.length, wins: wins, places: places, topThree: topThree, best: best,
-      results: g.rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); }).map(formatResult)
-    };
+    const s = statsOf(g.rows);
+    return { name: g.name, rank: g.rank, surface: g.surface, isCompound: g.isCompound, unranked: g.unranked, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow };
   });
   const turf = groups.filter(function(g) { return g.surface === 'turf'; }).sort(function(a, b) { return a.rank - b.rank; });
   const aw = groups.filter(function(g) { return g.surface === 'all-weather'; }).sort(function(a, b) { return a.rank - b.rank; });
@@ -218,90 +197,33 @@ function goingGroups(windowRows) {
 // Good to Soft and Yielding (both rank 6) cover each other.
 function goingNeverRun(groups) {
   const turfGroups = (groups || []).filter(function(g) { return g.surface === 'turf'; });
-  if (!turfGroups.length) return { line: 'No turf runs in this window.', names: [] };
+  if (!turfGroups.length) return { names: [] };
   const covered = {};
   turfGroups.forEach(function(g) { if (!g.isCompound && !g.unranked) covered[g.rank] = true; });
-  const missing = GOING_SCALE.turf.filter(function(g) { return !covered[g.rank]; }).map(function(g) { return g.name; });
-  return { line: missing.length ? 'Never run on (turf): ' + missing.join(', ') : null, names: missing };
+  return { names: GOING_SCALE.turf.filter(function(g) { return !covered[g.rank]; }).map(function(g) { return g.name; }) };
 }
-
-// All-weather equivalent — only produced at all when the horse has at least
-// one all-weather run in the window (a horse with zero AW runs gets no
-// all-weather never-run line at all, same as the turf function's own "no
-// turf runs" case, just silent instead of a placeholder sentence, since a
-// pure-turf horse's all-weather record isn't a meaningful thing to list).
+// Only produced when the horse has at least one all-weather run.
 function goingNeverRunAW(groups) {
   const awGroups = (groups || []).filter(function(g) { return g.surface === 'all-weather'; });
-  if (!awGroups.length) return { line: null, names: [] };
+  if (!awGroups.length) return { names: [] };
   const covered = {};
   awGroups.forEach(function(g) { if (!g.isCompound && !g.unranked) covered[g.rank] = true; });
-  const missing = GOING_SCALE.allweather.filter(function(g) { return !covered[g.rank]; }).map(function(g) { return g.name; });
-  return { line: missing.length ? 'Never run on (all-weather): ' + missing.join(', ') : null, names: missing };
+  return { names: GOING_SCALE.allweather.filter(function(g) { return !covered[g.rank]; }).map(function(g) { return g.name; }) };
 }
 
-// Change (refine) Fix 2 — sums runs/wins/places across a set of going
-// groups, for the Totals line below. Shared by the turf/all-weather/window
-// clauses so all three are computed the same way.
-function sumGoingFigures(arr) {
+function sumFigures(arr) {
   return {
     runs: arr.reduce(function(s, g) { return s + g.runs; }, 0),
     wins: arr.reduce(function(s, g) { return s + g.wins; }, 0),
-    places: arr.reduce(function(s, g) { return s + g.places; }, 0)
+    places: arr.reduce(function(s, g) { return s + g.places; }, 0),
+    topThree: arr.reduce(function(s, g) { return s + g.topThree; }, 0)
   };
 }
-function goingTotalsClause(label, f) {
-  return label + ' ' + f.runs + ' run' + (f.runs === 1 ? '' : 's') + ', ' + f.wins + ' win' + (f.wins === 1 ? '' : 's') + ', ' + f.places + ' place' + (f.places === 1 ? '' : 's');
-}
-function buildGoingBlock(groups, neverRun, neverRunAW, windowSize) {
-  const lines = groups.map(function(g) {
-    const bestClause = g.best ? ' Best: ' + g.best + '.' : '';
-    return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ', ' + g.topThree + ' in the top three.' + bestClause + ' Results: ' + g.results.join('; ') + '.';
-  });
-  if (neverRun && neverRun.line) lines.push(neverRun.line);
-  if (neverRunAW && neverRunAW.line) lines.push(neverRunAW.line);
-  // Change (refine) Fix 2 — printed totals so the model (and the checker)
-  // never has to add group figures together itself. A surface with no runs
-  // in the window is omitted entirely, per spec.
-  const turfGroups = groups.filter(function(g) { return g.surface === 'turf'; });
-  const awGroups = groups.filter(function(g) { return g.surface === 'all-weather'; });
-  const windowFigures = sumGoingFigures(groups);
-  if (typeof windowSize === 'number') windowFigures.runs = windowSize;
-  const totalsClauses = [];
-  if (turfGroups.length) totalsClauses.push(goingTotalsClause('turf', sumGoingFigures(turfGroups)));
-  if (awGroups.length) totalsClauses.push(goingTotalsClause('all-weather', sumGoingFigures(awGroups)));
-  totalsClauses.push(goingTotalsClause('window', windowFigures));
-  lines.push('Totals: ' + totalsClauses.join('; ') + '.');
-  return lines.join('\n');
-}
 
-// ── D. ENVELOPE ──────────────────────────────────────────────────────────
-// blocks: [{ heading, text }] — Going today; Trip/Track/Recent Form append
-// their own {heading, text} entries here later, each under its own heading,
-// none of them referencing today's race (course/distance/going/field/class/
-// date never appear anywhere in this function).
-function buildEnvelope(horse, windowResult, blocks) {
-  const lines = [];
-  lines.push('HORSE: ' + (horse && horse.name || 'Unknown') + ', ' + (horse && horse.age || '?') + 'yo ' + (horse && horse.sex || 'unknown sex') + '.');
-  lines.push('WINDOW: last ' + windowResult.size + ' run' + (windowResult.size === 1 ? '' : 's') + ', ' + dayMonYear(windowResult.oldestDate) + ' to ' + dayMonYear(windowResult.newestDate) + ' (' + windowResult.limitApplied + ').');
-  (blocks || []).forEach(function(b) { lines.push(''); lines.push(b.heading); lines.push(b.text); });
-  return lines.join('\n');
-}
-
-function buildGoingEnvelope(horse, windowResult, groups, neverRun, neverRunAW) {
-  return buildEnvelope(horse, windowResult, [{ heading: 'GOING DATA', text: buildGoingBlock(groups, neverRun, neverRunAW, windowResult.size) }]);
-}
-
-// ── TRIP — joins Going in this engine; built as its own block so Going,
-// Trip and Track can later run in one call. Does not touch any Going
-// function above: tripGroups has its own stats computation rather than
-// sharing goingGroups' internals, a deliberate duplication to keep zero risk
-// to the already-shipped, stored Going text while this is built.
-
-// A. DISTANCE — miles*8 + furlongs + ½ for a "½" + yards/220, rounded to the
-// nearest whole furlong with exact .5 rounding DOWN (Math.ceil(x-0.5) is the
-// round-half-down formula for positive x). Examples given and verified:
-// "2m4½f" -> 20.5f -> 20f -> "2m4f"; "1m1f201y" -> 9.9136f -> 10f -> "1m2f";
-// "7f6y" -> 7.0273f -> 7f -> "7f"; "5f7y" -> 5.0318f -> 5f -> "5f".
+// ── TRIP ───────────────────────────────────────────────────────────────
+// Distance — miles*8 + furlongs + ½ for a "½" + yards/220, rounded to the
+// nearest whole furlong with exact .5 rounding DOWN. "2m4½f" -> "2m4f";
+// "1m1f201y" -> "1m2f"; "7f6y" -> "7f"; "5f7y" -> "5f".
 function parseDistanceFurlongs(distStr) {
   const s = String(distStr || '');
   const mi = (s.match(/(\d+)m/) || [])[1];
@@ -311,12 +233,6 @@ function parseDistanceFurlongs(distStr) {
   const total = (mi ? parseInt(mi, 10) : 0) * 8 + (fm ? parseInt(fm[1], 10) : 0) + (fm && fm[2] ? 0.5 : 0) + (y ? parseInt(y, 10) / 220 : 0);
   return Math.ceil(total - 0.5);
 }
-// Trip round 3, Change 1 — back to the form table's own short-form
-// notation (reverted from round 2's words). Every caller (group labels,
-// stamina lines, trip-change markers) goes through this one function, so
-// rewriting it here is the whole change: 5 -> "5f", 8 -> "1m", 10 -> "1m2f",
-// 16 -> "2m", 20 -> "2m4f", 25 -> "3m1f". Rounding itself (nearest furlong,
-// exact .5 down) is unchanged in parseDistanceFurlongs above.
 function furlongsLabel(totalF) {
   if (totalF === null || totalF === undefined || isNaN(totalF)) return '(distance unknown)';
   const m = Math.floor(totalF / 8), f = totalF % 8;
@@ -324,42 +240,13 @@ function furlongsLabel(totalF) {
   return m + 'm' + (f ? f + 'f' : '');
 }
 
-// B. GROUPS — order by race type (Flat, NH Flat, Hurdle, Chase, then any
-// other/unknown type in first-seen order), shortest to longest within a type.
 const TRIP_TYPE_ORDER = ['Flat', 'NH Flat', 'Hurdle', 'Chase'];
 function tripTypeOf(row) { return (row && row.type && String(row.type).trim()) || '(type unknown)'; }
+function typeRank(type) { const i = TRIP_TYPE_ORDER.indexOf(type); return i === -1 ? TRIP_TYPE_ORDER.length : i; }
 
-// Trip-change marker for one window row, found by locating it (by object
-// reference — window rows are the SAME objects as in the full history
-// array, never cloned, since sectionWindow only filters/sorts) in the
-// horse's FULL stored history, newest first, so a window row's own previous
-// run can be outside the window (the window/18-month/8-run limits are a
-// display cap, not a reason to lose the comparison point).
-function tripChangeMarker(fullRowsNewestFirst, row) {
-  const idx = fullRowsNewestFirst.indexOf(row);
-  if (idx === -1 || idx === fullRowsNewestFirst.length - 1) return '(debut)';
-  const prev = fullRowsNewestFirst[idx + 1];
-  const thisType = tripTypeOf(row), prevType = tripTypeOf(prev);
-  if (thisType !== prevType) return '(first run after a ' + prevType + ' run)';
-  const thisF = parseDistanceFurlongs(row.dist), prevF = parseDistanceFurlongs(prev.dist);
-  if (thisF === null || prevF === null || thisF === prevF) return '(same trip)';
-  return thisF > prevF ? '(up from ' + furlongsLabel(prevF) + ')' : '(down from ' + furlongsLabel(prevF) + ')';
-}
-
-// Trip round 3, Change 2 — the distinct course names appearing in a
-// horse's own window, exactly as they appear in the results text
-// (stripParens'd, same as tripGroups below). Passed through tripData so
-// validateTrip can tell "Market Rasen" from the banned word "market".
-function courseNamesIn(windowRows) {
-  const seen = {}; const list = [];
-  (windowRows || []).forEach(function(r) {
-    const c = stripParens((r && r.course) || '');
-    if (c && !seen[c]) { seen[c] = true; list.push(c); }
-  });
-  return list;
-}
-
-function tripGroups(windowRows, fullRowsNewestFirst) {
+// Groups ordered by race type (Flat, NH Flat, Hurdle, Chase, then others
+// first-seen), shortest to longest within a type.
+function tripGroups(windowRows) {
   const byKey = {}; const order = [];
   (windowRows || []).forEach(function(r) {
     const type = tripTypeOf(r);
@@ -371,122 +258,42 @@ function tripGroups(windowRows, fullRowsNewestFirst) {
   });
   const groups = order.map(function(key) {
     const g = byKey[key];
-    const wins = g.rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
-    const places = g.rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
-    // Trip round 2, Change 4 — top three (1st/2nd/3rd) replaces top half.
-    // GOING_SECTION and goingGroups' own top-half figure are unchanged here;
-    // they move to top three only when Going is merged onto SHARED_RULES.
-    const topThree = g.rows.filter(function(r) { const p = posNum(r.pos); return p !== null && p >= 1 && p <= 3; }).length;
-    const bestRow = g.rows.slice().sort(compareForBest)[0];
-    const best = (bestRow && posNum(bestRow.pos) !== null) ? formatResult(bestRow) : null;
-    const results = g.rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); })
-      .map(function(r) { return posWord(r.pos) + ' of ' + (r.ran || '?') + ', ' + stripParens(r.course || '') + ' ' + tripChangeMarker(fullRowsNewestFirst, r); });
-    return { name: g.label + ' (' + g.type + ')', type: g.type, distanceLabel: g.label, furlongs: g.furlongs, runs: g.rows.length, wins: wins, places: places, topThree: topThree, best: best, results: results };
+    const s = statsOf(g.rows);
+    return { name: g.label + ' (' + g.type + ')', type: g.type, distanceLabel: g.label, furlongs: g.furlongs, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow };
   });
   return groups.sort(function(a, b) {
-    const ta = TRIP_TYPE_ORDER.indexOf(a.type), tb = TRIP_TYPE_ORDER.indexOf(b.type);
-    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
+    const ra = typeRank(a.type), rb = typeRank(b.type);
     if (ra !== rb) return ra - rb;
     if (ra === TRIP_TYPE_ORDER.length && a.type !== b.type) return order.indexOf(a.type + '|' + a.distanceLabel) - order.indexOf(b.type + '|' + b.distanceLabel);
     const fa = a.furlongs === null ? Infinity : a.furlongs, fb = b.furlongs === null ? Infinity : b.furlongs;
     return fa - fb;
   });
 }
-function buildTripGroupLines(groups) {
-  return groups.map(function(g) {
-    const bestClause = g.best ? ' Best: ' + g.best + '.' : '';
-    return '- ' + g.name + ': ' + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ', ' + g.topThree + ' in the top three.' + bestClause + ' Results: ' + g.results.join('; ') + '.';
-  });
-}
 
-// C. STAMINA LINE — one per race type present in the window.
-// Bug fix (post-cache-probe) Fix 1 — staminaLines' own four per-type facts
-// (longestWon/longestPlaced/longestTried/shortestTried), exposed as
-// structured data instead of only as the formatted text line, so
-// validateTrip can check a "longest won"/"longest placed"/"longest tried"/
-// "shortest tried" claim against the EXACT value for that field, rather
-// than a loose "matches any of the three longest facts" membership test.
+// One set of four stamina facts per race type present. A field with nothing
+// behind it (no wins / no places at any trip) is the string 'none'.
 function staminaFacts(groups) {
   const byType = {};
-  groups.forEach(function(g) {
-    if (!byType[g.type]) byType[g.type] = [];
-    byType[g.type].push(g);
-  });
-  const types = Object.keys(byType).sort(function(a, b) {
-    const ta = TRIP_TYPE_ORDER.indexOf(a), tb = TRIP_TYPE_ORDER.indexOf(b);
-    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
-    return ra - rb;
-  });
+  groups.forEach(function(g) { if (!byType[g.type]) byType[g.type] = []; byType[g.type].push(g); });
+  const types = Object.keys(byType).sort(function(a, b) { return typeRank(a) - typeRank(b); });
   return types.map(function(type) {
     const tGroups = byType[type];
-    // Trip round 3, Change 4 — the race type's own run total (sum of its
-    // groups' run counts) now opens the stamina line, so the model has an
-    // explicit, checkable figure for "N runs" claims about a whole type.
-    const totalRuns = tGroups.reduce(function(s, g) { return s + g.runs; }, 0);
+    const totals = sumFigures(tGroups);
     const wonGroups = tGroups.filter(function(g) { return g.wins > 0; });
     const placedGroups = tGroups.filter(function(g) { return g.places > 0; });
     const longestOf = function(arr) { return arr.length ? furlongsLabel(Math.max.apply(null, arr.map(function(g) { return g.furlongs === null ? -1 : g.furlongs; }))) : 'none'; };
-    const longestWon = wonGroups.length ? longestOf(wonGroups) : 'none';
-    const longestPlaced = placedGroups.length ? longestOf(placedGroups) : 'none';
-    const longestTried = longestOf(tGroups);
     const shortestTried = furlongsLabel(Math.min.apply(null, tGroups.map(function(g) { return g.furlongs === null ? Infinity : g.furlongs; })));
-    return { type: type, totalRuns: totalRuns, longestWon: longestWon, longestPlaced: longestPlaced, longestTried: longestTried, shortestTried: shortestTried };
-  });
-}
-// Fix 1a (post-2026-10-06 probe #2) — "none" printed bare ("longest won
-// none") was being glossed over: the model repeatedly cited a distance for
-// a field that has no value at all, using the longestTried figure for both
-// longestWon and longestPlaced on a horse with zero wins/places. Printed
-// unmissably instead, so the writer (and the checker) can't read past it.
-function staminaLines(groups) {
-  return staminaFacts(groups).map(function(f) {
-    const wonClause = f.longestWon === 'none' ? 'longest won: NONE — no wins at any trip' : 'longest won ' + f.longestWon;
-    const placedClause = f.longestPlaced === 'none' ? 'longest placed: NONE — no places at any trip' : 'longest placed ' + f.longestPlaced;
-    return f.type + ': ' + f.totalRuns + ' run' + (f.totalRuns === 1 ? '' : 's') + '; ' + wonClause + '; ' + placedClause + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.';
+    return { type: type, totalRuns: totals.runs, totalWins: totals.wins, totalPlaces: totals.places, longestWon: longestOf(wonGroups), longestPlaced: longestOf(placedGroups), longestTried: longestOf(tGroups), shortestTried: shortestTried };
   });
 }
 
-// D. Trip round 2, Change 1 — the "Never tried beyond X (Type)" line is
-// removed from the block entirely (the function that built it is deleted,
-// not just unused — nothing in the data block restates "longest tried" as
-// its own line any more; the stamina line still carries that figure).
-// Change (refine) Fix 2 — one printed Totals line per race type, same type
-// order staminaLines already uses, so the model and checker both have a
-// printed per-type runs/wins/places figure instead of needing to sum group
-// lines themselves.
-function tripTotalsLines(groups) {
-  const byType = {};
-  groups.forEach(function(g) { if (!byType[g.type]) byType[g.type] = []; byType[g.type].push(g); });
-  const types = Object.keys(byType).sort(function(a, b) {
-    const ta = TRIP_TYPE_ORDER.indexOf(a), tb = TRIP_TYPE_ORDER.indexOf(b);
-    const ra = ta === -1 ? TRIP_TYPE_ORDER.length : ta, rb = tb === -1 ? TRIP_TYPE_ORDER.length : tb;
-    return ra - rb;
-  });
-  return types.map(function(type) {
-    const tGroups = byType[type];
-    const runs = tGroups.reduce(function(s, g) { return s + g.runs; }, 0);
-    const wins = tGroups.reduce(function(s, g) { return s + g.wins; }, 0);
-    const places = tGroups.reduce(function(s, g) { return s + g.places; }, 0);
-    return 'Totals (' + type + '): ' + runs + ' run' + (runs === 1 ? '' : 's') + ', ' + wins + ' win' + (wins === 1 ? '' : 's') + ', ' + places + ' place' + (places === 1 ? '' : 's') + '.';
-  });
-}
-function buildTripBlock(groups) {
-  return buildTripGroupLines(groups).concat(staminaLines(groups)).concat(tripTotalsLines(groups)).join('\n');
-}
-function buildTripEnvelope(horse, windowResult, groups) {
-  return buildEnvelope(horse, windowResult, [{ heading: 'TRIP DATA', text: buildTripBlock(groups) }]);
-}
-
-// ── TRACK — joins Going+Trip in the same call. Window: last 15 runs, none
-// older than 24 months. Deliberately wall-clock ("today"), not race-day-
-// relative like sectionWindow's 18-month window — buildTrackBlock's own
-// signature carries no date parameter, unlike sectionWindow(rows, runDate),
-// which is the tell. Grouped by the exact live course-name string, never
-// stripParens'd: course-facts.json is keyed by that same raw string
-// (including the (IRE)/(AW) suffixes that distinguish otherwise-identical
-// course names), so stripping the suffix would look up the wrong entry.
+// ── TRACK ──────────────────────────────────────────────────────────────
+// Window: last 15 runs, none older than 24 months, wall-clock (not race-day
+// relative like sectionWindow). Grouped by course name with a trailing
+// " (IRE)" stripped so "Roscommon" and "Roscommon (IRE)" are one course;
+// every other suffix, notably (AW), is kept — those are different tracks.
 const TRACK_WINDOW_RUNS = 15;
-const TRACK_WINDOW_MS = 730 * 86400000; // 24 months
+const TRACK_WINDOW_MS = 730 * 86400000;
 
 function trackWindowRows(formHistory) {
   const withCourse = (formHistory || []).filter(function(r) { return r && r.date && r.course; });
@@ -500,38 +307,25 @@ function trackWindowRows(formHistory) {
   return withinRange.slice(0, TRACK_WINDOW_RUNS);
 }
 
-// The distinct course-name strings in a rows array, raw (not stripParens'd)
-// — the Track-only counterpart to courseNamesIn() above, which strips
-// parens for Going/Trip's banned-word exemption. Used to find course names
-// in a horse's FULL history that fall outside the Track window, so
-// validateTrack can catch a claim about a course this window doesn't cover.
-function rawCourseNamesIn(rows) {
+// Distinct raw course-name strings in a rows array, plus their stripParens'd
+// forms — used only to exempt a banned word that sits inside a course name
+// (e.g. "market" in "Market Rasen").
+function courseNamesForExemption(rows) {
   const seen = {}; const list = [];
   (rows || []).forEach(function(r) {
-    const c = (r && r.course) || '';
-    if (c && !seen[c]) { seen[c] = true; list.push(c); }
+    const raw = (r && r.course) || '';
+    [raw, stripParens(raw)].forEach(function(c) { if (c && !seen[c]) { seen[c] = true; list.push(c); } });
   });
   return list;
 }
+
+function stripIreSuffix(name) { return String(name || '').replace(/\s*\(IRE\)\s*$/i, ''); }
 
 function trackCharacter(fact) {
   if (!fact) return null;
   const parts = [fact.direction, fact.speed];
   if (fact.contour && fact.contour !== 'Flat') parts.push(fact.contour);
   return parts.filter(Boolean).join(', ');
-}
-
-// Fix 4 (post-2026-10-06 probe) — strips a trailing " (IRE)" so "Roscommon"
-// and "Roscommon (IRE)" (same physical course, two live-API spellings)
-// group as one course instead of two separate single-run-looking entries.
-// Every other suffix, notably (AW), is left alone — those distinguish
-// genuinely different tracks (e.g. Lingfield turf vs Lingfield (AW)), never
-// just a country tag. course-facts.json already maps every (IRE)-suffixed
-// Irish course to the same fact entry as its bare form (see course-facts.json
-// build notes), so the character lookup is unaffected either way — this
-// only changes how buildTrackBlock groups and counts runs.
-function stripIreSuffix(name) {
-  return String(name || '').replace(/\s*\(IRE\)\s*$/i, '');
 }
 
 function trackGroups(windowRows, courseFacts) {
@@ -544,79 +338,174 @@ function trackGroups(windowRows, courseFacts) {
   });
   return order.map(function(course) {
     const entry = byCourse[course];
-    const rows = entry.rows;
-    const wins = rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
-    const places = rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
-    // Look up under the normalized name first, falling back to whichever
-    // raw spelling(s) this group's own rows actually used — "whichever
-    // variant exists there" per the fix spec. Almost always a no-op
-    // fallback since course-facts.json already resolves every IRE variant
-    // to the same entry; kept for a course absent from that table at all.
+    const s = statsOf(entry.rows);
     let fact = (courseFacts && courseFacts[course]) || null;
-    if (!fact) {
-      entry.rawNames.some(function(raw) {
-        const f = courseFacts && courseFacts[raw];
-        if (f) { fact = f; return true; }
-        return false;
-      });
-    }
-    const results = rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); })
-      .map(function(r) { return posWord(r.pos) + '/' + (r.ran || '?'); });
-    return { course: course, runs: rows.length, wins: wins, places: places, fact: fact, character: trackCharacter(fact), results: results };
+    if (!fact) entry.rawNames.some(function(raw) { const f = courseFacts && courseFacts[raw]; if (f) { fact = f; return true; } return false; });
+    return { course: course, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow, fact: fact, character: trackCharacter(fact) };
   });
 }
 
-// Rollups: direction (Left-handed/Right-handed/Straight/Figure-of-eight) and
-// speed (Tight/Galloping), each only from courses with a known character. A
-// merged entry's facet value (course-facts.json's "A / B" convention for a
-// live name covering two configurations — see course-facts.json's own
-// notes) credits every named value: an ambiguous course is counted toward
-// every bucket it could be, never silently dropped. "Both directions"
-// (Punchestown's XC course) matches none of the four direction buckets —
-// there is no bucket for it in this spec's fixed list, so it counts toward
-// WINDOW and its own course line only, not any direction rollup.
+// Rollups by direction and speed, each only from courses with a known
+// character. A merged "A / B" facet value credits every named value.
+// "Both directions" matches no direction bucket.
 const TRACK_DIRECTION_BUCKETS = ['Left-handed', 'Right-handed', 'Straight', 'Figure-of-eight'];
 const TRACK_SPEED_BUCKETS = ['Tight', 'Galloping'];
 function splitFacetValues(v) { return String(v || '').split('/').map(function(s) { return s.trim(); }).filter(Boolean); }
-
 function trackRollups(groups) {
-  const mk = function(names) { const o = {}; names.forEach(function(n) { o[n] = { runs: 0, wins: 0, places: 0 }; }); return o; };
+  const mk = function(names) { const o = {}; names.forEach(function(n) { o[n] = { runs: 0, wins: 0, places: 0, topThree: 0 }; }); return o; };
   const direction = mk(TRACK_DIRECTION_BUCKETS), speed = mk(TRACK_SPEED_BUCKETS);
+  const add = function(b, g) { b.runs += g.runs; b.wins += g.wins; b.places += g.places; b.topThree += g.topThree; };
   (groups || []).forEach(function(g) {
-    if (!g.fact) return; // unknown-character courses never feed a rollup
-    splitFacetValues(g.fact.direction).forEach(function(v) {
-      if (direction[v]) { direction[v].runs += g.runs; direction[v].wins += g.wins; direction[v].places += g.places; }
-    });
-    splitFacetValues(g.fact.speed).forEach(function(v) {
-      if (speed[v]) { speed[v].runs += g.runs; speed[v].wins += g.wins; speed[v].places += g.places; }
-    });
+    if (!g.fact) return;
+    splitFacetValues(g.fact.direction).forEach(function(v) { if (direction[v]) add(direction[v], g); });
+    splitFacetValues(g.fact.speed).forEach(function(v) { if (speed[v]) add(speed[v], g); });
   });
   return { direction: direction, speed: speed };
 }
 
-function trackFigureClause(label, f) {
-  return label + ': ' + f.runs + ' run' + (f.runs === 1 ? '' : 's') + ', ' + f.wins + ' win' + (f.wins === 1 ? '' : 's') + ', ' + f.places + ' place' + (f.places === 1 ? '' : 's');
+// ── D. FACT ASSEMBLERS ──────────────────────────────────────────────────
+// Every decision the text may reflect is made here, in code:
+//  • LEAD — the first group line is the lead: most runs, then most top-three
+//    finishes, then most wins (then scale rank / shortest trip / name).
+//  • THIN — "Too few runs to show a pattern" when the section has fewer than
+//    3 runs, or no group has 2 or more runs (Track: and no rollup bucket has
+//    3 or more). No comparison is offered for a thin section.
+//  • CLEAR SPLIT — the only comparison the text may draw. A beats B only
+//    when both have 2+ runs, A's top-three strike rate is at least 25
+//    percentage points higher, A has at least as many wins, and A has more
+//    top-three finishes. (36% against 33% is not a split; 75% against 0% is.) Going compares the two biggest groups on the lead
+//    group's own surface (never turf against all-weather); Trip compares the
+//    two biggest groups within the lead race type; Track compares tight v
+//    galloping and left- v right-handed.
+//  • BEST — a group's labelled best result is given where the group has a
+//    top-three finish and either 2+ runs or a win; a single run's place is
+//    already fully described by its figures, a win is worth its result.
+//  • NONE — a stamina field with nothing behind it prints as NONE with its
+//    meaning spelled out, never as a bare word.
+function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+function countClause(g) { return plural(g.runs, 'run') + ', ' + plural(g.wins, 'win') + ', ' + plural(g.places, 'place'); }
+function groupLine(label, g, bestText) {
+  if (g.topThree === 0) return '- ' + label + ': ' + plural(g.runs, 'run') + ', no top-three finish.';
+  let line = '- ' + label + ': ' + countClause(g);
+  if ((g.runs >= 2 || g.wins > 0) && bestText) line += '; best ' + bestText;
+  return line + '.';
+}
+function leadCompare(tiebreak) {
+  return function(a, b) {
+    if (a.runs !== b.runs) return b.runs - a.runs;
+    if (a.topThree !== b.topThree) return b.topThree - a.topThree;
+    if (a.wins !== b.wins) return b.wins - a.wins;
+    return tiebreak ? tiebreak(a, b) : 0;
+  };
+}
+function rate(g) { return g.runs ? g.topThree / g.runs : 0; }
+const SPLIT_MARGIN = 0.25; // strike-rate gap, in percentage points, that makes a split "clear"
+function clearlyBeats(a, b) {
+  if (!a || !b || a.runs < 2 || b.runs < 2) return false;
+  if (!(rate(a) - rate(b) >= SPLIT_MARGIN)) return false;
+  if (a.wins < b.wins) return false;
+  return a.topThree > b.topThree;
+}
+function isThin(groups, total, rollupBuckets) {
+  if (total < 3) return true;
+  if (groups.some(function(g) { return g.runs >= 2; })) return false;
+  if (rollupBuckets && rollupBuckets.some(function(b) { return b.runs >= 3; })) return false;
+  return true;
+}
+const THIN_LINE = '- Too few runs to show a pattern.';
+function splitLine(a, labelA, b, labelB) {
+  return '- Clear split: ' + a.topThree + ' in the top three from ' + plural(a.runs, 'run') + ' on ' + labelA + ' against ' + b.topThree + ' from ' + b.runs + ' on ' + labelB + '.';
+}
+function splitFor(a, labelA, b, labelB) {
+  if (clearlyBeats(a, b)) return splitLine(a, labelA, b, labelB);
+  if (clearlyBeats(b, a)) return splitLine(b, labelB, a, labelA);
+  return null;
 }
 
-// buildTrackBlock(horseId, formHistory, courseFacts) — horseId is accepted
-// per spec but not otherwise needed here (every lookup is against
-// formHistory/courseFacts); kept for call-site symmetry and in case a
-// future change needs it (e.g. logging) without another signature change.
-function buildTrackBlock(horseId, formHistory, courseFacts) {
-  const windowRows = trackWindowRows(formHistory);
-  if (!windowRows.length) return 'TEMPLATE';
-  const groups = trackGroups(windowRows, courseFacts);
-  const rollups = trackRollups(groups);
-  const lines = ['TRACK DATA (last 15 runs / 24 months):'];
-  groups.forEach(function(g) {
-    const head = g.course + ' (' + (g.character || 'course character unknown') + '): ';
-    lines.push(head + g.runs + ' run' + (g.runs === 1 ? '' : 's') + ', ' + g.wins + ' win' + (g.wins === 1 ? '' : 's') + ', ' + g.places + ' place' + (g.places === 1 ? '' : 's') + ' — ' + g.results.join(', '));
+// buildGoingFacts(groups, neverRun, neverRunAW, windowSize) -> string[]
+function buildGoingFacts(groups, neverRun, neverRunAW, windowSize) {
+  const lines = [];
+  const ordered = groups.slice().sort(leadCompare(function(a, b) { return (a.rank === 'unranked' ? 99 : a.rank) - (b.rank === 'unranked' ? 99 : b.rank); }));
+  ordered.forEach(function(g) { lines.push(groupLine(g.name, g, g.bestRow ? formatResultProse(g.bestRow) : null)); });
+  const turf = groups.filter(function(g) { return g.surface === 'turf'; });
+  const aw = groups.filter(function(g) { return g.surface === 'all-weather'; });
+  if (turf.length && aw.length) {
+    lines.push('- Turf: ' + countClause(sumFigures(turf)) + '.');
+    lines.push('- All-weather: ' + countClause(sumFigures(aw)) + '.');
+  }
+  const all = sumFigures(groups); all.runs = typeof windowSize === 'number' ? windowSize : all.runs;
+  lines.push('- Window: ' + countClause(all) + '.');
+  if (neverRun && neverRun.names && neverRun.names.length) lines.push('- Never run on (turf): ' + neverRun.names.join(', ') + '.');
+  if (neverRunAW && neverRunAW.names && neverRunAW.names.length) lines.push('- Never run on (all-weather): ' + neverRunAW.names.join(', ') + '.');
+  if (isThin(groups, all.runs)) { lines.push(THIN_LINE); return lines; }
+  const lead = ordered[0];
+  const sameSurface = ordered.filter(function(g) { return g.surface === lead.surface; });
+  if (sameSurface.length >= 2) {
+    const s = splitFor(sameSurface[0], sameSurface[0].name, sameSurface[1], sameSurface[1].name);
+    if (s) lines.push(s);
+  }
+  return lines;
+}
+
+// buildTripFacts(groups) -> string[]
+function buildTripFacts(groups) {
+  const lines = [];
+  const ordered = groups.slice().sort(leadCompare(function(a, b) {
+    const ra = typeRank(a.type), rb = typeRank(b.type);
+    if (ra !== rb) return ra - rb;
+    return (a.furlongs === null ? Infinity : a.furlongs) - (b.furlongs === null ? Infinity : b.furlongs);
+  }));
+  ordered.forEach(function(g) { lines.push(groupLine(g.name, g, g.bestRow ? formatResultProse(g.bestRow) : null)); });
+  const facts = staminaFacts(groups);
+  facts.forEach(function(f) {
+    lines.push('- ' + f.type + ' total: ' + countClause({ runs: f.totalRuns, wins: f.totalWins, places: f.totalPlaces }) + '.');
+    const won = f.longestWon === 'none' ? 'NONE (no wins at any trip)' : f.longestWon;
+    const placed = f.longestPlaced === 'none' ? 'NONE (no places at any trip)' : f.longestPlaced;
+    lines.push('- ' + f.type + ' stamina: longest won ' + won + '; longest placed ' + placed + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.');
   });
+  const total = sumFigures(groups).runs;
+  if (isThin(groups, total)) { lines.push(THIN_LINE); return lines; }
+  const lead = ordered[0];
+  const sameType = ordered.filter(function(g) { return g.type === lead.type; });
+  if (sameType.length >= 2) {
+    const s = splitFor(sameType[0], sameType[0].name, sameType[1], sameType[1].name);
+    if (s) lines.push(s);
+  }
+  return lines;
+}
+
+// buildTrackFacts(groups, rollups, windowSize) -> string[]
+function buildTrackFacts(groups, rollups, windowSize) {
+  const lines = [];
+  const ordered = groups.slice().sort(leadCompare(function(a, b) { return a.course.localeCompare(b.course); }));
+  ordered.forEach(function(g) {
+    const label = g.course + ' (' + (g.character || 'course character unknown') + ')';
+    lines.push(groupLine(label, g, g.bestRow ? formatResultProse(g.bestRow, false) : null));
+  });
+  const buckets = [];
   TRACK_DIRECTION_BUCKETS.concat(TRACK_SPEED_BUCKETS).forEach(function(name) {
-    const f = rollups.direction[name] || rollups.speed[name];
-    if (f && f.runs > 0) lines.push(trackFigureClause(name + ' courses', f));
+    const b = rollups.direction[name] || rollups.speed[name];
+    if (b && b.runs > 0) { buckets.push(b); lines.push('- ' + name + ' courses: ' + countClause(b) + '.'); }
   });
-  lines.push('WINDOW: ' + windowRows.length + ' run' + (windowRows.length === 1 ? '' : 's') + ' total');
+  lines.push('- Window: ' + plural(windowSize, 'run') + ' in total.');
+  if (isThin(groups, windowSize, buckets)) { lines.push(THIN_LINE); return lines; }
+  const sp = splitFor(rollups.speed['Tight'], 'tight courses', rollups.speed['Galloping'], 'galloping courses');
+  if (sp) lines.push(sp);
+  const di = splitFor(rollups.direction['Left-handed'], 'left-handed courses', rollups.direction['Right-handed'], 'right-handed courses');
+  if (di) lines.push(di);
+  return lines;
+}
+
+// The user message: horse header (name and sex only — no age, so the model
+// has a pronoun but no number that isn't a fact) and the three fact lists.
+// trackFacts === null means the Track window is empty: the runner stores the
+// template for that section and ignores whatever the model writes for it.
+function buildFactsEnvelope(horse, goingFacts, tripFacts, trackFacts) {
+  const lines = ['HORSE: ' + (horse && horse.name || 'Unknown') + ' (' + (horse && horse.sex || 'sex unknown') + ').', ''];
+  lines.push('GOING FACTS:'); lines.push(goingFacts.join('\n')); lines.push('');
+  lines.push('TRIP FACTS:'); lines.push(tripFacts.join('\n')); lines.push('');
+  lines.push('TRACK FACTS:');
+  lines.push(trackFacts ? trackFacts.join('\n') : '- No runs in the track window; write exactly: No track record to assess in the recent window.');
   return lines.join('\n');
 }
 
@@ -625,209 +514,74 @@ const NO_RUNS_TEMPLATE = 'No runs in the last 18 months, so no going record to a
 const NO_RUNS_TRIP_TEMPLATE = 'No runs in the last 18 months, so no trip record to assess.';
 const NO_RUNS_TRACK_TEMPLATE = 'No track record to assess in the recent window.';
 
-// ── F. STATIC PROMPT — byte-identical on every call, cached ─────────────
-const FORM_SECTIONS_PROMPT = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
-"The reader can already see every result in the form table. Your job is the next step: tell them what those results mean. The counting and comparing is done for you in the data block, so use those figures. Lead with what the record says about this horse, and back it with one or two results. Do not walk through every result.\n\n" +
-"A good read is specific to the horse: what it handles, what it doesn't, where its best runs come from. If the record shows nothing clear, that is the read: say so plainly and say why (results are poor whatever the ground, or there are too few runs to judge). Every horse is different, so every text should sound different. Do not open with a stock phrase.\n\n" +
-"RULES FOR EVERY SECTION\n" +
-"1. Use only what is in the data block. No outside knowledge of horses, courses or people.\n" +
-"2. Use figures exactly as given. Never add figures from different categories together or work out totals or percentages yourself.\n" +
-"3. A place is a 2nd or 3rd. A win is not a place; 4th or worse is not a place.\n" +
-"4. Write positions as '3rd of 9'. All numbers as digits.\n" +
-"5. Never mention a future race, today, or what will suit.\n" +
-"6. Never give a reason for a run: no injury, trip, draw, pace or fitness.\n" +
-"7. No betting words: backed, value, each-way, price, odds, market, favourite.\n" +
-"8. Plain prose. No headings, bullets or quotation marks.\n\n" +
-"GOING (from GOING DATA): how the horse has run on different ground.\n" +
-"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft or Yielding (the same ground), Yielding to Soft, Soft, Soft to Heavy, Heavy. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. Never compare turf with all-weather.\n" +
-"'In the top three' means the horse finished 1st, 2nd or 3rd. Use it to judge where it runs well.\n" +
-"One run on a going is not enough to call a preference.\n" +
-"Name goings it has not run on only from the 'Never run on' lines.\n" +
-"Ground only: no courses, distances, trainers, jockeys or class, except a course inside a result.\n" +
-"30 to 45 words.\n\n" +
-"OUTPUT: strict JSON only: {\"going\": \"...\"}";
+// ── F. THE WRITER PROMPT — byte-identical on every call, cached ─────────
+// Over the ~1,024-token caching floor (see the runner's cache_control). The
+// three worked examples are not padding: a phrasing contract is learned far
+// better from one fact list and its matching text than from rules alone.
+const FACT_CONTRACT =
+"You write three short sections of a racehorse's form summary for a racing website: GOING, TRIP and TRACK. Every fact you may use is listed for you under that section's heading. The code has already done all the counting, comparing and ranking; your job is only to phrase those facts well.\n\n" +
+"THE CONTRACT\n" +
+"Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. GOING and TRIP max 45 words, TRACK max 50.\n" +
+"The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in this window; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.";
 
-const MAX_TOKENS = 200;
+const VOICE_RULES =
+"VOICE\n" +
+"Plain punter language, no hedging, no stock openers; every horse should sound different. Lead with what the record says, then back it with the result the fact line gives you. Write positions exactly as given ('2nd of 9'), every number as digits, dates as given. Say 'in the top three', never 'top 3'. A place is a 2nd or 3rd; a win is not a place.\n" +
+"Never refer to today, any future race, or what the horse will, should or might do. Never give a reason for a run (no injury, pace, draw, fitness, 'too sharp', 'didn't stay'). No jockeys, trainers, owners, race class or prize money. No betting words (backed, value, each-way, price, odds, market, favourite). Never describe the horse's career, 'so far', 'to date' or 'ever' — these facts cover recent runs only. Never call anything the worst, weakest or poorest. Plain prose: no headings, bullets or quotation marks.";
 
-// ── PROMPT BLOCKS — exported so Going, Trip and (later) Track can be
-// combined into one call with one shared rule set and one JSON output. For
-// now the live Going runner keeps using FORM_SECTIONS_PROMPT above,
-// unchanged — these new constants are not wired into it. The eventual
-// merged call will be SHARED_RULES + GOING_SECTION + TRIP_SECTION (+
-// TRACK_SECTION) + one combined OUTPUT line, and Going will move onto
-// SHARED_RULES at that point (dropping its own, slightly different RULES
-// FOR EVERY SECTION list above in favour of this shared one).
-// Refined (post-2026-10-05-run fixes) — replaces the previous SHARED_RULES
-// verbatim per the refine spec: rule 2 now names every place a number may
-// come from (group/Totals/WINDOW/result lines) instead of just "figures
-// exactly as given"; rule 5 adds weakest/poorest to the worst ban; rule 11
-// adds "so far"/"to date"; rule 12 (new) requires copying going/distance
-// names letter for letter from the data block — this is what FIX 1's
-// canonicalised data block makes possible to enforce.
-const SHARED_RULES = "You write sections of a racehorse's form summary for a racing website. Each section is about the horse's own past record. Never refer to any future race.\n\n" +
-"The reader can already see every result in the form table. Your job is the next step: tell them what those results mean. The counting and comparing is done for you in the data block, so use those figures. Lead with what the record says about this horse, and back it with one or two results. Do not walk through every result.\n\n" +
-"A good read is specific to the horse: what suits it, what doesn't, where its best runs come from. If the record shows nothing clear, that is the read: say so plainly and say why (results are poor whatever the conditions, or too few runs to judge). Never fill a gap the data does not support. Every horse is different, so every text should sound different. Do not open with a stock phrase.\n\n" +
-"RULES FOR EVERY SECTION\n" +
-"1. Use only what is in the data block. No outside knowledge of horses, courses or people.\n" +
-"2. Every number you write must be printed in the data block: a group line, a Totals line, the WINDOW line or a result. Never add up, derive or estimate a number yourself. If the number you want is not printed, do not write it. Words like both, all, each, every and only are number claims: use them only when a printed line shows them to be true.\n" +
-"3. A place is a 2nd or 3rd. A win is not a place; 4th or worse is not a place.\n" +
-"4. Write positions as '3rd of 9'. All numbers as digits.\n" +
-"5. Call a run 'best' only when the data labels it Best there, never best overall. Call a run 'last' only when the horse finished last of the field. Never call any run, going or distance the worst, weakest or poorest.\n" +
-"6. One run at the same going or distance is not enough to call a preference, or to say the horse handles or suits it.\n" +
-"7. Never mention a future race, today, or what will suit.\n" +
-"8. Never give a reason for a run: no injury, draw, pace or fitness, and no explanations like 'too sharp', 'didn't stay', 'outpaced', 'found it too far' or 'found it too short'.\n" +
-"9. No betting words: backed, value, each-way, price, odds, market, favourite.\n" +
-"10. Plain prose. No headings, bullets or quotation marks.\n" +
-"11. Never say or imply anything about the horse's entire career, career so far, or ever — the data covers recent runs only, not the whole career. Do not write 'so far' or 'to date'.\n" +
-"12. Copy every going name and every distance exactly as printed in the data block, letter for letter. Never use a going or distance name that is not printed there.\n\n" +
-"'In the top three' means the horse finished 1st, 2nd or 3rd. Use it to judge where the horse runs well.";
+const GOING_NOTES =
+"GOING\n" +
+"How the horse has run on different ground. Name each going exactly as its fact line spells it, letter for letter.";
 
-// Refined GOING_SECTION — Good to Soft and Yielding are now listed as the
-// two separate (same-rank) scale steps the data itself prints, with an
-// explicit "same ground" note, replacing the old merged "Good to Soft or
-// Yielding (the same ground)" phrasing. Also adds the explicit
-// faster/softer comparison rule.
-const GOING_SECTION = "GOING (from GOING DATA): how the horse has run on different ground.\n" +
-"Ground from fastest to slowest. Turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy. Good to Soft and Yielding describe the same ground. All-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow. You may say one going is faster or softer than another only when this scale shows it, and only within the same surface. Never compare turf with all-weather.\n" +
-"Name goings the horse has not run on only from the 'Never run on' lines.\n" +
-"Ground only: no courses, distances, trainers, jockeys or class, except a course inside a result.\n" +
-"30 to 45 words.";
+const TRIP_NOTES =
+"TRIP\n" +
+"What distance the horse's record favours and how far it is proven. Write every distance exactly as its fact line spells it (2m4f, 1m2f, 7f), never in words. Distances are grouped by race type (Flat, NH Flat, Hurdle, Chase) and never compared across types. The only longest/shortest claims you may make are the stamina line's own four facts, each kept with its own value.";
 
-// Refined TRIP_SECTION — "the group figures" -> "the horse's record is
-// strongest using the group figures" and a new sentence restricting
-// longest/shortest/furthest claims to the stamina line's own four facts.
-const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and how far it has proven itself.\n" +
-"Distances are grouped to the nearest furlong and kept apart by race type (Flat, NH Flat, Hurdle, Chase). Never compare distances across race types. Write every distance exactly as it appears in the data, for example 2m4f or 1m2f. Never write a distance in words.\n" +
-"Say where the horse's record is strongest using the group figures, and how far it is proven using the stamina line. The only longest/shortest/furthest claims you may make are the stamina line's own facts (longest won, longest placed, longest tried, shortest tried), restated as that line gives them. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
-"If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
-"Never say whether the horse will or won't stay a distance it has not run. Only mention a distance the horse has not run when it genuinely matters to the read; do not end with a statement about untested distances by default.\n" +
-"When citing the stamina line, copy each field name with its own printed value exactly — longest won, longest placed, longest tried and shortest tried are four different figures; never attribute one field's value to another.\n" +
-"If the stamina line shows NONE for longest won or longest placed, the horse has never won or never placed in this window — never give those fields a distance, and never imply a win or place exists. State the absence plainly instead.\n" +
-"Mention only distances in the data.\n" +
-"30 to 45 words.";
+const TRACK_NOTES =
+"TRACK\n" +
+"The horse's record read through the character of the courses it has run at. Each course line gives its character in brackets; turn that into plain punter language — 'a big, galloping track where horses can stride out', 'a tight, turning course that keeps asking questions', 'a stiff uphill finish that sorts out stayers' — never a bare label like 'left-handed galloping track'. A course marked (course character unknown) gets its figures only.";
 
-// TRACK_SECTION — joins GOING_SECTION/TRIP_SECTION in the merged prompt.
-const TRACK_SECTION = "\nTRACK section:\n" +
-"Write 35-50 words reading this horse's record through the character of the courses it has run at, using ONLY the TRACK DATA block printed above.\n" +
-"Rules:\n" +
-"1. If the data shows 2 or more runs at one specific course, lead with that course record first.\n" +
-"2. Otherwise lead with the strongest pattern shown in the rollup lines (direction or tight/galloping split).\n" +
-"3. Describe what the course is like in plain punter language — \"big, galloping tracks where horses can stride out\", \"tight, turning courses that keep asking questions\", \"a stiff uphill finish that sorts out stayers\". Never write bare labels like \"left-handed galloping track\".\n" +
-"4. Every number you write must be a printed figure in the TRACK DATA block, or a sum of printed same-kind figures you show your working for. Do not calculate anything that is not printed.\n" +
-"5. One run at one course or one course type is never a pattern. Report it as a single run only — never draw a conclusion from it.\n" +
-"6. If the record is too thin or too spread across different course types to show any clear pattern, say so plainly in one sentence. Do not invent a pattern.\n" +
-"7. Never mention today's race, today's course, or what the horse will or should do. No \"should\", \"ought\", \"will appreciate\", \"looks ideal\", \"expect\". Past record only.\n" +
-"8. Do not name jockeys, trainers, owners, race class or prize money.\n";
+const EXAMPLES =
+"EXAMPLES\n" +
+"GOING facts:\n- Good to Firm: 5 runs, 0 wins, 3 places; best 2nd of 9 at Brighton on 28 Sep 2026.\n- Good: 1 run, 0 wins, 1 place.\n- Firm: 1 run, no top-three finish.\n- Window: 7 runs, 0 wins, 4 places.\n" +
+"GOING text: Good to Firm is where the record sits, with 3 places from 5 runs and the pick of them a 2nd of 9 at Brighton on 28 Sep 2026. The 1 run on Good also brought a place, while the single outing on Firm produced no top-three finish.\n\n" +
+"TRIP facts:\n- 2m (Hurdle): 3 runs, 0 wins, 1 place; best 3rd of 8 at Wexford on 17 Mar 2026.\n- 2m4f (Hurdle): 2 runs, no top-three finish.\n- Hurdle total: 5 runs, 0 wins, 1 place.\n- Hurdle stamina: longest won NONE (no wins at any trip); longest placed 2m; longest tried 2m4f; shortest tried 2m.\n" +
+"TRIP text: The only place over hurdles came at 2m, a 3rd of 8 at Wexford on 17 Mar 2026, from 3 runs at the trip. The 2 runs at 2m4f produced nothing in the top three, and the horse has not won at any trip in this window.\n\n" +
+"TRACK facts:\n- Wolverhampton (AW) (Left-handed, Tight): 4 runs, 1 win, 2 places; best 1st of 9 on 2 Feb 2026.\n- Doncaster (Left-handed, Galloping): 2 runs, no top-three finish.\n- Left-handed courses: 6 runs, 1 win, 2 places.\n- Tight courses: 4 runs, 1 win, 2 places.\n- Galloping courses: 2 runs, 0 wins, 0 places.\n- Window: 6 runs in total.\n- Clear split: 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping courses.\n" +
+"TRACK text: Wolverhampton's tight, turning all-weather circuit has suited this horse best, with 1 win and 2 places from 4 runs there, the win a 1st of 9 on 2 Feb 2026. Doncaster's big, galloping track brought no top-three finish from 2 runs — a clear split of 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping ones.\n\n" +
+"GOING facts (with a split):\n- Soft: 4 runs, 2 wins, 1 place; best 1st of 11 at Haydock on 14 Feb 2026.\n- Good: 3 runs, no top-three finish.\n- Window: 7 runs, 2 wins, 1 place.\n- Never run on (turf): Hard, Firm, Good to Firm, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft to Heavy, Heavy.\n- Clear split: 3 in the top three from 4 runs on Soft against 0 from 3 on Good.\n" +
+"GOING text: Soft ground is where this horse has done its winning, 2 wins and a place from 4 runs, the best of them a 1st of 11 at Haydock on 14 Feb 2026. On Good the story is different: 3 runs without a top-three finish, a clear split against the Soft record.\n\n" +
+"TRIP facts (thin record):\n- 1m2f (Flat): 1 run, no top-three finish.\n- 1m4f (Flat): 1 run, 0 wins, 1 place.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Too few runs to show a pattern.\n" +
+"TRIP text: Only 2 runs in the window, 1 at 1m2f without a top-three finish and 1 at 1m4f that brought a place, so there is no trip pattern to read yet. The horse has not won at any trip in this window.";
 
-// This trial's own system prompt: SHARED_RULES + TRIP_SECTION + a
-// trip-only JSON output. Byte-identical on every call, cache_control
-// ephemeral — same caching pattern as FORM_SECTIONS_PROMPT.
-const TRIP_PROMPT = SHARED_RULES + "\n\n" + TRIP_SECTION + "\n\nOUTPUT: strict JSON only: {\"trip\": \"...\"}";
-// Trip round 3, Change 3 — 200 -> 300, more headroom for the longer
-// stamina-line-with-total texts this round can produce.
-const TRIP_MAX_TOKENS = 300;
+const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}";
 
-// Trip round 3, Change 6 — second, independent check run after a text
-// already passes validateTrip, before it is stored. Static, cache_control
-// ephemeral like every other system prompt here. Model/tokens live with the
-// runner (form-sections-run-background.js) since that's where the call is
-// made; the prompt text itself belongs here with the other prompt blocks.
-const TRIP_SECOND_CHECK_PROMPT = "You check a short paragraph about a racehorse against the data it was written from. Read every sentence. A sentence is supported only if every fact in it can be read directly from the data: each position, count, distance, course, race type, comparison (longer, shorter, furthest, every, each, both, only) and any statement about where the horse runs well or badly. A summary or judgement is supported only if the figures in the data clearly show it. A sentence that claims or implies anything about the horse's entire career, career so far, or ever (rather than just the runs in this data) is never supported — the data covers recent runs only. Ignore style and length. Do not suggest rewrites. Return strict JSON only: {\"supported\": true} if every sentence is supported, or {\"supported\": false, \"problems\": [{\"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry: every unsupported sentence and exactly what is wrong with it.";
-const TRIP_SECOND_CHECK_MAX_TOKENS = 300;
-
-// ── Change C — ONE CALL PER HORSE: Going + Trip combined. Same SHARED_RULES
-// + GOING_SECTION + TRIP_SECTION static block (over the ~1,024-token
-// cacheable floor — see form-sections-run-background.js's token-count note),
-// one combined JSON output, one combined second check covering both texts
-// against both data blocks.
-// Track build — TRACK_SECTION and a third "track" output field join this
-// same static block.
-const GOINGTRIP_PROMPT = SHARED_RULES + "\n\n" + GOING_SECTION + "\n\n" + TRIP_SECTION + "\n\n" + TRACK_SECTION + "\n\nOUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}";
-// Fix 1 (post-2026-10-05 full-card run) — 550 still wasn't enough headroom:
-// the live run hit 26 identical going/trip/track "json" failures (the exact
-// same count across all three fields is the truncation signature — the
-// completion was cut off before the JSON closed). Three 35-50 word sections
-// plus JSON escaping need more room than 550 tokens gives.
-// Fix 1 (post-2026-10-06 probe) — 900 still truncated on 5/30 (16.7%) write1
-// calls, each failure costing a full retry. Observed section lengths run
-// 45-85 words (over their own 30-50 word targets), so 900 was still tight;
-// raised again with more headroom.
-const GOINGTRIP_MAX_TOKENS = 1300;
-// Refined (post-2026-10-05-run fixes) — gives the second check the same
-// going scale the writer prompt has (so it can verify faster/softer
-// comparisons), explicitly admits Totals/stamina/WINDOW numbers, and adds a
-// self-review step before answering.
-// Track build — extended to a third TRACK paragraph/data block and section.
-// Fix 2 (post-2026-10-05 full-card run) — the Track guidance below used to
-// judge a course-character description against the character STRING
-// printed in the TRACK DATA block, which directly contradicted TRACK_SECTION
-// (the writer prompt, untouched by this fix): that prompt tells the model to
-// paraphrase vividly ("big, galloping tracks where horses can stride out")
-// and never write bare labels. The live run's own evidence: the model wrote
-// "...where horses can stride out" for Worcester (TRACK_SECTION's own
-// example phrase) and the checker flagged it as unsupported because those
-// words aren't in the data block — 113 of 192 horses hit a Track problem,
-// the dominant cost/retry driver. Rewritten to judge the FACTS (figures,
-// positions, course names, which courses share a trait) and only flag a
-// character description when it contradicts the printed character, not
-// when it merely restates it in different words. Also strengthens the
-// self-review instruction (applies to all three sections): several live
-// problems had reasoning text that itself concluded "supported" yet still
-// landed in the problems array — the old "if... remove it" phrasing wasn't
-// forceful enough to stop that contradiction.
-const GOINGTRIP_SECOND_CHECK_PROMPT = "You check three short paragraphs about a racehorse — a GOING paragraph, a TRIP paragraph and a TRACK paragraph — each against its own data block below. Read every sentence of all three paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison and any statement about where the horse runs well or badly. Numbers may come from any printed line, including the Totals, stamina, rollup and WINDOW lines. For GOING sentences, this scale orders ground from fastest to slowest — turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy; all-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow — so a sentence calling one going faster or softer than another is supported when this scale shows it and both are on the same surface. For TRACK sentences: the TRACK DATA block states each course's character (direction, tight or galloping, contour). A sentence describing that character in its own words — e.g. calling a galloping course 'a big, open track where horses can stride out', or a tight course 'a sharp, turning track' — is SUPPORTED when the description is consistent with the printed character. Judge the facts (runs, wins, places, positions, course names, which courses share a characteristic), not the wording of the description. Flag a TRACK sentence only when a number, position or course is wrong, when a pattern is claimed from a single run, or when the description contradicts the printed character (e.g. calling a tight course galloping). A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP or TRACK data, a TRIP sentence against the GOING or TRACK data, or a TRACK sentence against the GOING or TRIP data. A sentence that claims or implies anything about the horse's entire career (rather than just the runs in this data) is never supported. Ignore style and length. Do not suggest rewrites. Before calling the tool, re-read each problem you have drafted. If your own reasoning concludes the sentence is supported, you MUST NOT include that entry in the problems array. An entry whose reason ends by accepting the sentence is a contradiction and must be omitted. Only entries you still believe are genuine errors after re-reading go in the array. If no problems remain, return supported true. Return strict JSON only: {\"supported\": true} if every sentence in all paragraphs given is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\"|\"track\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry. If no TRACK paragraph is given below, judge only the GOING and TRIP paragraphs.";
-const GOINGTRIP_SECOND_CHECK_MAX_TOKENS = 1400;
+const GOINGTRIP_PROMPT = FACT_CONTRACT + "\n\n" + VOICE_RULES + "\n\n" + GOING_NOTES + "\n\n" + TRIP_NOTES + "\n\n" + TRACK_NOTES + "\n\n" + EXAMPLES + "\n\n" + OUTPUT_LINE;
+const GOINGTRIP_MAX_TOKENS = 1600;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
-// block: { groups, neverRun, neverRunAW } — the same groups/neverRun(AW)
-// buildGoingEnvelope was given, so validation checks the model's claims
-// against exactly what it was sent, nothing recomputed differently.
-//
-// One check disclosed as not fully reliable (same structural limit as the
-// main text engine's validator): count-not-given can only confirm a number
-// is SOME going's own figure, not that it's THIS going's figure — two
-// goings sharing the same run/win/place/top-half tally are indistinguishable
-// to a regex check. The "N of M" check below is stricter (both numbers must
-// belong to the same going), but a bare "N runs" still isn't tied to a
-// specific going.
+// Kept: JSON validity, banned (betting) words, today/future words, banned
+// format, career-claim phrases, and one structural check — every number
+// token in the output must appear in that section's fact list (pure string
+// membership on digit runs, no parsing). Everything the old validators
+// inferred from the data (counts, positions, goings, distances, courses,
+// comparisons) is now impossible by construction: the model has nothing to
+// copy from but the fact lines. Word caps are warnings, never failures.
 function words(s) { const t = String(s || '').trim(); return t ? t.split(/\s+/).length : 0; }
-const ALL_SCALE_NAMES = GOING_SCALE.turf.concat(GOING_SCALE.allweather).map(function(g) { return g.name; });
-const BANNED_WORDS = ['backed', 'value', 'each-way', 'each way', 'price', 'odds', 'market', 'favourite', 'today', 'tomorrow', 'next time', 'should suit', 'will suit'];
-const NUM_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-function numFrom(s) { return /^\d+$/.test(s) ? parseInt(s, 10) : NUM_WORDS[String(s || '').toLowerCase()]; }
-const NUM_WORD_ALT = 'one|two|three|four|five|six|seven|eight|nine|ten';
+const BETTING_WORDS = ['backed', 'value', 'each-way', 'each way', 'price', 'odds', 'market', 'favourite'];
+const FUTURE_WORDS = ['today', 'this afternoon', 'tomorrow', 'next time', 'should', 'ought', 'will suit', 'will appreciate', 'looks ideal', 'expect', 'going forward', 'will stay', "won't stay", 'likely to stay', 'unlikely to stay', 'will get', "won't get"];
+const CAREER_PHRASES = ['career', 'so far', 'to date', 'has ever', 'never ever', 'lifetime'];
+const REASON_PHRASES = ['too sharp', "didn't stay", 'did not stay', 'outpaced', 'found it too far', 'found it too short'];
 
-function parseJsonGoing(text) {
+function parseJsonSections(text) {
   let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const a = t.indexOf('{'), b = t.lastIndexOf('}');
   if (a > 0 || (b >= 0 && b < t.length - 1)) t = t.slice(a, b + 1);
   try { return JSON.parse(t); } catch (e) { return null; }
 }
 
-// Bug fix Fix 1 — subset-sum over a set of printed same-kind figures (per-
-// group run/win/place counts, plus any printed Totals figures given
-// alongside them). A claimed count that doesn't match any single printed
-// figure may still be a legitimate sum of several of them (e.g. "7 runs" =
-// a 4-run going + a 3-run going) — this checks every combination before the
-// caller gives up and fails. 0/negative targets are never matched (there is
-// no meaningful empty-subset claim in this text).
-function anyComboSum(values, target) {
-  if (!target || target <= 0) return false;
-  let possible = [0];
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i];
-    const next = possible.slice();
-    for (let j = 0; j < possible.length; j++) next.push(possible[j] + v);
-    possible = Array.from(new Set(next));
-  }
-  return possible.indexOf(target) !== -1;
-}
-
-// Fix 3 (post-2026-10-06 probe #2) — every fail() across all three
-// validators embeds the full sentence it judged, via these two shared
-// helpers, so a probe can classify genuine-vs-misfire for 100% of
-// failures instead of being blocked on checks (a)/(b)/(e) — those used to
-// log only a short matched phrase, leaving the surrounding claim invisible.
+// Every fail embeds the sentence it judged, so a probe can classify failures
+// without the surrounding claim being invisible.
 function sentenceOffsets(t) {
   const parts = String(t || '').split(/(?<=[.!?])\s+/).filter(function(s) { return s; });
   let pos = 0;
@@ -844,846 +598,104 @@ function sentenceAt(offsets, idx) {
   }
   return offsets.length ? offsets[offsets.length - 1].text.trim() : '';
 }
+function numberTokens(s) { return String(s || '').match(/\d+/g) || []; }
+function phraseRegex(phrase) { return new RegExp('\\b' + phrase.replace(/'/g, "['’]?").replace(/[- ]/g, '[- ]') + '\\b', 'i'); }
 
-function validateGoing(text, block) {
+// validateSection(section, text, factLines, opts) — text is the section's
+// own string (already parsed out of the JSON). opts.courseNames exempts a
+// banned word inside a course name; opts.wordCap sets the warning cap.
+function validateSection(section, text, factLines, opts) {
   const failures = []; const warnings = [];
-  let offsets = [];
+  const t = String(text || '');
+  const offsets = sentenceOffsets(t);
   const fail = function(check, detail, idx) {
-    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
-    failures.push({ check: check, detail: withSentence });
+    failures.push({ check: check, detail: detail + (idx !== undefined && idx !== null ? ' | sentence: "' + sentenceAt(offsets, idx) + '"' : '') });
   };
-
-  const parsed = parseJsonGoing(text);
-  if (!parsed || typeof parsed !== 'object' || typeof parsed.going !== 'string' || !parsed.going.trim()) {
-    fail('json', 'invalid JSON or missing "going" field');
-    return { ok: false, failures: failures, warnings: warnings, wordCount: 0, going: null };
-  }
-  const t = parsed.going;
-  offsets = sentenceOffsets(t);
+  if (!t.trim()) { fail('json', 'missing or empty "' + section + '" field'); return { ok: false, failures: failures, warnings: warnings, wordCount: 0, text: null }; }
   const wc = words(t);
-  if (wc > 45) warnings.push({ section: 'going', words: wc, cap: 45, over: wc - 45 }); // warning only, never blocks storage
+  const cap = (opts && opts.wordCap) || 45;
+  if (wc > cap) warnings.push({ section: section, words: wc, cap: cap, over: wc - cap });
 
-  const groups = (block && block.groups) || [];
-  const neverRun = (block && block.neverRun) || { names: [] };
-  const neverRunAW = (block && block.neverRunAW) || { names: [] };
-  const windowSize = (block && block.windowSize) || null;
-
-  // position-not-in-record (also covers positions inside a "Best:" clause,
-  // since a going's best result is always one of its own listed results).
-  const pairs = {};
-  groups.forEach(function(g) { g.results.forEach(function(r) { const m = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (m) pairs[m[1] + '|' + m[2]] = true; }); });
-  let m;
-  const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
-  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0], m.index); }
-
-  // going-not-in-record: any canonical scale name mentioned must be in the
-  // block or EITHER never-run line (turf or all-weather) — fix (a).
+  // number-not-in-facts — the one structural check.
   const allowed = {};
-  groups.forEach(function(g) { allowed[g.name.toLowerCase()] = true; });
-  neverRun.names.forEach(function(n) { allowed[n.toLowerCase()] = true; });
-  neverRunAW.names.forEach(function(n) { allowed[n.toLowerCase()] = true; });
-  ALL_SCALE_NAMES.slice().sort(function(a, b) { return b.length - a.length; }).forEach(function(name) {
-    const re = new RegExp('\\b' + name.replace(/ /g, '\\s+') + '\\b', 'gi'); let mm;
-    while ((mm = re.exec(t)) !== null) { if (!allowed[name.toLowerCase()]) fail('going-not-in-record', mm[0], mm.index); }
-  });
+  numberTokens((factLines || []).join('\n')).forEach(function(n) { allowed[n] = true; });
+  const reNum = /\d+/g; let m;
+  while ((m = reNum.exec(t)) !== null) { if (!allowed[m[0]]) fail('number-not-in-facts', m[0], m.index); }
 
-  // count-not-given — fix (b). Four parts: (1) "N runs/wins/places" and
-  // "N in the top three" (Change B.8), each checked against that one
-  // figure's own set of values across goings, or the window size (Change
-  // B.7); (2) "N of M runs/outings/starts/races" valid only when some single
-  // going has runs === M and one of its other figures (wins/places/
-  // topThree/runs itself) === N, or M is the window size; (3) a standalone
-  // "N outings/starts/races" (a synonym for "N runs" not already part of an
-  // "of" fraction) checked against any going's own figure or the window
-  // size; (4) hidden totals — "all N", bare "both" (implies 2), "other N" —
-  // checked the same loose way, since these words don't name which figure
-  // they mean.
-  // Refine Fix 5.2 — the printed Totals line (turf/all-weather/window sums)
-  // is itself a valid source for a number, same as any group's own figure.
-  const counts = { run: {}, win: {}, place: {}, topThree: {} };
-  groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
-  const turfGroupsForCombo = groups.filter(function(g) { return g.surface === 'turf'; });
-  const awGroupsForCombo = groups.filter(function(g) { return g.surface === 'all-weather'; });
-  [turfGroupsForCombo, awGroupsForCombo, groups].forEach(function(arr) {
-    if (!arr.length) return;
-    counts.run[sumGoingFigures(arr).runs] = true;
-    counts.win[sumGoingFigures(arr).wins] = true;
-    counts.place[sumGoingFigures(arr).places] = true;
-  });
-  if (windowSize !== null) counts.run[windowSize] = true;
-  function matchesAnyGoingFigure(n) { return n === windowSize || counts.run[n] || counts.win[n] || counts.place[n] || groups.some(function(g) { return g.topThree === n; }); }
-
-  // Fix 1 — combination-sum fallback: the pool of "printed same-kind
-  // figures" is every going's own run/win/place count plus the printed
-  // Totals figures (turf, all-weather, window) for that same kind.
-  const comboPool = { run: [], win: [], place: [] };
-  ['run', 'win', 'place'].forEach(function(kind) {
-    const key = kind === 'run' ? 'runs' : kind === 'win' ? 'wins' : 'places';
-    groups.forEach(function(g) { comboPool[kind].push(g[key]); });
-    if (turfGroupsForCombo.length) comboPool[kind].push(sumGoingFigures(turfGroupsForCombo)[kind === 'run' ? 'runs' : key]);
-    if (awGroupsForCombo.length) comboPool[kind].push(sumGoingFigures(awGroupsForCombo)[kind === 'run' ? 'runs' : key]);
-    const windowFig = sumGoingFigures(groups)[kind === 'run' ? 'runs' : key];
-    comboPool[kind].push(kind === 'run' && windowSize !== null ? windowSize : windowFig);
-  });
-  function comboMatches(kind, n) { return anyComboSum(comboPool[kind], n); }
-
-  const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
-  while ((m = reCount.exec(t)) !== null) {
-    const n = numFrom(m[1]);
-    const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0], m.index);
-  }
-  const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
-  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0], m.index); }
-
-  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
-  while ((m = reOfRuns.exec(t)) !== null) {
-    const n = numFrom(m[1]), total = numFrom(m[2]);
-    const sameGoing = (total === windowSize && (n === windowSize || matchesAnyGoingFigure(n))) ||
-      groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
-    if (!sameGoing) fail('count-not-given', m[0] + ' (N and M not from the same going)', m.index);
-  }
-
-  const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
-
-  const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
-  const bothIdx = t.search(/\bboth\b/i);
-  if (bothIdx !== -1 && !matchesAnyGoingFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)', bothIdx);
-  const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
-
-  // banned-format: N/M shorthand
-  const reSlash = /\b\d+\/\d+\b/g;
-  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
-
-  // Change B.4 — malformed position phrasing: rule 4 requires every position
-  // as "Nth of M"; catch near-miss phrasings that skip the ordinal, e.g.
-  // "wins of 19" or "pulled up in 12".
-  const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
-  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
-
-  // Change B.6 — best/worst/last, mirroring the Trip validator's own checks.
-  // "best" directly attached to a position must be one of the goings' own
-  // labelled Best pairs, and never an overall claim.
-  const bestPairs = {};
-  groups.forEach(function(g) { if (g.best) { const bm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(g.best); if (bm) bestPairs[bm[1] + '|' + bm[2]] = true; } });
-  const reBestAttached = /\bbest\b[^.]{0,25}?\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/gi;
-  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0], m.index); }
-  ['best overall', 'best run in the window', 'best of the window', 'best in the window', 'career-best', 'best of his career', "best of her career"].forEach(function(phrase) {
-    const phraseIdx = t.search(new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i'));
-    if (phraseIdx !== -1) fail('best-mislabelled', phrase, phraseIdx);
-  });
-  // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
-  ['worst', 'weakest', 'poorest'].forEach(function(w) {
-    const wIdx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
-    if (wIdx !== -1) fail('banned-format', w, wIdx);
-  });
-  // "last" as a position claim must be a genuine last-of-field result.
-  const lastOfFieldSizes = {};
-  groups.forEach(function(g) { g.results.forEach(function(r) { const rm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (rm && rm[1] === rm[2]) lastOfFieldSizes[rm[2]] = true; }); });
-  const reLastOf = /\blast\s+of\s+(\d+)\b/gi;
-  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0], m.index); }
-  const lastPlaceIdx = t.search(/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i);
-  if (lastPlaceIdx !== -1) fail('last-mislabelled', 'count of last-place finishes', lastPlaceIdx);
-  const twiceOnceLastIdx = t.search(/\btwice\s+last\b|\bonce\s+last\b/i);
-  if (twiceOnceLastIdx !== -1) fail('last-mislabelled', 'count of last finishes', twiceOnceLastIdx);
-
-  // ordinal words as a finishing position only — fix (c). Fails only when an
-  // ordinal is preceded by a position-indicating word (finished/was/came/
-  // ran/placed/a/an) AND not immediately followed by a noun that shows it's
-  // describing WHICH run/attempt rather than a placing (run/start/time/
-  // attempt/outing/try, or "of" as in "a third of her runs"). "her third
-  // run" is never flagged (no trigger word precedes "third"); "finished
-  // second" / "was third" / "a fourth" are. Disclosed trade-off: a
-  // sentence-initial, trigger-less ordinal used as a position (rare) could
-  // be missed — deliberately traded for not flagging descriptive ordinals,
-  // per this round's explicit instruction.
-  const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
-  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
-
-  // banned-words
-  BANNED_WORDS.forEach(function(w) {
-    const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    const wm = re.exec(t);
-    if (wm) fail('banned-words', w, wm.index);
-  });
-
-  // percent
-  const percentIdx = t.search(/%|per\s*cent|percent/i);
-  if (percentIdx !== -1) fail('percent', 'percentage language found', percentIdx);
-
-  return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, going: t };
-}
-
-// ── TRIP VALIDATOR ─────────────────────────────────────────────────────
-// tripData: { groups } — the same groups buildTripEnvelope was given.
-// Shares the Going validator's count/ordinal/N-of-M machinery conceptually
-// but is its own function against trip's own block shape (group.name is
-// "{distance} ({type})", group.distanceLabel is the bare distance).
-const STAMINA_PREDICTION_PHRASES = ['will stay', "won't stay", 'should stay', 'likely to stay', 'unlikely to stay', 'will get', "won't get", 'should get'];
-
-function parseJsonTrip(text) {
-  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const a = t.indexOf('{'), b = t.lastIndexOf('}');
-  if (a > 0 || (b >= 0 && b < t.length - 1)) t = t.slice(a, b + 1);
-  try { return JSON.parse(t); } catch (e) { return null; }
-}
-
-function validateTrip(text, tripData) {
-  const failures = []; const warnings = [];
-  let offsets = [];
-  const fail = function(check, detail, idx) {
-    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
-    failures.push({ check: check, detail: withSentence });
-  };
-
-  const parsed = parseJsonTrip(text);
-  if (!parsed || typeof parsed !== 'object' || typeof parsed.trip !== 'string' || !parsed.trip.trim()) {
-    fail('json', 'invalid JSON or missing "trip" field');
-    return { ok: false, failures: failures, warnings: warnings, wordCount: 0, trip: null };
-  }
-  const t = parsed.trip;
-  offsets = sentenceOffsets(t);
-  const wc = words(t);
-  if (wc > 45) warnings.push({ section: 'trip', words: wc, cap: 45, over: wc - 45 }); // warning only, never blocks storage
-
-  const groups = (tripData && tripData.groups) || [];
-  const windowSize = (tripData && tripData.windowSize) || null;
-
-  // position-not-in-record
-  const pairs = {};
-  groups.forEach(function(g) { g.results.forEach(function(r) { const mm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (mm) pairs[mm[1] + '|' + mm[2]] = true; }); });
-  let m;
-  const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
-  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0], m.index); }
-
-  // trip-not-in-record — Trip round 3, Change 1: back to short form, same
-  // check as round 1. Any distance token (7f, 1m, 1m2f, 2m4f, ...) must be
-  // one of this horse's own group/stamina distance labels; the word-distance
-  // parser added in round 2 is removed outright, and the words
-  // mile/miles/furlong/furlongs are banned regardless of context.
-  const allowedDist = {};
-  groups.forEach(function(g) { allowedDist[g.distanceLabel.toLowerCase()] = true; });
-  const reDist = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi; let mm;
-  while ((mm = reDist.exec(t)) !== null) { if (!allowedDist[mm[0].toLowerCase()]) fail('trip-not-in-record', mm[0], mm.index); }
-  const milesWordsIdx = t.search(/\bmiles?\b|\bfurlongs?\b/i);
-  if (milesWordsIdx !== -1) fail('trip-not-in-record', 'distance given in words, not data notation', milesWordsIdx);
-
-  // "best" directly attached to a position ("best of 2nd of 5", "best run,
-  // 2nd of 5", "best effort was 2nd of 5") must be one of the groups' own
-  // labelled Best pairs. Trip round 2, Change 5: "best" is also never
-  // allowed as an OVERALL claim (Best is only ever "best at that distance").
-  const bestPairs = {};
-  groups.forEach(function(g) { if (g.best) { const bm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(g.best); if (bm) bestPairs[bm[1] + '|' + bm[2]] = true; } });
-  const reBestAttached = /\bbest\b[^.]{0,25}?\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/gi;
-  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0], m.index); }
-  ['best overall', 'best run in the window', 'best of the window', 'best in the window', 'career-best', 'best of his career', "best of her career"].forEach(function(phrase) {
-    const phraseIdx = t.search(new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i'));
-    if (phraseIdx !== -1) fail('best-mislabelled', phrase, phraseIdx);
-  });
-
-  // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
-  ['worst', 'weakest', 'poorest'].forEach(function(w) {
-    const wIdx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
-    if (wIdx !== -1) fail('banned-format', w, wIdx);
-  });
-
-  // Trip round 2, Change 5: "last" as a position claim must be a genuine
-  // last-of-field result in the data (pos === ran for some row); a count of
-  // last-place finishes is never allowed, since that figure is never given.
-  const lastOfFieldSizes = {};
-  groups.forEach(function(g) { g.results.forEach(function(r) { const rm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (rm && rm[1] === rm[2]) lastOfFieldSizes[rm[2]] = true; }); });
-  const reLastOf = /\blast\s+of\s+(\d+)\b/gi;
-  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0], m.index); }
-  const lastPlaceIdx2 = t.search(/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i);
-  if (lastPlaceIdx2 !== -1) fail('last-mislabelled', 'count of last-place finishes', lastPlaceIdx2);
-  const twiceOnceLastIdx2 = t.search(/\btwice\s+last\b|\bonce\s+last\b/i);
-  if (twiceOnceLastIdx2 !== -1) fail('last-mislabelled', 'count of last finishes', twiceOnceLastIdx2);
-
-  // counts — "N run(s)/win(s)/place(s)" and "N in the top three": a single
-  // group's own figure, or the window size. Trip round 3, Change 4: a run
-  // count ("N runs") may now also equal a race type's own total (the figure
-  // the stamina line now gives), since groups within a type always sum to
-  // it and the model is told to use that figure.
-  const counts = { run: {}, win: {}, place: {}, topThree: {} };
-  groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
-  const typeTotals = {}, typeTotalsWins = {}, typeTotalsPlaces = {};
-  groups.forEach(function(g) {
-    typeTotals[g.type] = (typeTotals[g.type] || 0) + g.runs;
-    typeTotalsWins[g.type] = (typeTotalsWins[g.type] || 0) + g.wins;
-    typeTotalsPlaces[g.type] = (typeTotalsPlaces[g.type] || 0) + g.places;
-  });
-  function isAnyTypeTotal(n) { return Object.keys(typeTotals).some(function(k) { return typeTotals[k] === n; }); }
-  // Refine Fix 5.2 — the printed per-type Totals line's wins/places are
-  // also valid sources for a number.
-  function isAnyTypeWinTotal(n) { return Object.keys(typeTotalsWins).some(function(k) { return typeTotalsWins[k] === n; }); }
-  function isAnyTypePlaceTotal(n) { return Object.keys(typeTotalsPlaces).some(function(k) { return typeTotalsPlaces[k] === n; }); }
-  function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }) || isAnyTypeTotal(n) || isAnyTypeWinTotal(n) || isAnyTypePlaceTotal(n); }
-
-  // Fix 1 — combination-sum fallback: the pool of "printed same-kind
-  // figures" is every group's own run/win/place count plus the printed
-  // per-type Totals figures for that same kind, plus the window size (run).
-  const comboPool = { run: [], win: [], place: [] };
-  groups.forEach(function(g) { comboPool.run.push(g.runs); comboPool.win.push(g.wins); comboPool.place.push(g.places); });
-  Object.keys(typeTotals).forEach(function(k) { comboPool.run.push(typeTotals[k]); });
-  Object.keys(typeTotalsWins).forEach(function(k) { comboPool.win.push(typeTotalsWins[k]); });
-  Object.keys(typeTotalsPlaces).forEach(function(k) { comboPool.place.push(typeTotalsPlaces[k]); });
-  if (windowSize !== null) comboPool.run.push(windowSize);
-  function comboMatches(kind, n) { return anyComboSum(comboPool[kind], n); }
-  function typeKeyFromWord(w) {
-    const lw = String(w || '').toLowerCase();
-    if (lw === 'flat') return 'Flat';
-    if (lw === 'nh flat') return 'NH Flat';
-    if (lw.indexOf('hurdle') === 0) return 'Hurdle';
-    if (lw.indexOf('chase') === 0 || lw === 'fences') return 'Chase';
-    return null;
-  }
-  const TYPE_WORD_SRC = '(Flat|NH Flat|hurdles?|chases?)';
-
-  const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
-  while ((m = reCount.exec(t)) !== null) {
-    const n = numFrom(m[1]);
-    const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (kind === 'run') {
-      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0], m.index);
-    } else if (kind === 'win') {
-      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n) && !comboMatches('win', n)) fail('count-not-given', m[0], m.index);
-    } else {
-      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n) && !comboMatches('place', n)) fail('count-not-given', m[0], m.index);
-    }
-  }
-  // "N {race type} runs/starts" — must match that type's own total (or a
-  // single group's run count, or the window size).
-  const reTypeCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+' + TYPE_WORD_SRC + '\\s+(runs?|starts?)\\b', 'gi');
-  while ((m = reTypeCount.exec(t)) !== null) {
-    const n = numFrom(m[1]); const typeKey = typeKeyFromWord(m[2]);
-    if (n !== windowSize && typeTotals[typeKey] !== n && !counts.run[n]) fail('count-not-given', m[0] + ' (does not match the ' + typeKey + ' total)', m.index);
-  }
-  const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
-  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0], m.index); }
-
-  // "N of M runs/outings/starts/races", optionally naming a race type — Trip
-  // round 3, Change 4: "N of M" is valid when both numbers belong to the
-  // same group, OR M is that race type's total and N is one of that type's
-  // own figures (including the type total itself).
-  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(?:' + TYPE_WORD_SRC + '\\s+)?(runs?|outings|starts|races)\\b', 'gi');
-  while ((m = reOfRuns.exec(t)) !== null) {
-    const n = numFrom(m[1]), total = numFrom(m[2]); const typeKey = m[3] ? typeKeyFromWord(m[3]) : null;
-    let ok;
-    if (typeKey) {
-      ok = typeTotals[typeKey] === total && (n === typeTotals[typeKey] || groups.some(function(g) { return g.type === typeKey && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); }));
-    } else {
-      ok = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
-    }
-    if (!ok) fail('count-not-given', m[0] + (typeKey ? ' (N and M not consistent with the ' + typeKey + ' total)' : ' (N and M not from the same group)'), m.index);
-  }
-
-  // hidden totals — standalone "N outings/starts/races", "all N", bare
-  // "both" (=2), "other N" — a single group's figure, a race type's total,
-  // or the window size.
-  const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
-  const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
-  const bothIdx2 = t.search(/\bboth\b/i);
-  if (bothIdx2 !== -1 && !matchesAnyGroupFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)', bothIdx2);
-  const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
-
-  // N/M shorthand
-  const reSlash = /\b\d+\/\d+\b/g;
-  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
-
-  // Change B.4 — malformed position phrasing: rule 4 requires every position
-  // as "Nth of M"; catch near-miss phrasings that skip the ordinal, e.g.
-  // "wins of 19" or "pulled up in 12".
-  const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
-  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
-
-  // Trip round 3, Change 5 — comparison-claim checks. Where a sentence
-  // names a race type (Flat, NH Flat, hurdle(s), chase(s), fences), each
-  // check below applies to that type's groups only; otherwise to all
-  // groups. Sentences are split on end punctuation; a phrase matched only
-  // at the whole-text level (no containing sentence found) falls back to
-  // scoping against every group.
-  const sentences = t.split(/(?<=[.!?])\s+/).filter(function(s) { return s.trim(); });
-  function typeWordsInSentence(s) {
-    const found = [];
-    if (/\bnh flat\b/i.test(s)) found.push('NH Flat');
-    else if (/\bflat\b/i.test(s)) found.push('Flat');
-    if (/\bhurdles?\b/i.test(s)) found.push('Hurdle');
-    if (/\bchases?\b|\bfences\b/i.test(s)) found.push('Chase');
-    return found;
-  }
-  function groupsInScope(sentence) {
-    const types = typeWordsInSentence(sentence);
-    return types.length ? groups.filter(function(g) { return types.indexOf(g.type) !== -1; }) : groups;
-  }
-  function findSentence(re) { return sentences.find(function(s) { return re.test(s); }) || null; }
-  function shortestF(arr) { const fs = arr.map(function(g) { return g.furlongs; }).filter(function(f) { return f !== null && f !== undefined; }); return fs.length ? Math.min.apply(null, fs) : null; }
-  function longestF(arr) { const fs = arr.map(function(g) { return g.furlongs; }).filter(function(f) { return f !== null && f !== undefined; }); return fs.length ? Math.max.apply(null, fs) : null; }
-  function phraseRe(phrase) { return new RegExp('\\b' + phrase.replace(/ /g, '\\s+') + '\\b', 'i'); }
-
-  // (a) "one run at each" and its variants — every group in scope must have
-  // exactly 1 run.
-  ['one run at each', '1 run at each', 'a single run at each', 'only 1 run at each', 'each visited just once'].forEach(function(phrase) {
-    const re = phraseRe(phrase);
-    const sent = findSentence(re);
-    if (!sent) return;
-    const scope = groupsInScope(sent);
-    if (!scope.length || scope.some(function(g) { return g.runs !== 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has exactly 1 run: "' + sent.trim() + '"');
-  });
-
-  // (b) "top three/3 at every trip" and its negation — every group in scope
-  // must have >=1 top-three finish (positive) or 0 (negative).
-  ['top three at every', 'top 3 at every', 'placed at every', 'at every trip'].forEach(function(phrase) {
-    const re = phraseRe(phrase);
-    const sent = findSentence(re);
-    if (!sent) return;
-    const scope = groupsInScope(sent);
-    if (!scope.length || scope.some(function(g) { return g.topThree < 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has a top-three finish: "' + sent.trim() + '"');
-  });
-  ['not reached the top three at any', 'nothing in the top three at any', 'no top-three finish at any'].forEach(function(phrase) {
-    const re = phraseRe(phrase);
-    const sent = findSentence(re);
-    if (!sent) return;
-    const scope = groupsInScope(sent);
-    if (scope.some(function(g) { return g.topThree > 0; })) fail('comparison-claim', '"' + phrase + '" — some group in scope has a top-three finish: "' + sent.trim() + '"');
-  });
-
-  // (c) "at the longer distances" etc. used with results — every quoted
-  // result's own group must be longer (or, for the shorter-side phrases,
-  // shorter) than that race type's shortest (longest) tried distance.
-  // Scope for the comparison is always resolved from the quoted result's
-  // own group and its type, not the sentence-level scope above, since
-  // "longer"/"shorter" is only meaningful within one race type.
-  const reResultTok = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
-  function groupForResult(posOfM) { return groups.find(function(g) { return g.results.some(function(r) { return r.indexOf(posOfM) === 0; }); }); }
-  [['at the longer distances', true], ['at longer trips', true], ['the longer end', true], ['as the trip lengthens', true], ['beyond that', true],
-   ['at shorter trips', false], ['shorter distances', false], ['the shorter end', false]].forEach(function(pair) {
-    const phrase = pair[0], wantLonger = pair[1];
-    const re = phraseRe(phrase);
-    const sent = findSentence(re);
-    if (!sent) return;
-    const localRe = new RegExp(reResultTok.source, 'g'); let rm; let any = false;
-    while ((rm = localRe.exec(sent)) !== null) {
-      any = true;
-      const g = groupForResult(rm[0]);
-      if (!g) { fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" not found in any group: "' + sent.trim() + '"'); continue; }
-      const sameType = groups.filter(function(gg) { return gg.type === g.type; });
-      const bound = wantLonger ? shortestF(sameType) : longestF(sameType);
-      const okSide = bound !== null && g.furlongs !== null && (wantLonger ? g.furlongs > bound : g.furlongs < bound);
-      if (!okSide) fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" is not from a group ' + (wantLonger ? 'longer' : 'shorter') + ' than ' + g.type + '\'s ' + (wantLonger ? 'shortest' : 'longest') + ' tried trip: "' + sent.trim() + '"');
-    }
-  });
-
-  // (d) Bug fix (post-cache-probe) Fix 1 — "longest won"/"longest placed"/
-  // "longest tried"/"shortest tried" claims are checked by VALUE against
-  // the stamina line's own four named facts for that race type (via
-  // staminaFacts(), the same computation staminaLines() itself uses), not
-  // by requiring the stamina line's exact text or just membership in a
-  // loose set. A field whose fact is "none" (e.g. no wins at all, so
-  // longestWon is "none") never supports a claim naming a distance for it.
-  // "Both" with two of these phrases and one shared distance (e.g. "longest
-  // won and longest tried both at 7f") passes only when that one distance
-  // matches BOTH named fields.
-  const reDistTok = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi;
-  const factsByType = {};
-  staminaFacts(groups).forEach(function(f) { factsByType[f.type] = f; });
-  const STAMINA_FIELD_DEFS = [
-    { re: /\blongest\s+won\b/gi, field: 'longestWon' },
-    { re: /\blongest\s+placed\b/gi, field: 'longestPlaced' },
-    { re: /\blongest\s+tried\b/gi, field: 'longestTried' },
-    { re: /\bshortest\s+tried\b/gi, field: 'shortestTried' }
-  ];
-  function distTokensWithPos(s) {
-    const re = new RegExp(reDistTok.source, 'gi'); let dm; const out = [];
-    while ((dm = re.exec(s)) !== null) out.push({ value: dm[0].toLowerCase(), index: dm.index });
-    return out;
-  }
-  function factTypesForSentence(sent) {
-    const named = typeWordsInSentence(sent);
-    return named.length ? named : Object.keys(factsByType);
-  }
-  function claimMatchesField(type, field, claimedDist) {
-    const f = factsByType[type];
-    if (!f) return false;
-    const actual = String(f[field] || '').toLowerCase();
-    return actual !== 'none' && actual === claimedDist;
-  }
-  // Fix (post-2026-10-06 probe #3) — "none" is now a value a field can be
-  // paired with, not just a distance. All 11 comparison-claim failures in
-  // that probe were this exact bug: Fix 1 got the model correctly writing
-  // "longest won as NONE" (instead of hallucinating a distance), but
-  // nearestDistFor only knew about distance tokens, so a field stated as
-  // NONE would skip right past it and wrongly inherit a neighbouring
-  // field's real distance from elsewhere in the same sentence (e.g.
-  // "...longest placed at 1m2f and longest won as NONE" wrongly paired
-  // longestWon with 1m2f). claimMatchesFieldValue below treats a claimed
-  // "none" as its own value (supported only when the stamina line's own
-  // fact for that field is actually "none"), and noneTokensWithPos finds
-  // every "none" word in the sentence as another candidate token.
-  function claimMatchesFieldValue(type, field, claimedValue) {
-    if (claimedValue === 'none') {
-      const f = factsByType[type];
-      return !!f && String(f[field] || '').toLowerCase() === 'none';
-    }
-    return claimMatchesField(type, field, claimedValue);
-  }
-  function noneTokensWithPos(s) {
-    const re = /\bnone\b/gi; let nm; const out = [];
-    while ((nm = re.exec(s)) !== null) out.push({ value: 'none', index: nm.index });
-    return out;
-  }
-  // Fix 2 (post-2026-10-06 probe) — replaces the old exclusive one-field-
-  // per-distance pairing with an independent nearest-value lookup per
-  // field (no "used" tracking). Exclusivity was added to stop an earlier,
-  // unrelated distance from beating the correct later one for a SINGLE
-  // field (still true here — the prefer-after/fallback-before rule below
-  // keeps that), but it broke the "both X and Y are N" idiom: whichever
-  // field matched first claimed the shared distance, leaving the second
-  // field to wrongly borrow a different, unrelated distance nearby. Fields
-  // that genuinely share one distance (the common case) now both correctly
-  // resolve to it; the old explicit "both, exactly 2 fields, 1 distance"
-  // special case is gone because this general form subsumes it, including
-  // the probe's actual failure: "...both 3m1f; shortest tried is 2m7f" (two
-  // fields paired with 3m1f, a third with its own later 2m7f) — a shape the
-  // old exclusive pairing got wrong (the third field's own distance was
-  // already consumed by an earlier field).
-  // Fix (post-2026-10-06 probe #3) — tokens is now distances AND "none"
-  // words merged together, and this picks the single nearest token of
-  // EITHER kind per direction — never the nearest distance while skipping
-  // past a closer "none". That merge is exactly what makes "none" a
-  // boundary: if it's the nearest token in a direction, nothing beyond it
-  // in that direction is ever reached for this field.
-  function nearestValueFor(tokens, fmatchIndex) {
-    let best = null, bestDist = Infinity;
-    tokens.forEach(function(tok) {
-      if (tok.index <= fmatchIndex) return;
-      const dist = tok.index - fmatchIndex;
-      if (dist < bestDist) { bestDist = dist; best = tok; }
-    });
-    if (best) return best;
-    tokens.forEach(function(tok) {
-      if (tok.index > fmatchIndex) return;
-      const dist = fmatchIndex - tok.index;
-      if (dist < bestDist) { bestDist = dist; best = tok; }
-    });
-    return best;
-  }
-  sentences.forEach(function(sent) {
-    const fieldMatches = [];
-    STAMINA_FIELD_DEFS.forEach(function(fd) {
-      const re = new RegExp(fd.re.source, 'gi'); let fm;
-      while ((fm = re.exec(sent)) !== null) fieldMatches.push({ field: fd.field, index: fm.index });
-    });
-    if (!fieldMatches.length) return;
-    const tokens = distTokensWithPos(sent).concat(noneTokensWithPos(sent));
-    if (!tokens.length) return;
-    const types = factTypesForSentence(sent);
-    fieldMatches.forEach(function(fmatch) {
-      const tok = nearestValueFor(tokens, fmatch.index);
-      if (!tok) return;
-      const claimed = tok.value;
-      const ok = types.some(function(type) { return claimMatchesFieldValue(type, fmatch.field, claimed); });
-      if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none"): "' + sent.trim() + '"');
-    });
-  });
-
-  // (e) "both"/"all N"/"each of N" followed by results — the number of
-  // results quoted in that sentence must match the stated count. Skipped
-  // for a sentence already covered by the stamina-field check above (2+
-  // field names present): that check now independently validates every
-  // field-distance pairing, so a "both X and Y are N" claim about fields —
-  // not about two quoted race results — is fully handled there instead.
-  function countResultsInSentence(sent) { const re = new RegExp(reResultTok.source, 'g'); let c = 0; while (re.exec(sent) !== null) c++; return c; }
-  sentences.forEach(function(sent) {
-    const fieldMatchesHere = [];
-    STAMINA_FIELD_DEFS.forEach(function(fd) {
-      const re = new RegExp(fd.re.source, 'gi'); let fm;
-      while ((fm = re.exec(sent)) !== null) fieldMatchesHere.push({ field: fd.field, index: fm.index });
-    });
-    const handledAsFieldClaim = fieldMatchesHere.length >= 2;
-
-    // Fix 2 (post-2026-10-06 probe #2) — "the N places/wins/runs ... both/
-    // all ... came at DISTANCE" claims that N results of one KIND share a
-    // distance, without necessarily quoting N individual "Nth of M" results
-    // (e.g. "The 2 places in this window both came at 6f"). The old check
-    // below demanded N literally-quoted results and misfired on this shape
-    // (Ormolulu, 30-horse probe). Validated here as a group claim instead:
-    // pass when the printed group figures for that one distance show at
-    // least N of that kind; the plain quoted-results check is skipped once
-    // a sentence is handled this way.
-    let handledAsGroupClaim = false;
-    if (!handledAsFieldClaim && /\b(?:both|all)\b/i.test(sent)) {
-      const dists = distTokensWithPos(sent);
-      const ckMatch = /\b(\d+|two|three|four|five|six|seven|eight)\s+(places?|wins?|runs?)\b/i.exec(sent);
-      if (ckMatch && dists.length === 1) {
-        handledAsGroupClaim = true;
-        const n = numFrom(ckMatch[1]);
-        const kindWord = ckMatch[2].toLowerCase();
-        const kind = kindWord.indexOf('win') === 0 ? 'wins' : kindWord.indexOf('place') === 0 ? 'places' : 'runs';
-        const distance = dists[0].value;
-        const scope = groupsInScope(sent);
-        const atDistance = scope.filter(function(g) { return g.distanceLabel.toLowerCase() === distance; });
-        const sum = atDistance.reduce(function(s, g) { return s + g[kind]; }, 0);
-        if (sum < n) fail('comparison-claim', '"' + ckMatch[0] + '" at ' + distance + '" — printed ' + kind + ' at ' + distance + ' is ' + sum + ', not ' + n + ': "' + sent.trim() + '"');
-      }
-    }
-    if (!handledAsFieldClaim && !handledAsGroupClaim && /\bboth\b/i.test(sent)) {
-      const c = countResultsInSentence(sent);
-      if (c > 0 && c !== 2) fail('comparison-claim', '"both" sentence quotes ' + c + ' result(s), not 2: "' + sent.trim() + '"');
-    }
-    // Change B.1 — "all N" is checked against the figures (every one of the
-    // N runs in scope meets the claimed quality), instead of requiring N
-    // results to be literally quoted in the sentence.
-    const reAllN = /\ball\s+(?:his|her|its|their)?\s*(\d+|one|two|three|four|five|six|seven|eight)\b/gi; let am;
-    while ((am = reAllN.exec(sent)) !== null) {
-      const n = numFrom(am[1]);
-      const scope = groupsInScope(sent);
-      const scopeRuns = scope.reduce(function(s, g) { return s + g.runs; }, 0);
-      if (scopeRuns !== n) { fail('comparison-claim', '"' + am[0] + '" — scope has ' + scopeRuns + ' run(s), not ' + n + ': "' + sent.trim() + '"'); continue; }
-      if (/\bwon\b|\bwins?\b/i.test(sent)) {
-        const scopeWins = scope.reduce(function(s, g) { return s + g.wins; }, 0);
-        if (scopeWins !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope were wins: "' + sent.trim() + '"');
-      } else if (/\btop\s*three\b|\btop\s*3\b|\bplaced?\b/i.test(sent)) {
-        const scopeTop3 = scope.reduce(function(s, g) { return s + g.topThree; }, 0);
-        if (scopeTop3 !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope reached the top three: "' + sent.trim() + '"');
-      }
-    }
-    const reEachOf = /\beach\s+of\s+(?:his|her|its|their)?\s*(\d+|one|two|three|four|five|six|seven|eight)\b/gi; let eom;
-    while ((eom = reEachOf.exec(sent)) !== null) {
-      const n = numFrom(eom[1]); const c = countResultsInSentence(sent);
-      if (c > 0 && c !== n) fail('comparison-claim', '"' + eom[0] + '" sentence quotes ' + c + ' result(s), not ' + n + ': "' + sent.trim() + '"');
-    }
-  });
-
-  // stamina predictions — never say whether an untried trip will suit.
-  STAMINA_PREDICTION_PHRASES.forEach(function(phrase) {
-    const re = new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i');
-    const idx = t.search(re);
-    if (idx !== -1) fail('stamina-prediction', phrase, idx);
-  });
-
-  // ordinal word as a finishing position only (same refined rule as Going).
-  const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
-  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
-
-  // Trip round 2, Change 6 — no-reason explanations are never allowed.
-  ['too sharp', "didn't stay", 'did not stay', 'outpaced', 'found it too far', 'found it too short'].forEach(function(phrase) {
-    const idx = t.search(new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i'));
-    if (idx !== -1) fail('reason-given', phrase, idx);
-  });
-
-  // banned-words — Trip round 3, Change 2: a banned word never fails when
-  // the exact occurrence is part of one of this horse's own course names
-  // (e.g. "market" inside "Market Rasen"). Matched by finding every
-  // occurrence of each known course name in the text first, then skipping
-  // any banned-word hit whose full span falls inside one of those spans;
-  // a banned word is still failed if it also occurs outside any course name.
-  const courseNames = (tripData && tripData.courses) || [];
-  const _courseSpans = [];
-  courseNames.forEach(function(c) {
+  // banned (betting) words — exempt when inside one of the horse's course names.
+  const spans = [];
+  ((opts && opts.courseNames) || []).forEach(function(c) {
     if (!c) return;
-    const re = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    let cm;
-    while ((cm = re.exec(t)) !== null) _courseSpans.push([cm.index, cm.index + cm[0].length]);
+    const re = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); let cm;
+    while ((cm = re.exec(t)) !== null) spans.push([cm.index, cm.index + cm[0].length]);
   });
-  function insideCourseName(idx, len) { return _courseSpans.some(function(sp) { return idx >= sp[0] && (idx + len) <= sp[1]; }); }
-  BANNED_WORDS.forEach(function(w) {
-    const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    let wm; let hitIdx = -1;
-    while ((wm = re.exec(t)) !== null) { if (!insideCourseName(wm.index, wm[0].length)) { hitIdx = wm.index; break; } }
-    if (hitIdx !== -1) fail('banned-words', w, hitIdx);
+  const insideCourse = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
+  BETTING_WORDS.forEach(function(w) {
+    const re = new RegExp(phraseRegex(w).source, 'gi'); let wm;
+    while ((wm = re.exec(t)) !== null) { if (!insideCourse(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } }
   });
 
-  // percent
-  const percentIdx2 = t.search(/%|per\s*cent|percent/i);
-  if (percentIdx2 !== -1) fail('percent', 'percentage language found', percentIdx2);
+  // today / future words
+  FUTURE_WORDS.forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('future-words', w, i); });
 
-  return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, trip: t };
-}
+  // career-claim phrases
+  CAREER_PHRASES.forEach(function(p) { const i = t.search(phraseRegex(p)); if (i !== -1) fail('career-claim', p, i); });
 
-// ── TRACK VALIDATOR ────────────────────────────────────────────────────
-// trackData: { groups, rollups, windowSize, disallowedCourses } — groups/
-// rollups are trackGroups()/trackRollups()'s own output on this horse's
-// Track window; disallowedCourses is every course name in the horse's FULL
-// history that falls OUTSIDE that window (course-not-in-block can only
-// catch one of those — same disclosed limit as validateGoing/validateTrip's
-// own count checks: a wholly invented course name, never run by this horse
-// at all, cannot be mechanically told apart from a real one without a
-// course gazetteer).
-function parseJsonTrack(text) {
-  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const a = t.indexOf('{'), b = t.lastIndexOf('}');
-  if (a > 0 || (b >= 0 && b < t.length - 1)) t = t.slice(a, b + 1);
-  try { return JSON.parse(t); } catch (e) { return null; }
-}
+  // reasons for a run
+  REASON_PHRASES.forEach(function(p) { const i = t.search(phraseRegex(p)); if (i !== -1) fail('reason-given', p, i); });
 
-const TRACK_BANNED_WORDS = ['today', 'this afternoon', 'tomorrow', 'should', 'ought', 'will suit', 'will appreciate', 'looks ideal', 'expect', 'going forward'];
-const TRACK_CAREER_PHRASES = ['career', 'career so far', 'career to date', 'throughout its career', 'throughout his career', 'throughout her career', 'in its career', 'in his career', 'in her career', 'whole career', 'entire career', 'so far', 'to date'];
-
-function validateTrack(text, trackData) {
-  const failures = []; const warnings = [];
-  let offsets = [];
-  const fail = function(check, detail, idx) {
-    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
-    failures.push({ check: check, detail: withSentence });
-  };
-
-  const parsed = parseJsonTrack(text);
-  if (!parsed || typeof parsed !== 'object' || typeof parsed.track !== 'string' || !parsed.track.trim()) {
-    fail('json', 'invalid JSON or missing "track" field');
-    return { ok: false, failures: failures, warnings: warnings, wordCount: 0, track: null };
-  }
-  const t = parsed.track;
-  offsets = sentenceOffsets(t);
-  const wc = words(t);
-  if (wc > 50) warnings.push({ section: 'track', words: wc, cap: 50, over: wc - 50 }); // warning only, never blocks storage
-
-  const groups = (trackData && trackData.groups) || [];
-  const windowSize = (trackData && trackData.windowSize) || null;
-  const disallowedCourses = (trackData && trackData.disallowedCourses) || [];
-  let m;
-
-  // banned-words
-  TRACK_BANNED_WORDS.forEach(function(w) {
-    const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    const idx = t.search(re);
-    if (idx !== -1) fail('banned-words', w, idx);
-  });
-
-  // career-claim
-  TRACK_CAREER_PHRASES.forEach(function(phrase) {
-    const re = new RegExp('\\b' + phrase.replace(/ /g, '\\s+') + '\\b', 'i');
-    const idx = t.search(re);
-    if (idx !== -1) fail('career-claim', phrase, idx);
-  });
-
-  // banned-format — same structure as validateGoing's banned-format check:
-  // N/M shorthand, malformed position phrasing, worst/weakest/poorest, and
-  // an ordinal word used as a finishing position.
+  // banned-format: N/M shorthand, malformed positions, worst/weakest/poorest,
+  // an ordinal word used as a position, percentages.
   const reSlash = /\b\d+\/\d+\b/g;
   while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
-
   const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
   while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
-
-  ['worst', 'weakest', 'poorest'].forEach(function(w) {
-    const idx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
-    if (idx !== -1) fail('banned-format', w, idx);
-  });
-
+  ['worst', 'weakest', 'poorest'].forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('banned-format', w, i); });
   const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
   while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
+  const pct = t.search(/%|per\s*cent|percent/i);
+  if (pct !== -1) fail('banned-format', 'percentage language', pct);
 
-  // count-not-given — reuses anyComboSum exactly, same as validateGoing/
-  // validateTrip. The pool of "printed same-kind figures" is every course's
-  // own run/win/place count plus the printed rollup lines' figures.
-  const counts = { run: {}, win: {}, place: {} };
-  const comboPool = { run: [], win: [], place: [] };
-  groups.forEach(function(g) {
-    counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true;
-    comboPool.run.push(g.runs); comboPool.win.push(g.wins); comboPool.place.push(g.places);
-  });
-  const rollups = (trackData && trackData.rollups) || { direction: {}, speed: {} };
-  Object.keys(rollups.direction || {}).concat(Object.keys(rollups.speed || {})).forEach(function(name) {
-    const f = (rollups.direction && rollups.direction[name]) || (rollups.speed && rollups.speed[name]);
-    if (f && f.runs > 0) {
-      counts.run[f.runs] = true; counts.win[f.wins] = true; counts.place[f.places] = true;
-      comboPool.run.push(f.runs); comboPool.win.push(f.wins); comboPool.place.push(f.places);
-    }
-  });
-  if (windowSize !== null) counts.run[windowSize] = true;
-  function comboMatches(kind, n) { return anyComboSum(comboPool[kind], n); }
-
-  const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
-  while ((m = reCount.exec(t)) !== null) {
-    const n = numFrom(m[1]);
-    const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0], m.index);
-  }
-  const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
-  while ((m = reOfRuns.exec(t)) !== null) {
-    const n = numFrom(m[1]), total = numFrom(m[2]);
-    const ok = (total === windowSize) || groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n); });
-    if (!ok) fail('count-not-given', m[0] + ' (N and M not from the same course)', m.index);
-  }
-  const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
-
-  // course-not-in-block
-  disallowedCourses.slice().sort(function(a, b) { return b.length - a.length; }).forEach(function(c) {
-    if (!c) return;
-    const re = new RegExp('\\b' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    const idx = t.search(re);
-    if (idx !== -1) fail('course-not-in-block', c, idx);
-  });
-
-  // percent
-  const percentIdx3 = t.search(/%|per\s*cent|percent/i);
-  if (percentIdx3 !== -1) fail('percent', 'percentage language found', percentIdx3);
-
-  return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, track: t };
+  return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, text: t };
 }
 
 module.exports = {
+  // data layer
   GOING_SCALE: GOING_SCALE,
   sectionWindow: sectionWindow,
   classifyGoing: classifyGoing,
+  compactKey: compactKey,
   goingGroups: goingGroups,
   goingNeverRun: goingNeverRun,
   goingNeverRunAW: goingNeverRunAW,
-  buildGoingBlock: buildGoingBlock,
-  buildEnvelope: buildEnvelope,
-  buildGoingEnvelope: buildGoingEnvelope,
-  NO_RUNS_TEMPLATE: NO_RUNS_TEMPLATE,
-  FORM_SECTIONS_PROMPT: FORM_SECTIONS_PROMPT,
-  MAX_TOKENS: MAX_TOKENS,
-  validateGoing: validateGoing,
-  parseJsonGoing: parseJsonGoing,
-  compactKey: compactKey,
-  // Trip + shared prompt blocks (this task) — none of the above Going
-  // exports changed.
+  sumFigures: sumFigures,
   parseDistanceFurlongs: parseDistanceFurlongs,
   furlongsLabel: furlongsLabel,
-  tripChangeMarker: tripChangeMarker,
-  courseNamesIn: courseNamesIn,
   tripGroups: tripGroups,
-  staminaLines: staminaLines,
   staminaFacts: staminaFacts,
-  buildTripBlock: buildTripBlock,
-  buildTripEnvelope: buildTripEnvelope,
-  NO_RUNS_TRIP_TEMPLATE: NO_RUNS_TRIP_TEMPLATE,
-  SHARED_RULES: SHARED_RULES,
-  GOING_SECTION: GOING_SECTION,
-  TRIP_SECTION: TRIP_SECTION,
-  TRIP_PROMPT: TRIP_PROMPT,
-  TRIP_MAX_TOKENS: TRIP_MAX_TOKENS,
-  TRIP_SECOND_CHECK_PROMPT: TRIP_SECOND_CHECK_PROMPT,
-  TRIP_SECOND_CHECK_MAX_TOKENS: TRIP_SECOND_CHECK_MAX_TOKENS,
-  validateTrip: validateTrip,
-  parseJsonTrip: parseJsonTrip,
-  // Change C — Going + Trip combined, one call per horse.
-  GOINGTRIP_PROMPT: GOINGTRIP_PROMPT,
-  GOINGTRIP_MAX_TOKENS: GOINGTRIP_MAX_TOKENS,
-  GOINGTRIP_SECOND_CHECK_PROMPT: GOINGTRIP_SECOND_CHECK_PROMPT,
-  GOINGTRIP_SECOND_CHECK_MAX_TOKENS: GOINGTRIP_SECOND_CHECK_MAX_TOKENS,
-  // Refine (post-2026-10-05-run fixes)
-  tripTotalsLines: tripTotalsLines,
-  sumGoingFigures: sumGoingFigures,
-  // Track build — joins Going+Trip in the same call.
   COURSE_FACTS: COURSE_FACTS,
   trackWindowRows: trackWindowRows,
-  rawCourseNamesIn: rawCourseNamesIn,
-  trackGroups: trackGroups,
+  courseNamesForExemption: courseNamesForExemption,
   stripIreSuffix: stripIreSuffix,
+  trackGroups: trackGroups,
   trackRollups: trackRollups,
-  buildTrackBlock: buildTrackBlock,
+  // fact assemblers
+  buildGoingFacts: buildGoingFacts,
+  buildTripFacts: buildTripFacts,
+  buildTrackFacts: buildTrackFacts,
+  buildFactsEnvelope: buildFactsEnvelope,
+  clearlyBeats: clearlyBeats,
+  isThin: isThin,
+  // templates
+  NO_RUNS_TEMPLATE: NO_RUNS_TEMPLATE,
+  NO_RUNS_TRIP_TEMPLATE: NO_RUNS_TRIP_TEMPLATE,
   NO_RUNS_TRACK_TEMPLATE: NO_RUNS_TRACK_TEMPLATE,
-  TRACK_SECTION: TRACK_SECTION,
-  validateTrack: validateTrack,
-  parseJsonTrack: parseJsonTrack
+  // prompt
+  GOINGTRIP_PROMPT: GOINGTRIP_PROMPT,
+  GOINGTRIP_MAX_TOKENS: GOINGTRIP_MAX_TOKENS,
+  // validator
+  parseJsonSections: parseJsonSections,
+  validateSection: validateSection,
+  numberTokens: numberTokens,
+  words: words
 };
