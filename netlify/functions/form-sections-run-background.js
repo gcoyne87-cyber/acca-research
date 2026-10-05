@@ -326,6 +326,47 @@ async function storeGoingTrip(h, win, goingText, tripText, trackText) {
   return record;
 }
 
+// Telemetry (Part A) — every code-check failure and every second-check
+// problem from the goingtrip pipeline is appended here, independent of the
+// worklist and never touched by the lock/worklist-clearing stop logic, so a
+// stopped or completed run's failure detail survives for diagnosis.
+// Known limitation: this is a GET-then-SET append, since the E.redisGet/
+// E.redisSet helpers have no native list-push op — two horses finishing in
+// the same instant (CONCURRENCY is only 3) could race and lose an entry.
+// Acceptable for diagnostic data; not used for anything correctness-critical.
+async function appendTelemetry(date, entries) {
+  if (!entries || !entries.length) return;
+  try {
+    const key = 'form-sections:telemetry:' + date;
+    const existing = await E.redisGet(key);
+    const arr = Array.isArray(existing) ? existing : [];
+    await E.redisSet(key, arr.concat(entries));
+  } catch (e) {}
+}
+// trip:comparison-claim's fail() detail already embeds the matched field and
+// extracted distance as `"<field> <value>" ...` (see validateTrip section
+// (d) in lib/form-sections.js) — parsed back out here rather than touching
+// that validator, since Part A is scoped to this runner file only. The full
+// per-type stamina lines are attached alongside so a reviewer can judge the
+// claim against the same text the validator itself compared against.
+function telemetryFromFailures(h, date, section, failures, stage, staminaLinesText) {
+  return (failures || []).map(function(f) {
+    const entry = { date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: section, check: f.check, detail: f.detail, stage: stage };
+    if (section === 'trip' && f.check === 'comparison-claim') {
+      entry.staminaLines = staminaLinesText || null;
+      const m = /^"([a-zA-Z]+)\s+([^"]+)"/.exec(f.detail || '');
+      entry.matchedField = m ? m[1] : null;
+      entry.extractedValue = m ? m[2] : null;
+    }
+    return entry;
+  });
+}
+function telemetryFromProblems(h, date, problems, stage) {
+  return (problems || []).map(function(p) {
+    return { date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: p.section, check: 'second-check', sentence: p.sentence, detail: p.reason, stage: stage };
+  });
+}
+
 async function processHorseTrip(h, date) {
   const rows = await E.redisGet('form:history:' + h.horse_id + ':' + date);
   const allRows = Array.isArray(rows) ? rows : [];
@@ -453,6 +494,9 @@ async function processHorseGoingTrip(h, date) {
   const tripGroupsList = F.tripGroups(win.rows, fullSorted);
   const tripData = { groups: tripGroupsList, windowSize: win.size, courses: F.courseNamesIn(win.rows) };
   const tripBlockText = 'TRIP DATA\n' + F.buildTripBlock(tripGroupsList);
+  // Telemetry (Part A) — this horse's full per-type stamina lines, attached
+  // to any trip:comparison-claim telemetry entry below.
+  const tripStaminaLinesText = F.staminaLines(tripGroupsList).join('\n');
 
   // Track build — own window (last 15 runs / 24 months, wall-clock),
   // independent of win: whenever win.size > 0 it is almost always non-
@@ -525,6 +569,10 @@ async function processHorseGoingTrip(h, date) {
   let vK = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
   let attempt = 1;
   const codeCheckFirstFailures = { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures, track: (trackIsTemplate || vK.ok) ? null : vK.failures };
+  await appendTelemetry(date, []
+    .concat(telemetryFromFailures(h, date, 'going', codeCheckFirstFailures.going, 'write1'))
+    .concat(telemetryFromFailures(h, date, 'trip', codeCheckFirstFailures.trip, 'write1', tripStaminaLinesText))
+    .concat(telemetryFromFailures(h, date, 'track', codeCheckFirstFailures.track, 'write1')));
 
   if (!vG.ok || !vT.ok || (!trackIsTemplate && !vK.ok)) {
     const notes = [];
@@ -539,7 +587,12 @@ async function processHorseGoingTrip(h, date) {
     vT = F.validateTrip(w.text, tripData);
     vK = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
     if (!vG.ok || !vT.ok || (!trackIsTemplate && !vK.ok)) {
-      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures, track: (trackIsTemplate || vK.ok) ? null : vK.failures }, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
+      const codeCheckRetryFailures = { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures, track: (trackIsTemplate || vK.ok) ? null : vK.failures };
+      await appendTelemetry(date, []
+        .concat(telemetryFromFailures(h, date, 'going', codeCheckRetryFailures.going, 'retry'))
+        .concat(telemetryFromFailures(h, date, 'trip', codeCheckRetryFailures.trip, 'retry', tripStaminaLinesText))
+        .concat(telemetryFromFailures(h, date, 'track', codeCheckRetryFailures.track, 'retry')));
+      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: codeCheckRetryFailures, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
     }
   }
 
@@ -561,6 +614,7 @@ async function processHorseGoingTrip(h, date) {
   // re-check once. Whichever section still fails after that gets nothing
   // stored for it; the other is stored if it passed.
   const problems = sc1.problems || [];
+  await appendTelemetry(date, telemetryFromProblems(h, date, problems, 'secondCheck1'));
   const goingProblems = problems.filter(function(p) { return p.section === 'going'; });
   const tripProblems = problems.filter(function(p) { return p.section === 'trip'; });
   // Track build — trackIsTemplate horses never had a TRACK paragraph in the
@@ -595,6 +649,10 @@ async function processHorseGoingTrip(h, date) {
   const vG2 = F.validateGoing(w.text, goingBlock);
   const vT2 = F.validateTrip(w.text, tripData);
   const vK2 = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
+  await appendTelemetry(date, []
+    .concat(telemetryFromFailures(h, date, 'going', goingProblems.length && !vG2.ok ? vG2.failures : null, 'regenCodeCheck'))
+    .concat(telemetryFromFailures(h, date, 'trip', tripProblems.length && !vT2.ok ? vT2.failures : null, 'regenCodeCheck', tripStaminaLinesText))
+    .concat(telemetryFromFailures(h, date, 'track', (!trackIsTemplate && trackProblems.length && !vK2.ok) ? vK2.failures : null, 'regenCodeCheck')));
   // Only trust the rewrite for a section that actually had a problem; the
   // other section keeps its already-passing text regardless of what the
   // model returned for it this time. Track keeps its fixed template when
@@ -616,6 +674,7 @@ async function processHorseGoingTrip(h, date) {
       finalTrack = trackIsTemplate ? candidateTrack : (trackProblems.length ? null : candidateTrack);
     } else {
       sc2Supported = sc2.supported; sc2Problems = sc2.problems;
+      await appendTelemetry(date, telemetryFromProblems(h, date, sc2Problems, 'secondCheckRegen'));
       const stillBadGoing = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'going'; });
       const stillBadTrip = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'trip'; });
       const stillBadTrack = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'track'; });

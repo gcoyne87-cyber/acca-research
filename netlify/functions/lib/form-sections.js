@@ -704,19 +704,37 @@ const TRIP_SECOND_CHECK_MAX_TOKENS = 300;
 // one combined JSON output, one combined second check covering both texts
 // against both data blocks.
 // Track build — TRACK_SECTION and a third "track" output field join this
-// same static block. GOINGTRIP_MAX_TOKENS raised 400 -> 550 (not in the
-// task's own numbered list — a self-initiated addition, flagged in the
-// build report): the writer now has to fit three sections' worth of prose
-// in one completion instead of two, and 400 left no realistic headroom for
-// a third 35-50 word section on top of Going+Trip's own 30-45-word pair.
+// same static block.
 const GOINGTRIP_PROMPT = SHARED_RULES + "\n\n" + GOING_SECTION + "\n\n" + TRIP_SECTION + "\n\n" + TRACK_SECTION + "\n\nOUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}";
-const GOINGTRIP_MAX_TOKENS = 550;
+// Fix 1 (post-2026-10-05 full-card run) — 550 still wasn't enough headroom:
+// the live run hit 26 identical going/trip/track "json" failures (the exact
+// same count across all three fields is the truncation signature — the
+// completion was cut off before the JSON closed). Three 35-50 word sections
+// plus JSON escaping need more room than 550 tokens gives.
+const GOINGTRIP_MAX_TOKENS = 900;
 // Refined (post-2026-10-05-run fixes) — gives the second check the same
 // going scale the writer prompt has (so it can verify faster/softer
 // comparisons), explicitly admits Totals/stamina/WINDOW numbers, and adds a
 // self-review step before answering.
 // Track build — extended to a third TRACK paragraph/data block and section.
-const GOINGTRIP_SECOND_CHECK_PROMPT = "You check three short paragraphs about a racehorse — a GOING paragraph, a TRIP paragraph and a TRACK paragraph — each against its own data block below. Read every sentence of all three paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison and any statement about where the horse runs well or badly. Numbers may come from any printed line, including the Totals, stamina, rollup and WINDOW lines. For GOING sentences, this scale orders ground from fastest to slowest — turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy; all-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow — so a sentence calling one going faster or softer than another is supported when this scale shows it and both are on the same surface. For TRACK sentences, judge a course-character description (direction, speed, contour) against the character printed for that course in the TRACK DATA block; a course marked '(course character unknown)', or not printed in the TRACK DATA block at all, supports no claim about its character. A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP or TRACK data, a TRIP sentence against the GOING or TRACK data, or a TRACK sentence against the GOING or TRIP data. A sentence that claims or implies anything about the horse's entire career (rather than just the runs in this data) is never supported. Ignore style and length. Do not suggest rewrites. Before answering, re-read each problem you have listed: if on re-reading the sentence is actually supported, remove it from the list. If no problems remain, return supported true. Return strict JSON only: {\"supported\": true} if every sentence in all paragraphs given is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\"|\"track\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry. If no TRACK paragraph is given below, judge only the GOING and TRIP paragraphs.";
+// Fix 2 (post-2026-10-05 full-card run) — the Track guidance below used to
+// judge a course-character description against the character STRING
+// printed in the TRACK DATA block, which directly contradicted TRACK_SECTION
+// (the writer prompt, untouched by this fix): that prompt tells the model to
+// paraphrase vividly ("big, galloping tracks where horses can stride out")
+// and never write bare labels. The live run's own evidence: the model wrote
+// "...where horses can stride out" for Worcester (TRACK_SECTION's own
+// example phrase) and the checker flagged it as unsupported because those
+// words aren't in the data block — 113 of 192 horses hit a Track problem,
+// the dominant cost/retry driver. Rewritten to judge the FACTS (figures,
+// positions, course names, which courses share a trait) and only flag a
+// character description when it contradicts the printed character, not
+// when it merely restates it in different words. Also strengthens the
+// self-review instruction (applies to all three sections): several live
+// problems had reasoning text that itself concluded "supported" yet still
+// landed in the problems array — the old "if... remove it" phrasing wasn't
+// forceful enough to stop that contradiction.
+const GOINGTRIP_SECOND_CHECK_PROMPT = "You check three short paragraphs about a racehorse — a GOING paragraph, a TRIP paragraph and a TRACK paragraph — each against its own data block below. Read every sentence of all three paragraphs. A sentence is supported only if every fact in it can be read directly from its OWN data block: each position, count, going or distance, course, race type, comparison and any statement about where the horse runs well or badly. Numbers may come from any printed line, including the Totals, stamina, rollup and WINDOW lines. For GOING sentences, this scale orders ground from fastest to slowest — turf: Hard, Firm, Good to Firm, Good, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft, Soft to Heavy, Heavy; all-weather: Fast, Standard to Fast, Standard, Standard to Slow, Slow — so a sentence calling one going faster or softer than another is supported when this scale shows it and both are on the same surface. For TRACK sentences: the TRACK DATA block states each course's character (direction, tight or galloping, contour). A sentence describing that character in its own words — e.g. calling a galloping course 'a big, open track where horses can stride out', or a tight course 'a sharp, turning track' — is SUPPORTED when the description is consistent with the printed character. Judge the facts (runs, wins, places, positions, course names, which courses share a characteristic), not the wording of the description. Flag a TRACK sentence only when a number, position or course is wrong, when a pattern is claimed from a single run, or when the description contradicts the printed character (e.g. calling a tight course galloping). A summary or judgement is supported only if the figures in that data block clearly show it. Never check a GOING sentence against the TRIP or TRACK data, a TRIP sentence against the GOING or TRACK data, or a TRACK sentence against the GOING or TRIP data. A sentence that claims or implies anything about the horse's entire career (rather than just the runs in this data) is never supported. Ignore style and length. Do not suggest rewrites. Before calling the tool, re-read each problem you have drafted. If your own reasoning concludes the sentence is supported, you MUST NOT include that entry in the problems array. An entry whose reason ends by accepting the sentence is a contradiction and must be omitted. Only entries you still believe are genuine errors after re-reading go in the array. If no problems remain, return supported true. Return strict JSON only: {\"supported\": true} if every sentence in all paragraphs given is supported, or {\"supported\": false, \"problems\": [{\"section\": \"going\"|\"trip\"|\"track\", \"sentence\": \"...\", \"reason\": \"...\"}]} if not. When supported is false, problems must list at least one entry. If no TRACK paragraph is given below, judge only the GOING and TRIP paragraphs.";
 const GOINGTRIP_SECOND_CHECK_MAX_TOKENS = 1400;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
