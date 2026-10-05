@@ -433,9 +433,16 @@ function staminaFacts(groups) {
     return { type: type, totalRuns: totalRuns, longestWon: longestWon, longestPlaced: longestPlaced, longestTried: longestTried, shortestTried: shortestTried };
   });
 }
+// Fix 1a (post-2026-10-06 probe #2) — "none" printed bare ("longest won
+// none") was being glossed over: the model repeatedly cited a distance for
+// a field that has no value at all, using the longestTried figure for both
+// longestWon and longestPlaced on a horse with zero wins/places. Printed
+// unmissably instead, so the writer (and the checker) can't read past it.
 function staminaLines(groups) {
   return staminaFacts(groups).map(function(f) {
-    return f.type + ': ' + f.totalRuns + ' run' + (f.totalRuns === 1 ? '' : 's') + '; longest won ' + f.longestWon + '; longest placed ' + f.longestPlaced + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.';
+    const wonClause = f.longestWon === 'none' ? 'longest won: NONE — no wins at any trip' : 'longest won ' + f.longestWon;
+    const placedClause = f.longestPlaced === 'none' ? 'longest placed: NONE — no places at any trip' : 'longest placed ' + f.longestPlaced;
+    return f.type + ': ' + f.totalRuns + ' run' + (f.totalRuns === 1 ? '' : 's') + '; ' + wonClause + '; ' + placedClause + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.';
   });
 }
 
@@ -695,6 +702,7 @@ const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and 
 "If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
 "Never say whether the horse will or won't stay a distance it has not run. Only mention a distance the horse has not run when it genuinely matters to the read; do not end with a statement about untested distances by default.\n" +
 "When citing the stamina line, copy each field name with its own printed value exactly — longest won, longest placed, longest tried and shortest tried are four different figures; never attribute one field's value to another.\n" +
+"If the stamina line shows NONE for longest won or longest placed, the horse has never won or never placed in this window — never give those fields a distance, and never imply a win or place exists. State the absence plainly instead.\n" +
 "Mention only distances in the data.\n" +
 "30 to 45 words.";
 
@@ -815,9 +823,35 @@ function anyComboSum(values, target) {
   return possible.indexOf(target) !== -1;
 }
 
+// Fix 3 (post-2026-10-06 probe #2) — every fail() across all three
+// validators embeds the full sentence it judged, via these two shared
+// helpers, so a probe can classify genuine-vs-misfire for 100% of
+// failures instead of being blocked on checks (a)/(b)/(e) — those used to
+// log only a short matched phrase, leaving the surrounding claim invisible.
+function sentenceOffsets(t) {
+  const parts = String(t || '').split(/(?<=[.!?])\s+/).filter(function(s) { return s; });
+  let pos = 0;
+  return parts.map(function(s) {
+    const idx = t.indexOf(s, pos);
+    const start = idx === -1 ? pos : idx;
+    pos = start + s.length;
+    return { text: s, start: start, end: start + s.length };
+  });
+}
+function sentenceAt(offsets, idx) {
+  for (let i = 0; i < offsets.length; i++) {
+    if (idx >= offsets[i].start && idx < offsets[i].end) return offsets[i].text.trim();
+  }
+  return offsets.length ? offsets[offsets.length - 1].text.trim() : '';
+}
+
 function validateGoing(text, block) {
   const failures = []; const warnings = [];
-  const fail = function(check, detail) { failures.push({ check: check, detail: detail }); };
+  let offsets = [];
+  const fail = function(check, detail, idx) {
+    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
+    failures.push({ check: check, detail: withSentence });
+  };
 
   const parsed = parseJsonGoing(text);
   if (!parsed || typeof parsed !== 'object' || typeof parsed.going !== 'string' || !parsed.going.trim()) {
@@ -825,6 +859,7 @@ function validateGoing(text, block) {
     return { ok: false, failures: failures, warnings: warnings, wordCount: 0, going: null };
   }
   const t = parsed.going;
+  offsets = sentenceOffsets(t);
   const wc = words(t);
   if (wc > 45) warnings.push({ section: 'going', words: wc, cap: 45, over: wc - 45 }); // warning only, never blocks storage
 
@@ -839,7 +874,7 @@ function validateGoing(text, block) {
   groups.forEach(function(g) { g.results.forEach(function(r) { const m = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (m) pairs[m[1] + '|' + m[2]] = true; }); });
   let m;
   const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
-  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0]); }
+  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0], m.index); }
 
   // going-not-in-record: any canonical scale name mentioned must be in the
   // block or EITHER never-run line (turf or all-weather) — fix (a).
@@ -849,7 +884,7 @@ function validateGoing(text, block) {
   neverRunAW.names.forEach(function(n) { allowed[n.toLowerCase()] = true; });
   ALL_SCALE_NAMES.slice().sort(function(a, b) { return b.length - a.length; }).forEach(function(name) {
     const re = new RegExp('\\b' + name.replace(/ /g, '\\s+') + '\\b', 'gi'); let mm;
-    while ((mm = re.exec(t)) !== null) { if (!allowed[name.toLowerCase()]) fail('going-not-in-record', mm[0]); }
+    while ((mm = re.exec(t)) !== null) { if (!allowed[name.toLowerCase()]) fail('going-not-in-record', mm[0], mm.index); }
   });
 
   // count-not-given — fix (b). Four parts: (1) "N runs/wins/places" and
@@ -896,37 +931,38 @@ function validateGoing(text, block) {
   while ((m = reCount.exec(t)) !== null) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0]);
+    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0], m.index);
   }
   const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
-  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0]); }
+  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0], m.index); }
 
   const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
   while ((m = reOfRuns.exec(t)) !== null) {
     const n = numFrom(m[1]), total = numFrom(m[2]);
     const sameGoing = (total === windowSize && (n === windowSize || matchesAnyGoingFigure(n))) ||
       groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
-    if (!sameGoing) fail('count-not-given', m[0] + ' (N and M not from the same going)');
+    if (!sameGoing) fail('count-not-given', m[0] + ' (N and M not from the same going)', m.index);
   }
 
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
 
   const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
-  if (/\bboth\b/i.test(t) && !matchesAnyGoingFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
+  const bothIdx = t.search(/\bboth\b/i);
+  if (bothIdx !== -1 && !matchesAnyGoingFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)', bothIdx);
   const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
 
   // banned-format: N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
-  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
+  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
 
   // Change B.4 — malformed position phrasing: rule 4 requires every position
   // as "Nth of M"; catch near-miss phrasings that skip the ordinal, e.g.
   // "wins of 19" or "pulled up in 12".
   const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
-  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")');
+  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
 
   // Change B.6 — best/worst/last, mirroring the Trip validator's own checks.
   // "best" directly attached to a position must be one of the goings' own
@@ -934,19 +970,25 @@ function validateGoing(text, block) {
   const bestPairs = {};
   groups.forEach(function(g) { if (g.best) { const bm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(g.best); if (bm) bestPairs[bm[1] + '|' + bm[2]] = true; } });
   const reBestAttached = /\bbest\b[^.]{0,25}?\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/gi;
-  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0]); }
+  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0], m.index); }
   ['best overall', 'best run in the window', 'best of the window', 'best in the window', 'career-best', 'best of his career', "best of her career"].forEach(function(phrase) {
-    if (new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i').test(t)) fail('best-mislabelled', phrase);
+    const phraseIdx = t.search(new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i'));
+    if (phraseIdx !== -1) fail('best-mislabelled', phrase, phraseIdx);
   });
   // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
-  ['worst', 'weakest', 'poorest'].forEach(function(w) { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail('banned-format', w); });
+  ['worst', 'weakest', 'poorest'].forEach(function(w) {
+    const wIdx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
+    if (wIdx !== -1) fail('banned-format', w, wIdx);
+  });
   // "last" as a position claim must be a genuine last-of-field result.
   const lastOfFieldSizes = {};
   groups.forEach(function(g) { g.results.forEach(function(r) { const rm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (rm && rm[1] === rm[2]) lastOfFieldSizes[rm[2]] = true; }); });
   const reLastOf = /\blast\s+of\s+(\d+)\b/gi;
-  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0]); }
-  if (/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i.test(t)) fail('last-mislabelled', 'count of last-place finishes');
-  if (/\btwice\s+last\b|\bonce\s+last\b/i.test(t)) fail('last-mislabelled', 'count of last finishes');
+  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0], m.index); }
+  const lastPlaceIdx = t.search(/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i);
+  if (lastPlaceIdx !== -1) fail('last-mislabelled', 'count of last-place finishes', lastPlaceIdx);
+  const twiceOnceLastIdx = t.search(/\btwice\s+last\b|\bonce\s+last\b/i);
+  if (twiceOnceLastIdx !== -1) fail('last-mislabelled', 'count of last finishes', twiceOnceLastIdx);
 
   // ordinal words as a finishing position only — fix (c). Fails only when an
   // ordinal is preceded by a position-indicating word (finished/was/came/
@@ -959,16 +1001,18 @@ function validateGoing(text, block) {
   // be missed — deliberately traded for not flagging descriptive ordinals,
   // per this round's explicit instruction.
   const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
-  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)');
+  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
 
   // banned-words
   BANNED_WORDS.forEach(function(w) {
     const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    if (re.test(t)) fail('banned-words', w);
+    const wm = re.exec(t);
+    if (wm) fail('banned-words', w, wm.index);
   });
 
   // percent
-  if (/%|per\s*cent|percent/i.test(t)) fail('percent', 'percentage language found');
+  const percentIdx = t.search(/%|per\s*cent|percent/i);
+  if (percentIdx !== -1) fail('percent', 'percentage language found', percentIdx);
 
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, going: t };
 }
@@ -989,7 +1033,11 @@ function parseJsonTrip(text) {
 
 function validateTrip(text, tripData) {
   const failures = []; const warnings = [];
-  const fail = function(check, detail) { failures.push({ check: check, detail: detail }); };
+  let offsets = [];
+  const fail = function(check, detail, idx) {
+    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
+    failures.push({ check: check, detail: withSentence });
+  };
 
   const parsed = parseJsonTrip(text);
   if (!parsed || typeof parsed !== 'object' || typeof parsed.trip !== 'string' || !parsed.trip.trim()) {
@@ -997,6 +1045,7 @@ function validateTrip(text, tripData) {
     return { ok: false, failures: failures, warnings: warnings, wordCount: 0, trip: null };
   }
   const t = parsed.trip;
+  offsets = sentenceOffsets(t);
   const wc = words(t);
   if (wc > 45) warnings.push({ section: 'trip', words: wc, cap: 45, over: wc - 45 }); // warning only, never blocks storage
 
@@ -1008,7 +1057,7 @@ function validateTrip(text, tripData) {
   groups.forEach(function(g) { g.results.forEach(function(r) { const mm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (mm) pairs[mm[1] + '|' + mm[2]] = true; }); });
   let m;
   const reNth = /\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/g;
-  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0]); }
+  while ((m = reNth.exec(t)) !== null) { if (!pairs[m[1] + '|' + m[2]]) fail('position-not-in-record', m[0], m.index); }
 
   // trip-not-in-record — Trip round 3, Change 1: back to short form, same
   // check as round 1. Any distance token (7f, 1m, 1m2f, 2m4f, ...) must be
@@ -1018,8 +1067,9 @@ function validateTrip(text, tripData) {
   const allowedDist = {};
   groups.forEach(function(g) { allowedDist[g.distanceLabel.toLowerCase()] = true; });
   const reDist = /\b\d+m(?:\d+f)?\b|\b\d+f\b/gi; let mm;
-  while ((mm = reDist.exec(t)) !== null) { if (!allowedDist[mm[0].toLowerCase()]) fail('trip-not-in-record', mm[0]); }
-  if (/\bmiles?\b|\bfurlongs?\b/i.test(t)) fail('trip-not-in-record', 'distance given in words, not data notation');
+  while ((mm = reDist.exec(t)) !== null) { if (!allowedDist[mm[0].toLowerCase()]) fail('trip-not-in-record', mm[0], mm.index); }
+  const milesWordsIdx = t.search(/\bmiles?\b|\bfurlongs?\b/i);
+  if (milesWordsIdx !== -1) fail('trip-not-in-record', 'distance given in words, not data notation', milesWordsIdx);
 
   // "best" directly attached to a position ("best of 2nd of 5", "best run,
   // 2nd of 5", "best effort was 2nd of 5") must be one of the groups' own
@@ -1028,13 +1078,17 @@ function validateTrip(text, tripData) {
   const bestPairs = {};
   groups.forEach(function(g) { if (g.best) { const bm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(g.best); if (bm) bestPairs[bm[1] + '|' + bm[2]] = true; } });
   const reBestAttached = /\bbest\b[^.]{0,25}?\b(\d+)(?:st|nd|rd|th)\s+of\s+(\d+)\b/gi;
-  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0]); }
+  while ((m = reBestAttached.exec(t)) !== null) { if (!bestPairs[m[1] + '|' + m[2]]) fail('best-mislabelled', m[0], m.index); }
   ['best overall', 'best run in the window', 'best of the window', 'best in the window', 'career-best', 'best of his career', "best of her career"].forEach(function(phrase) {
-    if (new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i').test(t)) fail('best-mislabelled', phrase);
+    const phraseIdx = t.search(new RegExp('\\b' + phrase.replace(/[- ]/g, '[- ]') + '\\b', 'i'));
+    if (phraseIdx !== -1) fail('best-mislabelled', phrase, phraseIdx);
   });
 
   // Refine Fix 5.1 — "worst"/"weakest"/"poorest" are never allowed.
-  ['worst', 'weakest', 'poorest'].forEach(function(w) { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail('banned-format', w); });
+  ['worst', 'weakest', 'poorest'].forEach(function(w) {
+    const wIdx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
+    if (wIdx !== -1) fail('banned-format', w, wIdx);
+  });
 
   // Trip round 2, Change 5: "last" as a position claim must be a genuine
   // last-of-field result in the data (pos === ran for some row); a count of
@@ -1042,9 +1096,11 @@ function validateTrip(text, tripData) {
   const lastOfFieldSizes = {};
   groups.forEach(function(g) { g.results.forEach(function(r) { const rm = /^(\d+)(?:st|nd|rd|th) of (\d+)/.exec(r); if (rm && rm[1] === rm[2]) lastOfFieldSizes[rm[2]] = true; }); });
   const reLastOf = /\blast\s+of\s+(\d+)\b/gi;
-  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0]); }
-  if (/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i.test(t)) fail('last-mislabelled', 'count of last-place finishes');
-  if (/\btwice\s+last\b|\bonce\s+last\b/i.test(t)) fail('last-mislabelled', 'count of last finishes');
+  while ((m = reLastOf.exec(t)) !== null) { if (!lastOfFieldSizes[m[1]]) fail('last-mislabelled', m[0], m.index); }
+  const lastPlaceIdx2 = t.search(/\b(?:\d+|one|two|three|four|five|once|twice)\s+last-place\s+finish(?:es)?\b/i);
+  if (lastPlaceIdx2 !== -1) fail('last-mislabelled', 'count of last-place finishes', lastPlaceIdx2);
+  const twiceOnceLastIdx2 = t.search(/\btwice\s+last\b|\bonce\s+last\b/i);
+  if (twiceOnceLastIdx2 !== -1) fail('last-mislabelled', 'count of last finishes', twiceOnceLastIdx2);
 
   // counts — "N run(s)/win(s)/place(s)" and "N in the top three": a single
   // group's own figure, or the window size. Trip round 3, Change 4: a run
@@ -1091,11 +1147,11 @@ function validateTrip(text, tripData) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
     if (kind === 'run') {
-      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0], m.index);
     } else if (kind === 'win') {
-      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n) && !comboMatches('win', n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n) && !comboMatches('win', n)) fail('count-not-given', m[0], m.index);
     } else {
-      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n) && !comboMatches('place', n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n) && !comboMatches('place', n)) fail('count-not-given', m[0], m.index);
     }
   }
   // "N {race type} runs/starts" — must match that type's own total (or a
@@ -1103,10 +1159,10 @@ function validateTrip(text, tripData) {
   const reTypeCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+' + TYPE_WORD_SRC + '\\s+(runs?|starts?)\\b', 'gi');
   while ((m = reTypeCount.exec(t)) !== null) {
     const n = numFrom(m[1]); const typeKey = typeKeyFromWord(m[2]);
-    if (n !== windowSize && typeTotals[typeKey] !== n && !counts.run[n]) fail('count-not-given', m[0] + ' (does not match the ' + typeKey + ' total)');
+    if (n !== windowSize && typeTotals[typeKey] !== n && !counts.run[n]) fail('count-not-given', m[0] + ' (does not match the ' + typeKey + ' total)', m.index);
   }
   const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
-  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0]); }
+  while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0], m.index); }
 
   // "N of M runs/outings/starts/races", optionally naming a race type — Trip
   // round 3, Change 4: "N of M" is valid when both numbers belong to the
@@ -1121,29 +1177,30 @@ function validateTrip(text, tripData) {
     } else {
       ok = groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n || g.topThree === n); });
     }
-    if (!ok) fail('count-not-given', m[0] + (typeKey ? ' (N and M not consistent with the ' + typeKey + ' total)' : ' (N and M not from the same group)'));
+    if (!ok) fail('count-not-given', m[0] + (typeKey ? ' (N and M not consistent with the ' + typeKey + ' total)' : ' (N and M not from the same group)'), m.index);
   }
 
   // hidden totals — standalone "N outings/starts/races", "all N", bare
   // "both" (=2), "other N" — a single group's figure, a race type's total,
   // or the window size.
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
   const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
-  if (/\bboth\b/i.test(t) && !matchesAnyGroupFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
+  const bothIdx2 = t.search(/\bboth\b/i);
+  if (bothIdx2 !== -1 && !matchesAnyGroupFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)', bothIdx2);
   const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)', m.index); }
 
   // N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
-  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
+  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
 
   // Change B.4 — malformed position phrasing: rule 4 requires every position
   // as "Nth of M"; catch near-miss phrasings that skip the ordinal, e.g.
   // "wins of 19" or "pulled up in 12".
   const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
-  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")');
+  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
 
   // Trip round 3, Change 5 — comparison-claim checks. Where a sentence
   // names a race type (Flat, NH Flat, hurdle(s), chase(s), fences), each
@@ -1176,7 +1233,7 @@ function validateTrip(text, tripData) {
     const sent = findSentence(re);
     if (!sent) return;
     const scope = groupsInScope(sent);
-    if (!scope.length || scope.some(function(g) { return g.runs !== 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has exactly 1 run');
+    if (!scope.length || scope.some(function(g) { return g.runs !== 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has exactly 1 run: "' + sent.trim() + '"');
   });
 
   // (b) "top three/3 at every trip" and its negation — every group in scope
@@ -1186,14 +1243,14 @@ function validateTrip(text, tripData) {
     const sent = findSentence(re);
     if (!sent) return;
     const scope = groupsInScope(sent);
-    if (!scope.length || scope.some(function(g) { return g.topThree < 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has a top-three finish');
+    if (!scope.length || scope.some(function(g) { return g.topThree < 1; })) fail('comparison-claim', '"' + phrase + '" — not every group in scope has a top-three finish: "' + sent.trim() + '"');
   });
   ['not reached the top three at any', 'nothing in the top three at any', 'no top-three finish at any'].forEach(function(phrase) {
     const re = phraseRe(phrase);
     const sent = findSentence(re);
     if (!sent) return;
     const scope = groupsInScope(sent);
-    if (scope.some(function(g) { return g.topThree > 0; })) fail('comparison-claim', '"' + phrase + '" — some group in scope has a top-three finish');
+    if (scope.some(function(g) { return g.topThree > 0; })) fail('comparison-claim', '"' + phrase + '" — some group in scope has a top-three finish: "' + sent.trim() + '"');
   });
 
   // (c) "at the longer distances" etc. used with results — every quoted
@@ -1214,11 +1271,11 @@ function validateTrip(text, tripData) {
     while ((rm = localRe.exec(sent)) !== null) {
       any = true;
       const g = groupForResult(rm[0]);
-      if (!g) { fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" not found in any group'); continue; }
+      if (!g) { fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" not found in any group: "' + sent.trim() + '"'); continue; }
       const sameType = groups.filter(function(gg) { return gg.type === g.type; });
       const bound = wantLonger ? shortestF(sameType) : longestF(sameType);
       const okSide = bound !== null && g.furlongs !== null && (wantLonger ? g.furlongs > bound : g.furlongs < bound);
-      if (!okSide) fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" is not from a group ' + (wantLonger ? 'longer' : 'shorter') + ' than ' + g.type + '\'s ' + (wantLonger ? 'shortest' : 'longest') + ' tried trip');
+      if (!okSide) fail('comparison-claim', '"' + phrase + '": "' + rm[0] + '" is not from a group ' + (wantLonger ? 'longer' : 'shorter') + ' than ' + g.type + '\'s ' + (wantLonger ? 'shortest' : 'longest') + ' tried trip: "' + sent.trim() + '"');
     }
   });
 
@@ -1301,7 +1358,7 @@ function validateTrip(text, tripData) {
       if (!d) return;
       const claimed = d.value;
       const ok = types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
-      if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none")');
+      if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none"): "' + sent.trim() + '"');
     });
   });
 
@@ -1319,7 +1376,33 @@ function validateTrip(text, tripData) {
       while ((fm = re.exec(sent)) !== null) fieldMatchesHere.push({ field: fd.field, index: fm.index });
     });
     const handledAsFieldClaim = fieldMatchesHere.length >= 2;
-    if (!handledAsFieldClaim && /\bboth\b/i.test(sent)) {
+
+    // Fix 2 (post-2026-10-06 probe #2) — "the N places/wins/runs ... both/
+    // all ... came at DISTANCE" claims that N results of one KIND share a
+    // distance, without necessarily quoting N individual "Nth of M" results
+    // (e.g. "The 2 places in this window both came at 6f"). The old check
+    // below demanded N literally-quoted results and misfired on this shape
+    // (Ormolulu, 30-horse probe). Validated here as a group claim instead:
+    // pass when the printed group figures for that one distance show at
+    // least N of that kind; the plain quoted-results check is skipped once
+    // a sentence is handled this way.
+    let handledAsGroupClaim = false;
+    if (!handledAsFieldClaim && /\b(?:both|all)\b/i.test(sent)) {
+      const dists = distTokensWithPos(sent);
+      const ckMatch = /\b(\d+|two|three|four|five|six|seven|eight)\s+(places?|wins?|runs?)\b/i.exec(sent);
+      if (ckMatch && dists.length === 1) {
+        handledAsGroupClaim = true;
+        const n = numFrom(ckMatch[1]);
+        const kindWord = ckMatch[2].toLowerCase();
+        const kind = kindWord.indexOf('win') === 0 ? 'wins' : kindWord.indexOf('place') === 0 ? 'places' : 'runs';
+        const distance = dists[0].value;
+        const scope = groupsInScope(sent);
+        const atDistance = scope.filter(function(g) { return g.distanceLabel.toLowerCase() === distance; });
+        const sum = atDistance.reduce(function(s, g) { return s + g[kind]; }, 0);
+        if (sum < n) fail('comparison-claim', '"' + ckMatch[0] + '" at ' + distance + '" — printed ' + kind + ' at ' + distance + ' is ' + sum + ', not ' + n + ': "' + sent.trim() + '"');
+      }
+    }
+    if (!handledAsFieldClaim && !handledAsGroupClaim && /\bboth\b/i.test(sent)) {
       const c = countResultsInSentence(sent);
       if (c > 0 && c !== 2) fail('comparison-claim', '"both" sentence quotes ' + c + ' result(s), not 2: "' + sent.trim() + '"');
     }
@@ -1331,35 +1414,37 @@ function validateTrip(text, tripData) {
       const n = numFrom(am[1]);
       const scope = groupsInScope(sent);
       const scopeRuns = scope.reduce(function(s, g) { return s + g.runs; }, 0);
-      if (scopeRuns !== n) { fail('comparison-claim', '"' + am[0] + '" — scope has ' + scopeRuns + ' run(s), not ' + n); continue; }
+      if (scopeRuns !== n) { fail('comparison-claim', '"' + am[0] + '" — scope has ' + scopeRuns + ' run(s), not ' + n + ': "' + sent.trim() + '"'); continue; }
       if (/\bwon\b|\bwins?\b/i.test(sent)) {
         const scopeWins = scope.reduce(function(s, g) { return s + g.wins; }, 0);
-        if (scopeWins !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope were wins');
+        if (scopeWins !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope were wins: "' + sent.trim() + '"');
       } else if (/\btop\s*three\b|\btop\s*3\b|\bplaced?\b/i.test(sent)) {
         const scopeTop3 = scope.reduce(function(s, g) { return s + g.topThree; }, 0);
-        if (scopeTop3 !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope reached the top three');
+        if (scopeTop3 !== n) fail('comparison-claim', '"' + am[0] + '" — not all ' + n + ' run(s) in scope reached the top three: "' + sent.trim() + '"');
       }
     }
     const reEachOf = /\beach\s+of\s+(?:his|her|its|their)?\s*(\d+|one|two|three|four|five|six|seven|eight)\b/gi; let eom;
     while ((eom = reEachOf.exec(sent)) !== null) {
       const n = numFrom(eom[1]); const c = countResultsInSentence(sent);
-      if (c > 0 && c !== n) fail('comparison-claim', '"' + eom[0] + '" sentence quotes ' + c + ' result(s), not ' + n);
+      if (c > 0 && c !== n) fail('comparison-claim', '"' + eom[0] + '" sentence quotes ' + c + ' result(s), not ' + n + ': "' + sent.trim() + '"');
     }
   });
 
   // stamina predictions — never say whether an untried trip will suit.
   STAMINA_PREDICTION_PHRASES.forEach(function(phrase) {
     const re = new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i');
-    if (re.test(t)) fail('stamina-prediction', phrase);
+    const idx = t.search(re);
+    if (idx !== -1) fail('stamina-prediction', phrase, idx);
   });
 
   // ordinal word as a finishing position only (same refined rule as Going).
   const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
-  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)');
+  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
 
   // Trip round 2, Change 6 — no-reason explanations are never allowed.
   ['too sharp', "didn't stay", 'did not stay', 'outpaced', 'found it too far', 'found it too short'].forEach(function(phrase) {
-    if (new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i').test(t)) fail('reason-given', phrase);
+    const idx = t.search(new RegExp('\\b' + phrase.replace(/'/g, "['’]?") + '\\b', 'i'));
+    if (idx !== -1) fail('reason-given', phrase, idx);
   });
 
   // banned-words — Trip round 3, Change 2: a banned word never fails when
@@ -1379,13 +1464,14 @@ function validateTrip(text, tripData) {
   function insideCourseName(idx, len) { return _courseSpans.some(function(sp) { return idx >= sp[0] && (idx + len) <= sp[1]; }); }
   BANNED_WORDS.forEach(function(w) {
     const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    let wm; let hit = false;
-    while ((wm = re.exec(t)) !== null) { if (!insideCourseName(wm.index, wm[0].length)) { hit = true; break; } }
-    if (hit) fail('banned-words', w);
+    let wm; let hitIdx = -1;
+    while ((wm = re.exec(t)) !== null) { if (!insideCourseName(wm.index, wm[0].length)) { hitIdx = wm.index; break; } }
+    if (hitIdx !== -1) fail('banned-words', w, hitIdx);
   });
 
   // percent
-  if (/%|per\s*cent|percent/i.test(t)) fail('percent', 'percentage language found');
+  const percentIdx2 = t.search(/%|per\s*cent|percent/i);
+  if (percentIdx2 !== -1) fail('percent', 'percentage language found', percentIdx2);
 
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, trip: t };
 }
@@ -1411,7 +1497,11 @@ const TRACK_CAREER_PHRASES = ['career', 'career so far', 'career to date', 'thro
 
 function validateTrack(text, trackData) {
   const failures = []; const warnings = [];
-  const fail = function(check, detail) { failures.push({ check: check, detail: detail }); };
+  let offsets = [];
+  const fail = function(check, detail, idx) {
+    const withSentence = (idx !== undefined && idx !== null) ? (detail + ' | sentence: "' + sentenceAt(offsets, idx) + '"') : detail;
+    failures.push({ check: check, detail: withSentence });
+  };
 
   const parsed = parseJsonTrack(text);
   if (!parsed || typeof parsed !== 'object' || typeof parsed.track !== 'string' || !parsed.track.trim()) {
@@ -1419,6 +1509,7 @@ function validateTrack(text, trackData) {
     return { ok: false, failures: failures, warnings: warnings, wordCount: 0, track: null };
   }
   const t = parsed.track;
+  offsets = sentenceOffsets(t);
   const wc = words(t);
   if (wc > 50) warnings.push({ section: 'track', words: wc, cap: 50, over: wc - 50 }); // warning only, never blocks storage
 
@@ -1430,28 +1521,33 @@ function validateTrack(text, trackData) {
   // banned-words
   TRACK_BANNED_WORDS.forEach(function(w) {
     const re = new RegExp('\\b' + w.replace(/[- ]/g, '[- ]') + '\\b', 'gi');
-    if (re.test(t)) fail('banned-words', w);
+    const idx = t.search(re);
+    if (idx !== -1) fail('banned-words', w, idx);
   });
 
   // career-claim
   TRACK_CAREER_PHRASES.forEach(function(phrase) {
     const re = new RegExp('\\b' + phrase.replace(/ /g, '\\s+') + '\\b', 'i');
-    if (re.test(t)) fail('career-claim', phrase);
+    const idx = t.search(re);
+    if (idx !== -1) fail('career-claim', phrase, idx);
   });
 
   // banned-format — same structure as validateGoing's banned-format check:
   // N/M shorthand, malformed position phrasing, worst/weakest/poorest, and
   // an ordinal word used as a finishing position.
   const reSlash = /\b\d+\/\d+\b/g;
-  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)');
+  while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
 
   const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
-  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")');
+  while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
 
-  ['worst', 'weakest', 'poorest'].forEach(function(w) { if (new RegExp('\\b' + w + '\\b', 'i').test(t)) fail('banned-format', w); });
+  ['worst', 'weakest', 'poorest'].forEach(function(w) {
+    const idx = t.search(new RegExp('\\b' + w + '\\b', 'i'));
+    if (idx !== -1) fail('banned-format', w, idx);
+  });
 
   const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
-  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)');
+  while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
 
   // count-not-given — reuses anyComboSum exactly, same as validateGoing/
   // validateTrip. The pool of "printed same-kind figures" is every course's
@@ -1477,26 +1573,28 @@ function validateTrack(text, trackData) {
   while ((m = reCount.exec(t)) !== null) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0]);
+    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0], m.index);
   }
   const reOfRuns = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+of\\s+(?:her|his|its|their)?\\s*(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|outings|starts|races)\\b', 'gi');
   while ((m = reOfRuns.exec(t)) !== null) {
     const n = numFrom(m[1]), total = numFrom(m[2]);
     const ok = (total === windowSize) || groups.some(function(g) { return g.runs === total && (g.runs === n || g.wins === n || g.places === n); });
-    if (!ok) fail('count-not-given', m[0] + ' (N and M not from the same course)');
+    if (!ok) fail('count-not-given', m[0] + ' (N and M not from the same course)', m.index);
   }
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0], m.index); }
 
   // course-not-in-block
   disallowedCourses.slice().sort(function(a, b) { return b.length - a.length; }).forEach(function(c) {
     if (!c) return;
     const re = new RegExp('\\b' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    if (re.test(t)) fail('course-not-in-block', c);
+    const idx = t.search(re);
+    if (idx !== -1) fail('course-not-in-block', c, idx);
   });
 
   // percent
-  if (/%|per\s*cent|percent/i.test(t)) fail('percent', 'percentage language found');
+  const percentIdx3 = t.search(/%|per\s*cent|percent/i);
+  if (percentIdx3 !== -1) fail('percent', 'percentage language found', percentIdx3);
 
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, track: t };
 }
