@@ -1313,8 +1313,32 @@ function validateTrip(text, tripData) {
     const actual = String(f[field] || '').toLowerCase();
     return actual !== 'none' && actual === claimedDist;
   }
+  // Fix (post-2026-10-06 probe #3) — "none" is now a value a field can be
+  // paired with, not just a distance. All 11 comparison-claim failures in
+  // that probe were this exact bug: Fix 1 got the model correctly writing
+  // "longest won as NONE" (instead of hallucinating a distance), but
+  // nearestDistFor only knew about distance tokens, so a field stated as
+  // NONE would skip right past it and wrongly inherit a neighbouring
+  // field's real distance from elsewhere in the same sentence (e.g.
+  // "...longest placed at 1m2f and longest won as NONE" wrongly paired
+  // longestWon with 1m2f). claimMatchesFieldValue below treats a claimed
+  // "none" as its own value (supported only when the stamina line's own
+  // fact for that field is actually "none"), and noneTokensWithPos finds
+  // every "none" word in the sentence as another candidate token.
+  function claimMatchesFieldValue(type, field, claimedValue) {
+    if (claimedValue === 'none') {
+      const f = factsByType[type];
+      return !!f && String(f[field] || '').toLowerCase() === 'none';
+    }
+    return claimMatchesField(type, field, claimedValue);
+  }
+  function noneTokensWithPos(s) {
+    const re = /\bnone\b/gi; let nm; const out = [];
+    while ((nm = re.exec(s)) !== null) out.push({ value: 'none', index: nm.index });
+    return out;
+  }
   // Fix 2 (post-2026-10-06 probe) — replaces the old exclusive one-field-
-  // per-distance pairing with an independent nearest-distance lookup per
+  // per-distance pairing with an independent nearest-value lookup per
   // field (no "used" tracking). Exclusivity was added to stop an earlier,
   // unrelated distance from beating the correct later one for a SINGLE
   // field (still true here — the prefer-after/fallback-before rule below
@@ -1328,18 +1352,24 @@ function validateTrip(text, tripData) {
   // fields paired with 3m1f, a third with its own later 2m7f) — a shape the
   // old exclusive pairing got wrong (the third field's own distance was
   // already consumed by an earlier field).
-  function nearestDistFor(dists, fmatchIndex) {
+  // Fix (post-2026-10-06 probe #3) — tokens is now distances AND "none"
+  // words merged together, and this picks the single nearest token of
+  // EITHER kind per direction — never the nearest distance while skipping
+  // past a closer "none". That merge is exactly what makes "none" a
+  // boundary: if it's the nearest token in a direction, nothing beyond it
+  // in that direction is ever reached for this field.
+  function nearestValueFor(tokens, fmatchIndex) {
     let best = null, bestDist = Infinity;
-    dists.forEach(function(d) {
-      if (d.index <= fmatchIndex) return;
-      const dist = d.index - fmatchIndex;
-      if (dist < bestDist) { bestDist = dist; best = d; }
+    tokens.forEach(function(tok) {
+      if (tok.index <= fmatchIndex) return;
+      const dist = tok.index - fmatchIndex;
+      if (dist < bestDist) { bestDist = dist; best = tok; }
     });
     if (best) return best;
-    dists.forEach(function(d) {
-      if (d.index > fmatchIndex) return;
-      const dist = fmatchIndex - d.index;
-      if (dist < bestDist) { bestDist = dist; best = d; }
+    tokens.forEach(function(tok) {
+      if (tok.index > fmatchIndex) return;
+      const dist = fmatchIndex - tok.index;
+      if (dist < bestDist) { bestDist = dist; best = tok; }
     });
     return best;
   }
@@ -1350,14 +1380,14 @@ function validateTrip(text, tripData) {
       while ((fm = re.exec(sent)) !== null) fieldMatches.push({ field: fd.field, index: fm.index });
     });
     if (!fieldMatches.length) return;
-    const dists = distTokensWithPos(sent);
-    if (!dists.length) return;
+    const tokens = distTokensWithPos(sent).concat(noneTokensWithPos(sent));
+    if (!tokens.length) return;
     const types = factTypesForSentence(sent);
     fieldMatches.forEach(function(fmatch) {
-      const d = nearestDistFor(dists, fmatch.index);
-      if (!d) return;
-      const claimed = d.value;
-      const ok = types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
+      const tok = nearestValueFor(tokens, fmatch.index);
+      if (!tok) return;
+      const claimed = tok.value;
+      const ok = types.some(function(type) { return claimMatchesFieldValue(type, fmatch.field, claimed); });
       if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none"): "' + sent.trim() + '"');
     });
   });
