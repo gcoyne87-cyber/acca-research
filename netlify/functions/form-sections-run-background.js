@@ -380,7 +380,12 @@ function telemetryFromProblems(h, date, problems, stage) {
 // supported" (a genuine, negated conclusion that the problem stands) must
 // never match here, so only known affirming fillers are permitted between
 // "is" and "supported".
-const SELF_OVERRULE_PHRASES = [/\bis\s+(?:actually\s+|in\s+fact\s+|indeed\s+|clearly\s+|still\s+)?supported\b/i, /removing\s+this/i, /withdrawing\s+this/i, /no\s+problem\s+here/i, /must\s+not\s+be\s+flagged/i];
+// Fix 3 (post-2026-10-06 probe) — "is fully supported" leaked through
+// (Ikigai Star's track problem): "fully" wasn't in the filler list. Added
+// alongside "entirely"/"completely"/"well", kept inside the same "is ...
+// supported" guard rather than as bare phrases, so the negation safety
+// above still applies to all of them.
+const SELF_OVERRULE_PHRASES = [/\bis\s+(?:actually\s+|in\s+fact\s+|indeed\s+|clearly\s+|still\s+|fully\s+|entirely\s+|completely\s+|well\s+)?supported\b/i, /removing\s+this/i, /withdrawing\s+this/i, /no\s+problem\s+here/i, /must\s+not\s+be\s+flagged/i];
 function isSelfOverruled(reason) {
   const sentences = String(reason || '').split(/(?<=[.!?])\s+/).filter(function(s) { return s.trim(); });
   const last = sentences.length ? sentences[sentences.length - 1] : String(reason || '');
@@ -538,8 +543,14 @@ async function processHorseGoingTrip(h, date) {
     trackGroupsList = F.trackGroups(trackWindowRowsList, F.COURSE_FACTS);
     trackRollupsList = F.trackRollups(trackGroupsList);
     trackBlockText = F.buildTrackBlock(h.horse_id, allRows, F.COURSE_FACTS);
+    // Fix 4 (post-2026-10-06 probe) — windowCourseSet must track every RAW
+    // course-name spelling actually inside the window, not trackGroupsList's
+    // own (now IRE-normalized) group names. Using g.course here would wrongly
+    // mark an in-window "X (IRE)" row as a disallowed/outside-window course
+    // the moment its group got merged into the bare "X" under Fix 4, since
+    // g.course is the merged name and would never equal the raw "X (IRE)".
     const windowCourseSet = {};
-    trackGroupsList.forEach(function(g) { windowCourseSet[g.course] = true; });
+    F.rawCourseNamesIn(trackWindowRowsList).forEach(function(c) { windowCourseSet[c] = true; });
     const disallowedCourses = F.rawCourseNamesIn(allRows).filter(function(c) { return !windowCourseSet[c]; });
     trackData = { groups: trackGroupsList, rollups: trackRollupsList, windowSize: trackWindowRowsList.length, disallowedCourses: disallowedCourses };
   }

@@ -514,17 +514,45 @@ function trackCharacter(fact) {
   return parts.filter(Boolean).join(', ');
 }
 
+// Fix 4 (post-2026-10-06 probe) — strips a trailing " (IRE)" so "Roscommon"
+// and "Roscommon (IRE)" (same physical course, two live-API spellings)
+// group as one course instead of two separate single-run-looking entries.
+// Every other suffix, notably (AW), is left alone — those distinguish
+// genuinely different tracks (e.g. Lingfield turf vs Lingfield (AW)), never
+// just a country tag. course-facts.json already maps every (IRE)-suffixed
+// Irish course to the same fact entry as its bare form (see course-facts.json
+// build notes), so the character lookup is unaffected either way — this
+// only changes how buildTrackBlock groups and counts runs.
+function stripIreSuffix(name) {
+  return String(name || '').replace(/\s*\(IRE\)\s*$/i, '');
+}
+
 function trackGroups(windowRows, courseFacts) {
   const byCourse = {}; const order = [];
   (windowRows || []).forEach(function(r) {
-    if (!byCourse[r.course]) { byCourse[r.course] = []; order.push(r.course); }
-    byCourse[r.course].push(r);
+    const normalized = stripIreSuffix(r.course);
+    if (!byCourse[normalized]) { byCourse[normalized] = { rows: [], rawNames: [] }; order.push(normalized); }
+    byCourse[normalized].rows.push(r);
+    if (byCourse[normalized].rawNames.indexOf(r.course) === -1) byCourse[normalized].rawNames.push(r.course);
   });
   return order.map(function(course) {
-    const rows = byCourse[course];
+    const entry = byCourse[course];
+    const rows = entry.rows;
     const wins = rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
     const places = rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
-    const fact = (courseFacts && courseFacts[course]) || null;
+    // Look up under the normalized name first, falling back to whichever
+    // raw spelling(s) this group's own rows actually used — "whichever
+    // variant exists there" per the fix spec. Almost always a no-op
+    // fallback since course-facts.json already resolves every IRE variant
+    // to the same entry; kept for a course absent from that table at all.
+    let fact = (courseFacts && courseFacts[course]) || null;
+    if (!fact) {
+      entry.rawNames.some(function(raw) {
+        const f = courseFacts && courseFacts[raw];
+        if (f) { fact = f; return true; }
+        return false;
+      });
+    }
     const results = rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); })
       .map(function(r) { return posWord(r.pos) + '/' + (r.ran || '?'); });
     return { course: course, runs: rows.length, wins: wins, places: places, fact: fact, character: trackCharacter(fact), results: results };
@@ -712,7 +740,11 @@ const GOINGTRIP_PROMPT = SHARED_RULES + "\n\n" + GOING_SECTION + "\n\n" + TRIP_S
 // same count across all three fields is the truncation signature — the
 // completion was cut off before the JSON closed). Three 35-50 word sections
 // plus JSON escaping need more room than 550 tokens gives.
-const GOINGTRIP_MAX_TOKENS = 900;
+// Fix 1 (post-2026-10-06 probe) — 900 still truncated on 5/30 (16.7%) write1
+// calls, each failure costing a full retry. Observed section lengths run
+// 45-85 words (over their own 30-50 word targets), so 900 was still tight;
+// raised again with more headroom.
+const GOINGTRIP_MAX_TOKENS = 1300;
 // Refined (post-2026-10-05-run fixes) — gives the second check the same
 // going scale the writer prompt has (so it can verify faster/softer
 // comparisons), explicitly admits Totals/stamina/WINDOW numbers, and adds a
@@ -1224,6 +1256,36 @@ function validateTrip(text, tripData) {
     const actual = String(f[field] || '').toLowerCase();
     return actual !== 'none' && actual === claimedDist;
   }
+  // Fix 2 (post-2026-10-06 probe) — replaces the old exclusive one-field-
+  // per-distance pairing with an independent nearest-distance lookup per
+  // field (no "used" tracking). Exclusivity was added to stop an earlier,
+  // unrelated distance from beating the correct later one for a SINGLE
+  // field (still true here — the prefer-after/fallback-before rule below
+  // keeps that), but it broke the "both X and Y are N" idiom: whichever
+  // field matched first claimed the shared distance, leaving the second
+  // field to wrongly borrow a different, unrelated distance nearby. Fields
+  // that genuinely share one distance (the common case) now both correctly
+  // resolve to it; the old explicit "both, exactly 2 fields, 1 distance"
+  // special case is gone because this general form subsumes it, including
+  // the probe's actual failure: "...both 3m1f; shortest tried is 2m7f" (two
+  // fields paired with 3m1f, a third with its own later 2m7f) — a shape the
+  // old exclusive pairing got wrong (the third field's own distance was
+  // already consumed by an earlier field).
+  function nearestDistFor(dists, fmatchIndex) {
+    let best = null, bestDist = Infinity;
+    dists.forEach(function(d) {
+      if (d.index <= fmatchIndex) return;
+      const dist = d.index - fmatchIndex;
+      if (dist < bestDist) { bestDist = dist; best = d; }
+    });
+    if (best) return best;
+    dists.forEach(function(d) {
+      if (d.index > fmatchIndex) return;
+      const dist = fmatchIndex - d.index;
+      if (dist < bestDist) { bestDist = dist; best = d; }
+    });
+    return best;
+  }
   sentences.forEach(function(sent) {
     const fieldMatches = [];
     STAMINA_FIELD_DEFS.forEach(function(fd) {
@@ -1231,81 +1293,32 @@ function validateTrip(text, tripData) {
       while ((fm = re.exec(sent)) !== null) fieldMatches.push({ field: fd.field, index: fm.index });
     });
     if (!fieldMatches.length) return;
-    fieldMatches.sort(function(a, b) { return a.index - b.index; });
     const dists = distTokensWithPos(sent);
     if (!dists.length) return;
     const types = factTypesForSentence(sent);
-
-    if (/\bboth\b/i.test(sent) && fieldMatches.length === 2 && dists.length === 1) {
-      const claimed = dists[0].value;
-      const ok = types.some(function(type) { return claimMatchesField(type, fieldMatches[0].field, claimed) && claimMatchesField(type, fieldMatches[1].field, claimed); });
-      if (!ok) fail('comparison-claim', '"' + fieldMatches[0].field + ' and ' + fieldMatches[1].field + ' both at ' + claimed + '" does not match the stamina line');
-      return;
-    }
-
-    // Bug fix Fix 2 — pair each field phrase with the nearest not-yet-used
-    // distance token that comes AFTER it ("longest placed is 1m2f", the
-    // natural field-then-value order), only falling back to the nearest one
-    // BEFORE it when none follows. The previous version picked whichever
-    // distance was nearest by raw character distance in either direction,
-    // which let an earlier, unrelated distance (belonging to a different
-    // field, e.g. "tried up to 1m3f, her longest placed effort is 1m2f")
-    // beat the correct, later, grammatically-attached one purely because it
-    // happened to sit fewer characters away.
-    const usedDist = {};
     fieldMatches.forEach(function(fmatch) {
-      let best = null, bestDist = Infinity;
-      dists.forEach(function(d, di) {
-        if (usedDist[di] || d.index <= fmatch.index) return;
-        const dist = d.index - fmatch.index;
-        if (dist < bestDist) { bestDist = dist; best = di; }
-      });
-      if (best === null) {
-        dists.forEach(function(d, di) {
-          if (usedDist[di] || d.index > fmatch.index) return;
-          const dist = fmatch.index - d.index;
-          if (dist < bestDist) { bestDist = dist; best = di; }
-        });
-      }
-      if (best === null) return;
-      usedDist[best] = true;
-      const claimed = dists[best].value;
+      const d = nearestDistFor(dists, fmatch.index);
+      if (!d) return;
+      const claimed = d.value;
       const ok = types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
       if (!ok) fail('comparison-claim', '"' + fmatch.field + ' ' + claimed + '" does not match the stamina line (or that field is "none")');
     });
   });
 
   // (e) "both"/"all N"/"each of N" followed by results — the number of
-  // results quoted in that sentence must match the stated count.
+  // results quoted in that sentence must match the stated count. Skipped
+  // for a sentence already covered by the stamina-field check above (2+
+  // field names present): that check now independently validates every
+  // field-distance pairing, so a "both X and Y are N" claim about fields —
+  // not about two quoted race results — is fully handled there instead.
   function countResultsInSentence(sent) { const re = new RegExp(reResultTok.source, 'g'); let c = 0; while (re.exec(sent) !== null) c++; return c; }
   sentences.forEach(function(sent) {
-    // Fix 2 (30-horse probe, post-2026-10-05 goingtrip run) — "both"/"all"
-    // followed by 2+ stamina FIELD NAMES and a single distance (e.g.
-    // "longest placed and longest tried are both 6f") is a claim that those
-    // fields share one value, not a claim quoting two race results. The
-    // plain result-quoting check below wrongly demanded 2 "Nth of M" tokens
-    // for this sentence shape and misfired on 5 of 14 comparison-claim
-    // failures in that run, every one of them a factually correct sentence.
-    // Validated here as a field-value claim instead; the result-quoting
-    // check is skipped once this sentence has been handled this way.
     const fieldMatchesHere = [];
     STAMINA_FIELD_DEFS.forEach(function(fd) {
       const re = new RegExp(fd.re.source, 'gi'); let fm;
       while ((fm = re.exec(sent)) !== null) fieldMatchesHere.push({ field: fd.field, index: fm.index });
     });
-    let handledAsFieldClaim = false;
-    if (/\b(?:both|all)\b/i.test(sent) && fieldMatchesHere.length >= 2) {
-      const dists = distTokensWithPos(sent);
-      if (dists.length === 1) {
-        handledAsFieldClaim = true;
-        const claimed = dists[0].value;
-        const types = factTypesForSentence(sent);
-        const allMatch = fieldMatchesHere.every(function(fmatch) {
-          return types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
-        });
-        if (!allMatch) fail('comparison-claim', '"' + fieldMatchesHere.map(function(f) { return f.field; }).join(' and ') + ' both ' + claimed + '" does not match the stamina line for every named field');
-      }
-    }
+    const handledAsFieldClaim = fieldMatchesHere.length >= 2;
     if (!handledAsFieldClaim && /\bboth\b/i.test(sent)) {
       const c = countResultsInSentence(sent);
       if (c > 0 && c !== 2) fail('comparison-claim', '"both" sentence quotes ' + c + ' result(s), not 2: "' + sent.trim() + '"');
@@ -1538,6 +1551,7 @@ module.exports = {
   trackWindowRows: trackWindowRows,
   rawCourseNamesIn: rawCourseNamesIn,
   trackGroups: trackGroups,
+  stripIreSuffix: stripIreSuffix,
   trackRollups: trackRollups,
   buildTrackBlock: buildTrackBlock,
   NO_RUNS_TRACK_TEMPLATE: NO_RUNS_TRACK_TEMPLATE,
