@@ -64,22 +64,22 @@ exports.handler = async function(event) {
     });
 
     // form-sections:{id} (the new production engine) is now the ONLY source
-    // for .going and .trip — Change A: never fall back to the old text
-    // engine's own Going/Trip sub-sections. Absent, the field is left unset
-    // so the Form tab shows "Coming soon." rather than stale or placeholder
-    // text. .track is always stripped below regardless of what the old
-    // engine wrote — Track is never shown, on any date, Track generation is
-    // not built. Redis itself is untouched; this only shapes the response.
+    // for .going, .trip and .track — Change A: never fall back to the old
+    // text engine's own Going/Trip sub-sections. Absent, the field is left
+    // unset so the Form tab shows "Coming soon." rather than stale or
+    // placeholder text. Redis itself is untouched; this only shapes the
+    // response.
     const sectionsVals = await Promise.all(horseIds.map(function(id) { return redisGet('form-sections:' + id); }));
     horseIds.forEach(function(id, i) {
       const going = sectionsVals[i] && sectionsVals[i].going;
       const trip = sectionsVals[i] && sectionsVals[i].trip;
+      const track = sectionsVals[i] && sectionsVals[i].track;
       if (summaries[id]) {
         summaries[id].going = going || undefined;
         summaries[id].trip = trip || undefined;
-        delete summaries[id].track;
-      } else if (going || trip) {
-        summaries[id] = { going: going || undefined, trip: trip || undefined };
+        summaries[id].track = track || undefined;
+      } else if (going || trip || track) {
+        summaries[id] = { going: going || undefined, trip: trip || undefined, track: track || undefined };
       }
     });
 

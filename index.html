@@ -11886,8 +11886,9 @@ function _shdr(label,meta){return '<div style="font-size:11px;font-weight:600;co
 // tabs, each block self-labelled, in nrLoadForm's panel. Deliberately a new
 // function rather than a new _renderFormSections(s,part) branch: leaves
 // _renderFormSections/_nrFsShow (the tabbed version) completely untouched —
-// nothing else still calls the 'card' branch live. Track always shows its
-// placeholder, same rule as the tabbed version: s.track is never read.
+// nothing else still calls the 'card' branch live. Track build — s.track is
+// now read the same way s.trip/s.going are; the placeholder only shows when
+// it's absent or empty.
 function _renderFormSectionsStacked(s){
   var _esc=typeof escHtml==='function'?escHtml:function(x){return x;};
   var block=function(label,text,placeholder){
@@ -11899,7 +11900,7 @@ function _renderFormSectionsStacked(s){
   };
   return block('Trip',s&&s.trip,'Coming soon.')
        + block('Going',s&&s.going,'Coming soon.')
-       + block('Track',null,'Track analysis coming soon.');
+       + block('Track',s&&s.track,'Track analysis coming soon.');
 }
 
 // Batched form-summary fetch — call with the horse_ids of a just-opened race's

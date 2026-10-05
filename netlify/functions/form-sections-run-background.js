@@ -204,7 +204,7 @@ function parseSecondCheck(resp) {
 // empty/missing problems array is only valid when supported is true.
 const GOINGTRIP_SECOND_CHECK_TOOL = {
   name: 'report_goingtrip_check',
-  description: 'Report whether every sentence in both the going and trip paragraphs is supported by their own data block.',
+  description: 'Report whether every sentence in the going, trip and (when given) track paragraphs is supported by their own data block.',
   input_schema: {
     type: 'object',
     properties: {
@@ -214,7 +214,7 @@ const GOINGTRIP_SECOND_CHECK_TOOL = {
         items: {
           type: 'object',
           properties: {
-            section: { type: 'string', enum: ['going', 'trip'] },
+            section: { type: 'string', enum: ['going', 'trip', 'track'] },
             sentence: { type: 'string' },
             reason: { type: 'string' }
           },
@@ -233,12 +233,18 @@ const GOINGTRIP_SECOND_CHECK_TOOL = {
 // the whole content array with .find(), so it finds the tool_use block
 // wherever it lands (text block(s) first, tool call after) with no change
 // needed there.
-async function callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText) {
+// Track build — trackBlockText/trackText are optional (null when this
+// horse's Track window is templated, see processHorseGoingTrip): the system
+// prompt already tells the model to judge only GOING/TRIP when no TRACK
+// paragraph is given, so the user message simply omits that section.
+async function callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText, trackBlockText, trackText) {
+  let content = goingBlockText + '\n\n' + tripBlockText + '\n\nGOING PARAGRAPH\n' + goingText + '\n\nTRIP PARAGRAPH\n' + tripText;
+  if (trackBlockText && trackText) content += '\n\n' + trackBlockText + '\n\nTRACK PARAGRAPH\n' + trackText;
   return E.anthropic('POST', '/v1/messages', {
     model: E.MODEL,
     max_tokens: F.GOINGTRIP_SECOND_CHECK_MAX_TOKENS,
     system: [{ type: 'text', text: F.GOINGTRIP_SECOND_CHECK_PROMPT, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: goingBlockText + '\n\n' + tripBlockText + '\n\nGOING PARAGRAPH\n' + goingText + '\n\nTRIP PARAGRAPH\n' + tripText }],
+    messages: [{ role: 'user', content: content }],
     tools: [GOINGTRIP_SECOND_CHECK_TOOL],
     tool_choice: { type: 'auto' }
   });
@@ -294,7 +300,7 @@ async function storeTrip(h, win, tripText) {
 // job wrote, is left untouched). Same field names/shape as storeGoing's
 // going/goingWindow/generatedAt and storeTrip's trip/tripWindow/
 // tripGeneratedAt, just merged in one write instead of two.
-async function storeGoingTrip(h, win, goingText, tripText) {
+async function storeGoingTrip(h, win, goingText, tripText, trackText) {
   const existing = await E.redisGet('form-sections:' + h.horse_id);
   const record = Object.assign({}, existing || {});
   const nowIso = new Date().toISOString();
@@ -308,6 +314,13 @@ async function storeGoingTrip(h, win, goingText, tripText) {
     record.trip = tripText;
     record.tripWindow = windowInfo;
     record.tripGeneratedAt = nowIso;
+  }
+  // Track build — no trackWindow field: Track's own window (last 15 runs /
+  // 24 months, wall-clock) is independent of win (Going/Trip's race-day-
+  // relative 18-month window), so win's windowInfo would misdescribe it.
+  if (trackText !== null && trackText !== undefined) {
+    record.track = trackText;
+    record.trackGeneratedAt = nowIso;
   }
   await E.redisSet('form-sections:' + h.horse_id, record);
   return record;
@@ -416,9 +429,19 @@ async function processHorseGoingTrip(h, date) {
   let usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   let usage2 = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
+  // Track build — win.size === 0 (no usable Going/Trip window) also gates
+  // Track's own early template here, even though Track's window (24 months)
+  // is wider than Going/Trip's (18 months) and could in principle still
+  // have a run in that 18-24 month gap. Disclosed simplification: handling
+  // that gap would need a second, Track-only model call bolted onto this
+  // early-return branch (the static combined prompt always asks for all
+  // three fields in one completion, so there is no cheap way to ask for
+  // "just track" here) purely for a narrow case — a horse with nothing in
+  // 18 months but exactly one run 18-24 months back. Track for such a horse
+  // simply waits until win.size is non-zero again.
   if (!win.size) {
-    await storeGoingTrip(h, win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: true, attempt: 0, usage: usage, usage2: usage2, firstWriteUsage: usage, windowInfo: win };
+    await storeGoingTrip(h, win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE, F.NO_RUNS_TRACK_TEMPLATE);
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: true, attempt: 0, usage: usage, usage2: usage2, firstWriteUsage: usage, windowInfo: win };
   }
 
   const goingGroupsList = F.goingGroups(win.rows);
@@ -431,10 +454,31 @@ async function processHorseGoingTrip(h, date) {
   const tripData = { groups: tripGroupsList, windowSize: win.size, courses: F.courseNamesIn(win.rows) };
   const tripBlockText = 'TRIP DATA\n' + F.buildTripBlock(tripGroupsList);
 
+  // Track build — own window (last 15 runs / 24 months, wall-clock),
+  // independent of win: whenever win.size > 0 it is almost always non-
+  // template too, since 24 months is a superset of win's 18-month cutoff
+  // (the only way it isn't is a run row carrying a position but no course
+  // string, which real Racing API rows never do). trackIsTemplate true here
+  // is the negligible counterpart case — handled below by skipping the
+  // model call for track and storing the fixed template text unconditionally
+  // alongside whatever going/trip come back as.
+  const trackWindowRowsList = F.trackWindowRows(allRows);
+  const trackIsTemplate = !trackWindowRowsList.length;
+  let trackGroupsList = [], trackRollupsList = null, trackBlockText = null, trackData = null;
+  if (!trackIsTemplate) {
+    trackGroupsList = F.trackGroups(trackWindowRowsList, F.COURSE_FACTS);
+    trackRollupsList = F.trackRollups(trackGroupsList);
+    trackBlockText = F.buildTrackBlock(h.horse_id, allRows, F.COURSE_FACTS);
+    const windowCourseSet = {};
+    trackGroupsList.forEach(function(g) { windowCourseSet[g.course] = true; });
+    const disallowedCourses = F.rawCourseNamesIn(allRows).filter(function(c) { return !windowCourseSet[c]; });
+    trackData = { groups: trackGroupsList, rollups: trackRollupsList, windowSize: trackWindowRowsList.length, disallowedCourses: disallowedCourses };
+  }
+
   const envelope = F.buildEnvelope(h, win, [
     { heading: 'GOING DATA', text: F.buildGoingBlock(goingGroupsList, neverRun, neverRunAW, win.size) },
     { heading: 'TRIP DATA', text: F.buildTripBlock(tripGroupsList) }
-  ]);
+  ]) + (trackIsTemplate ? '' : '\n\n' + trackBlockText);
 
   async function write(userText) {
     const resp = await callModelGoingTrip(userText);
@@ -446,19 +490,22 @@ async function processHorseGoingTrip(h, date) {
   // so the model may spend an entire turn on reasoning text with no tool
   // call at all. One retry (same inputs) before giving up — only then is it
   // treated as check-failed for this horse, same as before.
-  async function secondCheckAttempt(goingText, tripText) {
-    const resp = await callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText);
+  // Track build — trackText is passed through untouched; callGoingTripSecondCheck
+  // itself omits the TRACK block/paragraph from the message when it's null
+  // (trackIsTemplate), so this horse's second check simply covers going+trip.
+  async function secondCheckAttempt(goingText, tripText, trackText) {
+    const resp = await callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText, trackIsTemplate ? null : trackBlockText, trackText);
     if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { httpError: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseGoingTripSecondCheck(resp);
     if (!parsed) return { noToolCall: true, debug: 'content: ' + JSON.stringify(resp.json.content).slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
     return { supported: parsed.supported, problems: parsed.problems || [] };
   }
-  async function secondCheck(goingText, tripText) {
-    let r = await secondCheckAttempt(goingText, tripText);
+  async function secondCheck(goingText, tripText, trackText) {
+    let r = await secondCheckAttempt(goingText, tripText, trackText);
     if (r.httpError) return { error: r.httpError };
     if (r.noToolCall) {
-      r = await secondCheckAttempt(goingText, tripText);
+      r = await secondCheckAttempt(goingText, tripText, trackText);
       if (r.httpError) return { error: 'retry ' + r.httpError };
       if (r.noToolCall) return { error: 'no usable report_goingtrip_check tool call after retry — ' + r.debug };
     }
@@ -467,7 +514,7 @@ async function processHorseGoingTrip(h, date) {
 
   // ── Pass 1: write, validate both texts, one retry (both) on a code failure ──
   let w = await write(envelope);
-  if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 1, error: w.error, usage: usage, usage2: usage2, windowInfo: win };
+  if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: 1, error: w.error, usage: usage, usage2: usage2, windowInfo: win };
   // Cache probe support — a snapshot of usage right after this one call, so
   // a caller can inspect cache_creation_input_tokens/cache_read_input_tokens
   // on this horse's FIRST write call specifically, unaffected by any retry
@@ -475,32 +522,38 @@ async function processHorseGoingTrip(h, date) {
   const firstWriteUsage = Object.assign({}, usage);
   let vG = F.validateGoing(w.text, goingBlock);
   let vT = F.validateTrip(w.text, tripData);
+  let vK = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
   let attempt = 1;
-  const codeCheckFirstFailures = { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures };
+  const codeCheckFirstFailures = { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures, track: (trackIsTemplate || vK.ok) ? null : vK.failures };
 
-  if (!vG.ok || !vT.ok) {
+  if (!vG.ok || !vT.ok || (!trackIsTemplate && !vK.ok)) {
     const notes = [];
     if (!vG.ok) notes.push('GOING:\n' + vG.failures.map(function(x) { return '- ' + x.check + (x.detail ? ': "' + x.detail + '"' : ''); }).join('\n'));
     if (!vT.ok) notes.push('TRIP:\n' + vT.failures.map(function(x) { return '- ' + x.check + (x.detail ? ': "' + x.detail + '"' : ''); }).join('\n'));
-    const retryText = envelope + '\n\nPREVIOUS ATTEMPT FAILED VALIDATION — every claim is checked in code against the data above. Failures:\n' + notes.join('\n') + '\nRewrite both going and trip so every position, going or distance name and count appears in the data exactly, with no new claims, staying inside the word limit.';
+    if (!trackIsTemplate && !vK.ok) notes.push('TRACK:\n' + vK.failures.map(function(x) { return '- ' + x.check + (x.detail ? ': "' + x.detail + '"' : ''); }).join('\n'));
+    const retryText = envelope + '\n\nPREVIOUS ATTEMPT FAILED VALIDATION — every claim is checked in code against the data above. Failures:\n' + notes.join('\n') + '\nRewrite going, trip and track (whichever are listed above) so every position, going or distance name, course and count appears in the data exactly, with no new claims, staying inside the word limit.';
     w = await write(retryText);
     attempt = 2;
-    if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, error: 'retry ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
+    if (w.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, error: 'retry ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
     vG = F.validateGoing(w.text, goingBlock);
     vT = F.validateTrip(w.text, tripData);
-    if (!vG.ok || !vT.ok) {
-      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures }, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
+    vK = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
+    if (!vG.ok || !vT.ok || (!trackIsTemplate && !vK.ok)) {
+      return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: 2, codeCheckFirstFailures: codeCheckFirstFailures, codeCheckRetryFailures: { going: vG.ok ? null : vG.failures, trip: vT.ok ? null : vT.failures, track: (trackIsTemplate || vK.ok) ? null : vK.failures }, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
     }
   }
 
-  // Both passed the code checker on `attempt`.
+  // All passed the code checker on `attempt`. Track's text is the fixed
+  // template when trackIsTemplate — never model-written, never second-
+  // checked, same as Going/Trip's own win.size === 0 template path.
   let goingText = vG.going, tripText = vT.trip;
+  let trackText = trackIsTemplate ? F.NO_RUNS_TRACK_TEMPLATE : vK.track;
 
-  const sc1 = await secondCheck(goingText, tripText);
-  if (sc1.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, attempt: attempt, codeCheckFirstFailures: codeCheckFirstFailures, error: 'second check ' + sc1.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
+  const sc1 = await secondCheck(goingText, tripText, trackIsTemplate ? null : trackText);
+  if (sc1.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, attempt: attempt, codeCheckFirstFailures: codeCheckFirstFailures, error: 'second check ' + sc1.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
   if (sc1.supported) {
-    await storeGoingTrip(h, win, goingText, tripText);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, template: false, attempt: attempt, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, wordCount: { going: vG.wordCount, trip: vT.wordCount }, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: true, windowInfo: win };
+    await storeGoingTrip(h, win, goingText, tripText, trackText);
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: false, attempt: attempt, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, wordCount: { going: vG.wordCount, trip: vT.wordCount, track: trackIsTemplate ? null : vK.wordCount }, cacheRead: usage.cacheRead > 0, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: true, windowInfo: win };
   }
 
   // Second check found unsupported statements — rewrite ONLY the section(s)
@@ -510,58 +563,74 @@ async function processHorseGoingTrip(h, date) {
   const problems = sc1.problems || [];
   const goingProblems = problems.filter(function(p) { return p.section === 'going'; });
   const tripProblems = problems.filter(function(p) { return p.section === 'trip'; });
+  // Track build — trackIsTemplate horses never had a TRACK paragraph in the
+  // second check at all, so sc1.problems could never name section:'track'
+  // for them; forcing trackProblems empty keeps every branch below treating
+  // trackText as fixed and untouched, same as the template path throughout.
+  const trackProblems = trackIsTemplate ? [] : problems.filter(function(p) { return p.section === 'track'; });
 
   const notes2 = [];
   if (goingProblems.length) notes2.push('GOING — unsupported: ' + goingProblems.map(function(p) { return '"' + p.sentence + '": ' + p.reason; }).join('; '));
   if (tripProblems.length) notes2.push('TRIP — unsupported: ' + tripProblems.map(function(p) { return '"' + p.sentence + '": ' + p.reason; }).join('; '));
+  if (trackProblems.length) notes2.push('TRACK — unsupported: ' + trackProblems.map(function(p) { return '"' + p.sentence + '": ' + p.reason; }).join('; '));
   const keepNotes = [];
   if (!goingProblems.length) keepNotes.push('CURRENT GOING TEXT (keep this exactly, do not change it): ' + goingText);
   if (!tripProblems.length) keepNotes.push('CURRENT TRIP TEXT (keep this exactly, do not change it): ' + tripText);
-  const regenText = envelope + '\n\nA checker found these unsupported statements:\n' + notes2.join('\n') + '\nRewrite only the section(s) with unsupported statements, using only what the data shows. Return the full JSON with both going and trip.' + (keepNotes.length ? '\n\n' + keepNotes.join('\n') : '');
+  if (!trackIsTemplate && !trackProblems.length) keepNotes.push('CURRENT TRACK TEXT (keep this exactly, do not change it): ' + trackText);
+  const regenText = envelope + '\n\nA checker found these unsupported statements:\n' + notes2.join('\n') + '\nRewrite only the section(s) with unsupported statements, using only what the data shows. Return the full JSON with going, trip and track.' + (keepNotes.length ? '\n\n' + keepNotes.join('\n') : '');
   const regenAttempt = attempt + 1;
 
   w = await write(regenText);
   if (w.error) {
     // Could not even get a rewrite — keep whichever side had no problems,
-    // store nothing for the side that was unsupported.
+    // store nothing for the side that was unsupported. Track keeps its
+    // fixed template regardless (never rewritten, never dropped).
     const finalGoing = goingProblems.length ? null : goingText;
     const finalTrip = tripProblems.length ? null : tripText;
-    await storeGoingTrip(h, win, finalGoing, finalTrip);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems, error: 'regen ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
+    const finalTrack = trackIsTemplate ? trackText : (trackProblems.length ? null : trackText);
+    await storeGoingTrip(h, win, finalGoing, finalTrip, finalTrack);
+    return { horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip, storedTrack: !!finalTrack, attempt: regenAttempt, codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems, error: 'regen ' + w.error, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, windowInfo: win };
   }
 
   const vG2 = F.validateGoing(w.text, goingBlock);
   const vT2 = F.validateTrip(w.text, tripData);
+  const vK2 = trackIsTemplate ? { ok: true, track: null } : F.validateTrack(w.text, trackData);
   // Only trust the rewrite for a section that actually had a problem; the
   // other section keeps its already-passing text regardless of what the
-  // model returned for it this time.
+  // model returned for it this time. Track keeps its fixed template when
+  // trackIsTemplate, same rule.
   let candidateGoing = goingProblems.length ? (vG2.ok ? vG2.going : null) : goingText;
   let candidateTrip = tripProblems.length ? (vT2.ok ? vT2.trip : null) : tripText;
+  let candidateTrack = trackIsTemplate ? trackText : (trackProblems.length ? (vK2.ok ? vK2.track : null) : trackText);
 
-  let finalGoing = candidateGoing, finalTrip = candidateTrip;
+  let finalGoing = candidateGoing, finalTrip = candidateTrip, finalTrack = candidateTrack;
   let sc2Supported = null, sc2Problems = null;
   if (candidateGoing && candidateTrip) {
-    const sc2 = await secondCheck(candidateGoing, candidateTrip);
+    const trackForCheck = (!trackIsTemplate && candidateTrack) ? candidateTrack : null;
+    const sc2 = await secondCheck(candidateGoing, candidateTrip, trackForCheck);
     if (sc2.error) {
       // Can't confirm the rewrite — be safe and store nothing for the
       // section(s) that were being rewritten.
       finalGoing = goingProblems.length ? null : candidateGoing;
       finalTrip = tripProblems.length ? null : candidateTrip;
+      finalTrack = trackIsTemplate ? candidateTrack : (trackProblems.length ? null : candidateTrack);
     } else {
       sc2Supported = sc2.supported; sc2Problems = sc2.problems;
       const stillBadGoing = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'going'; });
       const stillBadTrip = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'trip'; });
+      const stillBadTrack = sc2.supported === false && sc2.problems.some(function(p) { return p.section === 'track'; });
       finalGoing = stillBadGoing ? null : candidateGoing;
       finalTrip = stillBadTrip ? null : candidateTrip;
+      finalTrack = trackIsTemplate ? candidateTrack : (trackForCheck ? (stillBadTrack ? null : candidateTrack) : null);
     }
   }
   // If either candidate came back null from the code check above (the
-  // targeted rewrite itself failed validateGoing/validateTrip), there is
-  // nothing to second-check for that side — it simply stores nothing.
+  // targeted rewrite itself failed validateGoing/validateTrip/validateTrack),
+  // there is nothing to second-check for that side — it simply stores nothing.
 
-  await storeGoingTrip(h, win, finalGoing, finalTrip);
+  await storeGoingTrip(h, win, finalGoing, finalTrip, finalTrack);
   return {
-    horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip,
+    horse_id: h.horse_id, horseName: h.name, storedGoing: !!finalGoing, storedTrip: !!finalTrip, storedTrack: !!finalTrack,
     template: false, attempt: regenAttempt, usage: usage, usage2: usage2, firstWriteUsage: firstWriteUsage, cacheRead: usage.cacheRead > 0,
     codeCheckFirstFailures: codeCheckFirstFailures, secondCheckFirstSupported: false, secondCheckFirstProblems: problems,
     secondCheckSecondSupported: sc2Supported, secondCheckSecondProblems: sc2Problems, regenerated: true, windowInfo: win
@@ -805,7 +874,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
       settled.forEach(function(r) {
         const emptyUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
         results.push({
-          horse_id: r.horse_id, horseName: r.horseName, storedGoing: !!r.storedGoing, storedTrip: !!r.storedTrip, template: !!r.template, attempt: r.attempt,
+          horse_id: r.horse_id, horseName: r.horseName, storedGoing: !!r.storedGoing, storedTrip: !!r.storedTrip, storedTrack: !!r.storedTrack, template: !!r.template, attempt: r.attempt,
           wordCount: r.wordCount || null, firstWriteUsage: r.firstWriteUsage || emptyUsage,
           codeCheckFirstFailures: r.codeCheckFirstFailures || null, codeCheckRetryFailures: r.codeCheckRetryFailures || null,
           secondCheckFirstSupported: r.secondCheckFirstSupported === undefined ? null : r.secondCheckFirstSupported,
@@ -816,18 +885,23 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         });
         usage = addUsage(usage, r.usage || emptyUsage);
         usage2 = addUsage(usage2, r.usage2 || emptyUsage);
+        // Track build — bothGenerated/partialGenerated now require/count
+        // storedTrack alongside storedGoing/storedTrip ("coverage ... treat
+        // track exactly as the other two sections"); the field names
+        // (bothGenerated, partialGenerated) are kept as-is per "the mode
+        // string stays goingtrip" — only their meaning now spans all three.
         if (r.template) templated++;
-        else if (r.storedGoing && r.storedTrip) {
+        else if (r.storedGoing && r.storedTrip && r.storedTrack) {
           bothGenerated++;
           if (r.cacheRead) cacheReadCount++;
           if (!r.codeCheckFirstFailures && r.secondCheckFirstSupported) passedFirstTimeCount++;
-        } else if (r.storedGoing || r.storedTrip) {
+        } else if (r.storedGoing || r.storedTrip || r.storedTrack) {
           partialGenerated++;
           if (r.cacheRead) cacheReadCount++;
         } else {
           failed.push({ horse_id: r.horse_id, horseName: r.horseName, error: r.error || null, codeCheckFirstFailures: r.codeCheckFirstFailures || null, codeCheckRetryFailures: r.codeCheckRetryFailures || null, secondCheckFirstProblems: r.secondCheckFirstProblems || null, secondCheckSecondProblems: r.secondCheckSecondProblems || null });
         }
-        if (r.codeCheckFirstFailures && (r.codeCheckFirstFailures.going || r.codeCheckFirstFailures.trip)) firstPassFailCount++;
+        if (r.codeCheckFirstFailures && (r.codeCheckFirstFailures.going || r.codeCheckFirstFailures.trip || r.codeCheckFirstFailures.track)) firstPassFailCount++;
         if (r.secondCheckFirstSupported === false) secondCheckFailCount++;
         if (r.regenerated) regeneratedCount++;
       });

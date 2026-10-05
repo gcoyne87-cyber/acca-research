@@ -1,0 +1,917 @@
+{
+  "Abu Dhabi (UAE)": null,
+  "Aintree": {
+    "direction": "Left-handed",
+    "speed": "Galloping / Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Live name does not distinguish the Grand National and Mildmay course configurations."
+  },
+  "Al Uqda (QA)": null,
+  "Angers (FR)": null,
+  "Ascot": {
+    "direction": "Right-handed / Straight",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish / Uphill finish",
+    "surface": "Turf",
+    "racing": "Flat / Jumps",
+    "note": "Live name does not distinguish Round/Straight (Flat) from the NH (Jumps) course, nor Round from Straight."
+  },
+  "Ascot (AUS)": null,
+  "Auteuil (FR)": null,
+  "Ayr": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Mostly flat gentle uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Baden-Baden (GER)": null,
+  "Bahrain (BHR)": null,
+  "Ballinrobe": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Undulating uphill back straight then downhill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Ballinrobe (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Undulating uphill back straight then downhill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Bangor-on-Dee": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Bath": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating strong uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Bellewstown": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Bellewstown (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Beverley": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Bordeaux Le Bouscat (FR)": null,
+  "Brighton": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating steep downhill then uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Bro Park (SWE)": null,
+  "Cagnes-Sur-Mer (FR)": null,
+  "Capannelle (ITY)": null,
+  "Carlisle": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Cartmel": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Catterick": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating downhill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Caulfield (AUS)": null,
+  "Chantilly": null,
+  "Chantilly (FR)": null,
+  "Chelmsford (AW)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Polytrack",
+    "racing": "Flat"
+  },
+  "Chelmsford City (AW)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Polytrack",
+    "racing": "Flat"
+  },
+  "Cheltenham": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Old and New courses share identical characteristics in the table; live name does not distinguish them anyway."
+  },
+  "Chepstow": {
+    "direction": "Left-handed / Straight",
+    "speed": "Galloping",
+    "contour": "Very undulating uphill finish / Undulating",
+    "surface": "Turf",
+    "racing": "Both / Flat",
+    "note": "Live name does not distinguish the Round (Flat+Jumps) course from the Straight (Flat-only) course."
+  },
+  "Chester": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Cholet (FR)": null,
+  "Chukyo (JPN)": null,
+  "Churchill Downs (USA)": null,
+  "Clairefontaine (FR)": null,
+  "Clonmel": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating downhill then very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Clonmel (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating downhill then very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Cologne (GER)": null,
+  "Compiegne (FR)": null,
+  "Cork": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Cork (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Corlay (FR)": null,
+  "Craon (FR)": null,
+  "Curragh": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Curragh (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Deauville": null,
+  "Deauville (AW)": null,
+  "Deauville (FR)": null,
+  "Del Mar (USA)": null,
+  "Dieppe (FR)": null,
+  "Doha (QA)": null,
+  "Doncaster": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Doomben (AUS)": null,
+  "Dortmund (GER)": null,
+  "Down Royal": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Down Royal (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Downpatrick": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Downpatrick (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Dundalk (AW)": { "direction": "Left-handed", "speed": "Tight", "contour": "Flat", "surface": "Polytrack", "racing": "Flat" },
+  "Dundalk (AW) (IRE)": { "direction": "Left-handed", "speed": "Tight", "contour": "Flat", "surface": "Polytrack", "racing": "Flat" },
+  "Dundalk (IRE)": { "direction": "Left-handed", "speed": "Tight", "contour": "Flat", "surface": "Polytrack", "racing": "Flat" },
+  "Dusseldorf (GER)": null,
+  "Enghien (FR)": null,
+  "Epsom": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Extremely undulating major downhill then uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Epsom Downs": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Extremely undulating major downhill then uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Exeter": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Very undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Fairyhouse": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Fairyhouse (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Fakenham": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Mostly flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Far Hills (USA)": null,
+  "Ffos Las": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Flemington (AUS)": null,
+  "Fontainebleau (FR)": null,
+  "Fontwell": {
+    "direction": "Figure-of-eight / Left-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation uphill finish / Mild undulation",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Live name does not distinguish the figure-of-eight Chase course from the left-handed Hurdle course."
+  },
+  "Galway": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Galway (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Goodwood": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Severely undulating downhill into the straight",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Gowran Park": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Gowran Park (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Greyville (SAF)": null,
+  "Gulfstream Park (USA)": null,
+  "Hamburg (GER)": null,
+  "Hamilton": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Undulating downhill then very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Hanover (GER)": null,
+  "Hanshin (JPN)": null,
+  "Happy Valley (HK)": null,
+  "Haydock": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Hereford": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Hexham": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Hoppegarten (GER)": null,
+  "Huntingdon": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Jebel Ali (UAE)": null,
+  "Keeneland (USA)": null,
+  "Kelso": {
+    "direction": "Left-handed",
+    "speed": "Galloping / Tight",
+    "contour": "Mild undulation very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Live name does not distinguish the Chase (Galloping) course from the Hurdle (Tight) course."
+  },
+  "Kempton": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Kempton (AW)": {
+    "direction": "Right-handed",
+    "speed": "Tight / Galloping",
+    "contour": "Flat",
+    "surface": "Polytrack",
+    "racing": "Flat",
+    "note": "Live name does not distinguish the Inner/Outer AW configuration."
+  },
+  "Kentucky Downs (USA)": null,
+  "Kilbeggan": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Kilbeggan (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Killarney": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Killarney (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Krefeld (GER)": null,
+  "Kyoto (JPN)": null,
+  "La Teste De Buch (FR)": null,
+  "Laytown (AW)": {
+    "direction": "Straight",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Sand",
+    "racing": "Flat",
+    "note": "Live tag does not match the table's surface label; table says Sand (the Laytown beach meeting) — kept as given."
+  },
+  "Laytown (IRE)": {
+    "direction": "Straight",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Sand",
+    "racing": "Flat",
+    "note": "Live tag does not match the table's surface label; table says Sand (the Laytown beach meeting) — kept as given."
+  },
+  "Le Lion-D'Angers (FR)": null,
+  "Leicester": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Leopardstown": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Mild undulation gradual uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Leopardstown (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Mild undulation gradual uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Les Landes (JER)": null,
+  "Limerick": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Limerick (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Lingfield": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating downhill section moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Lingfield (AW)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating mild uphill finish",
+    "surface": "Polytrack",
+    "racing": "Flat"
+  },
+  "Listowel": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Listowel (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Longchamp (FR)": null,
+  "Ludlow": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Lyon Parilly": null,
+  "Lyon Parilly (FR)": null,
+  "Maisons-Laffitte (FR)": null,
+  "Market Rasen": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Marseille Borely (FR)": null,
+  "Meydan (UAE)": null,
+  "Mont-De-Marsan (FR)": null,
+  "Moonee Valley (AUS)": null,
+  "Moulins (FR)": null,
+  "Mulheim (GER)": null,
+  "Munich (GER)": null,
+  "Musselburgh": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Naas": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Naas (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Nakayama (JPN)": null,
+  "Nantes (FR)": null,
+  "Navan": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Navan (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Newbury": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat slight rise to finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Newcastle": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Newcastle (AUS)": null,
+  "Newcastle (AW)": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating very stiff uphill finish",
+    "surface": "Tapeta",
+    "racing": "Flat"
+  },
+  "Newmarket": {
+    "direction": "Straight",
+    "speed": "Galloping",
+    "contour": "Undulating moderate finish",
+    "surface": "Turf",
+    "racing": "Flat",
+    "note": "Live bare \"Newmarket\" is the Rowley Mile (the default/main course); the July course has its own live tag \"Newmarket (July)\"."
+  },
+  "Newmarket (July)": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating downhill then uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Newton Abbot": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Nottingham": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Pardubice (CZE)": null,
+  "Parx (USA)": null,
+  "Percy Warner Park (USA)": null,
+  "Perth": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Plumpton": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Pontefract": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating significant uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Punchestown": {
+    "direction": "Right-handed / Both directions",
+    "speed": "Galloping / Tight",
+    "contour": "Undulating stiff uphill finish / Undulating",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Live name does not distinguish the Main course from the cross-country (XC) course."
+  },
+  "Punchestown (IRE)": {
+    "direction": "Right-handed / Both directions",
+    "speed": "Galloping / Tight",
+    "contour": "Undulating stiff uphill finish / Undulating",
+    "surface": "Turf",
+    "racing": "Jumps",
+    "note": "Live name does not distinguish the Main course from the cross-country (XC) course."
+  },
+  "Randwick (AUS)": null,
+  "Redcar": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Ripon": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Riyadh (KSA)": null,
+  "Roscommon": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating gradual uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Roscommon (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating gradual uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Rosehill (AUS)": null,
+  "Saint-Cloud": null,
+  "Saint-Cloud (FR)": null,
+  "Saint-Malo (FR)": null,
+  "Salisbury": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Moderately undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "San Siro (ITY)": null,
+  "Sandown": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating very stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Santa Anita (USA)": null,
+  "Saratoga (USA)": null,
+  "Scottsville (SAF)": null,
+  "Sedgefield": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating downhill then uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Seoul (KOR)": null,
+  "Sha Tin (HK)": null,
+  "Sharjah (UAE)": null,
+  "Sligo": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Sligo (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Southwell": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Southwell (AW)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Tapeta",
+    "racing": "Flat"
+  },
+  "St Moritz (SWI)": null,
+  "Strasbourg (FR)": null,
+  "Stratford": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Tampa Bay Downs (USA)": null,
+  "Taunton": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Thirsk": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Thurles": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating steep climb then descent and uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Thurles (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating steep climb then descent and uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Tipperary": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Tipperary (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Tokyo (JPN)": null,
+  "Toulouse (FR)": null,
+  "Tramore": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Tramore (IRE)": {
+    "direction": "Right-handed",
+    "speed": "Tight",
+    "contour": "Very undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Turffontein Standside (SAF)": null,
+  "Uttoxeter": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Moderately undulating moderate uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Vichy (FR)": null,
+  "Warwick": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Mild undulation",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Wetherby": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat slight uphill finish",
+    "surface": "Turf",
+    "racing": "Both"
+  },
+  "Wexford": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Wexford (IRE)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Undulating uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Wincanton": {
+    "direction": "Right-handed",
+    "speed": "Galloping",
+    "contour": "Undulating stiff uphill finish",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Windsor": {
+    "direction": "Figure-of-eight",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "Wolverhampton (AW)": {
+    "direction": "Left-handed",
+    "speed": "Tight",
+    "contour": "Flat",
+    "surface": "Tapeta",
+    "racing": "Flat"
+  },
+  "Woodbine (CAN)": null,
+  "Worcester": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Jumps"
+  },
+  "Yarmouth": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  },
+  "York": {
+    "direction": "Left-handed",
+    "speed": "Galloping",
+    "contour": "Flat",
+    "surface": "Turf",
+    "racing": "Flat"
+  }
+}
