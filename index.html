@@ -11882,6 +11882,26 @@ function _nrFsShow(uid,id){
 // a lighter, non-uppercase span.
 function _shdr(label,meta){return '<div style="font-size:11px;font-weight:600;color:#0b1628;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px">'+label+(meta?' <span style="color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">'+meta+'</span>':'')+'</div>';}
 
+// Compact/Detail racecard redesign — Trip/Going/Track stacked, no inner
+// tabs, each block self-labelled, in nrLoadForm's panel. Deliberately a new
+// function rather than a new _renderFormSections(s,part) branch: leaves
+// _renderFormSections/_nrFsShow (the tabbed version) completely untouched —
+// nothing else still calls the 'card' branch live. Track always shows its
+// placeholder, same rule as the tabbed version: s.track is never read.
+function _renderFormSectionsStacked(s){
+  var _esc=typeof escHtml==='function'?escHtml:function(x){return x;};
+  var block=function(label,text,placeholder){
+    return '<div style="margin:0 0 10px;padding:2px 0 2px 10px;border-left:3px solid #0b1628">'
+      +'<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">'+label+'</div>'
+      +(text?'<div style="font-size:13px;color:#374151;line-height:1.5">'+_esc(text)+'</div>'
+             :'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">'+placeholder+'</div>')
+    +'</div>';
+  };
+  return block('Trip',s&&s.trip,'Coming soon.')
+       + block('Going',s&&s.going,'Coming soon.')
+       + block('Track',null,'Track analysis coming soon.');
+}
+
 // Batched form-summary fetch — call with the horse_ids of a just-opened race's
 // runners. Skips ids already resolved (found or confirmed absent, tracked via
 // `id in _formSummaries`) so re-opening a race never re-fetches. cb runs once
@@ -12452,7 +12472,7 @@ function renderTrainerFilterMultiDay(el,isInitial){
     if(!_rcTabState[_tfTabKey]||_rcTabState[_tfTabKey]==='form'){
       var runnersForRace=_sortByPrice((sr.runners&&sr.runners.length)?sr.runners:[]);
       var favNames=_rcFavNames(runnersForRace);
-      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_runnerExtraHtml(selMeeting.id,sr.t,selMeeting.name,r),!!favNames[r.name]);}).join('')+'</div>';
+      out+='<div style="background:#fff;border-bottom:1px solid #e4e8f0">'+runnersForRace.map(function(r){return runnerRow(r,'tf',_runnerExtraHtml(selMeeting.id,sr.t,selMeeting.name,r,'tf'),!!favNames[r.name]);}).join('')+'</div>';
     }
     out+='</div>';
   }
@@ -13407,7 +13427,7 @@ function rcRaceDetailSingleHtml(m,selRace){
   var race=m.races[selRace];
   var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r,'rc'),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
@@ -13561,6 +13581,40 @@ function rcToggleVerdict(mid,time,mname){
   if(typeof nrRenderCard==='function') nrRenderCard();
   if(typeof renderRcSingleList==='function') renderRcSingleList();
 }
+// Compact/Detail — per-race toggle, replaces the old Verdict/Tips CTAs.
+// Compact (the default, false) shows every runner card collapsed; Detail
+// (true) opens every runner's existing Form panel (same nrLoadForm fetch
+// each "More detail" link already triggers, just driven for the whole race
+// at once) and flips every link to "Less detail". Keyed mid+'-'+time like
+// _rcVerdictOpen, same debounce, fully independent of it (both still exist,
+// just unreachable now that their own CTA is gone — see _runnerExtraHtml).
+var _rcDetailOpen={};
+function rcSetCompactDetail(mid,time,mname,wantDetail){
+  var now=Date.now();
+  if(now-_rcTabLastMs<350) return;
+  var key=mid+'-'+time;
+  if(!!_rcDetailOpen[key]===!!wantDetail) return;
+  _rcTabLastMs=now;
+  _rcDetailOpen[key]=wantDetail;
+  _renderCurrentHomeList();
+  if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
+  var _fe=document.getElementById('racing-future-content');
+  if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
+  if(typeof nrRenderCard==='function') nrRenderCard();
+  if(typeof renderRcSingleList==='function') renderRcSingleList();
+  // Sync every runner's own Form panel + "More/Less detail" link in this
+  // race — found via the invisible per-runner marker _runnerExtraHtml emits
+  // (data-race-key/data-pfx/data-horseid), since pfx isn't otherwise
+  // derivable from mid/time/mname alone.
+  var markers=document.querySelectorAll('[data-race-key]');
+  for(var i=0;i<markers.length;i++){
+    if(markers[i].getAttribute('data-race-key')!==key) continue;
+    var pfx=markers[i].dataset.pfx,hid=markers[i].dataset.horseid||'';
+    var wrap=document.getElementById('nrh-'+pfx);
+    var isOpen=!!(wrap&&wrap.dataset.openPanel==='fe');
+    if(wantDetail!==isOpen){ nrLoadForm(pfx,hid); _nrSyncDetailLink(pfx); }
+  }
+}
 // Data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
 // (a bare string is accepted as the text) — still takes priority when present,
@@ -13608,10 +13662,41 @@ function _verdictBlockHtml(mid,time,mname,ru){
   return h;
 }
 // Everything a runner row carries beneath its content: the inline analysis
-// text (existing) followed by the race verdict block (when that race's Verdict
-// is open). One helper so every runnerRow call site renders both identically.
-function _runnerExtraHtml(mid,time,mname,ru){
-  return _inlineHorseAnalysisHtml(mid,time,mname,ru.name)+'<!--nrv-->'+_verdictBlockHtml(mid,time,mname,ru);
+// text (existing), then the horse's verdict (always visible now — no CTA
+// gates it, see rcSetCompactDetail), then the "More detail"/"Less detail"
+// link, then an invisible marker rcSetCompactDetail uses to find this
+// horse's pfx (not otherwise derivable from mid/time/mname alone). One
+// helper so every runnerRow call site renders all of this identically. ctx
+// must be the same value passed to the adjacent runnerRow(...) call, since
+// pfx is derived from it exactly as runnerRow derives its own.
+function _runnerExtraHtml(mid,time,mname,ru,ctx){
+  var inline=_inlineHorseAnalysisHtml(mid,time,mname,ru.name);
+
+  // Verdict — same runnerAnalysis[i].verdict.text / .analysis fallback
+  // _verdictBlockHtml always used, just unconditional and plainly styled.
+  var a=_cachedRaceAnalyses[((mname||'')+' '+(time||'')).toLowerCase().trim()];
+  var hit=null;
+  if(a&&Array.isArray(a.runnerAnalysis)){
+    var target=(ru.name||'').toLowerCase().trim();
+    hit=a.runnerAnalysis.filter(function(h){return (h.horseName||'').toLowerCase().trim()===target;})[0]||null;
+  }
+  var v=(hit&&hit.verdict)?hit.verdict:null;
+  var vFromVerdict=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
+  var vText=vFromVerdict||((hit&&hit.analysis)?String(hit.analysis).trim():'');
+  var verdictHtml=vText?'<div style="padding:4px 12px 0;font-size:13px;color:#000;line-height:1.6">'+escHtml(vText)+'</div>':'';
+
+  var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
+  var key=mid+'-'+time;
+  // A horse individually toggled since the last full re-render keeps its
+  // own state (nrOpenHistory, maintained by nrTogglePanel already); only a
+  // horse that's never been touched falls back to the race-level toggle.
+  var linkOpen=(typeof nrOpenHistory!=='undefined'&&(pfx in nrOpenHistory))?(nrOpenHistory[pfx]==='fe'):!!_rcDetailOpen[key];
+  var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
+  var linkHtml='<div style="padding:4px 12px 0"><span id="nrh-moredetail-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\');_nrSyncDetailLink(\''+pfx+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;color:#1a7a4a;cursor:pointer">'
+    +(linkOpen?'Less detail &#9650;':'More detail &#9660;')
+  +'</span></div>';
+  var marker='<span data-race-key="'+escHtml(key)+'" data-pfx="'+escHtml(pfx)+'" data-horseid="'+hid+'" style="display:none"></span>';
+  return marker+inline+verdictHtml+linkHtml;
 }
 function _buildAnalysisTabHtml(a){
   if(!a) return '<div style="padding:16px 14px;text-align:center;color:#9aa3b5;font-size:13px">No analysis yet — run the daily build first.</div>';
@@ -13829,11 +13914,18 @@ function _raceTabsHtml(mid,time,mname){
   var pBase='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;';
   var pOn=pBase+'background:#1e9e6b;border:1px solid #1e9e6b;color:#fff';
   var pOff=pBase+'background:#fff;border:1px solid #d9efe4;color:#6b7280';
-  var vOn=!!_rcVerdictOpen[key];
-  var vBtn=vOn?pOn:pOff;
+  // Compact/Detail — replaces the old Verdict/Tips CTAs. Selected: navy
+  // (#0b1628) fill, white text. Unselected: transparent, the site's
+  // existing secondary text colour (#6b7280, the same grey pOff above
+  // already uses), same pill shape/sizing as every other race-level button
+  // here.
+  var cBase='flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;padding:7px 2px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;border:1px solid #d9efe4;';
+  var cOn=cBase+'background:#0b1628;border-color:#0b1628;color:#fff';
+  var cOff=cBase+'background:transparent;color:#6b7280';
+  var detailOn=!!_rcDetailOpen[key];
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
-    +'<button style="'+vBtn+'" onclick="rcToggleVerdict(\''+me+'\',\''+te+'\',\''+ne+'\')"><span>Verdict</span></button>'
-    +'<button style="'+(active==='tips'?pOn:pOff)+'" onclick="rcTabSelect(\''+me+'\',\''+te+'\',\''+ne+'\',\'tips\')">'+star+' <span>Tips</span>'+down+'</button>'
+    +'<button style="'+(!detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',false)"><span>Compact</span></button>'
+    +'<button style="'+(detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',true)"><span>Detail</span></button>'
     +'</div>';
   if(active==='analysis'){
     var ck=(mname+' '+time).toLowerCase().trim();
@@ -13927,7 +14019,7 @@ function rcRaceDetailHtml(m){
 
   var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r,'rc'),!!favNames[r.name]);}).join('');
 
   out+='</div>';
 
@@ -14746,7 +14838,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         // Name line — flex-wrap so multiple gold tag pills wrap onto a new
         // line on narrow viewports instead of overflowing off-screen.
         +'<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:2px">'
-          +'<span style="font-size:14px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
+          +'<span style="font-size:18px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(ru.name)+'</span>'
           +'<span id="nrh-arr-'+pfx+'" onclick="nrLoadProfile(\''+pfx+'\',\''+escHtml(ru.horse_id||'').replace(/'/g,"\\'")+'\')" title="Horse profile" style="cursor:pointer;flex-shrink:0;color:#0D1B3E;font-size:12px;font-weight:700;line-height:1">&#9660;</span>'
           +(function(){
             var _t=[];
@@ -14795,6 +14887,17 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   +histCarousel;
 }
 
+// Relabels one horse's "More detail"/"Less detail" link to match whatever
+// nrLoadForm/nrTogglePanel just set wrap.dataset.openPanel to. Called right
+// after the link's own nrLoadForm(...) call (same tick — nrTogglePanel runs
+// synchronously before the fetch starts) and by rcSetCompactDetail for
+// every horse it opens or closes.
+function _nrSyncDetailLink(pfx){
+  var wrap=document.getElementById('nrh-'+pfx);
+  var open=!!(wrap&&wrap.dataset.openPanel==='fe');
+  var el=document.getElementById('nrh-moredetail-'+pfx);
+  if(el) el.innerHTML=open?'Less detail &#9650;':'More detail &#9660;';
+}
 function _nrPillState(btn,active){
   if(!btn)return;
   btn.style.background=active?'#0D1B3E':'#fff';
@@ -15409,12 +15512,10 @@ function nrLoadForm(pfx,horseId,silent){
       out+=_sc('Prize',_przStr,{color:'#b8860b'});
       out+='</div>';
 
-      // 4. Form Summary — header, four-tab strip and flush pane (always rendered)
+      // 4. Trip/Going/Track — stacked blocks, no inner tabs (Compact/Detail
+      // racecard redesign). Replaces the old tabbed Form Summary strip.
       out+='<div style="padding:10px 12px 0">';
-      out+=_shdr('Form Summary',hist.length?'· '+hist.length+' runs':'');
-      // The four-tab strip and the flush pane render for every horse; any tab whose
-      // text is missing shows the placeholder inside the same pane.
-      out+=_renderFormSections(_fsum||{},'card');
+      out+=_renderFormSectionsStacked(_fsum||{});
       out+='</div>';
 
       // 5. Form table — run rows only, first 8 visible
@@ -15670,7 +15771,7 @@ function nrRenderCard(){
   function buildNrCard(runnerCtx){
     var raceRunners=_sortByPrice((r._runners&&r._runners.length)?r._runners:NR_RUNNERS);
     var favNames=_rcFavNames(raceRunners);
-    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_runnerExtraHtml(r.venue,r.t,r.venue,ru),!!favNames[ru.name]);}).join('');
+    var runners=raceRunners.map(function(ru){return runnerRow(ru,runnerCtx,_runnerExtraHtml(r.venue,r.t,r.venue,ru,runnerCtx),!!favNames[ru.name]);}).join('');
     var cdId=runnerCtx==='nrhome'?'nr-hdr-cd-home':'nr-hdr-cd';
     return '<div>'
       +'<div style="padding:10px 14px 6px;background:#fff;border-top:1px solid #f0f2f7">'
@@ -19562,7 +19663,7 @@ function tmRaceDetailHtml(m){
   var out='<div id="tm-detail-'+m.id+'" style="background:#fff;border-bottom:1px solid #e4e8f0">';
   var runners=_sortByPrice((race&&race.runners&&race.runners.length)?race.runners:TM_RUNNERS);
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'tm',_runnerExtraHtml(m.id,race.t,m.name,r),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,'tm',_runnerExtraHtml(m.id,race.t,m.name,r,'tm'),!!favNames[r.name]);}).join('');
   out+='</div>';
   return out;
 }
