@@ -11893,8 +11893,8 @@ function _renderFormSectionsStacked(s){
   var block=function(label,text,placeholder){
     return '<div style="margin:0 0 10px;padding:2px 0 2px 10px;border-left:3px solid #0b1628">'
       +'<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">'+label+'</div>'
-      +(text?'<div style="font-size:13px;color:#374151;line-height:1.5">'+_esc(text)+'</div>'
-             :'<div style="font-size:13px;color:#9ca3af;line-height:1.5;font-style:italic">'+placeholder+'</div>')
+      +(text?'<div style="font-size:13px;color:#111;line-height:1.6">'+_esc(text)+'</div>'
+             :'<div style="font-size:13px;color:#9ca3af;line-height:1.6;font-style:italic">'+placeholder+'</div>')
     +'</div>';
   };
   return block('Trip',s&&s.trip,'Coming soon.')
@@ -13692,7 +13692,7 @@ function _runnerExtraHtml(mid,time,mname,ru,ctx){
   // horse that's never been touched falls back to the race-level toggle.
   var linkOpen=(typeof nrOpenHistory!=='undefined'&&(pfx in nrOpenHistory))?(nrOpenHistory[pfx]==='fe'):!!_rcDetailOpen[key];
   var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-  var linkHtml='<div style="padding:4px 12px 0"><span id="nrh-moredetail-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\');_nrSyncDetailLink(\''+pfx+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;color:#1a7a4a;cursor:pointer">'
+  var linkHtml='<div style="padding:4px 12px 0"><span id="nrh-moredetail-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\');_nrSyncDetailLink(\''+pfx+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:500;color:#1a7a4a;cursor:pointer">'
     +(linkOpen?'Less detail &#9650;':'More detail &#9660;')
   +'</span></div>';
   var marker='<span data-race-key="'+escHtml(key)+'" data-pfx="'+escHtml(pfx)+'" data-horseid="'+hid+'" style="display:none"></span>';
@@ -14702,13 +14702,13 @@ function runnerRow(ru,ctx,extraHtml,isFav){
 
   // Form as plain string on its own line below the name — dashes only exist
   // for season breaks, shown as-is
-  var formText=ru.form?'<div style="font-size:11px;color:#9aa3b5;margin-top:2px;font-weight:500">'+escHtml(ru.form)+'</div>':'';
+  var formText=ru.form?'<div style="font-size:11px;color:#111;margin-top:2px;font-weight:400">'+escHtml(ru.form)+'</div>':'';
 
   // Jockey and trainer combined onto one dot-separated line
   var jockeyTrainerParts=[];
   if(jockey) jockeyTrainerParts.push(escHtml(jockey));
   if(trainer) jockeyTrainerParts.push(escHtml(trainer));
-  var jockeyLine=jockeyTrainerParts.length?'<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+jockeyTrainerParts.join(' &middot; ')+'</div>':'';
+  var jockeyLine=jockeyTrainerParts.length?'<div style="font-size:12px;color:#111;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+jockeyTrainerParts.join(' &middot; ')+'</div>':'';
   var trainerLine='';
 
   // Weight · OR on next line
@@ -14716,7 +14716,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   if(ru.wt) wtOrAgeParts.push(escHtml(ru.wt));
   if(ru.or) wtOrAgeParts.push('OR '+escHtml(String(ru.or)));
   if(ru.age) wtOrAgeParts.push(escHtml(String(ru.age))+'yo');
-  var wtOrLine=wtOrAgeParts.length?'<div style="font-size:10px;color:#9aa3b5;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
+  var wtOrLine=wtOrAgeParts.length?'<div style="font-size:11px;color:#111;margin-top:2px">'+wtOrAgeParts.join(' &middot; ')+'</div>':'';
   var ageLine='';
 
   var badgeHtml='';
@@ -14766,7 +14766,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
         if(ru.trainer14&&ru.trainer14.runs>0) meta.push('Trainer 14d: '+_mv(ru.trainer14.wins+'/'+ru.trainer14.runs));
         var _ih='';
         if(ru.history&&ru.history.length){
-          var _thS='text-align:left;padding:5px 6px;font-size:9px;font-weight:700;color:#9aa3b5;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
+          var _thS='text-align:left;padding:5px 6px;font-size:12px;font-weight:700;color:#111;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;background:#fafbfc';
           _ih='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">';
           _ih+='<table style="width:100%;border-collapse:collapse">';
           _ih+='<thead><tr style="border-bottom:2px solid #e4e8f0">';
@@ -14784,13 +14784,13 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             var posCol=posNum===1?'#1e9e6b':h.pos===0?'#e74c3c':posNum===2||posNum===3?'#b7860b':'#0D1B3E';
             var ds=escHtml((h.date||'')+(h.year?' '+h.year:''));
             _ih+='<tr style="border-bottom:1px solid #f0f2f7">';
-            _ih+='<td style="padding:7px 6px 7px 12px;color:#5a6478;font-size:10px;white-space:nowrap">'+ds+'</td>';
-            _ih+='<td style="padding:7px 6px;font-weight:600;color:#0D1B3E;font-size:11px;white-space:nowrap">'+escHtml(h.course||'')+(h.hand?'<span style="font-weight:400;color:#b0b8c8;font-size:9px"> '+escHtml(h.hand)+'</span>':'')+'</td>';
-            _ih+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(h.dist||'')+'</td>';
-            _ih+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;white-space:nowrap">'+escHtml(h.going||'')+'</td>';
-            _ih+='<td style="padding:7px 6px;text-align:center;white-space:nowrap"><span style="font-size:13px;font-weight:800;color:'+posCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:9px;color:#c0c6d4">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-            _ih+='<td style="padding:7px 6px;color:#5a6478;font-size:10px;text-align:right;white-space:nowrap">'+escHtml(h.wt||'–')+'</td>';
-            _ih+='<td style="padding:7px 12px 7px 6px;color:#5a6478;font-size:10px;text-align:right;white-space:nowrap">'+(h.or?escHtml(String(h.or)):'–')+'</td>';
+            _ih+='<td style="padding:7px 6px 7px 12px;color:#111;font-size:12px;white-space:nowrap">'+ds+'</td>';
+            _ih+='<td style="padding:7px 6px;font-weight:400;color:#111;font-size:12px;white-space:nowrap">'+escHtml(h.course||'')+(h.hand?'<span style="font-weight:400;color:#111;font-size:12px"> '+escHtml(h.hand)+'</span>':'')+'</td>';
+            _ih+='<td style="padding:7px 6px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(h.dist||'')+'</td>';
+            _ih+='<td style="padding:7px 6px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(h.going||'')+'</td>';
+            _ih+='<td style="padding:7px 6px;text-align:center;white-space:nowrap"><span style="font-size:13px;font-weight:800;color:'+posCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:12px;color:#111">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+            _ih+='<td style="padding:7px 6px;color:#111;font-size:12px;text-align:right;white-space:nowrap">'+escHtml(h.wt||'–')+'</td>';
+            _ih+='<td style="padding:7px 12px 7px 6px;color:#111;font-size:12px;text-align:right;white-space:nowrap">'+(h.or?escHtml(String(h.or)):'–')+'</td>';
             _ih+='</tr>';
           });
           _ih+='</tbody></table></div>';
@@ -14831,7 +14831,7 @@ function runnerRow(ru,ctx,extraHtml,isFav){
   return '<div'+(_isHorseHighlighted?' data-horse-highlight="1"':'')+' style="border-bottom:1px solid #f0f2f7;background:'+_rowBg+'">'
     +'<div style="display:flex;align-items:flex-start;padding:9px 12px;gap:9px;background:transparent">'
       +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:20px;margin-top:1px">'
-        +'<span style="font-size:9px;color:#b0b8c8;font-weight:600;line-height:1">'+ru.n+'</span>'
+        +'<span style="font-size:9px;color:#111;font-weight:600;line-height:1">'+ru.n+'</span>'
         +silk
       +'</div>'
       +'<div style="flex:1;min-width:0">'
@@ -14875,13 +14875,6 @@ function runnerRow(ru,ctx,extraHtml,isFav){
       })()
     +'</div>'
     +_exTop
-    +(function(){
-      var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
-      return '<div style="display:flex;padding:6px 12px 0 38px;border-bottom:1px solid #f0f2f5">'
-        +'<div id="nrh-tab-form-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\')" '
-        +'style="font-size:12px;font-weight:600;color:#1e9e6b;border-bottom:2px solid #1e9e6b;padding-bottom:4px;cursor:pointer;white-space:nowrap">Form</div>'
-        +'</div>';
-    })()
   +_exTail
   +'</div>'
   +histCarousel;
@@ -15499,7 +15492,7 @@ function nrLoadForm(pfx,horseId,silent){
       })();
       if(!_ru2){var _w2=document.getElementById('nrh-'+pfx);if(_w2&&(_w2.dataset.age||_w2.dataset.or||_w2.dataset.lastrun))_ru2={age:_w2.dataset.age,or:_w2.dataset.or,lastRun:_w2.dataset.lastrun};}
       out+='<div style="display:flex;gap:12px;background:#f3f9f6;padding:9px 12px">';
-      var _sc=function(label,val,opts){opts=opts||{};return '<div style="flex:'+(opts.flex||'1')+';min-width:0;text-align:center"><div style="font-size:9px;font-weight:600;color:#6b9c80;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">'+label+'</div><div style="font-size:'+(opts.vs||'12px')+';font-weight:600;color:'+(opts.color||'#0b1628')+';white-space:nowrap">'+val+'</div></div>';};
+      var _sc=function(label,val,opts){opts=opts||{};return '<div style="flex:'+(opts.flex||'1')+';min-width:0;text-align:center"><div style="font-size:9px;font-weight:600;color:#111;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">'+label+'</div><div style="font-size:'+(opts.vs||'12px')+';font-weight:400;color:#111;white-space:nowrap">'+val+'</div></div>';};
       out+=_sc('Age',(_ru2&&_ru2.age)?escHtml(String(_ru2.age)):'—');
       out+=_sc('OR',(_ru2&&_ru2.or)?escHtml(String(_ru2.or)):'—');
       out+=_sc('Last run',(_ru2&&_ru2.lastRun)?escHtml(String(_ru2.lastRun))+'d':'—');
@@ -15509,7 +15502,7 @@ function nrLoadForm(pfx,horseId,silent){
       var _przTot=0;
       hist.forEach(function(h){var _pv=parseFloat(String(h.prize||'').replace(/[^0-9.]/g,''));if(!isNaN(_pv))_przTot+=_pv;});
       var _przStr=_przTot>0?'£'+Math.round(_przTot).toLocaleString('en-GB'):'—';
-      out+=_sc('Prize',_przStr,{color:'#b8860b'});
+      out+=_sc('Prize',_przStr);
       out+='</div>';
 
       // 4. Trip/Going/Track — stacked blocks, no inner tabs (Compact/Detail
@@ -15521,13 +15514,13 @@ function nrLoadForm(pfx,horseId,silent){
       // 5. Form table — run rows only, first 8 visible
       if(hist.length){
         var _fMon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var _thS2='text-align:left;padding:4px 8px;font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
+        var _thS2='text-align:left;padding:4px 8px;font-size:12px;font-weight:600;color:#111;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;background:#fff;border-bottom:1px solid #f0f2f5';
         var _abC2=typeof _nrAbCourse==='function'?_nrAbCourse:function(x){return x||'';};
         // Header sits on the wash; the table below is a full-bleed white band (no inset,
         // no radius, no side borders) with 12px first/last cell padding to align content.
         out+='<div style="padding:10px 12px 5px">'+_shdr('Form Table')+'</div>';
         out+='<div style="background:#ffffff;border-top:0.5px solid #d9efe4">';
-        out+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">';
+        out+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
         out+='<colgroup><col style="width:16%"><col style="width:22%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:16%"></colgroup>';
         out+='<thead><tr><th style="'+_thS2+';padding-left:12px">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+';padding-right:12px">Jockey</th></tr></thead><tbody>';
         hist.forEach(function(h,_hi){
@@ -15540,13 +15533,13 @@ function nrLoadForm(pfx,horseId,silent){
           var _dp=h.date?String(h.date).split('-'):[];
           var ds=_dp.length===3?_dp[2]+' '+(_fMon[parseInt(_dp[1],10)-1]||'')+" '"+_dp[0].slice(-2):'';
           out+='<tr style="border-top:1px solid #f0f2f5">';
-          out+='<td style="padding:4px 8px 4px 12px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(ds)+'</td>';
-          out+='<td style="padding:4px 8px;font-weight:600;color:#0b1628;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_nrCourseCellHtml(h.course||'')+'</td>';
-          out+='<td style="padding:4px 8px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
-          out+='<td style="padding:4px 8px;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:11px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:11px;color:#b0b7c6">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-          out+='<td style="padding:4px 8px;text-align:right;color:#6b7280;font-size:11px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-          out+='<td style="padding:4px 12px 4px 8px;color:#6b7280;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<td style="padding:4px 8px 4px 12px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(ds)+'</td>';
+          out+='<td style="padding:4px 8px;font-weight:400;color:#111;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_nrCourseCellHtml(h.course||'')+'</td>';
+          out+='<td style="padding:4px 8px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
+          out+='<td style="padding:4px 8px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
+          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:12px;color:#111">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
+          out+='<td style="padding:4px 8px;text-align:right;color:#111;font-size:12px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
+          out+='<td style="padding:4px 12px 4px 8px;color:#111;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
           out+='</tr>';
         });
         out+='</tbody></table></div>';
