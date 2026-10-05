@@ -170,7 +170,9 @@ function statsOf(rows) {
   const wins = rows.filter(function(r) { return posNum(r.pos) === 1; }).length;
   const places = rows.filter(function(r) { const p = posNum(r.pos); return p === 2 || p === 3; }).length;
   const bestRow = rows.slice().sort(compareForBest)[0];
-  return { runs: rows.length, wins: wins, places: places, topThree: wins + places, bestRow: (bestRow && posNum(bestRow.pos) !== null) ? bestRow : null };
+  // rows kept newest-first so an unplaced group can print its actual positions.
+  const newestFirst = rows.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+  return { runs: rows.length, wins: wins, places: places, topThree: wins + places, bestRow: (bestRow && posNum(bestRow.pos) !== null) ? bestRow : null, rows: newestFirst };
 }
 
 // Going groups in scale order: turf (rank asc), all-weather (rank asc),
@@ -186,7 +188,7 @@ function goingGroups(windowRows) {
   const groups = order.map(function(name) {
     const g = byName[name];
     const s = statsOf(g.rows);
-    return { name: g.name, rank: g.rank, surface: g.surface, isCompound: g.isCompound, unranked: g.unranked, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow };
+    return { name: g.name, rank: g.rank, surface: g.surface, isCompound: g.isCompound, unranked: g.unranked, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow, rows: s.rows };
   });
   const turf = groups.filter(function(g) { return g.surface === 'turf'; }).sort(function(a, b) { return a.rank - b.rank; });
   const aw = groups.filter(function(g) { return g.surface === 'all-weather'; }).sort(function(a, b) { return a.rank - b.rank; });
@@ -259,7 +261,7 @@ function tripGroups(windowRows) {
   const groups = order.map(function(key) {
     const g = byKey[key];
     const s = statsOf(g.rows);
-    return { name: g.label + ' (' + g.type + ')', type: g.type, distanceLabel: g.label, furlongs: g.furlongs, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow };
+    return { name: g.label + ' (' + g.type + ')', type: g.type, distanceLabel: g.label, furlongs: g.furlongs, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow, rows: s.rows };
   });
   return groups.sort(function(a, b) {
     const ra = typeRank(a.type), rb = typeRank(b.type);
@@ -341,7 +343,7 @@ function trackGroups(windowRows, courseFacts) {
     const s = statsOf(entry.rows);
     let fact = (courseFacts && courseFacts[course]) || null;
     if (!fact) entry.rawNames.some(function(raw) { const f = courseFacts && courseFacts[raw]; if (f) { fact = f; return true; } return false; });
-    return { course: course, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow, fact: fact, character: trackCharacter(fact) };
+    return { course: course, runs: s.runs, wins: s.wins, places: s.places, topThree: s.topThree, bestRow: s.bestRow, rows: s.rows, fact: fact, character: trackCharacter(fact) };
   });
 }
 
@@ -377,17 +379,27 @@ function trackRollups(groups) {
 //    group's own surface (never turf against all-weather); Trip compares the
 //    two biggest groups within the lead race type; Track compares tight v
 //    galloping and left- v right-handed.
-//  • BEST — a group's labelled best result is given where the group has a
-//    top-three finish and either 2+ runs or a win; a single run's place is
-//    already fully described by its figures, a win is worth its result.
+//  • BEST — every group with a top-three finish gives its best result, a
+//    single-run place included, so no section ever has to borrow a result
+//    (or a course name) from another section's facts. Unplaced groups give
+//    their actual positions instead.
 //  • NONE — a stamina field with nothing behind it prints as NONE with its
 //    meaning spelled out, never as a bare word.
 function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
 function countClause(g) { return plural(g.runs, 'run') + ', ' + plural(g.wins, 'win') + ', ' + plural(g.places, 'place'); }
+// "9th of 14" for a finisher, "pulled up" for a non-finisher — no course or
+// date, so an unplaced run adds only its own two numbers to the fact list.
+function posClause(r) { const n = posNum(r.pos); return n !== null ? ordinal(n) + ' of ' + (r.ran || '?') : posWord(r.pos); }
+// Unplaced groups print where the horse actually finished: 1-2 runs list
+// every position, 3+ runs give the best actual position. Every group with a
+// top-three finish gives its best result, in all three sections.
 function groupLine(label, g, bestText) {
-  if (g.topThree === 0) return '- ' + label + ': ' + plural(g.runs, 'run') + ', no top-three finish.';
+  if (g.topThree === 0) {
+    if (g.runs <= 2) return '- ' + label + ': ' + plural(g.runs, 'run') + ', ' + (g.rows || []).map(posClause).join(' and ') + '.';
+    return '- ' + label + ': ' + plural(g.runs, 'run') + ', no top-three finish' + (g.bestRow ? '; best ' + posClause(g.bestRow) : '') + '.';
+  }
   let line = '- ' + label + ': ' + countClause(g);
-  if ((g.runs >= 2 || g.wins > 0) && bestText) line += '; best ' + bestText;
+  if (bestText) line += '; best ' + bestText;
   return line + '.';
 }
 function leadCompare(tiebreak) {
@@ -521,7 +533,8 @@ const NO_RUNS_TRACK_TEMPLATE = 'No track record to assess in the recent window.'
 const FACT_CONTRACT =
 "You write three short sections of a racehorse's form summary for a racing website: GOING, TRIP and TRACK. Every fact you may use is listed for you under that section's heading. The code has already done all the counting, comparing and ranking; your job is only to phrase those facts well.\n\n" +
 "THE CONTRACT\n" +
-"Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. GOING and TRIP max 45 words, TRACK max 50.\n" +
+"Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. Never state how many courses, distances, goings or groups appear in the facts — no '7 courses tried', no '5 distances', no 'across 4 going types'. Those counts are not facts in the list; describe the groups themselves instead.\n" +
+"LENGTH: GOING and TRIP: 45 words maximum. TRACK: 55 words maximum. These are hard limits — count your words and cut connective detail (course character descriptions can be shortened to a few words) before exceeding them. Never cut numbers or results to fit.\n" +
 "The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in this window; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.";
 
 const VOICE_RULES =
@@ -543,18 +556,18 @@ const TRACK_NOTES =
 
 const EXAMPLES =
 "EXAMPLES\n" +
-"GOING facts:\n- Good to Firm: 5 runs, 0 wins, 3 places; best 2nd of 9 at Brighton on 28 Sep 2026.\n- Good: 1 run, 0 wins, 1 place.\n- Firm: 1 run, no top-three finish.\n- Window: 7 runs, 0 wins, 4 places.\n" +
-"GOING text: Good to Firm is where the record sits, with 3 places from 5 runs and the pick of them a 2nd of 9 at Brighton on 28 Sep 2026. The 1 run on Good also brought a place, while the single outing on Firm produced no top-three finish.\n\n" +
-"TRIP facts:\n- 2m (Hurdle): 3 runs, 0 wins, 1 place; best 3rd of 8 at Wexford on 17 Mar 2026.\n- 2m4f (Hurdle): 2 runs, no top-three finish.\n- Hurdle total: 5 runs, 0 wins, 1 place.\n- Hurdle stamina: longest won NONE (no wins at any trip); longest placed 2m; longest tried 2m4f; shortest tried 2m.\n" +
-"TRIP text: The only place over hurdles came at 2m, a 3rd of 8 at Wexford on 17 Mar 2026, from 3 runs at the trip. The 2 runs at 2m4f produced nothing in the top three, and the horse has not won at any trip in this window.\n\n" +
-"TRACK facts:\n- Wolverhampton (AW) (Left-handed, Tight): 4 runs, 1 win, 2 places; best 1st of 9 on 2 Feb 2026.\n- Doncaster (Left-handed, Galloping): 2 runs, no top-three finish.\n- Left-handed courses: 6 runs, 1 win, 2 places.\n- Tight courses: 4 runs, 1 win, 2 places.\n- Galloping courses: 2 runs, 0 wins, 0 places.\n- Window: 6 runs in total.\n- Clear split: 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping courses.\n" +
-"TRACK text: Wolverhampton's tight, turning all-weather circuit has suited this horse best, with 1 win and 2 places from 4 runs there, the win a 1st of 9 on 2 Feb 2026. Doncaster's big, galloping track brought no top-three finish from 2 runs — a clear split of 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping ones.\n\n" +
-"GOING facts (with a split):\n- Soft: 4 runs, 2 wins, 1 place; best 1st of 11 at Haydock on 14 Feb 2026.\n- Good: 3 runs, no top-three finish.\n- Window: 7 runs, 2 wins, 1 place.\n- Never run on (turf): Hard, Firm, Good to Firm, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft to Heavy, Heavy.\n- Clear split: 3 in the top three from 4 runs on Soft against 0 from 3 on Good.\n" +
-"GOING text: Soft ground is where this horse has done its winning, 2 wins and a place from 4 runs, the best of them a 1st of 11 at Haydock on 14 Feb 2026. On Good the story is different: 3 runs without a top-three finish, a clear split against the Soft record.\n\n" +
-"TRIP facts (thin record):\n- 1m2f (Flat): 1 run, no top-three finish.\n- 1m4f (Flat): 1 run, 0 wins, 1 place.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Too few runs to show a pattern.\n" +
-"TRIP text: Only 2 runs in the window, 1 at 1m2f without a top-three finish and 1 at 1m4f that brought a place, so there is no trip pattern to read yet. The horse has not won at any trip in this window.";
+"GOING facts:\n- Good to Firm: 5 runs, 0 wins, 3 places; best 2nd of 9 at Brighton on 28 Sep 2026.\n- Good: 1 run, 0 wins, 1 place; best 3rd of 7 at Bath on 2 May 2026.\n- Firm: 1 run, 9th of 14.\n- Window: 7 runs, 0 wins, 4 places.\n" +
+"GOING text: Good to Firm is where the record sits, with 3 places from 5 runs and the pick of them a 2nd of 9 at Brighton on 28 Sep 2026. The 1 run on Good also brought a place, a 3rd of 7 at Bath on 2 May 2026, while the single outing on Firm ended 9th of 14.\n\n" +
+"TRIP facts:\n- 2m (Hurdle): 3 runs, 0 wins, 1 place; best 3rd of 8 at Wexford on 17 Mar 2026.\n- 2m4f (Hurdle): 2 runs, 7th of 10 and 11th of 12.\n- Hurdle total: 5 runs, 0 wins, 1 place.\n- Hurdle stamina: longest won NONE (no wins at any trip); longest placed 2m; longest tried 2m4f; shortest tried 2m.\n" +
+"TRIP text: The only place over hurdles came at 2m, a 3rd of 8 at Wexford on 17 Mar 2026, from 3 runs at the trip. Stepped up to 2m4f the horse finished 7th of 10 and 11th of 12, and it has not won at any trip in this window.\n\n" +
+"TRACK facts:\n- Wolverhampton (AW) (Left-handed, Tight): 4 runs, 1 win, 2 places; best 1st of 9 on 2 Feb 2026.\n- Doncaster (Left-handed, Galloping): 2 runs, 6th of 12 and 8th of 9.\n- Left-handed courses: 6 runs, 1 win, 2 places.\n- Tight courses: 4 runs, 1 win, 2 places.\n- Galloping courses: 2 runs, 0 wins, 0 places.\n- Window: 6 runs in total.\n- Clear split: 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping courses.\n" +
+"TRACK text: Wolverhampton's tight, turning circuit has suited this horse best: 1 win and 2 places from 4 runs, the win a 1st of 9 on 2 Feb 2026. Doncaster's big, galloping track brought a 6th of 12 and an 8th of 9 — a clear split of 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping ones.\n\n" +
+"GOING facts (with a split):\n- Soft: 4 runs, 2 wins, 1 place; best 1st of 11 at Haydock on 14 Feb 2026.\n- Good: 3 runs, no top-three finish; best 5th of 9.\n- Window: 7 runs, 2 wins, 1 place.\n- Never run on (turf): Hard, Firm, Good to Firm, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft to Heavy, Heavy.\n- Clear split: 3 in the top three from 4 runs on Soft against 0 from 3 on Good.\n" +
+"GOING text: Soft ground is where this horse has done its winning, 2 wins and a place from 4 runs, the best of them a 1st of 11 at Haydock on 14 Feb 2026. On Good the story is different: 3 runs without a top-three finish and nothing better than a 5th of 9, a clear split against the Soft record.\n\n" +
+"TRIP facts (thin record):\n- 1m2f (Flat): 1 run, 7th of 11.\n- 1m4f (Flat): 1 run, 0 wins, 1 place; best 2nd of 10 at Newbury on 3 Jul 2026.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Too few runs to show a pattern.\n" +
+"TRIP text: Only 2 runs in the window, a 7th of 11 at 1m2f and a 2nd of 10 at Newbury on 3 Jul 2026 at 1m4f, so there is no trip pattern to read yet. The horse has not won at any trip in this window.";
 
-const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}";
+const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}. Output the JSON object only — no reasoning, no preamble, no text before or after it.";
 
 const GOINGTRIP_PROMPT = FACT_CONTRACT + "\n\n" + VOICE_RULES + "\n\n" + GOING_NOTES + "\n\n" + TRIP_NOTES + "\n\n" + TRACK_NOTES + "\n\n" + EXAMPLES + "\n\n" + OUTPUT_LINE;
 const GOINGTRIP_MAX_TOKENS = 1600;
@@ -601,9 +614,42 @@ function sentenceAt(offsets, idx) {
 function numberTokens(s) { return String(s || '').match(/\d+/g) || []; }
 function phraseRegex(phrase) { return new RegExp('\\b' + phrase.replace(/'/g, "['’]?").replace(/[- ]/g, '[- ]') + '\\b', 'i'); }
 
+// Cross-section name leak check. Every course name and every going name in
+// a section's text must appear in THAT section's fact list — the same
+// string-membership idea as the number check, applied to names.
+// Course list: every key in course-facts.json plus its suffix-stripped form
+// (plus the horse's own history courses, passed by the runner). Matching is
+// word-boundary and longest-name-first with consumption, so "Lingfield (AW)"
+// in a text is one token and never a false match for bare "Lingfield"; and
+// case-sensitive, so the English "yielding" never matches the going
+// "Yielding". A bare course token in the text is allowed against a suffixed
+// fact ("Wolverhampton" for "Wolverhampton (AW)") — the texts drop the
+// suffix routinely — but never the reverse.
+function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function nameTokens(text, names) {
+  let t = String(text || ''); const found = [];
+  names.forEach(function(n) {
+    const re = new RegExp('(?<![A-Za-z])' + escapeRe(n) + '(?![A-Za-z])', 'g'); let m;
+    while ((m = re.exec(t)) !== null) {
+      found.push({ name: n, index: m.index });
+      t = t.slice(0, m.index) + ' '.repeat(m[0].length) + t.slice(m.index + m[0].length); // consume
+    }
+  });
+  return found;
+}
+function longestFirst(list) { return list.slice().sort(function(a, b) { return b.length - a.length || a.localeCompare(b); }); }
+const COURSE_NAME_LIST = longestFirst(Object.keys(COURSE_FACTS).reduce(function(acc, k) {
+  if (k && acc.indexOf(k) === -1) acc.push(k);
+  const bare = stripParens(k); if (bare && acc.indexOf(bare) === -1) acc.push(bare);
+  return acc;
+}, []));
+const GOING_NAME_LIST = longestFirst(GOING_SCALE.turf.concat(GOING_SCALE.allweather).map(function(g) { return g.name; }));
+const COURSE_ALIASES = { 'Epsom': 'Epsom Downs', 'Epsom Downs': 'Epsom' };
+
 // validateSection(section, text, factLines, opts) — text is the section's
-// own string (already parsed out of the JSON). opts.courseNames exempts a
-// banned word inside a course name; opts.wordCap sets the warning cap.
+// own string (already parsed out of the JSON). opts.courseNames and
+// opts.horseName exempt a banned word that sits inside a course name or the
+// horse's own name ("Beat The Odds"); opts.wordCap sets the warning cap.
 function validateSection(section, text, factLines, opts) {
   const failures = []; const warnings = [];
   const t = String(text || '');
@@ -622,17 +668,35 @@ function validateSection(section, text, factLines, opts) {
   const reNum = /\d+/g; let m;
   while ((m = reNum.exec(t)) !== null) { if (!allowed[m[0]]) fail('number-not-in-facts', m[0], m.index); }
 
-  // banned (betting) words — exempt when inside one of the horse's course names.
+  // Exemption spans: the horse's course names and its own name.
   const spans = [];
-  ((opts && opts.courseNames) || []).forEach(function(c) {
+  const exemptNames = ((opts && opts.courseNames) || []).concat(opts && opts.horseName ? [opts.horseName] : []);
+  exemptNames.forEach(function(c) {
     if (!c) return;
-    const re = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); let cm;
+    const re = new RegExp(escapeRe(c), 'gi'); let cm;
     while ((cm = re.exec(t)) !== null) spans.push([cm.index, cm.index + cm[0].length]);
   });
-  const insideCourse = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
+  const insideExempt = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
+
+  // course-not-in-facts / going-not-in-facts — name membership. The horse's
+  // own name is blanked first so a horse called after a course or a going
+  // is not read as one.
+  let tNames = t;
+  if (opts && opts.horseName) { const hre = new RegExp(escapeRe(opts.horseName), 'g'); tNames = tNames.replace(hre, function(mm) { return ' '.repeat(mm.length); }); }
+  const factsText = (factLines || []).join('\n');
+  const courseList = longestFirst(COURSE_NAME_LIST.concat(((opts && opts.courseNames) || []).filter(function(c) { return c && COURSE_NAME_LIST.indexOf(c) === -1; })));
+  const factCourses = nameTokens(factsText, courseList).map(function(x) { return x.name; });
+  // COURSE_ALIASES: course-facts.json carries both "Epsom" and "Epsom Downs"
+  // for the one track, and the texts shorten the latter routinely.
+  const courseOk = function(name) { const alias = COURSE_ALIASES[name]; return factCourses.some(function(fc) { return fc === name || stripParens(fc) === name || (alias && (fc === alias || stripParens(fc) === alias)); }); };
+  nameTokens(tNames, courseList).forEach(function(x) { if (!courseOk(x.name)) fail('course-not-in-facts', x.name, x.index); });
+  const factGoings = nameTokens(factsText, GOING_NAME_LIST).map(function(x) { return x.name; });
+  nameTokens(tNames, GOING_NAME_LIST).forEach(function(x) { if (factGoings.indexOf(x.name) === -1) fail('going-not-in-facts', x.name, x.index); });
+
+  // banned (betting) words — exempt inside a course name or the horse's name.
   BETTING_WORDS.forEach(function(w) {
     const re = new RegExp(phraseRegex(w).source, 'gi'); let wm;
-    while ((wm = re.exec(t)) !== null) { if (!insideCourse(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } }
+    while ((wm = re.exec(t)) !== null) { if (!insideExempt(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } }
   });
 
   // today / future words
@@ -697,5 +761,8 @@ module.exports = {
   parseJsonSections: parseJsonSections,
   validateSection: validateSection,
   numberTokens: numberTokens,
+  nameTokens: nameTokens,
+  COURSE_NAME_LIST: COURSE_NAME_LIST,
+  GOING_NAME_LIST: GOING_NAME_LIST,
   words: words
 };

@@ -180,9 +180,9 @@ async function processHorseGoingTrip(h, date) {
     if (!parsed) return { parsed: null, going: null, trip: null, track: null, jsonFail: true };
     return {
       parsed: parsed,
-      going: F.validateSection('going', parsed.going, goingFacts, { courseNames: courseNames, wordCap: 45 }),
-      trip: F.validateSection('trip', parsed.trip, tripFacts, { courseNames: courseNames, wordCap: 45 }),
-      track: trackIsTemplate ? null : F.validateSection('track', parsed.track, trackFacts, { courseNames: courseNames, wordCap: 50 }),
+      going: F.validateSection('going', parsed.going, goingFacts, { courseNames: courseNames, horseName: h.name, wordCap: 45 }),
+      trip: F.validateSection('trip', parsed.trip, tripFacts, { courseNames: courseNames, horseName: h.name, wordCap: 45 }),
+      track: trackIsTemplate ? null : F.validateSection('track', parsed.track, trackFacts, { courseNames: courseNames, horseName: h.name, wordCap: 55 }),
       jsonFail: false
     };
   }
