@@ -225,6 +225,14 @@ const GOINGTRIP_SECOND_CHECK_TOOL = {
     required: ['supported', 'problems']
   }
 };
+// Bug fix Fix 3 — tool_choice auto (was forced): a forced tool call makes
+// the model commit its problems array as its very first output, before it
+// can act on the prompt's own "re-read each problem... remove it" self-
+// review instruction. Auto lets it reason in text first, then call the
+// tool with its settled answer. parseGoingTripSecondCheck already scans
+// the whole content array with .find(), so it finds the tool_use block
+// wherever it lands (text block(s) first, tool call after) with no change
+// needed there.
 async function callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText) {
   return E.anthropic('POST', '/v1/messages', {
     model: E.MODEL,
@@ -232,7 +240,7 @@ async function callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText
     system: [{ type: 'text', text: F.GOINGTRIP_SECOND_CHECK_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: goingBlockText + '\n\n' + tripBlockText + '\n\nGOING PARAGRAPH\n' + goingText + '\n\nTRIP PARAGRAPH\n' + tripText }],
     tools: [GOINGTRIP_SECOND_CHECK_TOOL],
-    tool_choice: { type: 'tool', name: 'report_goingtrip_check' }
+    tool_choice: { type: 'auto' }
   });
 }
 function parseGoingTripSecondCheck(resp) {
@@ -434,13 +442,27 @@ async function processHorseGoingTrip(h, date) {
     usage = addUsage(usage, usageFrom(resp.json));
     return { text: (resp.json.content[0] && resp.json.content[0].text) || '' };
   }
-  async function secondCheck(goingText, tripText) {
+  // Bug fix Fix 3 — tool_choice is now 'auto' (see callGoingTripSecondCheck),
+  // so the model may spend an entire turn on reasoning text with no tool
+  // call at all. One retry (same inputs) before giving up — only then is it
+  // treated as check-failed for this horse, same as before.
+  async function secondCheckAttempt(goingText, tripText) {
     const resp = await callGoingTripSecondCheck(goingBlockText, tripBlockText, goingText, tripText);
-    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
+    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { httpError: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseGoingTripSecondCheck(resp);
-    if (!parsed) return { error: 'no usable report_goingtrip_check tool call — content: ' + JSON.stringify(resp.json.content).slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
+    if (!parsed) return { noToolCall: true, debug: 'content: ' + JSON.stringify(resp.json.content).slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
     return { supported: parsed.supported, problems: parsed.problems || [] };
+  }
+  async function secondCheck(goingText, tripText) {
+    let r = await secondCheckAttempt(goingText, tripText);
+    if (r.httpError) return { error: r.httpError };
+    if (r.noToolCall) {
+      r = await secondCheckAttempt(goingText, tripText);
+      if (r.httpError) return { error: 'retry ' + r.httpError };
+      if (r.noToolCall) return { error: 'no usable report_goingtrip_check tool call after retry — ' + r.debug };
+    }
+    return { supported: r.supported, problems: r.problems || [] };
   }
 
   // ── Pass 1: write, validate both texts, one retry (both) on a code failure ──

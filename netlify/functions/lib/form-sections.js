@@ -599,6 +599,25 @@ function parseJsonGoing(text) {
   try { return JSON.parse(t); } catch (e) { return null; }
 }
 
+// Bug fix Fix 1 — subset-sum over a set of printed same-kind figures (per-
+// group run/win/place counts, plus any printed Totals figures given
+// alongside them). A claimed count that doesn't match any single printed
+// figure may still be a legitimate sum of several of them (e.g. "7 runs" =
+// a 4-run going + a 3-run going) — this checks every combination before the
+// caller gives up and fails. 0/negative targets are never matched (there is
+// no meaningful empty-subset claim in this text).
+function anyComboSum(values, target) {
+  if (!target || target <= 0) return false;
+  let possible = [0];
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    const next = possible.slice();
+    for (let j = 0; j < possible.length; j++) next.push(possible[j] + v);
+    possible = Array.from(new Set(next));
+  }
+  return possible.indexOf(target) !== -1;
+}
+
 function validateGoing(text, block) {
   const failures = []; const warnings = [];
   const fail = function(check, detail) { failures.push({ check: check, detail: detail }); };
@@ -651,7 +670,9 @@ function validateGoing(text, block) {
   // is itself a valid source for a number, same as any group's own figure.
   const counts = { run: {}, win: {}, place: {}, topThree: {} };
   groups.forEach(function(g) { counts.run[g.runs] = true; counts.win[g.wins] = true; counts.place[g.places] = true; counts.topThree[g.topThree] = true; });
-  [groups.filter(function(g) { return g.surface === 'turf'; }), groups.filter(function(g) { return g.surface === 'all-weather'; }), groups].forEach(function(arr) {
+  const turfGroupsForCombo = groups.filter(function(g) { return g.surface === 'turf'; });
+  const awGroupsForCombo = groups.filter(function(g) { return g.surface === 'all-weather'; });
+  [turfGroupsForCombo, awGroupsForCombo, groups].forEach(function(arr) {
     if (!arr.length) return;
     counts.run[sumGoingFigures(arr).runs] = true;
     counts.win[sumGoingFigures(arr).wins] = true;
@@ -660,11 +681,25 @@ function validateGoing(text, block) {
   if (windowSize !== null) counts.run[windowSize] = true;
   function matchesAnyGoingFigure(n) { return n === windowSize || counts.run[n] || counts.win[n] || counts.place[n] || groups.some(function(g) { return g.topThree === n; }); }
 
+  // Fix 1 — combination-sum fallback: the pool of "printed same-kind
+  // figures" is every going's own run/win/place count plus the printed
+  // Totals figures (turf, all-weather, window) for that same kind.
+  const comboPool = { run: [], win: [], place: [] };
+  ['run', 'win', 'place'].forEach(function(kind) {
+    const key = kind === 'run' ? 'runs' : kind === 'win' ? 'wins' : 'places';
+    groups.forEach(function(g) { comboPool[kind].push(g[key]); });
+    if (turfGroupsForCombo.length) comboPool[kind].push(sumGoingFigures(turfGroupsForCombo)[kind === 'run' ? 'runs' : key]);
+    if (awGroupsForCombo.length) comboPool[kind].push(sumGoingFigures(awGroupsForCombo)[kind === 'run' ? 'runs' : key]);
+    const windowFig = sumGoingFigures(groups)[kind === 'run' ? 'runs' : key];
+    comboPool[kind].push(kind === 'run' && windowSize !== null ? windowSize : windowFig);
+  });
+  function comboMatches(kind, n) { return anyComboSum(comboPool[kind], n); }
+
   const reCount = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(runs?|wins?|places?)\\b', 'gi');
   while ((m = reCount.exec(t)) !== null) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
-    if (n !== windowSize && !counts[kind][n]) fail('count-not-given', m[0]);
+    if (n !== windowSize && !counts[kind][n] && !comboMatches(kind, n)) fail('count-not-given', m[0]);
   }
   const reTopThree = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+in the top three\\b', 'gi');
   while ((m = reTopThree.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.topThree[n]) fail('count-not-given', m[0]); }
@@ -678,13 +713,13 @@ function validateGoing(text, block) {
   }
 
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n]) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !comboMatches('run', n)) fail('count-not-given', m[0]); }
 
   const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
-  if (/\bboth\b/i.test(t) && !matchesAnyGoingFigure(2)) fail('count-not-given', 'both (hidden total)');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  if (/\bboth\b/i.test(t) && !matchesAnyGoingFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)');
   const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGoingFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
 
   // banned-format: N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
@@ -833,6 +868,17 @@ function validateTrip(text, tripData) {
   function isAnyTypeWinTotal(n) { return Object.keys(typeTotalsWins).some(function(k) { return typeTotalsWins[k] === n; }); }
   function isAnyTypePlaceTotal(n) { return Object.keys(typeTotalsPlaces).some(function(k) { return typeTotalsPlaces[k] === n; }); }
   function matchesAnyGroupFigure(n) { return n === windowSize || groups.some(function(g) { return g.runs === n || g.wins === n || g.places === n || g.topThree === n; }) || isAnyTypeTotal(n) || isAnyTypeWinTotal(n) || isAnyTypePlaceTotal(n); }
+
+  // Fix 1 — combination-sum fallback: the pool of "printed same-kind
+  // figures" is every group's own run/win/place count plus the printed
+  // per-type Totals figures for that same kind, plus the window size (run).
+  const comboPool = { run: [], win: [], place: [] };
+  groups.forEach(function(g) { comboPool.run.push(g.runs); comboPool.win.push(g.wins); comboPool.place.push(g.places); });
+  Object.keys(typeTotals).forEach(function(k) { comboPool.run.push(typeTotals[k]); });
+  Object.keys(typeTotalsWins).forEach(function(k) { comboPool.win.push(typeTotalsWins[k]); });
+  Object.keys(typeTotalsPlaces).forEach(function(k) { comboPool.place.push(typeTotalsPlaces[k]); });
+  if (windowSize !== null) comboPool.run.push(windowSize);
+  function comboMatches(kind, n) { return anyComboSum(comboPool[kind], n); }
   function typeKeyFromWord(w) {
     const lw = String(w || '').toLowerCase();
     if (lw === 'flat') return 'Flat';
@@ -848,11 +894,11 @@ function validateTrip(text, tripData) {
     const n = numFrom(m[1]);
     const kind = /^run/i.test(m[2]) ? 'run' : /^win/i.test(m[2]) ? 'win' : 'place';
     if (kind === 'run') {
-      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0]);
     } else if (kind === 'win') {
-      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.win[n] && !isAnyTypeWinTotal(n) && !comboMatches('win', n)) fail('count-not-given', m[0]);
     } else {
-      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n)) fail('count-not-given', m[0]);
+      if (n !== windowSize && !counts.place[n] && !isAnyTypePlaceTotal(n) && !comboMatches('place', n)) fail('count-not-given', m[0]);
     }
   }
   // "N {race type} runs/starts" — must match that type's own total (or a
@@ -885,12 +931,12 @@ function validateTrip(text, tripData) {
   // "both" (=2), "other N" — a single group's figure, a race type's total,
   // or the window size.
   const reStandaloneTotal = new RegExp('\\b(\\d+|' + NUM_WORD_ALT + ')\\s+(outings|starts|races)\\b', 'gi');
-  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n)) fail('count-not-given', m[0]); }
+  while ((m = reStandaloneTotal.exec(t)) !== null) { const n = numFrom(m[1]); if (n !== windowSize && !counts.run[n] && !isAnyTypeTotal(n) && !comboMatches('run', n)) fail('count-not-given', m[0]); }
   const reAll = new RegExp('\\ball\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
-  if (/\bboth\b/i.test(t) && !matchesAnyGroupFigure(2)) fail('count-not-given', 'both (hidden total)');
+  while ((m = reAll.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !isAnyTypeTotal(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  if (/\bboth\b/i.test(t) && !matchesAnyGroupFigure(2) && !comboMatches('run', 2) && !comboMatches('win', 2) && !comboMatches('place', 2)) fail('count-not-given', 'both (hidden total)');
   const reOther = new RegExp('\\bother\\s+(\\d+|' + NUM_WORD_ALT + ')\\b', 'gi');
-  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n)) fail('count-not-given', m[0] + ' (hidden total)'); }
+  while ((m = reOther.exec(t)) !== null) { const n = numFrom(m[1]); if (!matchesAnyGroupFigure(n) && !comboMatches('run', n) && !comboMatches('win', n) && !comboMatches('place', n)) fail('count-not-given', m[0] + ' (hidden total)'); }
 
   // N/M shorthand
   const reSlash = /\b\d+\/\d+\b/g;
@@ -1032,16 +1078,30 @@ function validateTrip(text, tripData) {
       return;
     }
 
-    // Otherwise pair each field phrase with its nearest (by position)
-    // not-yet-used distance token in the same sentence.
+    // Bug fix Fix 2 — pair each field phrase with the nearest not-yet-used
+    // distance token that comes AFTER it ("longest placed is 1m2f", the
+    // natural field-then-value order), only falling back to the nearest one
+    // BEFORE it when none follows. The previous version picked whichever
+    // distance was nearest by raw character distance in either direction,
+    // which let an earlier, unrelated distance (belonging to a different
+    // field, e.g. "tried up to 1m3f, her longest placed effort is 1m2f")
+    // beat the correct, later, grammatically-attached one purely because it
+    // happened to sit fewer characters away.
     const usedDist = {};
     fieldMatches.forEach(function(fmatch) {
       let best = null, bestDist = Infinity;
       dists.forEach(function(d, di) {
-        if (usedDist[di]) return;
-        const dist = Math.abs(d.index - fmatch.index);
+        if (usedDist[di] || d.index <= fmatch.index) return;
+        const dist = d.index - fmatch.index;
         if (dist < bestDist) { bestDist = dist; best = di; }
       });
+      if (best === null) {
+        dists.forEach(function(d, di) {
+          if (usedDist[di] || d.index > fmatch.index) return;
+          const dist = fmatch.index - d.index;
+          if (dist < bestDist) { bestDist = dist; best = di; }
+        });
+      }
       if (best === null) return;
       usedDist[best] = true;
       const claimed = dists[best].value;
