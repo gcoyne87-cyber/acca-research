@@ -666,6 +666,7 @@ const TRIP_SECTION = "TRIP (from TRIP DATA): what distance suits the horse, and 
 "Say where the horse's record is strongest using the group figures, and how far it is proven using the stamina line. The only longest/shortest/furthest claims you may make are the stamina line's own facts (longest won, longest placed, longest tried, shortest tried), restated as that line gives them. A step up or drop back in trip is evidence only when it tells the reader something; do not make the section about trip changes.\n" +
 "If the results do not single out a distance, say that no distance stands out. Never call a trip the horse's best, ideal or optimal unless the results clearly show it.\n" +
 "Never say whether the horse will or won't stay a distance it has not run. Only mention a distance the horse has not run when it genuinely matters to the read; do not end with a statement about untested distances by default.\n" +
+"When citing the stamina line, copy each field name with its own printed value exactly — longest won, longest placed, longest tried and shortest tried are four different figures; never attribute one field's value to another.\n" +
 "Mention only distances in the data.\n" +
 "30 to 45 words.";
 
@@ -1278,7 +1279,34 @@ function validateTrip(text, tripData) {
   // results quoted in that sentence must match the stated count.
   function countResultsInSentence(sent) { const re = new RegExp(reResultTok.source, 'g'); let c = 0; while (re.exec(sent) !== null) c++; return c; }
   sentences.forEach(function(sent) {
-    if (/\bboth\b/i.test(sent)) {
+    // Fix 2 (30-horse probe, post-2026-10-05 goingtrip run) — "both"/"all"
+    // followed by 2+ stamina FIELD NAMES and a single distance (e.g.
+    // "longest placed and longest tried are both 6f") is a claim that those
+    // fields share one value, not a claim quoting two race results. The
+    // plain result-quoting check below wrongly demanded 2 "Nth of M" tokens
+    // for this sentence shape and misfired on 5 of 14 comparison-claim
+    // failures in that run, every one of them a factually correct sentence.
+    // Validated here as a field-value claim instead; the result-quoting
+    // check is skipped once this sentence has been handled this way.
+    const fieldMatchesHere = [];
+    STAMINA_FIELD_DEFS.forEach(function(fd) {
+      const re = new RegExp(fd.re.source, 'gi'); let fm;
+      while ((fm = re.exec(sent)) !== null) fieldMatchesHere.push({ field: fd.field, index: fm.index });
+    });
+    let handledAsFieldClaim = false;
+    if (/\b(?:both|all)\b/i.test(sent) && fieldMatchesHere.length >= 2) {
+      const dists = distTokensWithPos(sent);
+      if (dists.length === 1) {
+        handledAsFieldClaim = true;
+        const claimed = dists[0].value;
+        const types = factTypesForSentence(sent);
+        const allMatch = fieldMatchesHere.every(function(fmatch) {
+          return types.some(function(type) { return claimMatchesField(type, fmatch.field, claimed); });
+        });
+        if (!allMatch) fail('comparison-claim', '"' + fieldMatchesHere.map(function(f) { return f.field; }).join(' and ') + ' both ' + claimed + '" does not match the stamina line for every named field');
+      }
+    }
+    if (!handledAsFieldClaim && /\bboth\b/i.test(sent)) {
       const c = countResultsInSentence(sent);
       if (c > 0 && c !== 2) fail('comparison-claim', '"both" sentence quotes ' + c + ' result(s), not 2: "' + sent.trim() + '"');
     }

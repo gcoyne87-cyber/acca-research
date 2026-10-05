@@ -367,6 +367,31 @@ function telemetryFromProblems(h, date, problems, stage) {
   });
 }
 
+// Fix 3 (30-horse probe) — the self-review instruction in
+// GOINGTRIP_SECOND_CHECK_PROMPT ("you MUST NOT include that entry...")
+// still leaked: 4 of 16 second-check problems in that run had reasoning
+// that itself concluded the sentence was supported ("...is supported",
+// "...withdrawing this entry") yet the entry stayed in the tool call's
+// problems array anyway. Model instruction alone isn't reliable, so this
+// filters deterministically on the parsed result, checking only the FINAL
+// sentence of each problem's reason (so an earlier, exploratory "might be
+// supported" elsewhere in the reasoning doesn't cause a false drop).
+// Explicit filler-word allowlist, not an open character gap — "is NOT
+// supported" (a genuine, negated conclusion that the problem stands) must
+// never match here, so only known affirming fillers are permitted between
+// "is" and "supported".
+const SELF_OVERRULE_PHRASES = [/\bis\s+(?:actually\s+|in\s+fact\s+|indeed\s+|clearly\s+|still\s+)?supported\b/i, /removing\s+this/i, /withdrawing\s+this/i, /no\s+problem\s+here/i, /must\s+not\s+be\s+flagged/i];
+function isSelfOverruled(reason) {
+  const sentences = String(reason || '').split(/(?<=[.!?])\s+/).filter(function(s) { return s.trim(); });
+  const last = sentences.length ? sentences[sentences.length - 1] : String(reason || '');
+  return SELF_OVERRULE_PHRASES.some(function(re) { return re.test(last); });
+}
+function filterSelfOverruled(problems) {
+  const kept = [], dropped = [];
+  (problems || []).forEach(function(p) { (isSelfOverruled(p.reason) ? dropped : kept).push(p); });
+  return { kept: kept, dropped: dropped };
+}
+
 async function processHorseTrip(h, date) {
   const rows = await E.redisGet('form:history:' + h.horse_id + ':' + date);
   const allRows = Array.isArray(rows) ? rows : [];
@@ -543,7 +568,15 @@ async function processHorseGoingTrip(h, date) {
     usage2 = addUsage(usage2, usageFrom(resp.json));
     const parsed = parseGoingTripSecondCheck(resp);
     if (!parsed) return { noToolCall: true, debug: 'content: ' + JSON.stringify(resp.json.content).slice(0, 400) + ' [stop_reason=' + resp.json.stop_reason + ']' };
-    return { supported: parsed.supported, problems: parsed.problems || [] };
+    // Fix 3 — drop any problem whose own reasoning concludes the sentence
+    // is supported after all; log what got dropped for audit.
+    const filtered = filterSelfOverruled(parsed.problems || []);
+    if (filtered.dropped.length) {
+      await appendTelemetry(date, filtered.dropped.map(function(p) {
+        return { date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: p.section, check: 'self-overruled-filtered', sentence: p.sentence, detail: p.reason, stage: 'secondCheck' };
+      }));
+    }
+    return { supported: filtered.kept.length === 0, problems: filtered.kept };
   }
   async function secondCheck(goingText, tripText, trackText) {
     let r = await secondCheckAttempt(goingText, tripText, trackText);
@@ -963,7 +996,12 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         else if (r.storedGoing && r.storedTrip && r.storedTrack) {
           bothGenerated++;
           if (r.cacheRead) cacheReadCount++;
-          if (!r.codeCheckFirstFailures && r.secondCheckFirstSupported) passedFirstTimeCount++;
+          // Fix (30-horse probe) — codeCheckFirstFailures is always a
+          // truthy {going,trip,track} object (even when every sub-field is
+          // null), so `!r.codeCheckFirstFailures` was always false and this
+          // counter never incremented. Check the sub-fields instead.
+          const hadCodeCheckFail = r.codeCheckFirstFailures && (r.codeCheckFirstFailures.going || r.codeCheckFirstFailures.trip || r.codeCheckFirstFailures.track);
+          if (!hadCodeCheckFail && r.secondCheckFirstSupported) passedFirstTimeCount++;
         } else if (r.storedGoing || r.storedTrip || r.storedTrack) {
           partialGenerated++;
           if (r.cacheRead) cacheReadCount++;
