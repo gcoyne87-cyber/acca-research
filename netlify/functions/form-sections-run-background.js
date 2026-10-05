@@ -909,6 +909,16 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
       secondCheckFailCount = state.secondCheckFailCount || 0; regeneratedCount = state.regeneratedCount || 0; passedFirstTimeCount = state.passedFirstTimeCount || 0;
     } else {
       remaining = await eligibleHorses(date);
+      // Probe support — ?horseIds=comma,separated,ids restricts this run to
+      // exactly those horses (e.g. a pre-selected sample spread across
+      // meetings), unlike ?sample=N's own random pick from every eligible
+      // horse. Only applied on a fresh start (hop 0); a chained hop's
+      // `remaining` already reflects it — same rule as ?sample=N below.
+      if (qs.horseIds) {
+        const wanted = {};
+        String(qs.horseIds).split(',').map(function(s) { return s.trim(); }).filter(Boolean).forEach(function(id) { wanted[id] = true; });
+        remaining = remaining.filter(function(h) { return wanted[h.horse_id]; });
+      }
       // Sample-run support — ?sample=N limits this run to N horses spread
       // across every meeting, not the full card. Only applied on a fresh
       // start (hop 0); a chained hop's `remaining` already reflects it.
@@ -1030,7 +1040,7 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
         console.log('[form-sections:goingtrip] approaching timeout at hop', hop, '—', remaining.length, 'horse(s) still queued, chaining hop', hop + 1);
         await new Promise(function(resolve) {
           const req = https.request({
-            hostname: HOSTNAME, path: '/.netlify/functions/form-sections-run-background?date=' + date + '&section=goingtrip&hop=' + (hop + 1) + (qs.costCap ? '&costCap=' + encodeURIComponent(qs.costCap) : '') + (qs.cacheProbe ? '&cacheProbe=' + encodeURIComponent(qs.cacheProbe) : ''),
+            hostname: HOSTNAME, path: '/.netlify/functions/form-sections-run-background?date=' + date + '&section=goingtrip&hop=' + (hop + 1) + (qs.costCap ? '&costCap=' + encodeURIComponent(qs.costCap) : '') + (qs.cacheProbe ? '&cacheProbe=' + encodeURIComponent(qs.cacheProbe) : '') + (qs.horseIds ? '&horseIds=' + encodeURIComponent(qs.horseIds) : ''),
             method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 }
           }, function(res) { res.resume(); res.on('end', resolve); });
           req.on('error', function() { resolve(); });
