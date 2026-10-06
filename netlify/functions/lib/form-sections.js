@@ -322,6 +322,10 @@ function courseNamesForExemption(rows) {
 }
 
 function stripIreSuffix(name) { return String(name || '').replace(/\s*\(IRE\)\s*$/i, ''); }
+// Courses the results feed names two ways for one track — grouped as one in
+// Track, under the full name, with one character line from course-facts.json.
+const COURSE_MERGE = { 'Epsom': 'Epsom Downs' };
+function normalizeTrackCourse(name) { const s = stripIreSuffix(name); return COURSE_MERGE[s] || s; }
 
 function trackCharacter(fact) {
   if (!fact) return null;
@@ -333,7 +337,7 @@ function trackCharacter(fact) {
 function trackGroups(windowRows, courseFacts) {
   const byCourse = {}; const order = [];
   (windowRows || []).forEach(function(r) {
-    const normalized = stripIreSuffix(r.course);
+    const normalized = normalizeTrackCourse(r.course);
     if (!byCourse[normalized]) { byCourse[normalized] = { rows: [], rawNames: [] }; order.push(normalized); }
     byCourse[normalized].rows.push(r);
     if (byCourse[normalized].rawNames.indexOf(r.course) === -1) byCourse[normalized].rawNames.push(r.course);
@@ -534,7 +538,7 @@ const FACT_CONTRACT =
 "You write three short sections of a racehorse's form summary for a racing website: GOING, TRIP and TRACK. Every fact you may use is listed for you under that section's heading. The code has already done all the counting, comparing and ranking; your job is only to phrase those facts well.\n\n" +
 "THE CONTRACT\n" +
 "Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. Never state how many courses, distances, goings or groups appear in the facts — no '7 courses tried', no '5 distances', no 'across 4 going types'. Those counts are not facts in the list; describe the groups themselves instead.\n" +
-"LENGTH: GOING and TRIP: 55 words maximum. TRACK: 70 words maximum. Keep within these limits by cutting connective detail — a course character can be a few words. Never cut numbers or results to fit. A section that runs over is rejected and rewritten.\n" +
+"LENGTH: GOING and TRIP: 65 words maximum. TRACK: 85 words maximum. Keep within these limits by cutting connective detail — a course character can be a few words. Never cut numbers or results to fit. A section that runs over is rejected and rewritten.\n" +
 "The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in this window; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.";
 
 const VOICE_RULES =
@@ -644,8 +648,10 @@ const COURSE_NAME_LIST = longestFirst(Object.keys(COURSE_FACTS).reduce(function(
   return acc;
 }, []));
 const GOING_NAME_LIST = longestFirst(GOING_SCALE.turf.concat(GOING_SCALE.allweather).map(function(g) { return g.name; }));
-const COURSE_ALIASES = { 'Epsom': 'Epsom Downs', 'Epsom Downs': 'Epsom' };
-const OVER_LENGTH_GRACE = 10; // words over the cap before over-length becomes a failure
+// A shortened course name in a text passes against the full name in the
+// facts: "Epsom" for "Epsom Downs", "Chelmsford" for "Chelmsford City (AW)"
+// (compared suffix-stripped, so the alias target is the bare name).
+const COURSE_ALIASES = { 'Epsom': 'Epsom Downs', 'Epsom Downs': 'Epsom', 'Chelmsford': 'Chelmsford City' };
 
 // validateSection(section, text, factLines, opts) — text is the section's
 // own string (already parsed out of the JSON). opts.courseNames and
@@ -660,11 +666,10 @@ function validateSection(section, text, factLines, opts) {
   };
   if (!t.trim()) { fail('json', 'missing or empty "' + section + '" field'); return { ok: false, failures: failures, warnings: warnings, wordCount: 0, text: null }; }
   const wc = words(t);
-  // Word cap: over by more than OVER_LENGTH_GRACE words is a failure (the
-  // retry carries the note); over by that many or fewer is a warning only.
-  const cap = (opts && opts.wordCap) || 45;
-  if (wc > cap + OVER_LENGTH_GRACE) fail('over-length', section.toUpperCase() + ' is ' + wc + ' words, limit ' + cap + ' — rewrite tighter, cut connective detail, keep every number and result');
-  else if (wc > cap) warnings.push({ section: section, words: wc, cap: cap, over: wc - cap });
+  // Word cap is a warning only, at every length — the model does not shorten
+  // reliably on instruction (the 2026-10-06 v3 run lost 79 sections trying).
+  const cap = (opts && opts.wordCap) || 65;
+  if (wc > cap) warnings.push({ section: section, words: wc, cap: cap, over: wc - cap });
 
   // number-not-in-facts — the one structural check.
   const allowed = {};
