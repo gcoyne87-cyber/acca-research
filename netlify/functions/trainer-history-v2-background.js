@@ -86,9 +86,12 @@ async function callModel(userText) {
   });
 }
 
-async function appendTelemetry(runKey, entries) {
+// Telemetry is keyed by the RUN (a timestamp id minted at hop 0 and carried
+// through the chain), not by the dates — successive runs over the same dates
+// must not accumulate into one key.
+async function appendTelemetry(runId, entries) {
   if (!entries || !entries.length) return;
-  try { const k = 'trainer-history:telemetry:' + runKey; const existing = await E.redisGet(k); await E.redisSet(k, (Array.isArray(existing) ? existing : []).concat(entries)); } catch (e) {}
+  try { const k = 'trainer-history:telemetry:' + runId; const existing = await E.redisGet(k); await E.redisSet(k, (Array.isArray(existing) ? existing : []).concat(entries)); } catch (e) {}
 }
 
 async function processHorse(h, runKey, knownTrainerSurnames) {
@@ -154,7 +157,7 @@ async function processHorse(h, runKey, knownTrainerSurnames) {
   if (fails.length) {
     telemetry = telemetry.concat(fails.map(function(f) { return { runKey: runKey, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, spell: f.spell, trainer: f.trainer, check: f.check, detail: f.detail, stage: 'first', facts: factsText }; }));
     const notes = fails.map(function(f) { return (f.trainer === '*' ? 'WHOLE REPLY' : 'SPELL ' + f.spell + ' (' + f.trainer + ')') + ': ' + f.check + ' — ' + f.detail; }).join('\n');
-    const second = await write(envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite using only the facts listed, every spell again, in order:\n' + notes);
+    const second = await write(envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite using only the facts listed, every spell again, in order. Rewrite the failing sentence with different wording — returning the same sentence again fails permanently:\n' + notes);
     attempt = 2;
     if (second.error) fails = [{ spell: 0, trainer: '*', check: 'http', detail: second.error }];
     else { v = validateAll(second.text); fails = failuresOf(v); }
@@ -177,7 +180,8 @@ async function processHorse(h, runKey, knownTrainerSurnames) {
 
 async function run(dates, qs, hop, startTime, headers) {
   const runKey = dates.join('+');
-  console.log('[trainer-history-v2] START', new Date().toISOString(), 'dates:', runKey, 'hop:', hop);
+  const runId = (qs.run && /^[\w-]{8,40}$/.test(qs.run)) ? qs.run : new Date().toISOString().replace(/[:.]/g, '-');
+  console.log('[trainer-history-v2] START', new Date().toISOString(), 'dates:', runKey, 'run:', runId, 'hop:', hop);
   try { await E.redisSet(KEY + 'heartbeat:' + runKey, { startedAt: new Date().toISOString(), hop: hop }); } catch (e) {}
   try {
     const lock = await E.redisGet(KEY + 'lock:' + runKey);
@@ -204,7 +208,7 @@ async function run(dates, qs, hop, startTime, headers) {
       acct.usage = addUsage(acct.usage, r.usage || EMPTY_USAGE);
       if (r.skipped) counts.skipped++; else if (r.noData) counts.noData++; else if (r.stored) { counts.stored++; if (r.firstPassClean) counts.firstPassClean++; else counts.retried++; if (r.cacheRead) counts.cacheReadCalls++; } else if (r.validateFailed) { counts.validateFailed++; counts.retried++; } else counts.errors++;
     }
-    async function safe(h) { try { return await processHorse(h, runKey, knownTrainerSurnames); } catch (e) { return { horse_id: h.horse_id, horseName: h.name, stored: false, error: e.message, usage: EMPTY_USAGE }; } }
+    async function safe(h) { try { return await processHorse(h, runId, knownTrainerSurnames); } catch (e) { return { horse_id: h.horse_id, horseName: h.name, stored: false, error: e.message, usage: EMPTY_USAGE }; } }
     function mayContinue() { if (Date.now() - startTime > TIMEOUT_MS) { timedOut = true; return false; } if (costOf(acct.usage) >= costCap) { costCapped = true; return false; } return true; }
     if (remaining.length && hop === 0 && !state && mayContinue()) record(await safe(remaining.shift()));   // warm-up: cache written once
     async function worker() { while (remaining.length && mayContinue()) record(await safe(remaining.shift())); }
@@ -213,7 +217,7 @@ async function run(dates, qs, hop, startTime, headers) {
 
     const cost = costOf(acct.usage);
     const finish = async function(status, extra) {
-      const coverage = Object.assign({ runKey: runKey, dates: dates, completedAt: new Date().toISOString(), counts: counts, results: results, usage: acct.usage, costUSD: cost, hops: hop + 1, concurrency: CONCURRENCY, pricing: PRICE }, extra || {});
+      const coverage = Object.assign({ runKey: runKey, runId: runId, telemetryKey: 'trainer-history:telemetry:' + runId, dates: dates, completedAt: new Date().toISOString(), counts: counts, results: results, usage: acct.usage, costUSD: cost, hops: hop + 1, concurrency: CONCURRENCY, pricing: PRICE }, extra || {});
       await E.redisSet(KEY + 'coverage:' + runKey, coverage);
       await E.redisSet(KEY + 'worklist:' + runKey, null);
       try { await E.redisSet(KEY + 'lock:' + runKey, null); } catch (e) {}
@@ -226,7 +230,7 @@ async function run(dates, qs, hop, startTime, headers) {
         await E.redisSet(KEY + 'worklist:' + runKey, { remaining: remaining, results: results, counts: counts, usage: acct.usage, knownTrainerSurnames: knownTrainerSurnames });
         try { await E.redisSet(KEY + 'lock:' + runKey, null); } catch (e) {}
         await new Promise(function(resolve) {
-          const req = https.request({ hostname: HOSTNAME, path: '/.netlify/functions/trainer-history-v2-background?dates=' + encodeURIComponent(dates.join(',')) + '&hop=' + (hop + 1) + (qs.costCap ? '&costCap=' + encodeURIComponent(qs.costCap) : '') + (qs.horseIds ? '&horseIds=' + encodeURIComponent(qs.horseIds) : ''), method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 } }, function(res) { res.resume(); res.on('end', resolve); });
+          const req = https.request({ hostname: HOSTNAME, path: '/.netlify/functions/trainer-history-v2-background?dates=' + encodeURIComponent(dates.join(',')) + '&run=' + encodeURIComponent(runId) + '&hop=' + (hop + 1) + (qs.costCap ? '&costCap=' + encodeURIComponent(qs.costCap) : '') + (qs.horseIds ? '&horseIds=' + encodeURIComponent(qs.horseIds) : ''), method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 } }, function(res) { res.resume(); res.on('end', resolve); });
           req.on('error', function() { resolve(); }); req.setTimeout(10000, function() { req.destroy(); resolve(); }); req.end();
         });
         console.log('[trainer-history-v2] chaining hop', hop + 1, 'with', remaining.length, 'horse(s) left');
