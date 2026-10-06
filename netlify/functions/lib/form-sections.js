@@ -894,7 +894,7 @@ function buildTrainerHistoryEnvelope(horse, facts) {
 const TRAINER_HISTORY_CONTRACT =
 "You write the TRAINER HISTORY for a racehorse's profile on a racing website: one paragraph per trainer spell, from fact lines the code has already computed. Every figure, every change and every verdict is in the facts; your job is only to phrase them well.\n\n" +
 "THE CONTRACT\n" +
-"One paragraph per spell, 45-65 words, in spell order (oldest first, the current trainer last). Use ONLY that spell's fact lines. Every number, name and date must be copied from a fact line — digits, with the % sign for rates (57%). Do not add, combine, rank or compute anything not stated; never count courses, runs or spells yourself — the counts you may use are the ones written in the facts. You may reorder and connect facts for readability and drop a minor one to fit the length; you may not introduce one.\n" +
+"One paragraph per spell, 45-65 words, in spell order (oldest first, the current trainer last). Use ONLY that spell's fact lines. Every number, name and date must be copied from a fact line — digits, with the % sign for rates (57%). Do not add, combine, rank or compute anything not stated; never count courses, runs or spells yourself — the counts you may use are the ones written in the facts. You may reorder and connect facts for readability and drop a minor one to fit the length; you may not introduce one. Write every count as digits (4 wins, 2 runs), including small ones; never number words.\n" +
 "OPEN each paragraph with what the trainer did or changed — the 'Change from previous spell' line is your opening: trip moved, spacing tightened or loosened, class moved, a new race type, or 'kept the same approach' when the line says no material change. The first spell opens with how the horse was started out and campaigned. Give the numbers as evidence of whether it worked, not as the point of the paragraph. CLOSE with the verdict line in plain words: improved, fell, unchanged, or too few runs to judge.\n" +
 "Refer to the previous trainer by surname only (as the fact line does). The current spell is written as 'since Mon YYYY'; a past spell as its date range. Never open with the horse's name or 'began her career under'; never repeat the horse's name inside a paragraph.";
 
@@ -913,7 +913,7 @@ const TRAINER_HISTORY_EXAMPLE =
 "SPELL 3 — David Menuisier (Aug 2020 – Dec 2020, 6 runs)\n- Trips: 1m–1m2f (shortest 1m, longest 1m2f).\n- Race types: Flat.\n- Spacing: 21.8 days between runs on average.\n- Courses: 5 different courses. Going seen: Good, Good to Soft, Soft, Heavy.\n- Results: 0 wins, 4 places from 6 runs; win rate 0%; win-or-place rate 67%.\n- Finishing positions in order: 3rd of 9, 2nd of 8, 5th of 11, 3rd of 10, 2nd of 12, 3rd of 7.\n- Best: 2nd of 12 at Windsor on 2 Nov 2020.\n- Change from previous spell (O'Brien): trip range moved up from 5f to 1m–1m2f; spacing tightened from 76.0 to 21.8 days between runs.\n- Verdict: win-or-place rate improved from 0% under O'Brien to 67%.\n" +
 "Notice: the opening is the change line, the figures are evidence, the verdict closes it, and every number in the paragraph is on a fact line.";
 
-const TRAINER_HISTORY_OUTPUT = "OUTPUT: a strict JSON array only, one object per spell in spell order: [{\"trainer\": \"<trainer name exactly as the spell header>\", \"text\": \"<the paragraph>\"}]. Your reply must begin with [ and end with ] — the JSON array and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it.";
+const TRAINER_HISTORY_OUTPUT = "OUTPUT: a strict JSON array only, one object per spell in spell order: [{\"trainer\": \"<the trainer's name only, as written at the start of the spell header, with no dates or run counts>\", \"text\": \"<the paragraph>\"}]. Your reply must begin with [ and end with ] — the JSON array and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it.";
 
 const TRAINER_HISTORY_PROMPT = TRAINER_HISTORY_CONTRACT + "\n\n" + TRAINER_HISTORY_VOICE + "\n\n" + TRAINER_HISTORY_EXAMPLE + "\n\n" + TRAINER_HISTORY_OUTPUT;
 const TRAINER_HISTORY_MAX_TOKENS = 2000;
@@ -943,6 +943,9 @@ function validateTrainerSpell(text, factLines, opts) {
   const insideExempt = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
   BETTING_WORDS.forEach(function(w) { const re = new RegExp(phraseRegex(w).source, 'gi'); let wm; while ((wm = re.exec(t)) !== null) { if (!insideExempt(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } } });
   FUTURE_WORDS.forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('future-words', w, i); });
+  // career-claim words: a past spell is a closed period and the current one
+  // says "since Mon YYYY" — neither needs "so far", "to date", "ever", "career".
+  CAREER_PHRASES.concat(['ever']).forEach(function(p) { const i = t.search(phraseRegex(p)); if (i !== -1) fail('career-claim', p, i); });
   ['worst', 'weakest', 'poorest'].forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('banned-format', w, i); });
   const reSlash = /\b\d+\/\d+\b/g; while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
   // trainer attribution: known surnames not belonging to this horse's spells

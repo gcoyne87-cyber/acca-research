@@ -133,7 +133,10 @@ async function processHorse(h, runKey, knownTrainerSurnames) {
     if (arr.length !== spells.length) return { jsonFail: 'expected ' + spells.length + ' spell entries, got ' + arr.length, perSpell: null };
     const perSpell = arr.map(function(entry, i) {
       const r = F.validateTrainerSpell(entry && entry.text, facts[i].lines, vopts);
-      if (!(entry && F.sameTrainerSpell(entry.trainer, spells[i].trainer))) r.failures.push({ check: 'spell-order', detail: 'entry ' + (i + 1) + ' names "' + (entry && entry.trainer) + '" but spell ' + (i + 1) + ' is ' + spells[i].trainer }), r.ok = false;
+      // An echoed header ("Name (since Jul 2023, 32 runs)") is tolerated: any
+      // trailing parenthetical is stripped before the surname comparison.
+      const named = String((entry && entry.trainer) || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+      if (!(entry && F.sameTrainerSpell(named, spells[i].trainer))) r.failures.push({ check: 'spell-order', detail: 'entry ' + (i + 1) + ' names "' + (entry && entry.trainer) + '" but spell ' + (i + 1) + ' is ' + spells[i].trainer }), r.ok = false;
       if (r.wordCount > 75) r.warnings = [{ words: r.wordCount, cap: 65 }];
       return r;
     });
