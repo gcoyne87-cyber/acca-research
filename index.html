@@ -15522,8 +15522,8 @@ function nrLoadForm(pfx,horseId,silent){
         out+='<div style="padding:10px 12px 5px">'+_shdr('Form Table')+'</div>';
         out+='<div style="background:#ffffff;border-top:0.5px solid #d9efe4">';
         out+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-        out+='<colgroup><col style="width:16%"><col style="width:22%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:16%"></colgroup>';
-        out+='<thead><tr><th style="'+_thS2+';padding-left:12px">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center">Pos</th><th style="'+_thS2+';text-align:right">SP</th><th style="'+_thS2+';padding-right:12px">Jockey</th></tr></thead><tbody>';
+        out+='<colgroup><col style="width:22%"><col style="width:32%"><col style="width:15%"><col style="width:15%"><col style="width:16%"></colgroup>';
+        out+='<thead><tr><th style="'+_thS2+';padding-left:12px">Date</th><th style="'+_thS2+'">Course</th><th style="'+_thS2+'">Dist</th><th style="'+_thS2+'">Gng</th><th style="'+_thS2+';text-align:center;padding-right:12px">Pos</th></tr></thead><tbody>';
         hist.forEach(function(h,_hi){
           if(_hi===8){
             out+='</tbody><tbody id="nrh-fmx-'+pfx+'" style="display:none">';
@@ -15538,9 +15538,7 @@ function nrLoadForm(pfx,horseId,silent){
           out+='<td style="padding:4px 8px;font-weight:400;color:#111;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_nrCourseCellHtml(h.course||'')+'</td>';
           out+='<td style="padding:4px 8px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(_nrAbDist(h.dist||''))+'</td>';
           out+='<td style="padding:4px 8px;color:#111;font-size:12px;white-space:nowrap">'+escHtml(_nrAbGoing(h.going||''))+'</td>';
-          out+='<td style="padding:4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:12px;color:#111">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
-          out+='<td style="padding:4px 8px;text-align:right;color:#111;font-size:12px;white-space:nowrap">'+escHtml(h.sp||'–')+'</td>';
-          out+='<td style="padding:4px 12px 4px 8px;color:#111;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(_nrAbJockey(h.jockey||''))+'</td>';
+          out+='<td style="padding:4px 12px 4px 8px;text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:12px;color:'+pCol+'">'+escHtml(posStr)+'</span>'+(h.ran?'<span style="font-size:12px;color:#111">/'+escHtml(String(h.ran))+'</span>':'')+'</td>';
           out+='</tr>';
         });
         out+='</tbody></table></div>';
