@@ -534,7 +534,7 @@ const FACT_CONTRACT =
 "You write three short sections of a racehorse's form summary for a racing website: GOING, TRIP and TRACK. Every fact you may use is listed for you under that section's heading. The code has already done all the counting, comparing and ranking; your job is only to phrase those facts well.\n\n" +
 "THE CONTRACT\n" +
 "Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. Never state how many courses, distances, goings or groups appear in the facts — no '7 courses tried', no '5 distances', no 'across 4 going types'. Those counts are not facts in the list; describe the groups themselves instead.\n" +
-"LENGTH: GOING and TRIP: 45 words maximum. TRACK: 55 words maximum. These are hard limits — count your words and cut connective detail (course character descriptions can be shortened to a few words) before exceeding them. Never cut numbers or results to fit.\n" +
+"LENGTH: GOING and TRIP: 55 words maximum. TRACK: 70 words maximum. Keep within these limits by cutting connective detail — a course character can be a few words. Never cut numbers or results to fit. A section that runs over is rejected and rewritten.\n" +
 "The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in this window; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.";
 
 const VOICE_RULES =
@@ -567,7 +567,7 @@ const EXAMPLES =
 "TRIP facts (thin record):\n- 1m2f (Flat): 1 run, 7th of 11.\n- 1m4f (Flat): 1 run, 0 wins, 1 place; best 2nd of 10 at Newbury on 3 Jul 2026.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Too few runs to show a pattern.\n" +
 "TRIP text: Only 2 runs in the window, a 7th of 11 at 1m2f and a 2nd of 10 at Newbury on 3 Jul 2026 at 1m4f, so there is no trip pattern to read yet. The horse has not won at any trip in this window.";
 
-const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}. Output the JSON object only — no reasoning, no preamble, no text before or after it.";
+const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}. Your reply must begin with { and end with } — the JSON object and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it. Do not write anything that is not one of the three section texts.";
 
 const GOINGTRIP_PROMPT = FACT_CONTRACT + "\n\n" + VOICE_RULES + "\n\n" + GOING_NOTES + "\n\n" + TRIP_NOTES + "\n\n" + TRACK_NOTES + "\n\n" + EXAMPLES + "\n\n" + OUTPUT_LINE;
 const GOINGTRIP_MAX_TOKENS = 1600;
@@ -645,6 +645,7 @@ const COURSE_NAME_LIST = longestFirst(Object.keys(COURSE_FACTS).reduce(function(
 }, []));
 const GOING_NAME_LIST = longestFirst(GOING_SCALE.turf.concat(GOING_SCALE.allweather).map(function(g) { return g.name; }));
 const COURSE_ALIASES = { 'Epsom': 'Epsom Downs', 'Epsom Downs': 'Epsom' };
+const OVER_LENGTH_GRACE = 10; // words over the cap before over-length becomes a failure
 
 // validateSection(section, text, factLines, opts) — text is the section's
 // own string (already parsed out of the JSON). opts.courseNames and
@@ -659,8 +660,11 @@ function validateSection(section, text, factLines, opts) {
   };
   if (!t.trim()) { fail('json', 'missing or empty "' + section + '" field'); return { ok: false, failures: failures, warnings: warnings, wordCount: 0, text: null }; }
   const wc = words(t);
+  // Word cap: over by more than OVER_LENGTH_GRACE words is a failure (the
+  // retry carries the note); over by that many or fewer is a warning only.
   const cap = (opts && opts.wordCap) || 45;
-  if (wc > cap) warnings.push({ section: section, words: wc, cap: cap, over: wc - cap });
+  if (wc > cap + OVER_LENGTH_GRACE) fail('over-length', section.toUpperCase() + ' is ' + wc + ' words, limit ' + cap + ' — rewrite tighter, cut connective detail, keep every number and result');
+  else if (wc > cap) warnings.push({ section: section, words: wc, cap: cap, over: wc - cap });
 
   // number-not-in-facts — the one structural check.
   const allowed = {};
@@ -712,10 +716,18 @@ function validateSection(section, text, factLines, opts) {
   // an ordinal word used as a position, percentages.
   const reSlash = /\b\d+\/\d+\b/g;
   while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
-  const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b/gi;
+  // "finished 3" / "won of 9" read as malformed positions; "finish in 3 runs"
+  // is a run count and is not a position — a following count noun exempts it.
+  const reBadPosition = /\b(wins?|won|place[sd]?|finish(?:ed)?|pulled up|fell|unseated(?: rider)?|brought down|ran out|slipped up|refused(?: to race)?)\s+(?:of|in)\s+\d+\b(?!\s+(?:runs?|starts?|outings?|attempts?|tries|races?|visits?|goes|appearances?|efforts?|spins?)\b)/gi;
   while ((m = reBadPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (not a valid position — use "Nth of M")', m.index);
+  // "finished 3" — a bare number as a position with no "of M" ("3rd" is not
+  // matched: the word boundary after the digits fails on "rd").
+  const reBarePosition = /\b(finished|finishing|came|placed|ended)\s+\d+\b(?!\s+(?:of|runs?|starts?|outings?|attempts?|tries|races?|visits?|times?|lengths?|wins?|places?|from)\b)/gi;
+  while ((m = reBarePosition.exec(t)) !== null) fail('banned-format', m[0] + ' (bare number as position — use "Nth of M")', m.index);
   ['worst', 'weakest', 'poorest'].forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('banned-format', w, i); });
-  const reOrdinalPosition = /\b(?:finished|was|came|ran|placed|a|an)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of)\b)/gi;
+  // Ordinal words count only after a finishing verb ("came second", "finished
+  // third"); "a second clear split" / "a first win" are ordinary adjectives.
+  const reOrdinalPosition = /\b(?:finished|finishing|was|came|coming|ran|running|placed|ended|ending)\s+(first|second|third|fourth)\b(?!\s+(?:runs?|starts?|times?|attempts?|outings?|tries?|of|clear|win|wins|place|places|split|spell|visit|season|time)\b)/gi;
   while ((m = reOrdinalPosition.exec(t)) !== null) fail('banned-format', m[0] + ' (ordinal word as position)', m.index);
   const pct = t.search(/%|per\s*cent|percent/i);
   if (pct !== -1) fail('banned-format', 'percentage language', pct);

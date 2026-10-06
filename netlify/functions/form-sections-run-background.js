@@ -166,6 +166,9 @@ async function processHorseGoingTrip(h, date) {
   const courseNames = F.courseNamesForExemption(win.rows.concat(trackRows));
 
   let usage = EMPTY_USAGE; let firstWriteUsage = null; let cacheRead = false;
+  // Raw-output capture on stop_reason=max_tokens — appended to telemetry so
+  // a truncation can be read instead of guessed at. Permanent and cheap.
+  const rawCaptures = [];
 
   async function write(userText) {
     const resp = await callModelGoingTrip(userText);
@@ -173,16 +176,20 @@ async function processHorseGoingTrip(h, date) {
     const u = usageFrom(resp.json);
     usage = addUsage(usage, u);
     if (!firstWriteUsage) { firstWriteUsage = u; cacheRead = u.cacheRead > 0; }
-    return { text: (resp.json.content[0] && resp.json.content[0].text) || '', stopReason: resp.json.stop_reason };
+    const text = resp.json.content.map(function(c) { return c.text || ''; }).join('');
+    if (resp.json.stop_reason === 'max_tokens') {
+      rawCaptures.push({ date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: 'all', check: 'max-tokens-raw', stage: rawCaptures.length ? 'retry' : 'first', outputTokens: u.output, chars: text.length, words: F.words(text), rawHead: text.slice(0, 1500), rawTail: text.slice(-600), detail: 'stop_reason=max_tokens; raw output captured (head 1500 / tail 600 chars)' });
+    }
+    return { text: text, stopReason: resp.json.stop_reason };
   }
   function validateAll(text) {
     const parsed = F.parseJsonSections(text);
     if (!parsed) return { parsed: null, going: null, trip: null, track: null, jsonFail: true };
     return {
       parsed: parsed,
-      going: F.validateSection('going', parsed.going, goingFacts, { courseNames: courseNames, horseName: h.name, wordCap: 45 }),
-      trip: F.validateSection('trip', parsed.trip, tripFacts, { courseNames: courseNames, horseName: h.name, wordCap: 45 }),
-      track: trackIsTemplate ? null : F.validateSection('track', parsed.track, trackFacts, { courseNames: courseNames, horseName: h.name, wordCap: 55 }),
+      going: F.validateSection('going', parsed.going, goingFacts, { courseNames: courseNames, horseName: h.name, wordCap: 55 }),
+      trip: F.validateSection('trip', parsed.trip, tripFacts, { courseNames: courseNames, horseName: h.name, wordCap: 55 }),
+      track: trackIsTemplate ? null : F.validateSection('track', parsed.track, trackFacts, { courseNames: courseNames, horseName: h.name, wordCap: 70 }),
       jsonFail: false
     };
   }
@@ -231,7 +238,7 @@ async function processHorseGoingTrip(h, date) {
   const goingOut = keep.going, tripOut = keep.trip;
   const trackOut = trackIsTemplate ? F.NO_RUNS_TRACK_TEMPLATE : keep.track;
   if (goingOut !== null || tripOut !== null || trackOut !== null) await storeGoingTrip(h, win, goingOut, tripOut, trackOut);
-  await appendTelemetry(date, telemetry);
+  await appendTelemetry(date, telemetry.concat(rawCaptures));
 
   return {
     horse_id: h.horse_id, horseName: h.name,
