@@ -13,7 +13,8 @@ const https = require('https');
 //
 // Cadence: three fixed slots a day at 04:00, 06:00 and 08:00 UTC
 // (05:00, 07:00, 09:00 Irish summer time) — replaces the old */15 polling.
-module.exports.config = { schedule: '0 4,6,8 * * *' };
+// disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
+// module.exports.config = { schedule: '0 4,6,8 * * *' };
 
 function triggerRun() {
   return new Promise((resolve, reject) => {

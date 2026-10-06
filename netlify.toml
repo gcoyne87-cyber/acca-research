@@ -31,11 +31,13 @@
 [functions."racing-sweep-trigger"]
   schedule = "15 1 * * *"
 
-[functions."form-summary-trigger"]
-  schedule = "0 4,6,8 * * *"
+# disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
+# [functions."form-summary-trigger"]
+#   schedule = "0 4,6,8 * * *"
 
-[functions."form-summary-watchdog"]
-  schedule = "30 9 * * *"
+# disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
+# [functions."form-summary-watchdog"]
+#   schedule = "30 9 * * *"
 
 [functions."refresh-prices-trigger"]
   schedule = "0 6-21 * * *"

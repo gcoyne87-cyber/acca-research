@@ -9,7 +9,8 @@ const nodemailer = require('nodemailer');
 // noticed. Same contract as build-watchdog.js: silence must only ever mean
 // the day completed, so an unreachable Redis is itself an email, never a
 // silent exit.
-module.exports.config = { schedule: '30 9 * * *' };
+// disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
+// module.exports.config = { schedule: '30 9 * * *' };
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
