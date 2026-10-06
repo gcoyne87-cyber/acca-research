@@ -37,6 +37,7 @@ function dayMonYear(iso) {
 // A row with no going string is excluded BEFORE the 8-run cap is applied —
 // a useless row should not consume one of the 8 slots. Both counts
 // (excludedNoGoing, limitApplied) are returned so this choice is visible.
+const SECTION_WINDOW_RUNS = 8;
 function sectionWindow(rows, runDate) {
   const withDate = (rows || []).filter(function(r) { return r && r.date; });
   const sorted = withDate.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
@@ -53,7 +54,7 @@ function sectionWindow(rows, runDate) {
     else withGoing.push(r);
   });
   let limitApplied = null, windowRows = withGoing;
-  if (withGoing.length > 8) { windowRows = withGoing.slice(0, 8); limitApplied = '8 runs'; }
+  if (withGoing.length > SECTION_WINDOW_RUNS) { windowRows = withGoing.slice(0, SECTION_WINDOW_RUNS); limitApplied = SECTION_WINDOW_RUNS + ' runs'; }
   else if (withGoing.length > 0) limitApplied = '18 months';
   return {
     rows: windowRows,
@@ -416,8 +417,13 @@ function leadCompare(tiebreak) {
 }
 function rate(g) { return g.runs ? g.topThree / g.runs : 0; }
 const SPLIT_MARGIN = 0.25; // strike-rate gap, in percentage points, that makes a split "clear"
+// Both sides need 3 runs and the stronger side 3 top-three finishes before a
+// split is "clear" — 2 from 3 against 0 from 3 is noise, not a pattern.
+const SPLIT_MIN_RUNS = 3;
+const SPLIT_MIN_TOP_THREE = 3;
 function clearlyBeats(a, b) {
-  if (!a || !b || a.runs < 2 || b.runs < 2) return false;
+  if (!a || !b || a.runs < SPLIT_MIN_RUNS || b.runs < SPLIT_MIN_RUNS) return false;
+  if (a.topThree < SPLIT_MIN_TOP_THREE) return false;
   if (!(rate(a) - rate(b) >= SPLIT_MARGIN)) return false;
   if (a.wins < b.wins) return false;
   return a.topThree > b.topThree;
@@ -450,7 +456,7 @@ function buildGoingFacts(groups, neverRun, neverRunAW, windowSize) {
     lines.push('- All-weather: ' + countClause(sumFigures(aw)) + '.');
   }
   const all = sumFigures(groups); all.runs = typeof windowSize === 'number' ? windowSize : all.runs;
-  lines.push('- Window: ' + countClause(all) + '.');
+  lines.push('- Window: last ' + plural(Math.min(SECTION_WINDOW_RUNS, all.runs), 'run') + ' — ' + countClause(all) + '.');
   if (neverRun && neverRun.names && neverRun.names.length) lines.push('- Never run on (turf): ' + neverRun.names.join(', ') + '.');
   if (neverRunAW && neverRunAW.names && neverRunAW.names.length) lines.push('- Never run on (all-weather): ' + neverRunAW.names.join(', ') + '.');
   if (isThin(groups, all.runs)) { lines.push(THIN_LINE); return lines; }
@@ -463,8 +469,9 @@ function buildGoingFacts(groups, neverRun, neverRunAW, windowSize) {
   return lines;
 }
 
-// buildTripFacts(groups) -> string[]
-function buildTripFacts(groups) {
+// buildTripFacts(groups, windowSize) -> string[] — windowSize is the shared
+// Going/Trip window's row count, so both Window lines quote the same number.
+function buildTripFacts(groups, windowSize) {
   const lines = [];
   const ordered = groups.slice().sort(leadCompare(function(a, b) {
     const ra = typeRank(a.type), rb = typeRank(b.type);
@@ -479,7 +486,9 @@ function buildTripFacts(groups) {
     const placed = f.longestPlaced === 'none' ? 'NONE (no places at any trip)' : f.longestPlaced;
     lines.push('- ' + f.type + ' stamina: longest won ' + won + '; longest placed ' + placed + '; longest tried ' + f.longestTried + '; shortest tried ' + f.shortestTried + '.');
   });
-  const total = sumFigures(groups).runs;
+  const all = sumFigures(groups); all.runs = typeof windowSize === 'number' ? windowSize : all.runs;
+  const total = all.runs;
+  lines.push('- Window: last ' + plural(Math.min(SECTION_WINDOW_RUNS, total), 'run') + ' — ' + countClause(all) + '.');
   if (isThin(groups, total)) { lines.push(THIN_LINE); return lines; }
   const lead = ordered[0];
   const sameType = ordered.filter(function(g) { return g.type === lead.type; });
@@ -503,7 +512,7 @@ function buildTrackFacts(groups, rollups, windowSize) {
     const b = rollups.direction[name] || rollups.speed[name];
     if (b && b.runs > 0) { buckets.push(b); lines.push('- ' + name + ' courses: ' + countClause(b) + '.'); }
   });
-  lines.push('- Window: ' + plural(windowSize, 'run') + ' in total.');
+  lines.push('- Window: last ' + plural(Math.min(TRACK_WINDOW_RUNS, windowSize), 'run') + ' — ' + plural(windowSize, 'run') + ' in total.');
   if (isThin(groups, windowSize, buckets)) { lines.push(THIN_LINE); return lines; }
   const sp = splitFor(rollups.speed['Tight'], 'tight courses', rollups.speed['Galloping'], 'galloping courses');
   if (sp) lines.push(sp);
@@ -539,7 +548,8 @@ const FACT_CONTRACT =
 "THE CONTRACT\n" +
 "Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. Never state how many courses, distances, goings or groups appear in the facts — no '7 courses tried', no '5 distances', no 'across 4 going types'. Those counts are not facts in the list; describe the groups themselves instead.\n" +
 "LENGTH: GOING and TRIP: 65 words maximum. TRACK: 85 words maximum. Keep within these limits by cutting connective detail — a course character can be a few words. Never cut numbers or results to fit. A section that runs over is rejected and rewritten.\n" +
-"The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in this window; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.";
+"The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in the last N runs; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.\n" +
+"THE WINDOW: each section's Window line names the runs it covers — 'last 8 runs' for GOING and TRIP, 'last 15 runs' for TRACK (fewer when the horse has fewer). Wherever you refer to the period, write 'in the last 8 runs' or 'in the last 15 runs', copying the number from that section's own Window line. Never write 'in this window', 'in the window', 'recently' or 'of late'. GOING and TRIP cover fewer runs than TRACK, so a win can appear in TRACK and not in GOING; that is correct — never reconcile or mention the other sections.";
 
 const VOICE_RULES =
 "VOICE\n" +
@@ -560,16 +570,16 @@ const TRACK_NOTES =
 
 const EXAMPLES =
 "EXAMPLES\n" +
-"GOING facts:\n- Good to Firm: 5 runs, 0 wins, 3 places; best 2nd of 9 at Brighton on 28 Sep 2026.\n- Good: 1 run, 0 wins, 1 place; best 3rd of 7 at Bath on 2 May 2026.\n- Firm: 1 run, 9th of 14.\n- Window: 7 runs, 0 wins, 4 places.\n" +
+"GOING facts:\n- Good to Firm: 5 runs, 0 wins, 3 places; best 2nd of 9 at Brighton on 28 Sep 2026.\n- Good: 1 run, 0 wins, 1 place; best 3rd of 7 at Bath on 2 May 2026.\n- Firm: 1 run, 9th of 14.\n- Window: last 7 runs — 7 runs, 0 wins, 4 places.\n" +
 "GOING text: Good to Firm is where the record sits, with 3 places from 5 runs and the pick of them a 2nd of 9 at Brighton on 28 Sep 2026. The 1 run on Good also brought a place, a 3rd of 7 at Bath on 2 May 2026, while the single outing on Firm ended 9th of 14.\n\n" +
-"TRIP facts:\n- 2m (Hurdle): 3 runs, 0 wins, 1 place; best 3rd of 8 at Wexford on 17 Mar 2026.\n- 2m4f (Hurdle): 2 runs, 7th of 10 and 11th of 12.\n- Hurdle total: 5 runs, 0 wins, 1 place.\n- Hurdle stamina: longest won NONE (no wins at any trip); longest placed 2m; longest tried 2m4f; shortest tried 2m.\n" +
-"TRIP text: The only place over hurdles came at 2m, a 3rd of 8 at Wexford on 17 Mar 2026, from 3 runs at the trip. Stepped up to 2m4f the horse finished 7th of 10 and 11th of 12, and it has not won at any trip in this window.\n\n" +
-"TRACK facts:\n- Wolverhampton (AW) (Left-handed, Tight): 4 runs, 1 win, 2 places; best 1st of 9 on 2 Feb 2026.\n- Doncaster (Left-handed, Galloping): 2 runs, 6th of 12 and 8th of 9.\n- Left-handed courses: 6 runs, 1 win, 2 places.\n- Tight courses: 4 runs, 1 win, 2 places.\n- Galloping courses: 2 runs, 0 wins, 0 places.\n- Window: 6 runs in total.\n- Clear split: 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping courses.\n" +
-"TRACK text: Wolverhampton's tight, turning circuit has suited this horse best: 1 win and 2 places from 4 runs, the win a 1st of 9 on 2 Feb 2026. Doncaster's big, galloping track brought a 6th of 12 and an 8th of 9 — a clear split of 3 in the top three from 4 runs on tight courses against 0 from 2 on galloping ones.\n\n" +
-"GOING facts (with a split):\n- Soft: 4 runs, 2 wins, 1 place; best 1st of 11 at Haydock on 14 Feb 2026.\n- Good: 3 runs, no top-three finish; best 5th of 9.\n- Window: 7 runs, 2 wins, 1 place.\n- Never run on (turf): Hard, Firm, Good to Firm, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft to Heavy, Heavy.\n- Clear split: 3 in the top three from 4 runs on Soft against 0 from 3 on Good.\n" +
-"GOING text: Soft ground is where this horse has done its winning, 2 wins and a place from 4 runs, the best of them a 1st of 11 at Haydock on 14 Feb 2026. On Good the story is different: 3 runs without a top-three finish and nothing better than a 5th of 9, a clear split against the Soft record.\n\n" +
-"TRIP facts (thin record):\n- 1m2f (Flat): 1 run, 7th of 11.\n- 1m4f (Flat): 1 run, 0 wins, 1 place; best 2nd of 10 at Newbury on 3 Jul 2026.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Too few runs to show a pattern.\n" +
-"TRIP text: Only 2 runs in the window, a 7th of 11 at 1m2f and a 2nd of 10 at Newbury on 3 Jul 2026 at 1m4f, so there is no trip pattern to read yet. The horse has not won at any trip in this window.";
+"TRIP facts:\n- 2m (Hurdle): 3 runs, 0 wins, 1 place; best 3rd of 8 at Wexford on 17 Mar 2026.\n- 2m4f (Hurdle): 2 runs, 7th of 10 and 11th of 12.\n- Hurdle total: 5 runs, 0 wins, 1 place.\n- Hurdle stamina: longest won NONE (no wins at any trip); longest placed 2m; longest tried 2m4f; shortest tried 2m.\n- Window: last 5 runs — 5 runs, 0 wins, 1 place.\n" +
+"TRIP text: The only place over hurdles came at 2m, a 3rd of 8 at Wexford on 17 Mar 2026, from 3 runs at the trip. Stepped up to 2m4f the horse finished 7th of 10 and 11th of 12, and it has not won at any trip in the last 5 runs.\n\n" +
+"TRACK facts:\n- Wolverhampton (AW) (Left-handed, Tight): 4 runs, 1 win, 2 places; best 1st of 9 on 2 Feb 2026.\n- Doncaster (Left-handed, Galloping): 3 runs, no top-three finish; best 6th of 12.\n- Left-handed courses: 7 runs, 1 win, 2 places.\n- Tight courses: 4 runs, 1 win, 2 places.\n- Galloping courses: 3 runs, 0 wins, 0 places.\n- Window: last 7 runs — 7 runs in total.\n- Clear split: 3 in the top three from 4 runs on tight courses against 0 from 3 on galloping courses.\n" +
+"TRACK text: Wolverhampton's tight, turning circuit has suited this horse best: 1 win and 2 places from 4 runs, the win a 1st of 9 on 2 Feb 2026. Doncaster's big, galloping track brought nothing better than a 6th of 12 from 3 runs — a clear split of 3 in the top three from 4 runs on tight courses against 0 from 3 on galloping ones in the last 7 runs.\n\n" +
+"GOING facts (with a split):\n- Soft: 4 runs, 2 wins, 1 place; best 1st of 11 at Haydock on 14 Feb 2026.\n- Good: 3 runs, no top-three finish; best 5th of 9.\n- Window: last 7 runs — 7 runs, 2 wins, 1 place.\n- Never run on (turf): Hard, Firm, Good to Firm, Good to Yielding, Good to Soft, Yielding, Yielding to Soft, Soft to Heavy, Heavy.\n- Clear split: 3 in the top three from 4 runs on Soft against 0 from 3 on Good.\n" +
+"GOING text: Soft ground is where this horse has done its winning in the last 7 runs, 2 wins and a place from 4 runs, the best of them a 1st of 11 at Haydock on 14 Feb 2026. On Good the story is different: 3 runs without a top-three finish and nothing better than a 5th of 9, a clear split against the Soft record.\n\n" +
+"TRIP facts (thin record):\n- 1m2f (Flat): 1 run, 7th of 11.\n- 1m4f (Flat): 1 run, 0 wins, 1 place; best 2nd of 10 at Newbury on 3 Jul 2026.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Window: last 2 runs — 2 runs, 0 wins, 1 place.\n- Too few runs to show a pattern.\n" +
+"TRIP text: Only 2 runs to go on, a 7th of 11 at 1m2f and a 2nd of 10 at Newbury on 3 Jul 2026 at 1m4f, so there is no trip pattern to read yet. The horse has not won at any trip in the last 2 runs.";
 
 const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}. Your reply must begin with { and end with } — the JSON object and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it. Do not write anything that is not one of the three section texts.";
 

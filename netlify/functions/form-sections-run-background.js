@@ -156,7 +156,7 @@ async function processHorseGoingTrip(h, date) {
   const gGroups = F.goingGroups(win.rows);
   const goingFacts = F.buildGoingFacts(gGroups, F.goingNeverRun(gGroups), F.goingNeverRunAW(gGroups), win.size);
   const tGroups = F.tripGroups(win.rows);
-  const tripFacts = F.buildTripFacts(tGroups);
+  const tripFacts = F.buildTripFacts(tGroups, win.size);
   let trackFacts = null;
   if (!trackIsTemplate) {
     const kGroups = F.trackGroups(trackRows, F.COURSE_FACTS);
