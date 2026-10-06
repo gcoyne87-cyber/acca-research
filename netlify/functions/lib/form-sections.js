@@ -750,7 +750,223 @@ function validateSection(section, text, factLines, opts) {
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, text: t };
 }
 
+// ── H. TRAINER HISTORY — spell splitter, fact builder, prompt, validator ──
+// Same architecture as Going/Trip/Track: code splits the career into
+// consecutive-trainer spells and computes every figure, change and verdict;
+// the model phrases one paragraph per spell from those fact lines only.
+//
+// Spell boundary rule: a new spell starts only when the normalised trainer
+// names share NO surname token — "Jim Best" -> "Jim & Suzi Best" is one
+// spell (kept under the later name); "Denis Gerard Hogan" -> "Adrian
+// McGuinness" is a boundary. Surname = last token of each "&"-separated
+// partner, suffixes (Jnr/Snr/Jr/Sr) and honorifics dropped.
+const TRAINER_SUFFIXES = { jnr: 1, snr: 1, jr: 1, sr: 1, ii: 1, iii: 1, bt: 1, obe: 1, mbe: 1, cbe: 1 };
+const TRAINER_HONORIFICS = { mr: 1, mrs: 1, ms: 1, miss: 1, dr: 1, sir: 1, lady: 1, lord: 1, capt: 1, major: 1, col: 1 };
+function trainerSurnames(name) {
+  const partners = String(name || '').toLowerCase().replace(/[.,()]/g, ' ').split(/\s*(?:&|\band\b)\s*/);
+  const out = [];
+  partners.forEach(function(p) {
+    const toks = p.split(/\s+/).filter(function(t) { return t && !TRAINER_HONORIFICS[t] && !TRAINER_SUFFIXES[t]; });
+    if (toks.length) out.push(toks[toks.length - 1]);
+  });
+  return out;
+}
+function sameTrainerSpell(a, b) {
+  const sa = trainerSurnames(a), sb = trainerSurnames(b);
+  if (!sa.length || !sb.length) return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  return sa.some(function(s) { return sb.indexOf(s) !== -1; });
+}
+// Surname(s) in the trainer's own casing ("McGuinness", "O'Brien", "Newland &
+// Insole"); a lone first name before an "&" ("Jim & Suzi Best") is dropped.
+function surnameForProse(name) {
+  const partners = String(name || '').replace(/[.,()]/g, ' ').split(/\s*(?:&|\band\b)\s*/i);
+  const per = partners.map(function(p) { return p.split(/\s+/).filter(function(t) { return t && !TRAINER_HONORIFICS[t.toLowerCase()] && !TRAINER_SUFFIXES[t.toLowerCase()]; }); }).filter(function(t) { return t.length; });
+  const multi = per.some(function(t) { return t.length >= 2; });
+  const out = per.filter(function(t) { return !multi || t.length >= 2; }).map(function(t) { return t[t.length - 1]; });
+  return out.length ? out.join(' & ') : String(name || '').trim();
+}
+function monYear(iso) { const m = /^(\d{4})-(\d{2})/.exec(String(iso || '')); return m ? MON[parseInt(m[2], 10) - 1] + ' ' + m[1] : String(iso || ''); }
+function classNumber(c) { const m = /class\s*(\d)/i.exec(String(c || '')); return m ? parseInt(m[1], 10) : null; }
+function pct(n, d) { return d ? Math.round(100 * n / d) : 0; }
+function round1(x) { return Math.round(x * 10) / 10; }
+
+// buildTrainerSpells(rows) -> [{ trainer, from, to, rows, runs, wins, places,
+// topThree, winPct, wopPct, minF, maxF, types, classes, avgGap, courses,
+// goings, positions, bestRow }], oldest spell first. Rows without a trainer
+// or a date are skipped; a spell is always at least one run.
+function buildTrainerSpells(rows) {
+  const dated = (rows || []).filter(function(r) { return r && r.date && r.trainer && String(r.trainer).trim(); })
+    .slice().sort(function(a, b) { return String(a.date).localeCompare(String(b.date)); });
+  const spells = [];
+  dated.forEach(function(r) {
+    const name = String(r.trainer).trim();
+    const cur = spells[spells.length - 1];
+    if (cur && sameTrainerSpell(cur.trainer, name)) { cur.rows.push(r); cur.to = r.date; cur.trainer = name; }
+    else spells.push({ trainer: name, from: r.date, to: r.date, rows: [r] });
+  });
+  spells.forEach(function(s, i) {
+    const st = statsOf(s.rows);
+    s.runs = st.runs; s.wins = st.wins; s.places = st.places; s.topThree = st.topThree; s.bestRow = st.bestRow;
+    s.winPct = pct(s.wins, s.runs); s.wopPct = pct(s.topThree, s.runs);
+    const fs = s.rows.map(function(r) { return parseDistanceFurlongs(r.dist); }).filter(function(f) { return f !== null; });
+    s.minF = fs.length ? Math.min.apply(null, fs) : null; s.maxF = fs.length ? Math.max.apply(null, fs) : null;
+    s.types = []; s.rows.forEach(function(r) { const t = r.type && String(r.type).trim(); if (t && s.types.indexOf(t) === -1) s.types.push(t); });
+    const cls = s.rows.map(function(r) { return classNumber(r.race_class); }).filter(function(c) { return c !== null; });
+    s.minClass = cls.length ? Math.min.apply(null, cls) : null; s.maxClass = cls.length ? Math.max.apply(null, cls) : null;
+    const gaps = []; for (let k = 1; k < s.rows.length; k++) { const g = (Date.parse(s.rows[k].date) - Date.parse(s.rows[k - 1].date)) / 864e5; if (isFinite(g)) gaps.push(g); }
+    s.avgGap = gaps.length ? round1(gaps.reduce(function(a, b) { return a + b; }, 0) / gaps.length) : null;
+    const cs = {}; s.rows.forEach(function(r) { if (r.course) cs[stripIreSuffix(stripParens(r.course))] = 1; }); s.courses = Object.keys(cs).length;
+    s.goings = []; s.rows.forEach(function(r) { const c = classifyGoing(r.going); if (c && s.goings.indexOf(c.name) === -1) s.goings.push(c.name); });
+    s.positions = s.rows.map(function(r) { return posClause(r); });
+    s.current = i === spells.length - 1;
+  });
+  return spells;
+}
+
+function tripRangeLabel(s) { if (s.minF === null) return 'unknown'; return s.minF === s.maxF ? furlongsLabel(s.minF) : furlongsLabel(s.minF) + '–' + furlongsLabel(s.maxF); }
+function gapLabel(g) { return g === null ? null : Number(g).toFixed(1); }
+const POSITIONS_SHOWN = 12;
+function classRangeLabel(s) { if (s.minClass === null) return null; return s.minClass === s.maxClass ? 'Class ' + s.minClass : 'Class ' + s.minClass + ' to Class ' + s.maxClass; }
+function spellHeader(s, idx) {
+  const span = s.current ? 'since ' + monYear(s.from) : (monYear(s.from) === monYear(s.to) ? monYear(s.from) : monYear(s.from) + ' – ' + monYear(s.to));
+  return 'SPELL ' + (idx + 1) + ' — ' + s.trainer + ' (' + span + ', ' + plural(s.runs, 'run') + ')';
+}
+// The CHANGE line: only deltas that are real — trip range moved by a furlong
+// or more at either end, spacing changed by 20%+, class range moved, a race
+// type not seen under the previous trainer.
+function changeLine(s, p) {
+  const parts = [];
+  if (s.minF !== null && p.minF !== null) {
+    const dMin = s.minF - p.minF, dMax = s.maxF - p.maxF;
+    if (Math.abs(dMin) >= 1 || Math.abs(dMax) >= 1) {
+      const mid = (s.minF + s.maxF) / 2 - (p.minF + p.maxF) / 2;
+      const dir = mid > 0 ? 'up' : mid < 0 ? 'down' : (s.maxF - s.minF > p.maxF - p.minF ? 'wider' : 'narrower');
+      parts.push('trip range moved ' + dir + ' from ' + tripRangeLabel(p) + ' to ' + tripRangeLabel(s));
+    }
+  }
+  if (s.avgGap !== null && p.avgGap !== null && p.avgGap > 0) {
+    const ratio = s.avgGap / p.avgGap;
+    if (ratio <= 0.8) parts.push('spacing tightened from ' + gapLabel(p.avgGap) + ' to ' + gapLabel(s.avgGap) + ' days between runs');
+    else if (ratio >= 1.2) parts.push('spacing loosened from ' + gapLabel(p.avgGap) + ' to ' + gapLabel(s.avgGap) + ' days between runs');
+  }
+  if (s.minClass !== null && p.minClass !== null && (s.minClass !== p.minClass || s.maxClass !== p.maxClass)) {
+    const dir = (s.minClass + s.maxClass) < (p.minClass + p.maxClass) ? 'up' : 'down';
+    parts.push('class moved ' + dir + ' from ' + classRangeLabel(p) + ' to ' + classRangeLabel(s));
+  }
+  const newTypes = s.types.filter(function(t) { return p.types.indexOf(t) === -1; });
+  if (newTypes.length) parts.push('new race type: ' + newTypes.join(', '));
+  return '- Change from previous spell (' + surnameForProse(p.trainer) + '): ' + (parts.length ? parts.join('; ') + '.' : 'No material change in approach.');
+}
+function verdictLine(s, p) {
+  if (s.runs <= 2) return '- Verdict: too few runs to judge (' + plural(s.runs, 'run') + ').' + (p ? ' Previous spell (' + surnameForProse(p.trainer) + ') win-or-place rate ' + p.wopPct + '%.' : '');
+  if (!p) return '- Verdict: first spell — ' + s.wopPct + '% win-or-place from ' + plural(s.runs, 'run') + ', the baseline for later spells.';
+  if (s.wopPct > p.wopPct) return '- Verdict: win-or-place rate improved from ' + p.wopPct + '% under ' + surnameForProse(p.trainer) + ' to ' + s.wopPct + '%.';
+  if (s.wopPct < p.wopPct) return '- Verdict: win-or-place rate fell from ' + p.wopPct + '% under ' + surnameForProse(p.trainer) + ' to ' + s.wopPct + '%.';
+  return '- Verdict: win-or-place rate unchanged at ' + s.wopPct + '% (' + surnameForProse(p.trainer) + ' ' + p.wopPct + '%).';
+}
+// buildTrainerHistoryFacts(spells) -> [{ trainer, lines: string[] }] in spell
+// order (oldest first, current spell LAST).
+function buildTrainerHistoryFacts(spells) {
+  return spells.map(function(s, i) {
+    const p = i > 0 ? spells[i - 1] : null;
+    const L = [spellHeader(s, i)];
+    L.push('- Trips: ' + tripRangeLabel(s) + (s.minF !== null && s.minF !== s.maxF ? ' (shortest ' + furlongsLabel(s.minF) + ', longest ' + furlongsLabel(s.maxF) + ')' : '') + '.');
+    L.push('- Race types: ' + (s.types.length ? s.types.join(', ') : 'unknown') + '.');
+    const cr = classRangeLabel(s); if (cr) L.push('- Classes: ' + cr + '.');
+    L.push('- Spacing: ' + (s.avgGap === null ? 'single run, no spacing' : gapLabel(s.avgGap) + ' days between runs on average') + '.');
+    L.push('- Courses: ' + plural(s.courses, 'different course') + '. Going seen: ' + (s.goings.length ? s.goings.join(', ') : 'unknown') + '.');
+    L.push('- Results: ' + plural(s.wins, 'win') + ', ' + plural(s.places, 'place') + ' from ' + plural(s.runs, 'run') + '; win rate ' + s.winPct + '%; win-or-place rate ' + s.wopPct + '%.');
+    const shown = s.positions.length > POSITIONS_SHOWN ? s.positions.slice(-POSITIONS_SHOWN) : s.positions;
+    L.push('- Finishing positions' + (shown.length < s.positions.length ? ' (newest ' + shown.length + ' of ' + s.positions.length + ', oldest first)' : ' in order') + ': ' + shown.join(', ') + '.');
+    if (s.bestRow && s.topThree > 0) L.push('- Best: ' + formatResultProse(s.bestRow) + '.');
+    if (p) L.push(changeLine(s, p));
+    else L.push('- Change from previous spell: none — this is where the horse was started out.');
+    L.push(verdictLine(s, p));
+    return { trainer: s.trainer, lines: L };
+  });
+}
+function buildTrainerHistoryEnvelope(horse, facts) {
+  const out = ['HORSE: ' + (horse && horse.name || 'Unknown') + ' (' + (horse && horse.sex || 'sex unknown') + '). ' + plural(facts.length, 'trainer spell') + ', oldest first; the last spell is the current trainer.', ''];
+  facts.forEach(function(f) { out.push(f.lines.join('\n')); out.push(''); });
+  return out.join('\n');
+}
+
+const TRAINER_HISTORY_CONTRACT =
+"You write the TRAINER HISTORY for a racehorse's profile on a racing website: one paragraph per trainer spell, from fact lines the code has already computed. Every figure, every change and every verdict is in the facts; your job is only to phrase them well.\n\n" +
+"THE CONTRACT\n" +
+"One paragraph per spell, 45-65 words, in spell order (oldest first, the current trainer last). Use ONLY that spell's fact lines. Every number, name and date must be copied from a fact line — digits, with the % sign for rates (57%). Do not add, combine, rank or compute anything not stated; never count courses, runs or spells yourself — the counts you may use are the ones written in the facts. You may reorder and connect facts for readability and drop a minor one to fit the length; you may not introduce one.\n" +
+"OPEN each paragraph with what the trainer did or changed — the 'Change from previous spell' line is your opening: trip moved, spacing tightened or loosened, class moved, a new race type, or 'kept the same approach' when the line says no material change. The first spell opens with how the horse was started out and campaigned. Give the numbers as evidence of whether it worked, not as the point of the paragraph. CLOSE with the verdict line in plain words: improved, fell, unchanged, or too few runs to judge.\n" +
+"Refer to the previous trainer by surname only (as the fact line does). The current spell is written as 'since Mon YYYY'; a past spell as its date range. Never open with the horse's name or 'began her career under'; never repeat the horse's name inside a paragraph.";
+
+const TRAINER_HISTORY_VOICE =
+"VOICE\n" +
+"Plain punter language, no hedging, no stock openers; every spell should sound different. Positions exactly as given ('3rd of 7'). No reference to today, any upcoming race or what the horse will, should or might do. No jockeys, owners, prize money or betting words (backed, value, each-way, price, odds, market, favourite). Never describe anything as the worst, weakest or poorest. Plain prose: no headings, bullets or quotation marks inside the text.";
+
+const TRAINER_HISTORY_EXAMPLE =
+"EXAMPLE — a five-spell horse, the approved output verbatim:\n" +
+"William Jarvis (Apr 2019 – Jul 2019, 2 runs): \"Started her out sharp and low, two runs at 5f–5½f, Class 5 up to Class 3, 76 days apart. A 3rd on debut and a 5th gave a 50% win-or-place return from a cautious opening pair of runs — no clear pattern yet, just an even start.\"\n" +
+"Richard John O'Brien (Aug 2019, 1 run): \"One run only, same 5f trip, and a 7th on good ground. Too early to draw anything from a single start — the drop from Jarvis's 50% win-or-place rate to 0% here reflects one result, not a trend.\"\n" +
+"David Menuisier (Aug 2020 – Dec 2020, 6 runs): \"The first real change: stepped up sharply in trip, from 5f to 8f–10f, and results improved with it. Six runs across five courses and all types of ground, 21.8 days apart, produced four places from six — a 67% win-or-place rate, well up on her sprint form and the clearest sign yet that further ground suits.\"\n" +
+"Luke Dace (Apr 2021 – Oct 2022, 19 runs): \"Kept stretching her out further, to 7f–12f, across ten courses and 19 runs — but the extra scope didn't pay off. Just two places from 19 starts, an 11% win-or-place rate, a sharp fall from the 67% under Menuisier despite the seemingly logical progression in trip.\"\n" +
+"Joe Tickle (since Nov 2022, 59 runs): \"Pushed the trip out further still, to 8f–18½f, and it's been her most productive spell by far — five wins and 18 places from 59 runs. An 8% win rate and 39% win-or-place mark a clear recovery from the Dace years, suggesting she needed the very top of the trip range all along.\"\n\n" +
+"HOW A FACT LIST BECOMES A PARAGRAPH — the Menuisier spell above was written from fact lines of this shape:\n" +
+"SPELL 3 — David Menuisier (Aug 2020 – Dec 2020, 6 runs)\n- Trips: 1m–1m2f (shortest 1m, longest 1m2f).\n- Race types: Flat.\n- Spacing: 21.8 days between runs on average.\n- Courses: 5 different courses. Going seen: Good, Good to Soft, Soft, Heavy.\n- Results: 0 wins, 4 places from 6 runs; win rate 0%; win-or-place rate 67%.\n- Finishing positions in order: 3rd of 9, 2nd of 8, 5th of 11, 3rd of 10, 2nd of 12, 3rd of 7.\n- Best: 2nd of 12 at Windsor on 2 Nov 2020.\n- Change from previous spell (O'Brien): trip range moved up from 5f to 1m–1m2f; spacing tightened from 76.0 to 21.8 days between runs.\n- Verdict: win-or-place rate improved from 0% under O'Brien to 67%.\n" +
+"Notice: the opening is the change line, the figures are evidence, the verdict closes it, and every number in the paragraph is on a fact line.";
+
+const TRAINER_HISTORY_OUTPUT = "OUTPUT: a strict JSON array only, one object per spell in spell order: [{\"trainer\": \"<trainer name exactly as the spell header>\", \"text\": \"<the paragraph>\"}]. Your reply must begin with [ and end with ] — the JSON array and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it.";
+
+const TRAINER_HISTORY_PROMPT = TRAINER_HISTORY_CONTRACT + "\n\n" + TRAINER_HISTORY_VOICE + "\n\n" + TRAINER_HISTORY_EXAMPLE + "\n\n" + TRAINER_HISTORY_OUTPUT;
+const TRAINER_HISTORY_MAX_TOKENS = 2000;
+
+function parseJsonArray(text) {
+  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const a = t.indexOf('['), b = t.lastIndexOf(']');
+  if (a === -1 || b === -1 || b <= a) return null;
+  try { const arr = JSON.parse(t.slice(a, b + 1)); return Array.isArray(arr) ? arr : null; } catch (e) { return null; }
+}
+// validateTrainerSpell(text, factLines, opts) — opts.horseName (betting-word
+// exemption), opts.spellTrainers (this horse's trainer names), and
+// opts.knownTrainerSurnames (every trainer on the current cards): a known
+// surname in the text that is not one of this horse's trainers is an
+// invented attribution and fails.
+function validateTrainerSpell(text, factLines, opts) {
+  const failures = []; const t = String(text || '');
+  const offsets = sentenceOffsets(t);
+  const fail = function(check, detail, idx) { failures.push({ check: check, detail: detail + (idx !== undefined && idx !== null ? ' | sentence: "' + sentenceAt(offsets, idx) + '"' : '') }); };
+  if (!t.trim()) { fail('json', 'missing or empty text'); return { ok: false, failures: failures, wordCount: 0, text: null }; }
+  const wc = words(t);
+  const allowed = {}; numberTokens((factLines || []).join('\n')).forEach(function(n) { allowed[n] = true; });
+  const reNum = /\d+/g; let m;
+  while ((m = reNum.exec(t)) !== null) { if (!allowed[m[0]]) fail('number-not-in-facts', m[0], m.index); }
+  const spans = []; const exempt = [opts && opts.horseName].concat((opts && opts.spellTrainers) || []).filter(Boolean);
+  exempt.forEach(function(c) { const re = new RegExp(escapeRe(c), 'gi'); let cm; while ((cm = re.exec(t)) !== null) spans.push([cm.index, cm.index + cm[0].length]); });
+  const insideExempt = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
+  BETTING_WORDS.forEach(function(w) { const re = new RegExp(phraseRegex(w).source, 'gi'); let wm; while ((wm = re.exec(t)) !== null) { if (!insideExempt(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } } });
+  FUTURE_WORDS.forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('future-words', w, i); });
+  ['worst', 'weakest', 'poorest'].forEach(function(w) { const i = t.search(phraseRegex(w)); if (i !== -1) fail('banned-format', w, i); });
+  const reSlash = /\b\d+\/\d+\b/g; while ((m = reSlash.exec(t)) !== null) fail('banned-format', m[0] + ' (N/M position)', m.index);
+  // trainer attribution: known surnames not belonging to this horse's spells
+  const mine = {}; ((opts && opts.spellTrainers) || []).forEach(function(n) { trainerSurnames(n).forEach(function(s) { mine[s] = true; }); });
+  const known = (opts && opts.knownTrainerSurnames) || [];
+  known.forEach(function(s) {
+    if (mine[s] || s.length < 4) return;
+    const re = new RegExp('(?<![A-Za-z])' + escapeRe(s.charAt(0).toUpperCase() + s.slice(1)) + '(?:\'s)?(?![A-Za-z])');
+    const i = t.search(re); if (i !== -1) fail('trainer-not-in-spells', s, i);
+  });
+  return { ok: failures.length === 0, failures: failures, wordCount: wc, text: t };
+}
+
 module.exports = {
+  // trainer history
+  buildTrainerSpells: buildTrainerSpells,
+  buildTrainerHistoryFacts: buildTrainerHistoryFacts,
+  buildTrainerHistoryEnvelope: buildTrainerHistoryEnvelope,
+  trainerSurnames: trainerSurnames,
+  sameTrainerSpell: sameTrainerSpell,
+  TRAINER_HISTORY_PROMPT: TRAINER_HISTORY_PROMPT,
+  TRAINER_HISTORY_MAX_TOKENS: TRAINER_HISTORY_MAX_TOKENS,
+  parseJsonArray: parseJsonArray,
+  validateTrainerSpell: validateTrainerSpell,
   // data layer
   GOING_SCALE: GOING_SCALE,
   sectionWindow: sectionWindow,
