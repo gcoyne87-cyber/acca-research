@@ -38,7 +38,19 @@ function triggerRun() {
   });
 }
 
-exports.handler = async function() {
+exports.handler = async function(event) {
+  // Gate (2026-10-06): with the schedule commented out, this function is
+  // reachable as plain HTTP — ungated, anyone with the URL could start a
+  // paid run of the old job (triggerRun forwards the real BUILD_SECRET).
+  // Same gate as form-summary-background.js (x-build-secret header or
+  // ?secret=). A scheduled invocation (no httpMethod — only possible if the
+  // cron is ever restored) passes untouched, so rollback stays one uncomment.
+  if (event && event.httpMethod) {
+    const secret = (event.queryStringParameters && event.queryStringParameters.secret) || (event.headers && event.headers['x-build-secret']);
+    if (secret !== process.env.BUILD_SECRET) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorised' }) };
+    }
+  }
   try {
     const result = await triggerRun();
     console.log('[form-summary-trigger] POST to form-summary-background ->', result.statusCode);

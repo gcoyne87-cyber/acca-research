@@ -56,7 +56,19 @@ function sendAlert(subject, bodyLines) {
   });
 }
 
-exports.handler = async function() {
+exports.handler = async function(event) {
+  // Gate (2026-10-06): with the schedule commented out, this function is
+  // reachable as plain HTTP — ungated, any anonymous hit reads Redis and
+  // (now that the old job no longer writes complete markers) fires a real
+  // alert email every time. Same gate as form-summary-background.js; a
+  // scheduled invocation (no httpMethod, if the cron is ever restored)
+  // passes untouched.
+  if (event && event.httpMethod) {
+    const secret = (event.queryStringParameters && event.queryStringParameters.secret) || (event.headers && event.headers['x-build-secret']);
+    if (secret !== process.env.BUILD_SECRET) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorised' }) };
+    }
+  }
   // Same Europe/Dublin calendar day the form-summary job keys its
   // heartbeat/complete records by.
   const nowParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).formatToParts(new Date());
