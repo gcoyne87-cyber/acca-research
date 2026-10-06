@@ -414,11 +414,19 @@ exports.handler = async function(event) {
       // Walk the existing cached (mapped) meetings structure and update the
       // price field, the price-movement flags, and the going fields — all in
       // the same single Redis write below.
+      // Going-change detection: the C&D-going recheck below re-reads every
+      // runner's form:history (a full-card pipeline, ~0.6 MB) and only ever
+      // changes anything when a race's going string has changed — so it runs
+      // only on the hours where one did (2026-10-06 bandwidth audit).
+      let todayGoingChanged = false;
       (cached.meetings || []).forEach(function(m) {
         if (freshGoingByMeeting[m.id]) m.going = freshGoingByMeeting[m.id];
         (m.races || []).forEach(function(race) {
           const fg = freshGoingByRace[m.id + '|' + (race.t || '')];
-          if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
+          if (fg) {
+            if (fg.going !== race.going) todayGoingChanged = true;
+            race.going = fg.going; race.going_detailed = fg.going_detailed;
+          }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshNrSet[ru.horse_id] === true) {
               ru.nonRunner = true;
@@ -445,7 +453,8 @@ exports.handler = async function(event) {
         await sendErrorEmail('today (' + today + ')', new Error(todayError));
       }
 
-      await recheckCandDGoing(cached, today);
+      if (todayGoingChanged) await recheckCandDGoing(cached, today);
+      else console.log('[refresh-prices] today: going unchanged on every race — C&D-going recheck skipped');
 
       await redisSet('racecards:' + today, cached);
       if (anchorsDirty) {
@@ -531,7 +540,8 @@ exports.handler = async function(event) {
         });
       });
 
-      await recheckCandDGoing(cachedTomorrow, tomorrow);
+      // No C&D-going recheck for tomorrow: the going is declared the morning
+      // of racing, and today's pass (above) catches it when it changes.
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
       if (anchorsTomorrowDirty) {

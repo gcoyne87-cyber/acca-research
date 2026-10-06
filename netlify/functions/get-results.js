@@ -108,12 +108,18 @@ exports.handler = async function(event) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'date param required (YYYY-MM-DD)' }) };
     }
 
-    // Past dates: serve straight from the Redis cache when present — instant,
-    // zero Racing API calls. Debug (?raw=1) always bypasses the cache.
+    // Serve from the Redis cache when present — instant, zero Racing API
+    // calls. Past dates are final, so their cache lives 30 days; today's is a
+    // 60-second speed cache so the client's pollers (Pick Tracker sync, home
+    // results strip, Results page) share ONE rebuild per minute instead of
+    // each paying the full racecard + per-runner history read — that
+    // uncached path was ~1 MB of Redis traffic per poll and the bulk of the
+    // site's bandwidth (2026-10-06 audit). Debug (?raw=1) bypasses the cache.
     const todayStr = new Date().toISOString().slice(0, 10);
     const isPastDate = date < todayStr;
+    const CACHE_TTL = isPastDate ? 2592000 : 60;
     const cacheKey = 'results:cache:' + date + ':' + (view || 'lookup');
-    if (isPastDate && qs.raw !== '1') {
+    if (qs.raw !== '1') {
       const cachedResp = await redisGetJson(cacheKey);
       if (cachedResp) {
         return { statusCode: 200, headers, body: JSON.stringify(cachedResp) };
@@ -365,10 +371,12 @@ exports.handler = async function(event) {
       } catch (nrErr) { /* NR derivation is additive — never fail the response */ }
 
       const pagePayload = { date, venues: venueOrder.map(function(id) { return venueMap[id]; }), partial: partial, fetched: results.length };
-      // Cache complete past-date responses for 24h — never partial ones (a
-      // rate-limited sweep must not freeze a half-day of results in cache).
-      if (isPastDate && !partial) {
-        await redisSetJsonEx(cacheKey, pagePayload, 86400);
+      // Cache complete responses (30 days past, 60 s today) — never a partial
+      // past day (a rate-limited sweep must not freeze a half-day of results
+      // in cache). A partial TODAY response is cached for its 60 s so a
+      // rate-limit hit never turns the pollers into a thundering herd.
+      if (!partial || !isPastDate) {
+        await redisSetJsonEx(cacheKey, pagePayload, CACHE_TTL);
       }
       return {
         statusCode: 200,
@@ -402,8 +410,8 @@ exports.handler = async function(event) {
     });
 
     const lookupPayload = { date, lookup, races, partial: partial, fetched: results.length };
-    if (isPastDate && !partial) {
-      await redisSetJsonEx(cacheKey, lookupPayload, 86400);
+    if (!partial || !isPastDate) {
+      await redisSetJsonEx(cacheKey, lookupPayload, CACHE_TTL);
     }
     return {
       statusCode: 200,

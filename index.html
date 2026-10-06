@@ -3318,10 +3318,14 @@ window.addEventListener('load',function(){
     function syncResults(){
       var today=irishDateStr();
       var recs=getRecs();
-      // Collect all dates (including today) that have unresolved picks
+      // Collect the dates (including today) that have unresolved picks —
+      // bounded to the last 14 days. Older picks that never settled are
+      // marked 'U' (unresolved) server-side and stay in tracker:recs; polling
+      // results for June dates on every tick was never going to resolve them.
+      var cutoff=irishDateStr(new Date(Date.now()-14*86400000));
       var dates=[];
       recs.forEach(function(r){
-        if(r.date>='2026-06-05' && (!r.result||r.result==='') && dates.indexOf(r.date)===-1){
+        if(r.date>=cutoff && (!r.result||r.result==='') && dates.indexOf(r.date)===-1){
           dates.push(r.date);
         }
       });
@@ -3480,9 +3484,14 @@ window.addEventListener('load',function(){
 
     if(isAuth()){
       ptShow();
+      // Sync every 5 minutes, and only between 10:00 and 22:00 Irish time —
+      // results only move during racing hours. (Was every 60 s, all day.)
       setInterval(function(){
+        var _hp=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',hour12:false}).formatToParts(new Date());
+        var _h=parseInt(((_hp.filter(function(x){return x.type==='hour';})[0]||{}).value)||'0',10);
+        if(_h<10||_h>=22) return;
         ptSyncCycle(function(recs){ ptRender(recs); syncResults(); });
-      },60000);
+      },300000);
     }
   })();
   </script>
@@ -17360,8 +17369,16 @@ window._ptInjectAllSel=function(){
       }
     }catch(e){}
     if(cachedLookup&&cachedSuspect&&date!==today){
-      console.log('[pt-trace] inject: cache for',date,'is partial/old-format — queueing one refresh'); // TEMP TRACE — remove after verification
-      window._ptRQAdd(date);
+      // One refresh per date, ever — recorded in localStorage so a
+      // partial/old-format cache for a historic date is not re-fetched every
+      // morning (49 dates back to June were, until 2026-10-06).
+      var _rfKey='results:refreshed:'+date, _rfDone=false;
+      try{ _rfDone=!!localStorage.getItem(_rfKey); }catch(e){}
+      if(!_rfDone){
+        try{ localStorage.setItem(_rfKey,String(Date.now())); }catch(e){}
+        console.log('[pt-trace] inject: cache for',date,'is partial/old-format — queueing one refresh'); // TEMP TRACE — remove after verification
+        window._ptRQAdd(date);
+      }
     }
 
     // Section already in DOM — update from cache, or queue fetch
@@ -17405,11 +17422,9 @@ window._ptInjectAllSel=function(){
 // fresh fetch lands and overwrites the cache in _ptRQNext. The old
 // remove-then-refetch pattern blanked every result for the whole fetch window,
 // and permanently whenever a fetch stalled.
-setInterval(function(){
-  var _td=irishDateStr();
-  delete window._ptRQ.seen[_td];
-  if(window._ptRQAdd) window._ptRQAdd(_td);
-},60000);
+// (The 60-second delete-and-re-add of today's date that used to live here was
+// removed 2026-10-06: syncResults' own cycle already includes today, and two
+// timers against get-results were half of the site's Redis bandwidth.)
 
 function renderAllSelections(analyses,date){
   if(!analyses||!analyses.length||!date) return;
@@ -18849,11 +18864,11 @@ function _startHomeResultsPolling(){
     _homeRes.startTimer=setTimeout(function(){
       _homeRes.startTimer=null;
       _fetchHomeResults();
-      _homeRes.interval=setInterval(tick,90*1000);
+      _homeRes.interval=setInterval(tick,180*1000);
     },win.start.getTime()-now.getTime());
   } else {
     _fetchHomeResults();
-    _homeRes.interval=setInterval(tick,90*1000);
+    _homeRes.interval=setInterval(tick,180*1000);
   }
 }
 
