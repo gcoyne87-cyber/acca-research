@@ -35,6 +35,7 @@ module.exports.config = { timeout: 900 };
 const https = require('https');
 const F = require('./lib/form-sections.js');
 const E = require('./text-engine-submit-background.js').helpers;
+const B = require('./lib/batch-runner.js');
 
 const HOSTNAME = 'superlative-flan-93dfc4.netlify.app';
 const TIMEOUT_MS = 780 * 1000;
@@ -137,22 +138,23 @@ function telemetryFromFailures(h, date, section, failures, stage, factsText) {
   });
 }
 
-// processHorseGoingTrip — build facts, write once, validate each section,
-// retry once with the failure notes, store whatever passed.
-async function processHorseGoingTrip(h, date) {
+// ── Per-horse pipeline, split in two so the live loop and the Batch collector
+// share ONE validate-and-store path:
+//   prepareGoingTrip(h, date)  -> everything before the model call (facts,
+//                                 envelope, template decision)
+//   finishGoingTrip(job, first) -> validation of the FIRST model reply, one
+//                                 LIVE retry with the failure notes, storage,
+//                                 telemetry. `first` is {text, stopReason,
+//                                 usage} whether it came from a direct call
+//                                 (processHorseGoingTrip) or a batch result
+//                                 (batch adapter in runGoingTripSection).
+async function prepareGoingTrip(h, date) {
   const rows = await E.redisGet('form:history:' + h.horse_id + ':' + date);
   const allRows = Array.isArray(rows) ? rows : [];
   const win = F.sectionWindow(allRows, date);
   const trackRows = F.trackWindowRows(allRows);
   const trackIsTemplate = trackRows.length === 0;
-
-  if (!win.size) {
-    // Track is templated too even if its (wider) window has runs — the three
-    // sections are generated together or not at all.
-    await storeGoingTrip(h, win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE, F.NO_RUNS_TRACK_TEMPLATE);
-    return { horse_id: h.horse_id, horseName: h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: true, attempt: 0, usage: EMPTY_USAGE };
-  }
-
+  if (!win.size) return { h: h, date: date, template: true, win: win };
   const gGroups = F.goingGroups(win.rows);
   const goingFacts = F.buildGoingFacts(gGroups, F.goingNeverRun(gGroups), F.goingNeverRunAW(gGroups), win.size);
   const tGroups = F.tripGroups(win.rows);
@@ -164,55 +166,60 @@ async function processHorseGoingTrip(h, date) {
   }
   const envelope = F.buildFactsEnvelope(h, goingFacts, tripFacts, trackFacts);
   const courseNames = F.courseNamesForExemption(win.rows.concat(trackRows));
+  return { h: h, date: date, template: false, win: win, trackIsTemplate: trackIsTemplate, goingFacts: goingFacts, tripFacts: tripFacts, trackFacts: trackFacts, envelope: envelope, courseNames: courseNames };
+}
 
-  let usage = EMPTY_USAGE; let firstWriteUsage = null; let cacheRead = false;
-  // Raw-output capture on stop_reason=max_tokens — appended to telemetry so
-  // a truncation can be read instead of guessed at. Permanent and cheap.
+// Template store — the three sections are generated together or not at all.
+async function storeTemplates(job) {
+  await storeGoingTrip(job.h, job.win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE, F.NO_RUNS_TRACK_TEMPLATE);
+  return { horse_id: job.h.horse_id, horseName: job.h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: true, attempt: 0, usage: EMPTY_USAGE };
+}
+
+// One direct model call -> { text, stopReason, usage } or { error }.
+// Raw-output capture on stop_reason=max_tokens (into rawCaptures) so a
+// truncation can be read instead of guessed at.
+async function writeGoingTrip(job, userText, stage, rawCaptures) {
+  const resp = await callModelGoingTrip(userText);
+  if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
+  const u = usageFrom(resp.json);
+  const text = resp.json.content.map(function(c) { return c.text || ''; }).join('');
+  if (resp.json.stop_reason === 'max_tokens' && rawCaptures) rawCaptures.push({ date: job.date, ts: new Date().toISOString(), horseName: job.h.name, horse_id: job.h.horse_id, section: 'all', check: 'max-tokens-raw', stage: stage, outputTokens: u.output, chars: text.length, words: F.words(text), rawHead: text.slice(0, 1500), rawTail: text.slice(-600), detail: 'stop_reason=max_tokens; raw output captured (head 1500 / tail 600 chars)' });
+  return { text: text, stopReason: resp.json.stop_reason, usage: u };
+}
+
+function validateGoingTrip(job, text) {
+  const parsed = F.parseJsonSections(text);
+  if (!parsed) return { parsed: null, going: null, trip: null, track: null, jsonFail: true };
+  return {
+    parsed: parsed,
+    going: F.validateSection('going', parsed.going, job.goingFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 65 }),
+    trip: F.validateSection('trip', parsed.trip, job.tripFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 65 }),
+    track: job.trackIsTemplate ? null : F.validateSection('track', parsed.track, job.trackFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 85 }),
+    jsonFail: false
+  };
+}
+function goingTripFailures(job, v) {
+  const out = {};
+  if (v.jsonFail) { out.going = [{ check: 'json', detail: 'output was not valid JSON' }]; out.trip = out.going; if (!job.trackIsTemplate) out.track = out.going; return out; }
+  ['going', 'trip', 'track'].forEach(function(s) { if (v[s] && !v[s].ok) out[s] = v[s].failures; });
+  return out;
+}
+function anyFail(f) { return !!(f.going || f.trip || f.track); }
+
+async function finishGoingTrip(job, first) {
+  const h = job.h, date = job.date;
   const rawCaptures = [];
-
-  async function write(userText) {
-    const resp = await callModelGoingTrip(userText);
-    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
-    const u = usageFrom(resp.json);
-    usage = addUsage(usage, u);
-    if (!firstWriteUsage) { firstWriteUsage = u; cacheRead = u.cacheRead > 0; }
-    const text = resp.json.content.map(function(c) { return c.text || ''; }).join('');
-    if (resp.json.stop_reason === 'max_tokens') {
-      rawCaptures.push({ date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: 'all', check: 'max-tokens-raw', stage: rawCaptures.length ? 'retry' : 'first', outputTokens: u.output, chars: text.length, words: F.words(text), rawHead: text.slice(0, 1500), rawTail: text.slice(-600), detail: 'stop_reason=max_tokens; raw output captured (head 1500 / tail 600 chars)' });
-    }
-    return { text: text, stopReason: resp.json.stop_reason };
-  }
-  function validateAll(text) {
-    const parsed = F.parseJsonSections(text);
-    if (!parsed) return { parsed: null, going: null, trip: null, track: null, jsonFail: true };
-    return {
-      parsed: parsed,
-      going: F.validateSection('going', parsed.going, goingFacts, { courseNames: courseNames, horseName: h.name, wordCap: 65 }),
-      trip: F.validateSection('trip', parsed.trip, tripFacts, { courseNames: courseNames, horseName: h.name, wordCap: 65 }),
-      track: trackIsTemplate ? null : F.validateSection('track', parsed.track, trackFacts, { courseNames: courseNames, horseName: h.name, wordCap: 85 }),
-      jsonFail: false
-    };
-  }
-  function failuresOf(v) {
-    const out = {};
-    if (v.jsonFail) { out.going = [{ check: 'json', detail: 'output was not valid JSON' }]; out.trip = out.going; if (!trackIsTemplate) out.track = out.going; return out; }
-    ['going', 'trip', 'track'].forEach(function(s) { if (v[s] && !v[s].ok) out[s] = v[s].failures; });
-    return out;
-  }
-  function anyFail(f) { return !!(f.going || f.trip || f.track); }
-
-  // First write.
-  const first = await write(envelope);
-  if (first.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, error: first.error, attempt: 1, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead };
-  let v = validateAll(first.text);
-  let firstFailures = failuresOf(v);
+  if (first.stopReason === 'max_tokens') rawCaptures.push({ date: date, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, section: 'all', check: 'max-tokens-raw', stage: 'first', outputTokens: first.usage.output, chars: first.text.length, words: F.words(first.text), rawHead: first.text.slice(0, 1500), rawTail: first.text.slice(-600), detail: 'stop_reason=max_tokens; raw output captured (head 1500 / tail 600 chars)' });
+  let usage = first.usage; const firstWriteUsage = first.usage; const cacheRead = first.usage.cacheRead > 0;
+  let v = validateGoingTrip(job, first.text);
+  let firstFailures = goingTripFailures(job, v);
   let attempt = 1;
   let telemetry = [];
-  const factsText = { going: goingFacts.join('\n'), trip: tripFacts.join('\n'), track: trackFacts ? trackFacts.join('\n') : null };
+  const factsText = { going: job.goingFacts.join('\n'), trip: job.tripFacts.join('\n'), track: job.trackFacts ? job.trackFacts.join('\n') : null };
 
-  // One retry — the whole envelope again, plus the failed sections' notes.
-  // Sections that passed are kept from the first pass regardless of what the
-  // retry produces for them.
+  // One LIVE retry — the whole envelope again, plus the failed sections'
+  // notes. Sections that passed are kept from the first pass regardless of
+  // what the retry produces for them.
   let keep = { going: v.going && v.going.ok ? v.going.text : null, trip: v.trip && v.trip.ok ? v.trip.text : null, track: v.track && v.track.ok ? v.track.text : null };
   let retryFailures = null;
   if (anyFail(firstFailures)) {
@@ -220,12 +227,13 @@ async function processHorseGoingTrip(h, date) {
     const notes = ['going', 'trip', 'track'].filter(function(s) { return firstFailures[s]; }).map(function(s) {
       return s.toUpperCase() + ': ' + firstFailures[s].map(function(f) { return f.check + ' — ' + f.detail; }).join('; ');
     }).join('\n');
-    const retryText = envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite the named sections using only the facts listed:\n' + notes;
-    const second = await write(retryText);
+    const retryText = job.envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite the named sections using only the facts listed:\n' + notes;
+    const second = await writeGoingTrip(job, retryText, 'retry', rawCaptures);
     attempt = 2;
     if (!second.error) {
-      const v2 = validateAll(second.text);
-      retryFailures = failuresOf(v2);
+      usage = addUsage(usage, second.usage);
+      const v2 = validateGoingTrip(job, second.text);
+      retryFailures = goingTripFailures(job, v2);
       ['going', 'trip', 'track'].forEach(function(s) {
         if (keep[s] === null && v2[s] && v2[s].ok) keep[s] = v2[s].text;
         if (keep[s] === null && retryFailures[s]) telemetry = telemetry.concat(telemetryFromFailures(h, date, s, retryFailures[s], 'retry', factsText[s]));
@@ -236,8 +244,8 @@ async function processHorseGoingTrip(h, date) {
   }
 
   const goingOut = keep.going, tripOut = keep.trip;
-  const trackOut = trackIsTemplate ? F.NO_RUNS_TRACK_TEMPLATE : keep.track;
-  if (goingOut !== null || tripOut !== null || trackOut !== null) await storeGoingTrip(h, win, goingOut, tripOut, trackOut);
+  const trackOut = job.trackIsTemplate ? F.NO_RUNS_TRACK_TEMPLATE : keep.track;
+  if (goingOut !== null || tripOut !== null || trackOut !== null) await storeGoingTrip(h, job.win, goingOut, tripOut, trackOut);
   await appendTelemetry(date, telemetry.concat(rawCaptures));
 
   return {
@@ -248,6 +256,36 @@ async function processHorseGoingTrip(h, date) {
     codeCheckFirstFailures: anyFail(firstFailures) ? firstFailures : null,
     codeCheckRetryFailures: retryFailures && (retryFailures.error || anyFail(retryFailures)) ? retryFailures : null,
     stopReason: first.stopReason
+  };
+}
+
+// LIVE path (default): prepare -> one direct call -> finish.
+async function processHorseGoingTrip(h, date) {
+  const job = await prepareGoingTrip(h, date);
+  if (job.template) return storeTemplates(job);
+  const first = await writeGoingTrip(job, job.envelope, 'first', null);
+  if (first.error) return { horse_id: h.horse_id, horseName: h.name, storedGoing: false, storedTrip: false, storedTrack: false, error: first.error, attempt: 1, usage: EMPTY_USAGE, firstWriteUsage: null, cacheRead: false };
+  return finishGoingTrip(job, first);
+}
+
+// BATCH path: the request body for one horse (same model, prompt, cache
+// block and envelope as callModelGoingTrip), and the collector adapter whose
+// finish() is finishGoingTrip — the same function the live path calls.
+function goingTripBatchRequest(job) {
+  return { custom_id: job.h.horse_id, params: { model: E.MODEL, max_tokens: F.GOINGTRIP_MAX_TOKENS, system: [{ type: 'text', text: F.GOINGTRIP_PROMPT, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: job.envelope }] } };
+}
+function goingTripBatchAdapter() {
+  return {
+    engine: 'goingtrip',
+    finish: async function(customId, text, usage, stopReason, batchJob) {
+      const h = batchJob.horses && batchJob.horses[customId];
+      if (!h) return { horse_id: customId, stored: false, error: 'horse not in batch job record', usage: EMPTY_USAGE };
+      const job = await prepareGoingTrip(h, batchJob.date);
+      if (job.template) return storeTemplates(job);
+      const r = await finishGoingTrip(job, { text: text, stopReason: stopReason, usage: usage });
+      r.stored = r.storedGoing && r.storedTrip && r.storedTrack;
+      return r;
+    }
   };
 }
 
@@ -331,6 +369,26 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
       return true;
     }
 
+    // BATCH MODE (?mode=batch): the worklist is built exactly as live (same
+    // eligibility, same horseIds/sample filters); templated horses are stored
+    // immediately as live does; every other horse's request goes into ONE
+    // Message Batch; the job is recorded at batch:job:goingtrip:{batchId};
+    // the lock is released and the run stops. Collect with ?collect={batchId}.
+    if (qs.mode === 'batch' && hop === 0 && !state) {
+      const requests = []; const horsesById = {};
+      for (const h of remaining) {
+        const job = await prepareGoingTrip(h, date);
+        if (job.template) { record(await storeTemplates(job)); continue; }
+        requests.push(goingTripBatchRequest(job));
+        horsesById[h.horse_id] = { horse_id: h.horse_id, name: h.name, sex: h.sex, meeting: h.meeting };
+      }
+      let submitted = null, submitError = null;
+      if (requests.length) { try { submitted = await B.submitBatch(requests, { engine: 'goingtrip', dates: [date], date: date, horses: horsesById, costCap: costCap, submission: { eligible: remaining.length, templated: templated, requests: requests.length } }); } catch (e) { submitError = e.message; } }
+      try { await E.redisSet('form-sections:goingtrip:lock:' + date, null); } catch (ue) {}
+      console.log('[form-sections:goingtrip] BATCH', submitted ? submitted.batchId : ('NOT SUBMITTED ' + (submitError || 'no requests')), 'requests', requests.length, 'templated', templated);
+      return { statusCode: submitError ? 500 : 200, headers, body: JSON.stringify({ status: submitError ? 'batch_submit_failed' : (requests.length ? 'batch_submitted' : 'nothing_to_submit'), date: date, batchId: submitted ? submitted.batchId : null, submitted: requests.length, templated: templated, error: submitError }) };
+    }
+
     // Warm-up: the first horse alone, so the system prompt is written to the
     // cache once before the pool starts reading it.
     if (remaining.length && hop === 0 && !state && mayContinue()) {
@@ -407,6 +465,28 @@ async function runGoingTripSection(date, qs, hop, startTime, headers) {
   }
 }
 
+// ?collect={batchId}: hand every succeeded batch result to finishGoingTrip via
+// the adapter (same validation, same storage as live); resumable — a
+// time-boxed collect persists progress in the job key and chains itself.
+async function collectGoingTrip(qs, startTime, headers) {
+  const batchId = String(qs.collect);
+  try {
+    const r = await B.collectBatch(batchId, goingTripBatchAdapter(), { budgetMs: TIMEOUT_MS - (Date.now() - startTime), concurrency: CONCURRENCY });
+    const j = r.job;
+    if (r.status === 'partial') {
+      await new Promise(function(resolve) {
+        const req = https.request({ hostname: HOSTNAME, path: '/.netlify/functions/form-sections-run-background?collect=' + encodeURIComponent(batchId), method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 } }, function(res) { res.resume(); res.on('end', resolve); });
+        req.on('error', function() { resolve(); }); req.setTimeout(10000, function() { req.destroy(); resolve(); }); req.end();
+      });
+    }
+    console.log('[form-sections:goingtrip] COLLECT', batchId, r.status, JSON.stringify(j.counts), 'cost', j.totalCostUSD);
+    return { statusCode: 200, headers, body: JSON.stringify({ status: r.status, batchId: batchId, processing_status: j.processing_status, request_counts: j.request_counts, counts: j.counts, batchCostUSD: j.costUSD, liveRetryCostUSD: j.liveRetryCostUSD, totalCostUSD: j.totalCostUSD, remaining: j.remaining }) };
+  } catch (err) {
+    console.log('[form-sections:goingtrip] COLLECT ERROR', err && err.stack || err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: (err && err.message) || String(err) }) };
+  }
+}
+
 exports.handler = async function(event) {
   const startTime = Date.now();
   const headers = { 'Content-Type': 'application/json' };
@@ -417,6 +497,8 @@ exports.handler = async function(event) {
   if (secret !== process.env.BUILD_SECRET) {
     return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
   }
+
+  if (qs.collect) return collectGoingTrip(qs, startTime, headers);
 
   const date = /^\d{4}-\d{2}-\d{2}$/.test(qs.date || '') ? qs.date : E.irishDateStr();
 

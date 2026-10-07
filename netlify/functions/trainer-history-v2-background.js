@@ -39,6 +39,7 @@ module.exports.config = { timeout: 900 };
 const https = require('https');
 const F = require('./lib/form-sections.js');
 const E = require('./text-engine-submit-background.js').helpers;
+const B = require('./lib/batch-runner.js');
 
 const HOSTNAME = 'superlative-flan-93dfc4.netlify.app';
 const TIMEOUT_MS = 780 * 1000;
@@ -94,88 +95,119 @@ async function appendTelemetry(runId, entries) {
   try { const k = 'trainer-history:telemetry:' + runId; const existing = await E.redisGet(k); await E.redisSet(k, (Array.isArray(existing) ? existing : []).concat(entries)); } catch (e) {}
 }
 
-async function processHorse(h, runKey, knownTrainerSurnames) {
+// ── Per-horse pipeline, split so the live loop and the Batch collector share
+// ONE validate-and-store path:
+//   prepareTrainer(h, known)     -> skip rule, no-data marker, facts, envelope
+//   finishTrainer(job, first, runId) -> validation of the FIRST reply, one
+//                                   LIVE retry, storage / markers, telemetry.
+async function prepareTrainer(h, knownTrainerSurnames) {
   const rows = await E.redisGet('form:history:' + h.horse_id + ':' + h.date);
   const allRows = Array.isArray(rows) ? rows : [];
   const newest = allRows.filter(function(r) { return r && r.date; }).map(function(r) { return r.date; }).sort().pop() || null;
   const existing = await E.redisGet('horse:trainer-history:' + h.horse_id);
   const existingHasText = !!(existing && Array.isArray(existing.spells) && existing.spells.some(function(s) { return s && s.text; }));
-  const nowIso = new Date().toISOString();
-
   // SKIP RULE
-  if (existing && existing.source === 'facts-v1' && newest && existing.lastRunDate === newest && !existing.reason) {
-    return { horse_id: h.horse_id, horseName: h.name, skipped: true, usage: EMPTY_USAGE };
-  }
-
+  if (existing && existing.source === 'facts-v1' && newest && existing.lastRunDate === newest && !existing.reason) return { h: h, skip: true, newest: newest };
   const spells = F.buildTrainerSpells(allRows);
-  if (!spells.length) {
-    if (!existingHasText) await E.redisSet('horse:trainer-history:' + h.horse_id, { horseName: h.name, spells: [], reason: 'no-data', generatedAt: nowIso, lastRunDate: newest, source: 'facts-v1' });
-    return { horse_id: h.horse_id, horseName: h.name, noData: true, usage: EMPTY_USAGE };
-  }
+  if (!spells.length) return { h: h, noData: true, newest: newest, existingHasText: existingHasText };
   const facts = F.buildTrainerHistoryFacts(spells);
   const envelope = F.buildTrainerHistoryEnvelope(h, facts);
-  const spellTrainers = spells.map(function(s) { return s.trainer; });
-  const vopts = { horseName: h.name, spellTrainers: spellTrainers, knownTrainerSurnames: knownTrainerSurnames };
-  let usage = EMPTY_USAGE; let firstWriteUsage = null; let cacheRead = false; const rawCaptures = [];
+  const vopts = { horseName: h.name, spellTrainers: spells.map(function(s) { return s.trainer; }), knownTrainerSurnames: knownTrainerSurnames || [] };
+  return { h: h, newest: newest, existingHasText: existingHasText, spells: spells, facts: facts, envelope: envelope, vopts: vopts };
+}
+async function storeNoData(job) {
+  if (!job.existingHasText) await E.redisSet('horse:trainer-history:' + job.h.horse_id, { horseName: job.h.name, spells: [], reason: 'no-data', generatedAt: new Date().toISOString(), lastRunDate: job.newest, source: 'facts-v1' });
+  return { horse_id: job.h.horse_id, horseName: job.h.name, noData: true, usage: EMPTY_USAGE };
+}
+async function writeTrainer(job, userText, stage, runId, rawCaptures) {
+  const resp = await callModel(userText);
+  if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
+  const u = usageFrom(resp.json);
+  const text = resp.json.content.map(function(c) { return c.text || ''; }).join('');
+  if (resp.json.stop_reason === 'max_tokens' && rawCaptures) rawCaptures.push({ runKey: runId, ts: new Date().toISOString(), horseName: job.h.name, horse_id: job.h.horse_id, check: 'max-tokens-raw', stage: stage, outputTokens: u.output, rawHead: text.slice(0, 1500), rawTail: text.slice(-600), detail: 'stop_reason=max_tokens' });
+  return { text: text, stopReason: resp.json.stop_reason, usage: u };
+}
+// Validate one model reply against the spells: array length must match,
+// each entry's trainer must be that spell's trainer (matched by surname;
+// an echoed header "Name (since Jul 2023, 32 runs)" is tolerated), and each
+// text passes validateTrainerSpell against its own fact lines.
+function validateTrainer(job, text) {
+  const arr = F.parseJsonArray(text);
+  if (!arr) return { jsonFail: 'output was not a JSON array', perSpell: null };
+  if (arr.length !== job.spells.length) return { jsonFail: 'expected ' + job.spells.length + ' spell entries, got ' + arr.length, perSpell: null };
+  const perSpell = arr.map(function(entry, i) {
+    const r = F.validateTrainerSpell(entry && entry.text, job.facts[i].lines, job.vopts);
+    const named = String((entry && entry.trainer) || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+    if (!(entry && F.sameTrainerSpell(named, job.spells[i].trainer))) { r.failures.push({ check: 'spell-order', detail: 'entry ' + (i + 1) + ' names "' + (entry && entry.trainer) + '" but spell ' + (i + 1) + ' is ' + job.spells[i].trainer }); r.ok = false; }
+    if (r.wordCount > 75) r.warnings = [{ words: r.wordCount, cap: 65 }];
+    return r;
+  });
+  return { jsonFail: null, perSpell: perSpell };
+}
+function trainerFailures(job, v) {
+  if (v.jsonFail) return [{ spell: 0, trainer: '*', check: 'json', detail: v.jsonFail }];
+  const out = []; v.perSpell.forEach(function(r, i) { r.failures.forEach(function(f) { out.push({ spell: i + 1, trainer: job.spells[i].trainer, check: f.check, detail: f.detail }); }); }); return out;
+}
 
-  async function write(userText) {
-    const resp = await callModel(userText);
-    if (resp.status !== 200 || !resp.json || !Array.isArray(resp.json.content)) return { error: 'HTTP ' + resp.status + ' ' + (resp.raw || '').slice(0, 200) };
-    const u = usageFrom(resp.json); usage = addUsage(usage, u);
-    if (!firstWriteUsage) { firstWriteUsage = u; cacheRead = u.cacheRead > 0; }
-    const text = resp.json.content.map(function(c) { return c.text || ''; }).join('');
-    if (resp.json.stop_reason === 'max_tokens') rawCaptures.push({ runKey: runKey, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, check: 'max-tokens-raw', stage: rawCaptures.length ? 'retry' : 'first', outputTokens: u.output, rawHead: text.slice(0, 1500), rawTail: text.slice(-600), detail: 'stop_reason=max_tokens' });
-    return { text: text, stopReason: resp.json.stop_reason };
-  }
-  // Validate one model reply against the spells: array length must match,
-  // each entry's trainer must be that spell's trainer (matched by surname),
-  // and each text passes validateTrainerSpell against its own fact lines.
-  function validateAll(text) {
-    const arr = F.parseJsonArray(text);
-    if (!arr) return { jsonFail: 'output was not a JSON array', perSpell: null };
-    if (arr.length !== spells.length) return { jsonFail: 'expected ' + spells.length + ' spell entries, got ' + arr.length, perSpell: null };
-    const perSpell = arr.map(function(entry, i) {
-      const r = F.validateTrainerSpell(entry && entry.text, facts[i].lines, vopts);
-      // An echoed header ("Name (since Jul 2023, 32 runs)") is tolerated: any
-      // trailing parenthetical is stripped before the surname comparison.
-      const named = String((entry && entry.trainer) || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
-      if (!(entry && F.sameTrainerSpell(named, spells[i].trainer))) r.failures.push({ check: 'spell-order', detail: 'entry ' + (i + 1) + ' names "' + (entry && entry.trainer) + '" but spell ' + (i + 1) + ' is ' + spells[i].trainer }), r.ok = false;
-      if (r.wordCount > 75) r.warnings = [{ words: r.wordCount, cap: 65 }];
-      return r;
-    });
-    return { jsonFail: null, perSpell: perSpell };
-  }
-  const failuresOf = function(v) {
-    if (v.jsonFail) return [{ spell: 0, trainer: '*', check: 'json', detail: v.jsonFail }];
-    const out = []; v.perSpell.forEach(function(r, i) { r.failures.forEach(function(f) { out.push({ spell: i + 1, trainer: spells[i].trainer, check: f.check, detail: f.detail }); }); }); return out;
-  };
-
-  const first = await write(envelope);
-  if (first.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, error: first.error, attempt: 1, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead };
-  let v = validateAll(first.text); let fails = failuresOf(v); let attempt = 1; let telemetry = [];
-  const factsText = facts.map(function(f) { return f.lines.join('\n'); }).join('\n\n');
+async function finishTrainer(job, first, runId) {
+  const h = job.h; const nowIso = new Date().toISOString();
+  const rawCaptures = [];
+  if (first.stopReason === 'max_tokens') rawCaptures.push({ runKey: runId, ts: nowIso, horseName: h.name, horse_id: h.horse_id, check: 'max-tokens-raw', stage: 'first', outputTokens: first.usage.output, rawHead: first.text.slice(0, 1500), rawTail: first.text.slice(-600), detail: 'stop_reason=max_tokens' });
+  let usage = first.usage; const firstWriteUsage = first.usage; const cacheRead = first.usage.cacheRead > 0;
+  let v = validateTrainer(job, first.text); let fails = trainerFailures(job, v); let attempt = 1; let telemetry = [];
+  const factsText = job.facts.map(function(f) { return f.lines.join('\n'); }).join('\n\n');
+  const tel = function(stage) { return fails.map(function(f) { return { runKey: runId, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, spell: f.spell, trainer: f.trainer, check: f.check, detail: f.detail, stage: stage, facts: factsText }; }); };
   if (fails.length) {
-    telemetry = telemetry.concat(fails.map(function(f) { return { runKey: runKey, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, spell: f.spell, trainer: f.trainer, check: f.check, detail: f.detail, stage: 'first', facts: factsText }; }));
+    telemetry = telemetry.concat(tel('first'));
     const notes = fails.map(function(f) { return (f.trainer === '*' ? 'WHOLE REPLY' : 'SPELL ' + f.spell + ' (' + f.trainer + ')') + ': ' + f.check + ' — ' + f.detail; }).join('\n');
-    const second = await write(envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite using only the facts listed, every spell again, in order. Rewrite the failing sentence with different wording — returning the same sentence again fails permanently:\n' + notes);
+    const second = await writeTrainer(job, job.envelope + '\n\nYOUR PREVIOUS ATTEMPT FAILED THESE CHECKS — rewrite using only the facts listed, every spell again, in order. Rewrite the failing sentence with different wording — returning the same sentence again fails permanently:\n' + notes, 'retry', runId, rawCaptures);
     attempt = 2;
     if (second.error) fails = [{ spell: 0, trainer: '*', check: 'http', detail: second.error }];
-    else { v = validateAll(second.text); fails = failuresOf(v); }
-    if (fails.length) telemetry = telemetry.concat(fails.map(function(f) { return { runKey: runKey, ts: new Date().toISOString(), horseName: h.name, horse_id: h.horse_id, spell: f.spell, trainer: f.trainer, check: f.check, detail: f.detail, stage: 'retry', facts: factsText }; }));
+    else { usage = addUsage(usage, second.usage); v = validateTrainer(job, second.text); fails = trainerFailures(job, v); }
+    if (fails.length) telemetry = telemetry.concat(tel('retry'));
   }
-  await appendTelemetry(runKey, telemetry.concat(rawCaptures));
-
+  await appendTelemetry(runId, telemetry.concat(rawCaptures));
   if (fails.length) {
-    if (!existingHasText) await E.redisSet('horse:trainer-history:' + h.horse_id, { horseName: h.name, spells: [], reason: 'validate-failed', generatedAt: nowIso, lastRunDate: newest, source: 'facts-v1' });
-    return { horse_id: h.horse_id, horseName: h.name, stored: false, validateFailed: true, failures: fails, attempt: attempt, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead, keptExisting: existingHasText };
+    if (!job.existingHasText) await E.redisSet('horse:trainer-history:' + h.horse_id, { horseName: h.name, spells: [], reason: 'validate-failed', generatedAt: nowIso, lastRunDate: job.newest, source: 'facts-v1' });
+    return { horse_id: h.horse_id, horseName: h.name, stored: false, validateFailed: true, failures: fails, attempt: attempt, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead, keptExisting: job.existingHasText };
   }
   const record = {
     horseName: h.name,
-    spells: spells.map(function(s, i) { return { trainer: s.trainer, from: s.from, to: s.current ? 'current' : s.to, text: v.perSpell[i].text, runs: s.runs, wins: s.wins, places: s.places }; }),
-    generatedAt: nowIso, lastRunDate: newest, source: 'facts-v1'
+    spells: job.spells.map(function(s, i) { return { trainer: s.trainer, from: s.from, to: s.current ? 'current' : s.to, text: v.perSpell[i].text, runs: s.runs, wins: s.wins, places: s.places }; }),
+    generatedAt: nowIso, lastRunDate: job.newest, source: 'facts-v1'
   };
   await E.redisSet('horse:trainer-history:' + h.horse_id, record);
-  return { horse_id: h.horse_id, horseName: h.name, stored: true, spells: spells.length, attempt: attempt, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead, words: v.perSpell.map(function(r) { return r.wordCount; }), firstPassClean: attempt === 1 };
+  return { horse_id: h.horse_id, horseName: h.name, stored: true, spells: job.spells.length, attempt: attempt, usage: usage, firstWriteUsage: firstWriteUsage, cacheRead: cacheRead, words: v.perSpell.map(function(r) { return r.wordCount; }), firstPassClean: attempt === 1 };
+}
+
+// LIVE path (default): prepare -> one direct call -> finish.
+async function processHorse(h, runId, knownTrainerSurnames) {
+  const job = await prepareTrainer(h, knownTrainerSurnames);
+  if (job.skip) return { horse_id: h.horse_id, horseName: h.name, skipped: true, usage: EMPTY_USAGE };
+  if (job.noData) return storeNoData(job);
+  const first = await writeTrainer(job, job.envelope, 'first', runId, null);
+  if (first.error) return { horse_id: h.horse_id, horseName: h.name, stored: false, error: first.error, attempt: 1, usage: EMPTY_USAGE, firstWriteUsage: null, cacheRead: false };
+  return finishTrainer(job, first, runId);
+}
+
+// BATCH path: request body per horse (same model, prompt, cache block and
+// envelope as callModel) and the collector adapter whose finish() is
+// finishTrainer — the same function the live path calls.
+function trainerBatchRequest(job) {
+  return { custom_id: job.h.horse_id, params: { model: E.MODEL, max_tokens: F.TRAINER_HISTORY_MAX_TOKENS, system: [{ type: 'text', text: F.TRAINER_HISTORY_PROMPT, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content: job.envelope }] } };
+}
+function trainerBatchAdapter() {
+  return {
+    engine: 'trainer-history',
+    finish: async function(customId, text, usage, stopReason, batchJob) {
+      const h = batchJob.horses && batchJob.horses[customId];
+      if (!h) return { horse_id: customId, stored: false, error: 'horse not in batch job record', usage: EMPTY_USAGE };
+      const job = await prepareTrainer(h, batchJob.knownTrainerSurnames || []);
+      if (job.skip) return { horse_id: customId, horseName: h.name, skipped: true, usage: EMPTY_USAGE };
+      if (job.noData) return storeNoData(job);
+      return finishTrainer(job, { text: text, stopReason: stopReason, usage: usage }, batchJob.runId || batchJob.batchId);
+    }
+  };
 }
 
 async function run(dates, qs, hop, startTime, headers) {
@@ -210,6 +242,27 @@ async function run(dates, qs, hop, startTime, headers) {
     }
     async function safe(h) { try { return await processHorse(h, runId, knownTrainerSurnames); } catch (e) { return { horse_id: h.horse_id, horseName: h.name, stored: false, error: e.message, usage: EMPTY_USAGE }; } }
     function mayContinue() { if (Date.now() - startTime > TIMEOUT_MS) { timedOut = true; return false; } if (costOf(acct.usage) >= costCap) { costCapped = true; return false; } return true; }
+    // BATCH MODE (?mode=batch): same worklist, same dedupe, same skip rule and
+    // no-data marker as live (applied here, before submission); every
+    // remaining horse's request goes into ONE Message Batch; job recorded at
+    // batch:job:trainer-history:{batchId}; lock released; stop. Collect with
+    // ?collect={batchId}.
+    if (qs.mode === 'batch' && hop === 0 && !state) {
+      const requests = []; const horsesById = {};
+      for (const h of remaining) {
+        const job = await prepareTrainer(h, knownTrainerSurnames);
+        if (job.skip) { record({ horse_id: h.horse_id, horseName: h.name, skipped: true, usage: EMPTY_USAGE }); continue; }
+        if (job.noData) { record(await storeNoData(job)); continue; }
+        requests.push(trainerBatchRequest(job));
+        horsesById[h.horse_id] = { horse_id: h.horse_id, name: h.name, sex: h.sex, trainer: h.trainer, date: h.date, meeting: h.meeting };
+      }
+      let submitted = null, submitError = null;
+      if (requests.length) { try { submitted = await B.submitBatch(requests, { engine: 'trainer-history', dates: dates, horses: horsesById, knownTrainerSurnames: knownTrainerSurnames, runId: runId, costCap: costCap, submission: { eligible: counts.total, skipped: counts.skipped, noData: counts.noData, requests: requests.length } }); } catch (e) { submitError = e.message; } }
+      try { await E.redisSet(KEY + 'lock:' + runKey, null); } catch (e) {}
+      console.log('[trainer-history-v2] BATCH', submitted ? submitted.batchId : ('NOT SUBMITTED ' + (submitError || 'no requests')), 'requests', requests.length, JSON.stringify(counts));
+      return { statusCode: submitError ? 500 : 200, headers, body: JSON.stringify({ status: submitError ? 'batch_submit_failed' : (requests.length ? 'batch_submitted' : 'nothing_to_submit'), dates: dates, batchId: submitted ? submitted.batchId : null, submitted: requests.length, skipped: counts.skipped, noData: counts.noData, error: submitError }) };
+    }
+
     if (remaining.length && hop === 0 && !state && mayContinue()) record(await safe(remaining.shift()));   // warm-up: cache written once
     async function worker() { while (remaining.length && mayContinue()) record(await safe(remaining.shift())); }
     const workers = []; for (let i = 0; i < CONCURRENCY && remaining.length; i++) workers.push(worker());
@@ -246,12 +299,35 @@ async function run(dates, qs, hop, startTime, headers) {
   }
 }
 
+// ?collect={batchId}: every succeeded batch result goes through finishTrainer
+// via the adapter — the same validation and storage as live. Resumable and
+// self-chaining when the time budget runs out.
+async function collectTrainer(qs, startTime, headers) {
+  const batchId = String(qs.collect);
+  try {
+    const r = await B.collectBatch(batchId, trainerBatchAdapter(), { budgetMs: TIMEOUT_MS - (Date.now() - startTime), concurrency: CONCURRENCY });
+    const j = r.job;
+    if (r.status === 'partial') {
+      await new Promise(function(resolve) {
+        const req = https.request({ hostname: HOSTNAME, path: '/.netlify/functions/trainer-history-v2-background?collect=' + encodeURIComponent(batchId), method: 'POST', headers: { 'x-build-secret': process.env.BUILD_SECRET || '', 'Content-Length': 0 } }, function(res) { res.resume(); res.on('end', resolve); });
+        req.on('error', function() { resolve(); }); req.setTimeout(10000, function() { req.destroy(); resolve(); }); req.end();
+      });
+    }
+    console.log('[trainer-history-v2] COLLECT', batchId, r.status, JSON.stringify(j.counts), 'cost', j.totalCostUSD);
+    return { statusCode: 200, headers, body: JSON.stringify({ status: r.status, batchId: batchId, processing_status: j.processing_status, request_counts: j.request_counts, counts: j.counts, batchCostUSD: j.costUSD, liveRetryCostUSD: j.liveRetryCostUSD, totalCostUSD: j.totalCostUSD, remaining: j.remaining }) };
+  } catch (err) {
+    console.log('[trainer-history-v2] COLLECT ERROR', err && err.stack || err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: (err && err.message) || String(err) }) };
+  }
+}
+
 exports.handler = async function(event) {
   const startTime = Date.now();
   const headers = { 'Content-Type': 'application/json' };
   const qs = (event && event.queryStringParameters) || {};
   const secret = (event.headers && event.headers['x-build-secret']) || qs.secret;
   if (secret !== process.env.BUILD_SECRET) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorised' }) };
+  if (qs.collect) return collectTrainer(qs, startTime, headers);
   const hop = Math.max(0, parseInt(qs.hop, 10) || 0);
   const dates = String(qs.dates || qs.date || '').split(',').map(function(s) { return s.trim(); }).filter(function(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s); });
   if (!dates.length) dates.push(E.irishDateStr());
