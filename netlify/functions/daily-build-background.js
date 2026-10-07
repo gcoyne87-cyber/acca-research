@@ -964,10 +964,10 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
     return ' Your text was ' + currentWc + ' words, which is too short. Write 45 to 50 words in complete sentences.' + useFacts + noHorseLine;
   }
 
-  async function oneRewrite(currentText, currentWc) {
+  async function oneRewriteWithInstruction(instruction) {
     let rewriteTimer = null;
     const resp = await Promise.race([
-      callClaude('', prompt + buildInstruction(currentText, currentWc), 400, true),
+      callClaude('', prompt + instruction, 400, true),
       new Promise(function(_, reject) {
         rewriteTimer = setTimeout(function() { reject(new Error('timed out after ' + ((timeoutMs || 25000) / 1000) + 's')); }, timeoutMs || 25000);
       })
@@ -981,6 +981,9 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
       rewriteRaw = parts.length === splitOn.count ? parts[splitOn.index] : rewriteRaw;
     }
     return stripSiteCta(rewriteRaw);
+  }
+  async function oneRewrite(currentText, currentWc) {
+    return oneRewriteWithInstruction(buildInstruction(currentText, currentWc));
   }
 
   try {
@@ -999,8 +1002,17 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
     }
 
     if (rewrittenWc > 50) {
-      rewritten = trimPullQuoteToSentence(rewritten, 50);
-      return { text: rewritten, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
+      const trimmed = trimPullQuoteToSentence(rewritten, 50);
+      const trimmedWc = pullQuoteWordCount(trimmed);
+      if (trimmedWc < 44) {
+        const floorFix = await oneRewriteWithInstruction(' Your previous answer was ' + rewrittenWc + ' words and the limit is 50. Rewrite to between 46 and 50 words exactly — do not go under 46 or over 50.');
+        const floorFixWc = floorFix === null ? null : pullQuoteWordCount(floorFix);
+        if (floorFixWc !== null && floorFixWc >= 46 && floorFixWc <= 50) {
+          return { text: floorFix, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — a floor rewrite recovered it to ' + floorFixWc + ' words' };
+        }
+        return { text: trimmed, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — floor rewrite also failed, kept the trimmed sentence boundary as a last resort' };
+      }
+      return { text: trimmed, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
     }
 
     const best = pickBest();
@@ -1730,7 +1742,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           ' markdown, no bold, no headers. Do not begin with a' +
           ' trainer name, a label, or any heading — start directly' +
           ' with the first sentence of the card.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
+          ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse.' +
           ' No opinions, no predictions. No prices or odds.' +
           (report.hotYards.length === 2
             ? ' Two yards qualify today: write a separate card text for each yard, the best yard first, each text covering only its own yard and following the length rule on its own. Put a line containing only === between the two texts and write nothing else.'
@@ -1918,7 +1930,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           const bigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
             ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
             ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-            ' Write 45 to 50 words, never more than 50.' +
+            ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering.' +
             ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
             ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
             ' Open with what the race is and the shape of the field.' +
@@ -2093,7 +2105,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
             const tmBigRacePrompt = 'You are an expert horse racing analyst writing a Big Race of the Day preview for Racing Edge.' +
               ' Plain text only — no markdown, no asterisks, no bold, no headers, no bullet points.' +
               ' Do not begin with a label, heading or the race name — start directly with the first sentence.' +
-              ' Write 45 to 50 words, never more than 50.' +
+              ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering.' +
               ' This is a race preview, not a tip: do not select a winner, do not favour one horse, and do not use tipster language.' +
               ' No numeric odds — you may refer to a horse as the favourite or market leader.' +
               ' Open with what the race is and the shape of the field.' +
@@ -2245,7 +2257,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           ' Racing Edge. Plain text only — no markdown, no asterisks,' +
           ' no bold, no headers, no bullet points. Do not begin with' +
           ' a label, heading or title — start directly with the first' +
-          ' sentence. Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse.' +
+          ' sentence. Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse.' +
           ' No tipster language. No opinions. No prices or odds.' +
           ' Open with the total number of qualifiers and the venues' +
           ' they run at today.' + NO_SITE_CTA +
@@ -2366,7 +2378,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         const glPrompt = 'You are an expert horse racing analyst writing a Ground Lover card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
           ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
+          ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
           ' opinions. No prices or odds.' +
           ' A Ground Lover is a horse that has already won on exactly today\'s official' +
           ' going within its last six runs, on a day of genuine give underfoot.' +
@@ -2499,7 +2511,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
           ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
           ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' Write 45 to 50 words, never more than 50. Do not name, rank or recommend any individual horse. No tipster language. No' +
+          ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
           ' opinions. No prices, odds or betting words.' +
           ' A Class Drop horse is dropping exactly one class today, has finished in' +
           ' the top 3 at least twice at the higher class level within its last six' +
