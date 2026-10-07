@@ -896,6 +896,7 @@ const TRAINER_HISTORY_CONTRACT =
 "THE CONTRACT\n" +
 "One paragraph per spell, 45-65 words, in spell order (oldest first, the current trainer last). Use ONLY that spell's fact lines. Every number, name and date must be copied from a fact line — digits, with the % sign for rates (57%). Do not add, combine, rank or compute anything not stated; never count courses, runs or spells yourself — the counts you may use are the ones written in the facts. You may reorder and connect facts for readability and drop a minor one to fit the length; you may not introduce one. Write EVERY count as digits — 4 runs, 2 wins, 3 places — never as words (never 'four runs', 'three flat runs', 'two places'); the example below predates this rule where it spells numbers out.\n" +
 "OPEN each paragraph with what the trainer did or changed — the 'Change from previous spell' line is your opening: trip moved, spacing tightened or loosened, class moved, a new race type, or 'kept the same approach' when the line says no material change. The first spell opens with how the horse was started out and campaigned. Give the numbers as evidence of whether it worked, not as the point of the paragraph. CLOSE with the verdict line in plain words: improved, fell, unchanged, or too few runs to judge.\n" +
+"For a horse with only one spell, never close with 'going forward', 'so far', 'to date', 'future' or any forward-looking phrase — end the paragraph on the win-or-place rate figure alone.\n" +
 "Refer to the previous trainer by surname only (as the fact line does). The current spell is written as 'since Mon YYYY'; a past spell as its date range. Never open with the horse's name or 'began her career under'; never repeat the horse's name inside a paragraph.";
 
 const TRAINER_HISTORY_VOICE =
@@ -956,7 +957,7 @@ function validateTrainerSpell(text, factLines, opts) {
   known.forEach(function(s) {
     if (mine[s] || s.length < 4) return;
     const re = new RegExp('(?<![A-Za-z])' + escapeRe(s.charAt(0).toUpperCase() + s.slice(1)) + '(?:\'s)?(?![A-Za-z])');
-    const i = t.search(re); if (i !== -1) fail('trainer-not-in-spells', s, i);
+    const tm = re.exec(t); if (tm && !insideExempt(tm.index, tm[0].length)) fail('trainer-not-in-spells', s, tm.index);
   });
   return { ok: failures.length === 0, failures: failures, wordCount: wc, text: t };
 }
