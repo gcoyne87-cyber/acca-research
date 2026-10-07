@@ -938,7 +938,7 @@ function validateTrainerSpell(text, factLines, opts) {
   const allowed = {}; numberTokens((factLines || []).join('\n')).forEach(function(n) { allowed[n] = true; });
   const reNum = /\d+/g; let m;
   while ((m = reNum.exec(t)) !== null) { if (!allowed[m[0]]) fail('number-not-in-facts', m[0], m.index); }
-  const spans = []; const exempt = [opts && opts.horseName].concat((opts && opts.spellTrainers) || []).filter(Boolean);
+  const spans = []; const exempt = [opts && opts.horseName].concat((opts && opts.spellTrainers) || [], (opts && opts.courseNames) || []).filter(Boolean);
   exempt.forEach(function(c) { const re = new RegExp(escapeRe(c), 'gi'); let cm; while ((cm = re.exec(t)) !== null) spans.push([cm.index, cm.index + cm[0].length]); });
   const insideExempt = function(idx, len) { return spans.some(function(sp) { return idx >= sp[0] && idx + len <= sp[1]; }); };
   BETTING_WORDS.forEach(function(w) { const re = new RegExp(phraseRegex(w).source, 'gi'); let wm; while ((wm = re.exec(t)) !== null) { if (!insideExempt(wm.index, wm[0].length)) { fail('banned-words', w, wm.index); break; } } });

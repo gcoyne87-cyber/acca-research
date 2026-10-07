@@ -112,7 +112,7 @@ async function prepareTrainer(h, knownTrainerSurnames) {
   if (!spells.length) return { h: h, noData: true, newest: newest, existingHasText: existingHasText };
   const facts = F.buildTrainerHistoryFacts(spells);
   const envelope = F.buildTrainerHistoryEnvelope(h, facts);
-  const vopts = { horseName: h.name, spellTrainers: spells.map(function(s) { return s.trainer; }), knownTrainerSurnames: knownTrainerSurnames || [] };
+  const vopts = { horseName: h.name, spellTrainers: spells.map(function(s) { return s.trainer; }), knownTrainerSurnames: knownTrainerSurnames || [], courseNames: F.courseNamesForExemption(allRows) };
   return { h: h, newest: newest, existingHasText: existingHasText, spells: spells, facts: facts, envelope: envelope, vopts: vopts };
 }
 async function storeNoData(job) {
