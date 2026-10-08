@@ -1603,7 +1603,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
   const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
     ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
     ' headers, no bullet points. Do not begin with a label, heading or title.' +
-    ' Write 48 to 55 words across two sentences. Never fewer than 48 and never more than 55 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
+    ' Write 48 to 55 words. Never fewer than 48 and never more than 55 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
     ' opinions. No prices, odds or betting words.' +
     ' A Class Drop horse is dropping exactly one class ' + dayWord + ', has finished in' +
     ' the top 3 at least twice at the higher class level within its last six' +
@@ -1614,17 +1614,29 @@ async function generateClassDropCardText(classDropHorses, opts) {
     ' any other number as a qualifier count.' +
     ' Use only the facts given for each horse — never invent a reason for the class' +
     ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-    ' Highlight the two most interesting qualifiers — the biggest step down in class and the one with the strongest recent form at the higher level — without naming any individual horse. Write one sentence per qualifier. If there is only one qualifier, write two sentences describing it in full detail.' +
+    ' Describe the overall pattern across the qualifiers — the typical class step down, the level of form shown at the higher class, and the meetings they appear at. Write exactly two complete sentences. Do not refer to any individual horse, name, or specific result — describe the group as a whole.' +
     NO_SITE_CTA +
     ' The horses are: ' + horseLines.join('; ');
+  // Pattern-level only — no individual horse details — so a fixCardLength
+  // "too short" rewrite nudge stays consistent with the group-description
+  // instruction above rather than pushing the model back toward naming or
+  // single-horse specifics.
   const cdFacts = { list: [] };
-  classDropHorses.forEach(function(h) {
-    cdFacts.list.push({ label: 'the class move', keywords: ['Class ' + h.lastRunClassNum, 'Class ' + h.todayClassNum], mode: 'all' });
-    const placingKeywords = (h.qualifyingRuns || []).map(function(r) { return cdPosOf(r.pos, r.ran); });
-    if (placingKeywords.length) cdFacts.list.push({ label: 'the placings at the higher class', keywords: placingKeywords });
-    cdFacts.list.push({ label: 'the last run', keywords: [cdPosOf(h.lastRun.pos, h.lastRun.ran)] });
-    cdFacts.list.push({ label: 'the rating rank', keywords: [cdOrdinal(h.ratingRank)] });
-  });
+  cdFacts.list.push({ label: 'the qualifier count', keywords: [String(cdTotal)] });
+  const allClassNums = [];
+  classDropHorses.forEach(function(h) { allClassNums.push(h.lastRunClassNum, h.todayClassNum); });
+  if (allClassNums.length) {
+    const minClass = Math.min.apply(null, allClassNums), maxClass = Math.max.apply(null, allClassNums);
+    cdFacts.list.push({ label: 'the range of class steps', keywords: ['Class ' + minClass, 'Class ' + maxClass] });
+  }
+  const meetingNames = Array.from(new Set(classDropHorses.map(function(h) { return h.course; }).filter(Boolean)));
+  if (meetingNames.length) cdFacts.list.push({ label: 'the meetings involved', keywords: meetingNames });
+  const higherLevelPositions = [];
+  classDropHorses.forEach(function(h) { (h.qualifyingRuns || []).forEach(function(r) { const p = parseInt(r.pos, 10); if (!isNaN(p)) higherLevelPositions.push(p); }); });
+  if (higherLevelPositions.length) {
+    const minPos = Math.min.apply(null, higherLevelPositions), maxPos = Math.max.apply(null, higherLevelPositions);
+    cdFacts.list.push({ label: 'the range of form at the higher level', keywords: [cdOrdinal(minPos), cdOrdinal(maxPos)] });
+  }
   const CD_DROP_CARD_TIMEOUT_MS = 25000;
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   let cdTimer = null;
