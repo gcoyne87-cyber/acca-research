@@ -936,11 +936,21 @@ function missingFactLabels(text, facts) {
   return missing;
 }
 
-async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOpt) {
+// boundsOpt (optional) — { max, floorTrigger, floorMin, floorMax }, all
+// defaulting to the original 50/44/46/max values so every existing caller
+// (Big Race today/tomorrow, C&D+G, Ground Lover, Hot Yard) is byte-for-byte
+// unchanged. Only generateClassDropCardText currently passes it, to widen
+// Class Drop's own cap to 55 without touching the shared 50-word logic any
+// other card still runs on.
+async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOpt, boundsOpt) {
+  const MAX = (boundsOpt && boundsOpt.max) || 50;
+  const FLOOR_TRIGGER = (boundsOpt && boundsOpt.floorTrigger) || 44;
+  const FLOOR_MIN = (boundsOpt && boundsOpt.floorMin) || 46;
+  const FLOOR_MAX = (boundsOpt && boundsOpt.floorMax) || MAX;
   const text = stripSiteCta(rawText);
   const wc = pullQuoteWordCount(text);
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-  if (wc <= 50 && wc >= 40) return { text: text, usage: usage, warning: null };
+  if (wc <= MAX && wc >= 40) return { text: text, usage: usage, warning: null };
 
   const wasUnder40 = wc < 40;
   const factsList = (factsOpt && factsOpt.list) || [];
@@ -948,20 +958,20 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
   const attempts = [{ text: text, wc: wc }];
 
   function pickBest() {
-    const inRange = attempts.filter(function(a) { return a.wc >= 40 && a.wc <= 50; });
+    const inRange = attempts.filter(function(a) { return a.wc >= 40 && a.wc <= MAX; });
     if (inRange.length) {
       inRange.sort(function(a, b) { return Math.abs(a.wc - 47) - Math.abs(b.wc - 47); });
       return inRange[0];
     }
-    function distToRange(w) { return w < 40 ? (40 - w) : (w - 50); }
+    function distToRange(w) { return w < 40 ? (40 - w) : (w - MAX); }
     return attempts.slice().sort(function(a, b) { return distToRange(a.wc) - distToRange(b.wc); })[0];
   }
 
   function buildInstruction(currentText, currentWc) {
-    if (currentWc > 50) return ' Your text was ' + currentWc + ' words. Rewrite it in 45 to 50 words, in complete sentences, keeping the same facts.';
+    if (currentWc > MAX) return ' Your text was ' + currentWc + ' words. Rewrite it in 45 to ' + MAX + ' words, in complete sentences, keeping the same facts.';
     const missing = missingFactLabels(currentText, factsList);
     const useFacts = missing.length ? ' Use these facts as well: ' + missing.join(', ') + '.' : '';
-    return ' Your text was ' + currentWc + ' words, which is too short. Write 45 to 50 words in complete sentences.' + useFacts + noHorseLine;
+    return ' Your text was ' + currentWc + ' words, which is too short. Write 45 to ' + MAX + ' words in complete sentences.' + useFacts + noHorseLine;
   }
 
   async function oneRewriteWithInstruction(instruction) {
@@ -1001,24 +1011,24 @@ async function fixCardLength(label, prompt, rawText, timeoutMs, splitOn, factsOp
       }
     }
 
-    if (rewrittenWc > 50) {
-      const trimmed = trimPullQuoteToSentence(rewritten, 50);
+    if (rewrittenWc > MAX) {
+      const trimmed = trimPullQuoteToSentence(rewritten, MAX);
       const trimmedWc = pullQuoteWordCount(trimmed);
-      if (trimmedWc < 44) {
-        const floorFix = await oneRewriteWithInstruction(' Your previous answer was ' + rewrittenWc + ' words and the limit is 50. Rewrite to between 46 and 50 words exactly — do not go under 46 or over 50.');
+      if (trimmedWc < FLOOR_TRIGGER) {
+        const floorFix = await oneRewriteWithInstruction(' Your previous answer was ' + rewrittenWc + ' words and the limit is ' + MAX + '. Rewrite to between ' + FLOOR_MIN + ' and ' + FLOOR_MAX + ' words exactly — do not go under ' + FLOOR_MIN + ' or over ' + FLOOR_MAX + '.');
         const floorFixWc = floorFix === null ? null : pullQuoteWordCount(floorFix);
-        if (floorFixWc !== null && floorFixWc >= 46 && floorFixWc <= 50) {
-          return { text: floorFix, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — a floor rewrite recovered it to ' + floorFixWc + ' words' };
+        if (floorFixWc !== null && floorFixWc >= FLOOR_MIN && floorFixWc <= FLOOR_MAX) {
+          return { text: floorFix, usage: usage, warning: label + ': rewrite still over ' + MAX + ' words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — a floor rewrite recovered it to ' + floorFixWc + ' words' };
         }
-        return { text: trimmed, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — floor rewrite also failed, kept the trimmed sentence boundary as a last resort' };
+        return { text: trimmed, usage: usage, warning: label + ': rewrite still over ' + MAX + ' words (' + rewrittenWc + '), trimmed to ' + trimmedWc + ' words — floor rewrite also failed, kept the trimmed sentence boundary as a last resort' };
       }
-      return { text: trimmed, usage: usage, warning: label + ': rewrite still over 50 words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
+      return { text: trimmed, usage: usage, warning: label + ': rewrite still over ' + MAX + ' words (' + rewrittenWc + ') — trimmed to a sentence boundary as a last resort' };
     }
 
     const best = pickBest();
-    if (best.wc < 40 || best.wc > 50) {
+    if (best.wc < 40 || best.wc > MAX) {
       const attemptCount = attempts.length - 1;
-      return { text: best.text, usage: usage, warning: label + ': still outside 40-50 words after ' + attemptCount + ' rewrite attempt' + (attemptCount === 1 ? '' : 's') + ' (best: ' + best.wc + ' words) — kept the closest available text' };
+      return { text: best.text, usage: usage, warning: label + ': still outside 40-' + MAX + ' words after ' + attemptCount + ' rewrite attempt' + (attemptCount === 1 ? '' : 's') + ' (best: ' + best.wc + ' words) — kept the closest available text' };
     }
     return { text: best.text, usage: usage, warning: null };
   } catch (e) {
@@ -1593,7 +1603,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
   const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
     ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
     ' headers, no bullet points. Do not begin with a label, heading or title.' +
-    ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
+    ' Write 48 to 55 words. Never fewer than 48 and never more than 55 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
     ' opinions. No prices, odds or betting words.' +
     ' A Class Drop horse is dropping exactly one class ' + dayWord + ', has finished in' +
     ' the top 3 at least twice at the higher class level within its last six' +
@@ -1628,7 +1638,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
     usage.input += cdResp.inputTokens || 0; usage.output += cdResp.outputTokens || 0;
     usage.cacheRead += cdResp.cacheReadTokens || 0; usage.cacheWrite += cdResp.cacheWriteTokens || 0;
     if (!cdResp.text || !cdResp.text.trim()) return { text: null, usage: usage, warning: cdResp.apiError ? 'Class Drop card: ' + cdResp.apiError : null };
-    const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS, null, cdFacts);
+    const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS, null, cdFacts, { max: 55, floorTrigger: 46, floorMin: 48 });
     usage.input += cdFixed.usage.input; usage.output += cdFixed.usage.output;
     usage.cacheRead += cdFixed.usage.cacheRead; usage.cacheWrite += cdFixed.usage.cacheWrite;
     return { text: cdFixed.text, usage: usage, warning: cdFixed.warning || null };
