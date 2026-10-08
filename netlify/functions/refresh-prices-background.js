@@ -575,6 +575,7 @@ exports.handler = async function(event) {
       // Walk the existing cached (mapped) meetings structure and update the
       // price field, the price-movement flags, and the going fields — all in
       // the same single Redis write below.
+      const _debugRaceKeys = [];
       (cachedTomorrow.meetings || []).forEach(function(m) {
         if (freshGoingByMeetingTomorrow[m.id]) m.going = freshGoingByMeetingTomorrow[m.id];
         (m.races || []).forEach(function(race) {
@@ -592,6 +593,19 @@ exports.handler = async function(event) {
             if (!r.horse_id) return;
             freshOddsByHorseTomorrow[r.horse_id] = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
           });
+          // TEMPORARY DIAGNOSTIC — removed before the real fix is committed.
+          if (m.id === 'crs_988') {
+            _debugRaceKeys.push({
+              race: race.name, t: race.t, joinKey: m.id + '|' + (race.t || ''),
+              priceBookmaker: race.priceBookmaker,
+              freshRunnersTomorrowCount: freshRunnersTomorrow.length,
+              freshRunnerHorseIds: freshRunnersTomorrow.map(function(r) { return r.horse_id; }),
+              freshOddsByHorseTomorrowKeys: Object.keys(freshOddsByHorseTomorrow),
+              cachedRunnerHorseIds: (race.runners || []).map(function(ru) { return ru.horse_id; }),
+              sampleFreshRunnerRaw: freshRunnersTomorrow[0] ? { horse_id: freshRunnersTomorrow[0].horse_id, odds: freshRunnersTomorrow[0].odds, price: freshRunnersTomorrow[0].price } : null,
+              sampleCachedRunner: race.runners && race.runners[0] ? { horse_id: race.runners[0].horse_id, name: race.runners[0].name, price: race.runners[0].price } : null
+            });
+          }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshOddsByHorseTomorrow.hasOwnProperty(ru.horse_id)) {
               if (ru.nonRunner === true) return; // withdrawn — leave it alone, as today's block does
@@ -608,6 +622,9 @@ exports.handler = async function(event) {
 
       // No C&D-going recheck for tomorrow: the going is declared the morning
       // of racing, and today's pass (above) catches it when it changes.
+
+      // TEMPORARY DIAGNOSTIC — removed before the real fix is committed.
+      try { await redisSet('debug:price-refresh-tomorrow:' + tomorrow, { at: new Date().toISOString(), races: _debugRaceKeys }); } catch (eDbg) {}
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
       if (anchorsTomorrowDirty) {
