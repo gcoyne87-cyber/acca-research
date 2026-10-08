@@ -39,7 +39,19 @@
 [functions."class-drop-nightly-trigger"]
   schedule = "0 1,2 * * *"
 
+# Daily engines (goingtrip + trainer history batches) — SUBMIT, intent is
+# 11:30 IRISH time. Cron is UTC: 10:30 UTC is 11:30 Irish in summer only, so
+# it fires at 10:30 and 11:30 UTC; daily-engines-submit-background.js runs
+# only when Irish time is 11:15-12:15 and once per day (batch:daily:{date}),
+# so the other fire exits. Same cron in daily-engines-submit-trigger.js.
+[functions."daily-engines-submit-trigger"]
+  schedule = "30 10,11 * * *"
 
+# Daily engines — COLLECT ticks every 15 minutes; the background job's guard
+# does the windowing (11:45-15:05 Irish) and is silent outside it. Same cron
+# in daily-engines-collect-trigger.js.
+[functions."daily-engines-collect-trigger"]
+  schedule = "*/15 * * * *"
 
 # disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
 # [functions."form-summary-trigger"]
