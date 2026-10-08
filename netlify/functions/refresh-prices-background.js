@@ -1,7 +1,10 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 
-module.exports.config = { timeout: 120 };
+// 280s, not 120 — the far-day loop below adds up to 5 more live racecard
+// fetches (one per day+2..day+6) on top of today/tomorrow, each a full
+// /v1/racecards/pro call plus a Redis get+set; 120s no longer has headroom.
+module.exports.config = { timeout: 280 };
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -387,12 +390,14 @@ exports.handler = async function(event) {
   const existingLock = await redisGet(lockKey);
   if(existingLock){
     const lockAge = Date.now() - (existingLock.ts||0);
-    if(lockAge < 110000){
+    // 260s, not 110 — kept proportional to the 280s timeout above, so the
+    // lock never expires while a legitimate (now longer) run is still going.
+    if(lockAge < 260000){
       console.log('[refresh-prices] lock active, standing down (age: '+Math.round(lockAge/1000)+'s)');
       return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: 'lock active' }) };
     }
   }
-  await redisSetEx(lockKey, { ts: Date.now() }, 120);
+  await redisSetEx(lockKey, { ts: Date.now() }, 280);
 
   let todayUpdated = 0;
   let todayJockeyUpdated = 0;
@@ -640,14 +645,98 @@ exports.handler = async function(event) {
 
   console.log('[refresh-prices-background] tomorrowUpdated:', tomorrowUpdated, 'jockeys filled today/tomorrow:', todayJockeyUpdated, tomorrowJockeyUpdated);
 
+  // Far days (day+2 .. day+6) — the 23:00 fetch-future-cards build is
+  // otherwise the ONLY thing that ever touches these, so a Saturday feature
+  // priced by bookmakers on Thursday sat at SP right through until Friday
+  // night, when it finally became "tomorrow". Same race-level lock and
+  // extractPrice as above, but deliberately nothing else: no anchor/drift/
+  // shortening (those pills only matter within a day of the race), no NR
+  // handling, no jockey/trainer safety-net — far days need prices present,
+  // nothing more, so the writes stay minimal.
+  //
+  // Frequency guard: only on every third scheduled hour, by IRISH wall clock
+  // (06:00, 09:00, 12:00, 15:00, 18:00, 21:00 Irish) — far-out prices don't
+  // need hourly churn, and this keeps the extra load to a sixth of hourly.
+  // Irish hour is computed via Intl (Europe/Dublin): the hourly schedule
+  // itself runs on fixed UTC ticks, and reading now.getUTCHours() directly
+  // here would drift these six checks off their intended Irish times across
+  // the BST/GMT change, same reasoning as the class-drop nightly job's guard.
+  let farDaysUpdated = 0;
+  const farDayErrors = [];
+  const irishHourParts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Dublin', hour: '2-digit', hour12: false }).formatToParts(now);
+  let irishHour = parseInt((irishHourParts.find(function(p) { return p.type === 'hour'; }) || {}).value, 10);
+  if (irishHour === 24) irishHour = 0;
+  const FAR_DAY_HOURS = [6, 9, 12, 15, 18, 21];
+  if (FAR_DAY_HOURS.indexOf(irishHour) !== -1) {
+    for (let dayOffset = 2; dayOffset <= 6; dayOffset++) {
+      const farDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+      const farDate = farDay.getFullYear() + '-' + String(farDay.getMonth() + 1).padStart(2, '0') + '-' + String(farDay.getDate()).padStart(2, '0');
+      try {
+        // Only a date the 23:00 fetch has already cached is worth refreshing
+        // — an empty/missing card means fetch-future-cards hasn't reached it
+        // yet, so there is nothing here for a live fetch to update.
+        const cachedFar = await redisGet('racecards:' + farDate);
+        if (!cachedFar || !Array.isArray(cachedFar.meetings) || !cachedFar.meetings.length) continue;
+
+        const freshFar = await apiGet('/v1/racecards/pro?date=' + farDate);
+        if (!freshFar || !freshFar.racecards || !freshFar.racecards.length) continue;
+
+        const freshOddsByRaceFar = {};
+        freshFar.racecards.forEach(function(race) {
+          const mid = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          if (!mid) return;
+          const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
+          const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
+          freshOddsByRaceFar[mid + '|' + t] = (race.runners || []).filter(function(r) { return r.horse_id; });
+        });
+
+        let farUpdatedThisDate = 0;
+        cachedFar.meetings.forEach(function(m) {
+          (m.races || []).forEach(function(race) {
+            const freshRunnersFar = freshOddsByRaceFar[m.id + '|' + (race.t || '')] || [];
+            // Same resolve-once-and-reuse lock rule as today/tomorrow.
+            if (!race.priceBookmaker) {
+              const resolvedFar = selectRaceBookmaker(freshRunnersFar);
+              if (resolvedFar) race.priceBookmaker = resolvedFar;
+            }
+            if (!race.priceBookmaker) return; // still nobody priced — every runner stays as-is
+            const freshOddsByHorseFar = {};
+            freshRunnersFar.forEach(function(r) {
+              freshOddsByHorseFar[r.horse_id] = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+            });
+            (race.runners || []).forEach(function(ru) {
+              if (ru.horse_id && freshOddsByHorseFar.hasOwnProperty(ru.horse_id)) {
+                ru.price = extractPrice(freshOddsByHorseFar[ru.horse_id], race.priceBookmaker);
+                farUpdatedThisDate++;
+              }
+            });
+          });
+        });
+
+        // Minimal writes: skip the round trip entirely when nothing on this
+        // date actually changed (no bookmaker has priced anything up yet).
+        if (farUpdatedThisDate > 0) {
+          await redisSet('racecards:' + farDate, cachedFar);
+          farDaysUpdated += farUpdatedThisDate;
+        }
+        console.log('[refresh-prices-background] far day ' + farDate + ':', farUpdatedThisDate, 'runners priced');
+      } catch (eFar) {
+        console.log('[refresh-prices-background] far day ' + farDate + ' error:', eFar.message);
+        farDayErrors.push(farDate + ': ' + eFar.message);
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
   const logKey = 'price-refresh-log:' + today + ':' + new Date().getUTCHours();
   await redisSet(logKey, {
     todayUpdated: todayUpdated,
     tomorrowUpdated: tomorrowUpdated,
     todayJockeyUpdated: todayJockeyUpdated,
     tomorrowJockeyUpdated: tomorrowJockeyUpdated,
+    farDaysUpdated: farDaysUpdated,
     timestamp: new Date().toISOString(),
-    errors: [todayError, tomorrowError].filter(Boolean)
+    errors: [todayError, tomorrowError].concat(farDayErrors).filter(Boolean)
   });
 
   // 21:00 UTC = 10pm Irish time (summer) — compile and send the daily summary, then clear today's log entries
