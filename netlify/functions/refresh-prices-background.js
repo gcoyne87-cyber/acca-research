@@ -303,21 +303,44 @@ async function sendNotification(subject, bodyText) {
   }
 }
 
-function extractPrice(oddsArr, bookmaker) {
+// One bookmaker locked per race for the whole day (selectRaceBookmaker below
+// picks it) — every runner in that race prices off that bookmaker only, so a
+// price never silently switches source mid-race. lockedBookmaker omitted/null
+// means the race has no lock yet (selectRaceBookmaker found nothing to lock
+// to); every runner shows SP until one exists — never a different bookmaker's
+// price as a fallback.
+function extractPrice(oddsArr, lockedBookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
-  const bk = (bookmaker || '').toLowerCase();
-  const match = oddsArr.find(function(o) {
-    return (o.bookmaker || '').toLowerCase() === bk;
-  });
+  if (!lockedBookmaker) return 'SP';
   // The API spells even money 'evn'; every parser downstream understands 'EVS',
   // so it is normalised here, the moment it enters the card.
-  if (match && match.fractional) return /^evn$/i.test(match.fractional) ? 'EVS' : match.fractional;
-  // fall back to first non-exchange bookmaker
-  const fallback = oddsArr.find(function(o) {
-    return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange');
+  const match = oddsArr.find(function(o) {
+    return (o.bookmaker || '') === lockedBookmaker && o.fractional && o.fractional !== '-';
   });
-  const frac = fallback && fallback.fractional;
+  const frac = match && match.fractional;
   return frac ? (/^evn$/i.test(frac) ? 'EVS' : frac) : 'SP';
+}
+
+// The bookmaker to lock a race to — whichever non-exchange bookmaker has a
+// valid fractional price for the most runners in it. null when nobody has
+// priced anything yet (every runner stays SP until one does).
+function selectRaceBookmaker(runners) {
+  const counts = {};
+  (runners || []).forEach(function(r) {
+    const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+    if (!Array.isArray(oddsArr)) return;
+    oddsArr.forEach(function(o) {
+      const bk = o && o.bookmaker;
+      if (!bk || bk.toLowerCase().includes('exchange')) return;
+      if (!o.fractional || o.fractional === '-') return;
+      counts[bk] = (counts[bk] || 0) + 1;
+    });
+  });
+  let best = null, bestCount = 0;
+  Object.keys(counts).forEach(function(bk) {
+    if (counts[bk] > bestCount) { bestCount = counts[bk]; best = bk; }
+  });
+  return best;
 }
 
 async function sendErrorEmail(dateLabel, err) {
@@ -365,8 +388,13 @@ exports.handler = async function(event) {
     if (!cached || !cached.meetings) {
       console.log('No cached racecard for today');
     } else if (freshData && freshData.racecards && freshData.racecards.length) {
-      // Build a horse_id -> fresh price lookup from the raw Racing API response
-      const freshPriceMap = {};
+      // Race-level odds lookup from the raw Racing API response, keyed exactly
+      // like freshGoingByRace below (course id + HH:MM) so each race's fresh
+      // runners can be joined against its cached race to resolve/apply the
+      // bookmaker lock. Replaces the old flat horse_id -> price map: price is
+      // now race-scoped (one locked bookmaker per race), not computed
+      // independently per horse.
+      const freshOddsByRace = {};
       // Non-runners declared after the 23:00 card build — the fresh API still
       // lists them (is_non_runner / number 'NR') with no odds, so without this
       // they stayed in the cached card priced 'SP' and sorted to the bottom.
@@ -376,14 +404,18 @@ exports.handler = async function(event) {
       // within the hour instead of waiting for the next full rebuild.
       const freshJockeyMap = {}, freshTrainerMap = {};
       freshData.racecards.forEach(function(race) {
+        const mid = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
+        const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
+        const raceRunners = [];
         (race.runners || []).forEach(function(r) {
           if (!r.horse_id) return;
           if (r.is_non_runner || String(r.number) === 'NR') freshNrSet[r.horse_id] = true;
-          const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-          freshPriceMap[r.horse_id] = extractPrice(oddsArr, 'Boyle Sports');
+          raceRunners.push(r);
           if (r.jockey) freshJockeyMap[r.horse_id] = String(r.jockey).trim();
           if (r.trainer) freshTrainerMap[r.horse_id] = String(r.trainer).trim();
         });
+        if (mid) freshOddsByRace[mid + '|' + t] = raceRunners;
       });
 
       // Fresh going lookups — the clerk revises going through the morning
@@ -427,16 +459,33 @@ exports.handler = async function(event) {
             if (fg.going !== race.going) todayGoingChanged = true;
             race.going = fg.going; race.going_detailed = fg.going_detailed;
           }
+          // Race-level bookmaker lock — resolved once, reused by every runner
+          // in this race for the rest of the day. Already locked: read it and
+          // never recompute it. Not yet locked: check whether any bookmaker
+          // has priced up yet; set and store the lock the moment one does.
+          // Still none: leave it unset — every runner stays SP until a lock
+          // exists (extractPrice never falls back to another bookmaker).
+          const freshRunners = freshOddsByRace[m.id + '|' + (race.t || '')] || [];
+          if (!race.priceBookmaker) {
+            const resolved = selectRaceBookmaker(freshRunners);
+            if (resolved) race.priceBookmaker = resolved;
+          }
+          const freshOddsByHorse = {};
+          freshRunners.forEach(function(r) {
+            if (!r.horse_id) return;
+            freshOddsByHorse[r.horse_id] = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+          });
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshNrSet[ru.horse_id] === true) {
               ru.nonRunner = true;
               ru.price = 'NR';
               return; // no price update or movement tracking for a withdrawn horse
             }
-            if (ru.horse_id && freshPriceMap.hasOwnProperty(ru.horse_id)) {
+            if (ru.horse_id && freshOddsByHorse.hasOwnProperty(ru.horse_id)) {
               ru.nonRunner = false; // reinstated by the API — show it again
-              ru.price = freshPriceMap[ru.horse_id];
-              if (applyPriceMovement(ru, freshPriceMap[ru.horse_id], anchors)) anchorsDirty = true;
+              const freshPrice = extractPrice(freshOddsByHorse[ru.horse_id], race.priceBookmaker);
+              ru.price = freshPrice;
+              if (applyPriceMovement(ru, freshPrice, anchors)) anchorsDirty = true;
               todayUpdated++;
               // Non-empty and different only — never blank a stored name.
               if (freshJockeyMap[ru.horse_id] && freshJockeyMap[ru.horse_id] !== ru.jockey) { ru.jockey = freshJockeyMap[ru.horse_id]; todayJockeyUpdated++; }
@@ -486,18 +535,22 @@ exports.handler = async function(event) {
     if (!cachedTomorrow || !cachedTomorrow.meetings) {
       console.log('No cached racecard for tomorrow');
     } else if (freshDataTomorrow && freshDataTomorrow.racecards && freshDataTomorrow.racecards.length) {
-      // Build a horse_id -> fresh price lookup from the raw Racing API response
-      const freshPriceMapTomorrow = {};
+      // Race-level odds lookup — same shape and key as freshOddsByRace above.
+      const freshOddsByRaceTomorrow = {};
       // Same jockey / trainer safety net as today's block.
       const freshJockeyMapTomorrow = {}, freshTrainerMapTomorrow = {};
       freshDataTomorrow.racecards.forEach(function(race) {
+        const mid = race.course_id || (race.course || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const tm = (race.off_dt || '').match(/T(\d{2}):(\d{2})/);
+        const t = tm ? tm[1] + ':' + tm[2] : (race.off_time || '');
+        const raceRunners = [];
         (race.runners || []).forEach(function(r) {
           if (!r.horse_id) return;
-          const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-          freshPriceMapTomorrow[r.horse_id] = extractPrice(oddsArr, 'Boyle Sports');
+          raceRunners.push(r);
           if (r.jockey) freshJockeyMapTomorrow[r.horse_id] = String(r.jockey).trim();
           if (r.trainer) freshTrainerMapTomorrow[r.horse_id] = String(r.trainer).trim();
         });
+        if (mid) freshOddsByRaceTomorrow[mid + '|' + t] = raceRunners;
       });
 
       // Fresh going lookups for tomorrow — same rules as today's block above.
@@ -527,11 +580,24 @@ exports.handler = async function(event) {
         (m.races || []).forEach(function(race) {
           const fg = freshGoingByRaceTomorrow[m.id + '|' + (race.t || '')];
           if (fg) { race.going = fg.going; race.going_detailed = fg.going_detailed; }
+          // Race-level bookmaker lock — same resolve-once-and-reuse rule as
+          // today's block above.
+          const freshRunnersTomorrow = freshOddsByRaceTomorrow[m.id + '|' + (race.t || '')] || [];
+          if (!race.priceBookmaker) {
+            const resolvedTomorrow = selectRaceBookmaker(freshRunnersTomorrow);
+            if (resolvedTomorrow) race.priceBookmaker = resolvedTomorrow;
+          }
+          const freshOddsByHorseTomorrow = {};
+          freshRunnersTomorrow.forEach(function(r) {
+            if (!r.horse_id) return;
+            freshOddsByHorseTomorrow[r.horse_id] = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+          });
           (race.runners || []).forEach(function(ru) {
-            if (ru.horse_id && freshPriceMapTomorrow.hasOwnProperty(ru.horse_id)) {
+            if (ru.horse_id && freshOddsByHorseTomorrow.hasOwnProperty(ru.horse_id)) {
               if (ru.nonRunner === true) return; // withdrawn — leave it alone, as today's block does
-              ru.price = freshPriceMapTomorrow[ru.horse_id];
-              if (applyPriceMovement(ru, freshPriceMapTomorrow[ru.horse_id], anchorsTomorrow)) anchorsTomorrowDirty = true;
+              const freshPriceTomorrow = extractPrice(freshOddsByHorseTomorrow[ru.horse_id], race.priceBookmaker);
+              ru.price = freshPriceTomorrow;
+              if (applyPriceMovement(ru, freshPriceTomorrow, anchorsTomorrow)) anchorsTomorrowDirty = true;
               tomorrowUpdated++;
               if (freshJockeyMapTomorrow[ru.horse_id] && freshJockeyMapTomorrow[ru.horse_id] !== ru.jockey) { ru.jockey = freshJockeyMapTomorrow[ru.horse_id]; tomorrowJockeyUpdated++; }
               if (freshTrainerMapTomorrow[ru.horse_id] && freshTrainerMapTomorrow[ru.horse_id] !== ru.trainer) ru.trainer = freshTrainerMapTomorrow[ru.horse_id];

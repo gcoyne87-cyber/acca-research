@@ -78,24 +78,47 @@ function formatRunDate(dateStr) {
   return { year: y, date: String(d).padStart(2, '0') + ' ' + (months[m] || '') };
 }
 
-function extractPrice(oddsArr, bookmaker) {
+// One bookmaker locked per race for the whole day (selectRaceBookmaker below
+// picks it) — every runner in that race prices off that bookmaker only, so a
+// price never silently switches source mid-race. lockedBookmaker omitted/null
+// means the race has no lock yet (selectRaceBookmaker found nothing to lock
+// to); every runner shows SP until one exists — never a different bookmaker's
+// price as a fallback.
+function extractPrice(oddsArr, lockedBookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
-  const bk = (bookmaker || '').toLowerCase();
-  const match = oddsArr.find(function(o) {
-    return (o.bookmaker || '').toLowerCase() === bk;
-  });
+  if (!lockedBookmaker) return 'SP';
   // The API spells even money 'evn'; every parser downstream understands 'EVS',
   // so it is normalised here, the moment it enters the card.
-  if (match && match.fractional) return /^evn$/i.test(match.fractional) ? 'EVS' : match.fractional;
-  // fall back to first non-exchange bookmaker
-  const fallback = oddsArr.find(function(o) {
-    return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange');
+  const match = oddsArr.find(function(o) {
+    return (o.bookmaker || '') === lockedBookmaker && o.fractional && o.fractional !== '-';
   });
-  const frac = fallback && fallback.fractional;
+  const frac = match && match.fractional;
   return frac ? (/^evn$/i.test(frac) ? 'EVS' : frac) : 'SP';
 }
 
-function mapRunner(r, idx) {
+// The bookmaker to lock a race to — whichever non-exchange bookmaker has a
+// valid fractional price for the most runners in it. null when nobody has
+// priced anything yet (every runner stays SP until one does).
+function selectRaceBookmaker(runners) {
+  const counts = {};
+  (runners || []).forEach(function(r) {
+    const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+    if (!Array.isArray(oddsArr)) return;
+    oddsArr.forEach(function(o) {
+      const bk = o && o.bookmaker;
+      if (!bk || bk.toLowerCase().includes('exchange')) return;
+      if (!o.fractional || o.fractional === '-') return;
+      counts[bk] = (counts[bk] || 0) + 1;
+    });
+  });
+  let best = null, bestCount = 0;
+  Object.keys(counts).forEach(function(bk) {
+    if (counts[bk] > bestCount) { bestCount = counts[bk]; best = bk; }
+  });
+  return best;
+}
+
+function mapRunner(r, idx, lockedBookmaker) {
   const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
   const rawResults = r.past_results_ordered || r.results || r.past_results || [];
   const history = rawResults.slice(0, 6).map(function(h) {
@@ -138,7 +161,7 @@ function mapRunner(r, idx) {
     jockey_id: r.jockey_id || '',
     trainer: r.trainer || '',
     trainer_id: r.trainer_id || '',
-    price: extractPrice(oddsArr, 'Boyle Sports'),
+    price: extractPrice(oddsArr, lockedBookmaker),
     pick: false,
     form: r.form || '',
     wt: r.lbs ? Math.floor(r.lbs/14)+'st '+(r.lbs%14)+'lb' : '',
@@ -224,9 +247,11 @@ function mapRacecards(apiData) {
       venueOrder.push(rawId);
     }
 
-    const runners = (race.runners || [])
-      .filter(function(r) { return !r.is_non_runner && String(r.number) !== 'NR'; })
-      .map(function(r, i) { return mapRunner(r, i); });
+    const rawRunners = (race.runners || []).filter(function(r) { return !r.is_non_runner && String(r.number) !== 'NR'; });
+    // One bookmaker locked for the whole race — every runner below prices off
+    // it and only it (see extractPrice/selectRaceBookmaker above).
+    const priceBookmaker = selectRaceBookmaker(rawRunners);
+    const runners = rawRunners.map(function(r, i) { return mapRunner(r, i, priceBookmaker); });
 
     byVenue[rawId].races.push({
       t: offDtTo24h(race.off_dt) || race.off_time || '',
@@ -243,6 +268,7 @@ function mapRacecards(apiData) {
       type: race.type || '',
       tip: race.tip || '',
       verdict: race.verdict || '',
+      priceBookmaker: priceBookmaker,
       runners: runners
     });
   });
