@@ -138,6 +138,12 @@ exports.handler = async function(event) {
         classDropCard: report.classDropCard || null,
         classDropHorsesCount: (report.classDropHorses || []).length,
         classDropHorses: report.classDropHorses || [],
+        classDropLastRaceOffTime: report.classDropLastRaceOffTime || null,
+        // Tomorrow's Class Drop preview, written onto this date's report by the
+        // 02:00 nightly job while this date was still "tomorrow"; the client
+        // reads it via ?date={tomorrow}. null once the 10:30 build has promoted
+        // it into the three fields above.
+        classDropPreview: report.classDropPreview || null,
         hotYard: report.hotYard || null,
         hotYards: report.hotYards || [],
         hotYardCard: report.hotYardCard || null,

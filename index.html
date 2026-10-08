@@ -15989,6 +15989,9 @@ var GROUND_COUNT=0;
 var GROUND_HORSES=[];
 var CLASSDROP_CARD=null;
 var CLASSDROP_COUNT=0;
+var CLASSDROP_LAST_OFF=null;   // report.classDropLastRaceOffTime — Irish-local ISO off time of today's last qualifier; today's card fades 15 min after it
+var CLASSDROP_PREVIEW=null;    // tomorrow's report .classDropPreview { text, qualifiers, generatedAt, lastRaceOffTime } from the 02:00 job
+var CLASSDROP_PREVIEW_DATE=''; // the Irish date that preview is for — "Tomorrow's Class Drop" until the Irish calendar reaches it, then "Class Drop"
 var HOT_YARD=null;
 var HOT_YARD_CARD=null;
 var HOT_YARDS=[];
@@ -16057,6 +16060,11 @@ function loadDailyBuild(){
   ]).then(function(results){
       var data=results[0];
       var tomorrowData=results[1];
+      // Tomorrow's Class Drop preview rides on tomorrow's report (written there
+      // by the 02:00 nightly job). Read before the status gate below: that
+      // report may hold nothing but this preview until tomorrow's own build.
+      CLASSDROP_PREVIEW=(tomorrowData&&tomorrowData.classDropPreview&&tomorrowData.classDropPreview.text)?tomorrowData.classDropPreview:null;
+      CLASSDROP_PREVIEW_DATE=CLASSDROP_PREVIEW?tomorrowDate:'';
       if(!tomorrowData||tomorrowData.status!=='done') tomorrowData=null;
       if(!data||data.status==='loading'||data.status==='error'){
         // Today's report legitimately doesn't exist between midnight UTC and
@@ -16150,6 +16158,7 @@ function loadDailyBuild(){
       GROUND_HORSES=data.groundLoverHorses||[];
       CLASSDROP_CARD=data.classDropCard||null;
       CLASSDROP_COUNT=data.classDropHorsesCount||0;
+      CLASSDROP_LAST_OFF=data.classDropLastRaceOffTime||null;
       HOT_YARD=data.hotYard||null;
       HOT_YARD_CARD=data.hotYardCard||null;
       HOT_YARDS=Array.isArray(data.hotYards)?data.hotYards:(data.hotYard&&data.hotYard.trainerName?[data.hotYard]:[]);
@@ -16220,6 +16229,27 @@ function loadDailyBuild(){
           var _brChanged=_brExpired!==window._bigRaceExpiredShown;
           if(AI_INTELLIGENCE.length!==_beforeLen || _justAfterMidnight || _brChanged) renderAIIntelligence();
         },300000);
+      }
+      // Class Drop card timer — every 60 seconds, Irish wall clock via Intl
+      // (_irishNowParts): today's card fades out (opacity .5s) once the
+      // clock passes its last off + 15 minutes, and the preview card's label
+      // flips at Irish midnight. A change re-renders the carousel — after the
+      // fade has had its half second when it is the card that is going.
+      if(!window._classDropTimer){
+        window._classDropTimer=setInterval(function(){
+          var _exp=_classDropTodayExpired();
+          var _flip=_classDropPreviewIsToday();
+          var _expChanged=_exp!==window._classDropExpiredShown;
+          var _flipChanged=_flip!==window._classDropFlipShown;
+          if(!_expChanged&&!_flipChanged) return;
+          var _card=document.querySelector('[data-ai-classdrop="today"]');
+          if(_expChanged&&_exp&&_card){
+            _card.style.opacity='0';
+            setTimeout(renderAIIntelligence,550);
+          } else {
+            renderAIIntelligence();
+          }
+        },60*1000);
       }
       // Always render once here regardless of which branch above matched (or
       // neither) — BIG_RACE/CANDG_CARD are assigned unconditionally above and
@@ -16389,6 +16419,39 @@ function _bigRaceDateLabel(ds){
   if(isNaN(d.getTime())) return '';
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
+}
+// Irish wall clock now — calendar date plus minutes since midnight — via
+// Intl (Europe/Dublin), never the browser's own zone or UTC. Every Class
+// Drop card time rule below goes through this.
+function _irishNowParts(){
+  // year/month/day must be requested explicitly — once hour/minute options
+  // are given, Intl drops the date parts from formatToParts entirely.
+  var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Dublin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+  function g(t){var p=parts.filter(function(x){return x.type===t;})[0];return (p&&p.value)||'';}
+  var h=parseInt(g('hour'),10); if(h===24) h=0;
+  return {date:g('year')+'-'+g('month')+'-'+g('day'),mins:h*60+parseInt(g('minute'),10)};
+}
+// Today's Class Drop card hides 15 minutes after its last qualifier's off.
+// CLASSDROP_LAST_OFF is the racecard's own Irish-local ISO string, so its
+// date and HH:MM are read straight off the string and compared with the
+// Irish clock — no zone conversion anywhere. A held report from an earlier
+// racing day is always expired (same rule as _bigRaceTodayExpired).
+function _classDropTodayExpired(){
+  if(!CLASSDROP_CARD) return false;
+  var now=_irishNowParts();
+  var _reportDate=window._intelPicksDate||'';
+  if(_reportDate&&_reportDate<now.date) return true;
+  var m=String(CLASSDROP_LAST_OFF||'').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+  if(!m) return false;
+  if(m[1]<now.date) return true;
+  if(m[1]>now.date) return false;
+  return now.mins>parseInt(m[2],10)*60+parseInt(m[3],10)+15;
+}
+// Midnight flip: the preview fetched for CLASSDROP_PREVIEW_DATE is labelled
+// "Tomorrow's Class Drop" until the Irish calendar reaches that date, then
+// "Class Drop". Label only — no fetch, no regeneration.
+function _classDropPreviewIsToday(){
+  return !!(CLASSDROP_PREVIEW_DATE&&CLASSDROP_PREVIEW_DATE<=_irishNowParts().date);
 }
 // One swipe, one card — homepage Daily Intelligence and Latest Results, touch
 // devices only. The browser's own sideways panning is switched off
@@ -16610,13 +16673,38 @@ function renderAIIntelligence(){
   // runners, same deterministic rule racecards.js's tag chip uses). Only
   // appended when the build produced card copy; classDropCard stays null on
   // a day with no qualifiers or a failed AI call.
-  if(CLASSDROP_CARD){
+  // Today's card hides once Irish time is 15 minutes past its last off
+  // (_classDropTodayExpired); the 60-second timer in loadDailyBuild fades it
+  // out first, then re-renders without it.
+  var _cdTodayShown=!!CLASSDROP_CARD&&!_classDropTodayExpired();
+  window._classDropExpiredShown=_classDropTodayExpired();
+  if(_cdTodayShown){
     _items=_items.concat([{
       isClassDrop:true,
+      cdToday:true,
       signalType:'CLASS DROP',
       sigColor:'#f59e0b',
       countLabel:CLASSDROP_COUNT+' horse'+(CLASSDROP_COUNT===1?'':'s'),
       intelligenceText:escHtml(CLASSDROP_CARD||'')
+    }]);
+  }
+  // Tomorrow's Class Drop — the 02:00 preview from tomorrow's report, right
+  // after today's card, same markup. After the Irish midnight flip it is
+  // labelled as today's card and shown only while today's own card is hidden
+  // or absent — the same handover rule as Tomorrow's Big Race — so two
+  // "Class Drop" cards never sit side by side.
+  var _cdFlip=_classDropPreviewIsToday();
+  window._classDropFlipShown=_cdFlip;
+  if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&(!_cdFlip||!_cdTodayShown)){
+    var _cdPrevCount=(CLASSDROP_PREVIEW.qualifiers||[]).length;
+    _items=_items.concat([{
+      isClassDrop:true,
+      cdToday:false,
+      cdFlipped:_cdFlip,
+      signalType:_cdFlip?'CLASS DROP':"TOMORROW'S CLASS DROP",
+      sigColor:'#f59e0b',
+      countLabel:_cdPrevCount+' horse'+(_cdPrevCount===1?'':'s'),
+      intelligenceText:escHtml(CLASSDROP_PREVIEW.text||'')
     }]);
   }
 
@@ -16800,7 +16888,14 @@ function renderAIIntelligence(){
       +'</div>';
     }
     if(item.isClassDrop){
-      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 14px rgba(13,27,62,0.25);display:flex;flex-direction:column">'
+      // One template for today's card and the tomorrow preview — identical
+      // dimensions, fonts and CTA; only the day word, the label and (on
+      // today's card) the fade hook differ. data-ai-classdrop="today" is what
+      // the 60-second timer targets to fade the card before re-rendering.
+      var _cdIsToday=item.cdToday||item.cdFlipped;
+      var _cdDay=_cdIsToday?'today':'tomorrow';
+      var _cdTitle=_cdIsToday?'Class Drop':"Tomorrow's Class Drop";
+      return '<div'+(item.cdToday?' data-ai-classdrop="today"':'')+' style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 14px rgba(13,27,62,0.25);display:flex;flex-direction:column;transition:opacity .5s">'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
           +'<div style="min-height:104px">'
@@ -16809,13 +16904,13 @@ function renderAIIntelligence(){
               +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
             +'</div>'
           +'</div>'
-          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Class Drop</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Dropping one class, proven at the higher level and rated among today\'s best</div>'
+          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_cdTitle+'</div>'
+          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Dropping one class, proven at the higher level and rated among '+_cdDay+'\'s best</div>'
           +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
-            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'classdrop\')" style="width:100%;padding:11px"><span>&#x2756;</span> See today\'s Class Drop runners &rarr;</button>'
+            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'classdrop\')" style="width:100%;padding:11px"><span>&#x2756;</span> See '+_cdDay+'\'s Class Drop runners &rarr;</button>'
           +'</div>'
         +'</div>'
       +'</div>';

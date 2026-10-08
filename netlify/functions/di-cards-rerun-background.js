@@ -35,7 +35,7 @@ module.exports.config = { timeout: 300 };
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const { runDailyIntelligenceCards } = require('./daily-build-background.js');
+const { runDailyIntelligenceCards, refreshTodayClassDrop } = require('./daily-build-background.js');
 
 function redisGet(key) {
   const url = new URL(UPSTASH_URL);
@@ -80,8 +80,14 @@ const CARD_KEY_FIELDS = {
   bigRaceTomorrow: ['bigRaceTomorrow'],
   candg: ['candgHorses', 'candgCard'],
   groundLover: ['groundLoverHorses', 'groundLoverCard'],
-  classDrop: ['classDropHorses', 'classDropCard']
+  classDrop: ['classDropHorses', 'classDropCard', 'classDropLastRaceOffTime']
 };
+// Card keys runDailyIntelligenceCards still owns. classDrop is handled here
+// directly: its block inside runDailyIntelligenceCards is the 10:30 safety
+// net (compare, regenerate only on change), whereas a rerun must actually
+// regenerate — so it goes through the nightly job's refreshTodayClassDrop
+// with force:true instead (promotion + recompute + unconditional rewrite).
+const SHARED_CARD_KEYS = ['hotYard', 'bigRace', 'bigRaceTomorrow', 'candg', 'groundLover'];
 // Every field any card can touch — used as the default (no ?cards=) copy
 // set, and as the full allow-list when checking the diff.
 const CARD_FIELDS = Object.keys(CARD_KEY_FIELDS).reduce(function(acc, k) { return acc.concat(CARD_KEY_FIELDS[k]); }, []);
@@ -124,7 +130,14 @@ exports.handler = async function(event) {
     working.warnings = working.warnings || [];
     working.errors = working.errors || [];
 
-    await runDailyIntelligenceCards(today, racecards, working, { updateTrainerFormTable: false, cards: selectedCards || undefined });
+    const sharedCards = (selectedCards || SHARED_CARD_KEYS.concat(['classDrop'])).filter(function(k) { return SHARED_CARD_KEYS.indexOf(k) !== -1; });
+    const rerunClassDrop = !selectedCards || selectedCards.indexOf('classDrop') !== -1;
+    if (sharedCards.length) {
+      await runDailyIntelligenceCards(today, racecards, working, { updateTrainerFormTable: false, cards: sharedCards });
+    }
+    if (rerunClassDrop) {
+      await refreshTodayClassDrop(today, working, { force: true, label: 'Class Drop Intel Card (manual rerun)' });
+    }
 
     const updated = JSON.parse(JSON.stringify(existingReport));
     fieldsToCopy.forEach(function(f) { updated[f] = working[f]; });

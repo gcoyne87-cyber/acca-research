@@ -1492,10 +1492,207 @@ async function generateIntelligence(racecards) {
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
 
+// ── CLASS DROP (shared) ───────────────────────────────────────────────────────
+// Qualifier computation and card prose for the Class Drop card, shared by
+// the 02:00 nightly job (class-drop-nightly-background.js: today's late-
+// declaration check plus tomorrow's preview), the 10:30 build's safety net
+// inside runDailyIntelligenceCards, and di-cards-rerun-background.js. The
+// qualifier rule itself is racecards.js's provenClassDropDetail — the exact
+// T1-T4 rule the isProvenClassDrop tag uses — reused, never reimplemented.
+function cdOrdinal(n) {
+  n = parseInt(n, 10);
+  if (isNaN(n)) return String(n);
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function cdPosOf(pos, ran) {
+  const p = parseInt(pos, 10);
+  return (isNaN(p) ? pos : cdOrdinal(p)) + ' of ' + (ran || '?');
+}
+const CD_DROP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function cdDate(d) {
+  const p = String(d || '').split('-');
+  return p.length === 3 ? (p[2] + ' ' + (CD_DROP_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (d || '');
+}
+
+// Every GB runner on the given meetings for whom provenClassDropDetail
+// returns a detail object. dateStr keys the form:history reads and the tag
+// enrichment, so pass the meetings' own racing date (today's or tomorrow's).
+// offDt is each qualifier's race off time as the racecard stores it — an ISO
+// string already in Irish local time with its offset — kept so callers can
+// derive the day's last off (maxOffDt). A failed tag enrichment or a missing
+// history row leaves that runner out; it never throws for either.
+async function computeClassDropHorses(dateStr, meetings) {
+  const out = [];
+  if (!Array.isArray(meetings) || !meetings.length) return out;
+  try { await require('./racecards.js').enrichRunnerTags(meetings, dateStr); } catch (eTag) { console.log('[class-drop] tag enrichment failed for ' + dateStr + ': ' + eTag.message); }
+  const provenClassDropDetail = require('./racecards.js').provenClassDropDetail;
+  for (const m of meetings) {
+    if (m.flag !== 'GB') continue;
+    for (const race of (m.races || [])) {
+      const nonNR = (race.runners || []).filter(function(r) { return !r.is_non_runner && !(r.nonRunner === true || r.price === 'NR'); });
+      for (const ru of nonNR) {
+        if (!ru.isProvenClassDrop || !ru.horse_id) continue;
+        let detail = null;
+        try {
+          const hist = await redisGet('form:history:' + ru.horse_id + ':' + dateStr);
+          detail = provenClassDropDetail(ru, race, nonNR, Array.isArray(hist) ? hist : []);
+        } catch (eH) { /* missing history leaves this qualifier out — never errors */ }
+        if (!detail) continue;
+        out.push({
+          horseName: ru.name || '', course: m.name || '', time: race.t || '', offDt: race._offDt || '',
+          lastRunClassNum: detail.lastRunClassNum, todayClassNum: detail.todayClassNum,
+          qualifyingRuns: detail.qualifyingRuns, lastRun: detail.lastRun,
+          ratingRank: detail.ratingRank, ratedFieldSize: detail.ratedFieldSize
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// Order-independent identity of a qualifier list, for "did anything change"
+// comparisons between runs. offDt is excluded so a racecard refresh that
+// only reformats the off time never reads as a declaration change.
+function classDropSignature(list) {
+  return JSON.stringify((list || []).map(function(h) {
+    return { n: h.horseName, c: h.course, t: h.time, l: h.lastRunClassNum, d: h.todayClassNum, r: h.ratingRank, f: h.ratedFieldSize, q: h.qualifyingRuns, lr: h.lastRun };
+  }).sort(function(a, b) { return String(a.n + a.c + a.t).localeCompare(String(b.n + b.c + b.t)); }));
+}
+
+// Latest off time among the qualifiers, as the racecard's own Irish-local
+// ISO string (compared as instants, so a mixed-offset list is still right).
+function maxOffDt(list) {
+  let best = null, bestMs = -Infinity;
+  (list || []).forEach(function(h) {
+    if (!h.offDt) return;
+    const ms = new Date(h.offDt).getTime();
+    if (!isNaN(ms) && ms > bestMs) { bestMs = ms; best = h.offDt; }
+  });
+  return best;
+}
+
+// The card prose. opts.framing 'today' (default) reproduces the original
+// prompt byte for byte; 'tomorrow' swaps every today reference so the text
+// describes tomorrow's qualifiers ("2 Class Drop qualifiers run tomorrow").
+// Same 46-50 word rule and fixCardLength floor rewrite as every other card.
+// Returns { text (null when the call produced nothing), usage, warning }.
+async function generateClassDropCardText(classDropHorses, opts) {
+  const dayWord = opts && opts.framing === 'tomorrow' ? 'tomorrow' : 'today';
+  const cdTotal = classDropHorses.length;
+  const cdOpening = dayWord === 'tomorrow'
+    ? cdTotal + (cdTotal === 1 ? ' Class Drop qualifier runs tomorrow' : ' Class Drop qualifiers run tomorrow')
+    : cdTotal + (cdTotal === 1 ? ' Class Drop qualifier has been identified today' : ' Class Drop qualifiers have been identified today');
+  const horseLines = classDropHorses.map(function(h) {
+    const runsText = h.qualifyingRuns.map(function(r) { return cdPosOf(r.pos, r.ran) + ', ' + (r.race_class || '') + ', ' + (r.course || '') + ', ' + cdDate(r.date); }).join('; ');
+    return h.horseName + ' — ' + h.course + ' ' + h.time + ', dropping from Class ' + h.lastRunClassNum + ' to Class ' + h.todayClassNum + '.'
+      + ' Proven at the higher level: ' + runsText + '.'
+      + ' Last run: ' + cdPosOf(h.lastRun.pos, h.lastRun.ran) + ', Class ' + h.lastRunClassNum + ', ' + (h.lastRun.course || '') + ', ' + cdDate(h.lastRun.date) + '.'
+      + ' Rated ' + cdOrdinal(h.ratingRank) + ' of ' + h.ratedFieldSize + ' rated runners in ' + dayWord + '\'s race.';
+  });
+  const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
+    ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
+    ' headers, no bullet points. Do not begin with a label, heading or title.' +
+    ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
+    ' opinions. No prices, odds or betting words.' +
+    ' A Class Drop horse is dropping exactly one class ' + dayWord + ', has finished in' +
+    ' the top 3 at least twice at the higher class level within its last six' +
+    ' runs, finished in the top half of the field last time out, and is rated' +
+    ' among ' + dayWord + '\'s top 3 in its race.' +
+    ' There are exactly ' + cdTotal + ' qualifiers ' + dayWord + '. Your first sentence must' +
+    ' begin with these exact words: "' + cdOpening + '". Never state, infer or repeat' +
+    ' any other number as a qualifier count.' +
+    ' Use only the facts given for each horse — never invent a reason for the class' +
+    ' drop or the form shown. Write finishing positions as "3rd of 9".' +
+    ' Describe the qualifying evidence using the facts given — the class move, the placings at the higher class, the last run and the rating rank — without naming any horse.' +
+    NO_SITE_CTA +
+    ' The horses are: ' + horseLines.join('; ');
+  const cdFacts = { list: [] };
+  classDropHorses.forEach(function(h) {
+    cdFacts.list.push({ label: 'the class move', keywords: ['Class ' + h.lastRunClassNum, 'Class ' + h.todayClassNum], mode: 'all' });
+    const placingKeywords = (h.qualifyingRuns || []).map(function(r) { return cdPosOf(r.pos, r.ran); });
+    if (placingKeywords.length) cdFacts.list.push({ label: 'the placings at the higher class', keywords: placingKeywords });
+    cdFacts.list.push({ label: 'the last run', keywords: [cdPosOf(h.lastRun.pos, h.lastRun.ran)] });
+    cdFacts.list.push({ label: 'the rating rank', keywords: [cdOrdinal(h.ratingRank)] });
+  });
+  const CD_DROP_CARD_TIMEOUT_MS = 25000;
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let cdTimer = null;
+  try {
+    const cdResp = await Promise.race([
+      callClaude('', cdPrompt, 400, true),
+      new Promise(function(_, reject) {
+        cdTimer = setTimeout(function() { reject(new Error('timed out after ' + (CD_DROP_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CD_DROP_CARD_TIMEOUT_MS);
+      })
+    ]);
+    usage.input += cdResp.inputTokens || 0; usage.output += cdResp.outputTokens || 0;
+    usage.cacheRead += cdResp.cacheReadTokens || 0; usage.cacheWrite += cdResp.cacheWriteTokens || 0;
+    if (!cdResp.text || !cdResp.text.trim()) return { text: null, usage: usage, warning: cdResp.apiError ? 'Class Drop card: ' + cdResp.apiError : null };
+    const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS, null, cdFacts);
+    usage.input += cdFixed.usage.input; usage.output += cdFixed.usage.output;
+    usage.cacheRead += cdFixed.usage.cacheRead; usage.cacheWrite += cdFixed.usage.cacheWrite;
+    return { text: cdFixed.text, usage: usage, warning: cdFixed.warning || null };
+  } finally {
+    if (cdTimer) clearTimeout(cdTimer);
+  }
+}
+
+// Today's Class Drop fields on `report`, brought up to date in place:
+//   1. promotion — if report.classDropCard is empty and a classDropPreview
+//      (written onto this date's report by the 02:00 job the night before,
+//      when this date was still "tomorrow") is present, its text/qualifiers/
+//      lastRaceOffTime become classDropCard/classDropHorses/
+//      classDropLastRaceOffTime. The client's midnight flip is label-only
+//      and persists nothing, so this is what makes today's data canonical;
+//   2. comparison — today's qualifiers are recomputed from racecards:{date}
+//      and compared (classDropSignature) with what the report now holds;
+//   3. regeneration — only when the list changed (a late declaration) or
+//      opts.force is set: new card text, or a cleared card when no
+//      qualifier remains. An unchanged list costs no Claude call.
+// Token counters, callLog and warnings on `report` are updated the same way
+// the old in-build block did. Returns a small summary for logging.
+async function refreshTodayClassDrop(dateStr, report, opts) {
+  const force = !!(opts && opts.force);
+  const label = (opts && opts.label) || 'Class Drop';
+  const summary = { promoted: false, changed: false, regenerated: false, qualifiers: 0 };
+  report.classDropHorses = Array.isArray(report.classDropHorses) ? report.classDropHorses : [];
+  if (!report.classDropCard && report.classDropPreview && (report.classDropPreview.text || (report.classDropPreview.qualifiers || []).length)) {
+    report.classDropCard = report.classDropPreview.text || null;
+    report.classDropHorses = report.classDropPreview.qualifiers || [];
+    report.classDropLastRaceOffTime = report.classDropPreview.lastRaceOffTime || null;
+    summary.promoted = true;
+  }
+  const cdRaw = await redisGet('racecards:' + dateStr);
+  const meetings = (cdRaw && Array.isArray(cdRaw.meetings)) ? cdRaw.meetings : [];
+  const fresh = await computeClassDropHorses(dateStr, meetings);
+  summary.qualifiers = fresh.length;
+  summary.changed = classDropSignature(fresh) !== classDropSignature(report.classDropHorses);
+  if (!summary.changed && !force) return summary;
+
+  report.classDropHorses = fresh;
+  report.classDropLastRaceOffTime = maxOffDt(fresh);
+  report.classDropCard = null;
+  if (fresh.length) {
+    const gen = await generateClassDropCardText(fresh, { framing: 'today' });
+    report.classDropCard = gen.text;
+    report.inputTokens = (report.inputTokens || 0) + gen.usage.input;
+    report.outputTokens = (report.outputTokens || 0) + gen.usage.output;
+    report.cacheReadTokens = (report.cacheReadTokens || 0) + gen.usage.cacheRead;
+    report.cacheWriteTokens = (report.cacheWriteTokens || 0) + gen.usage.cacheWrite;
+    report.callLog = report.callLog || [];
+    report.callLog.push({ type: 'classdrop-card', label: label, inputTokens: gen.usage.input, outputTokens: gen.usage.output, cacheReadTokens: gen.usage.cacheRead, cacheWriteTokens: gen.usage.cacheWrite });
+    if (gen.warning) { report.warnings = report.warnings || []; report.warnings.push(gen.warning); }
+    summary.regenerated = !!gen.text;
+  }
+  return summary;
+}
+
 // Daily Intelligence cards — Hot Yard, Big Race (today/tomorrow), C&D+G,
-// Ground Lover and Class Drop. One shared implementation called both by
-// the main build (updateTrainerFormTable:true, right after race analysis
-// so it can use report.analyses for Big Race Today) and by the standalone
+// Ground Lover, plus the Class Drop safety net (the card itself is now made
+// by class-drop-nightly-background.js — see refreshTodayClassDrop above).
+// One shared implementation called both by the main build
+// (updateTrainerFormTable:true, right after race analysis so it can use
+// report.analyses for Big Race Today) and by the standalone
 // di-cards-rerun-background.js (updateTrainerFormTable:false, so a cards-
 // only re-run never touches the site's own Trainer Form table display).
 async function runDailyIntelligenceCards(today, racecards, report, opts) {
@@ -2438,137 +2635,39 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
     }
   }
   if (cardSelected('classDrop')) {
-    // 4.9 Class Drop card — copy of the Ground Lover card's own pattern
-    // (4.8 above): its own redisGet('racecards:'+today) + enrichRunnerTags
-    // call, no card when there are no qualifiers, one Claude call in the
-    // same style/length/trimming. Qualifiers are every GB runner for whom
-    // racecards.js's provenClassDropDetail (the exact T1-T4 rule the
-    // isProvenClassDrop tag itself uses — reused, not reimplemented) returns
-    // a detail object; the tag is never persisted, so this is recomputed
-    // each build exactly like Ground Lover's own isGroundLover check.
-    report.classDropHorses = [];
-    report.classDropCard = null;
-    function cdOrdinal(n) {
-      n = parseInt(n, 10);
-      if (isNaN(n)) return String(n);
-      const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    }
-    function cdPosOf(pos, ran) {
-      const p = parseInt(pos, 10);
-      return (isNaN(p) ? pos : cdOrdinal(p)) + ' of ' + (ran || '?');
-    }
-    const CD_DROP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    function cdDate(d) {
-      const p = String(d || '').split('-');
-      return p.length === 3 ? (p[2] + ' ' + (CD_DROP_MONTHS[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]) : (d || '');
-    }
+    // 4.9 Class Drop safety net — the card is written at 02:00 by
+    // class-drop-nightly-background.js: today's own classDropCard/
+    // classDropHorses are re-checked then, and tomorrow's preview is stored
+    // onto tomorrow's report as classDropPreview (carried onto this `report`
+    // from the stored document in step 2.5 so the early safeWriteReport
+    // calls never drop it). Here: promote that preview if today has no card
+    // yet, recompute the qualifiers, and only if a late declaration moved the
+    // list since 02:00 spend a Claude call regenerating. Identical list —
+    // no call. See refreshTodayClassDrop.
     try {
-      const cdCards = await redisGet('racecards:' + today);
-      const cdMeetings = (cdCards && Array.isArray(cdCards.meetings)) ? cdCards.meetings : [];
-      if (cdMeetings.length) {
-        try { await require('./racecards.js').enrichRunnerTags(cdMeetings, today); } catch (eTag) { report.errors.push('classDrop tags: ' + eTag.message); }
-        const provenClassDropDetail = require('./racecards.js').provenClassDropDetail;
-        for (const m of cdMeetings) {
-          if (m.flag !== 'GB') continue;
-          for (const race of (m.races || [])) {
-            const nonNR = (race.runners || []).filter(function(r) { return !r.is_non_runner && !(r.nonRunner === true || r.price === 'NR'); });
-            for (const ru of nonNR) {
-              if (!ru.isProvenClassDrop || !ru.horse_id) continue;
-              let detail = null;
-              try {
-                const hist = await redisGet('form:history:' + ru.horse_id + ':' + today);
-                detail = provenClassDropDetail(ru, race, nonNR, Array.isArray(hist) ? hist : []);
-              } catch (eH) { /* missing history leaves this qualifier out — never errors */ }
-              if (!detail) continue;
-              report.classDropHorses.push({
-                horseName: ru.name || '', course: m.name || '', time: race.t || '',
-                lastRunClassNum: detail.lastRunClassNum, todayClassNum: detail.todayClassNum,
-                qualifyingRuns: detail.qualifyingRuns, lastRun: detail.lastRun,
-                ratingRank: detail.ratingRank, ratedFieldSize: detail.ratedFieldSize
-              });
-            }
-          }
-        }
+      const cdSummary = await refreshTodayClassDrop(today, report, { label: 'Class Drop Intel Card (10:30 safety net)' });
+      if (cdSummary.promoted) console.log('[daily-build] Class Drop: 02:00 preview promoted to today\'s card');
+      if (cdSummary.changed) {
+        const note = 'Class Drop: qualifier list changed since the 02:00 check — card ' + (cdSummary.qualifiers ? 'regenerated' : 'cleared, no qualifiers remain');
+        report.warnings.push(note); console.log('[daily-build] ' + note);
+      } else {
+        console.log('[daily-build] Class Drop: qualifier list unchanged since 02:00 — no Claude call');
       }
     } catch (e) {
-      report.errors.push('classDropHorses: ' + e.message);
+      console.log('[daily-build] classDrop safety net: ' + e.message);
+      report.errors.push('classDrop safety net: ' + e.message);
     }
-
-    if (report.classDropHorses.length) {
-      const CD_DROP_CARD_TIMEOUT_MS = 25000;
-      let cdTimer = null;
-      try {
-        const cdTotal = report.classDropHorses.length;
-        const cdOpening = cdTotal + (cdTotal === 1 ? ' Class Drop qualifier has been identified today' : ' Class Drop qualifiers have been identified today');
-        const horseLines = report.classDropHorses.map(function(h) {
-          const runsText = h.qualifyingRuns.map(function(r) { return cdPosOf(r.pos, r.ran) + ', ' + (r.race_class || '') + ', ' + (r.course || '') + ', ' + cdDate(r.date); }).join('; ');
-          return h.horseName + ' — ' + h.course + ' ' + h.time + ', dropping from Class ' + h.lastRunClassNum + ' to Class ' + h.todayClassNum + '.'
-            + ' Proven at the higher level: ' + runsText + '.'
-            + ' Last run: ' + cdPosOf(h.lastRun.pos, h.lastRun.ran) + ', Class ' + h.lastRunClassNum + ', ' + (h.lastRun.course || '') + ', ' + cdDate(h.lastRun.date) + '.'
-            + ' Rated ' + cdOrdinal(h.ratingRank) + ' of ' + h.ratedFieldSize + ' rated runners in today\'s race.';
-        });
-        const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
-          ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
-          ' headers, no bullet points. Do not begin with a label, heading or title.' +
-          ' Write 46 to 50 words. Never fewer than 46 and never more than 50 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
-          ' opinions. No prices, odds or betting words.' +
-          ' A Class Drop horse is dropping exactly one class today, has finished in' +
-          ' the top 3 at least twice at the higher class level within its last six' +
-          ' runs, finished in the top half of the field last time out, and is rated' +
-          ' among today\'s top 3 in its race.' +
-          ' There are exactly ' + cdTotal + ' qualifiers today. Your first sentence must' +
-          ' begin with these exact words: "' + cdOpening + '". Never state, infer or repeat' +
-          ' any other number as a qualifier count.' +
-          ' Use only the facts given for each horse — never invent a reason for the class' +
-          ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-          ' Describe the qualifying evidence using the facts given — the class move, the placings at the higher class, the last run and the rating rank — without naming any horse.' +
-          NO_SITE_CTA +
-          ' The horses are: ' + horseLines.join('; ');
-        const cdFacts = { list: [] };
-        report.classDropHorses.forEach(function(h) {
-          cdFacts.list.push({ label: 'the class move', keywords: ['Class ' + h.lastRunClassNum, 'Class ' + h.todayClassNum], mode: 'all' });
-          const placingKeywords = (h.qualifyingRuns || []).map(function(r) { return cdPosOf(r.pos, r.ran); });
-          if (placingKeywords.length) cdFacts.list.push({ label: 'the placings at the higher class', keywords: placingKeywords });
-          cdFacts.list.push({ label: 'the last run', keywords: [cdPosOf(h.lastRun.pos, h.lastRun.ran)] });
-          cdFacts.list.push({ label: 'the rating rank', keywords: [cdOrdinal(h.ratingRank)] });
-        });
-        const cdResp = await Promise.race([
-          callClaude('', cdPrompt, 400, true),
-          new Promise(function(_, reject) {
-            cdTimer = setTimeout(function() { reject(new Error('timed out after ' + (CD_DROP_CARD_TIMEOUT_MS / 1000) + 's — skipped')); }, CD_DROP_CARD_TIMEOUT_MS);
-          })
-        ]);
-        if (cdResp.text && cdResp.text.trim()) {
-          const cdFixed = await fixCardLength('Class Drop card', cdPrompt, cdResp.text, CD_DROP_CARD_TIMEOUT_MS, null, cdFacts);
-          report.classDropCard = cdFixed.text;
-          report.inputTokens += cdFixed.usage.input; report.outputTokens += cdFixed.usage.output;
-          report.cacheReadTokens += cdFixed.usage.cacheRead; report.cacheWriteTokens += cdFixed.usage.cacheWrite;
-          if (cdFixed.usage.input || cdFixed.usage.output) {
-            report.callLog.push({ type: 'classdrop-card-rewrite', label: 'Class Drop Intel Card (length rewrite)', inputTokens: cdFixed.usage.input, outputTokens: cdFixed.usage.output, cacheReadTokens: cdFixed.usage.cacheRead, cacheWriteTokens: cdFixed.usage.cacheWrite });
-          }
-          if (cdFixed.warning) { report.warnings.push(cdFixed.warning); console.log('[daily-build] ' + cdFixed.warning); }
-        }
-        report.inputTokens += cdResp.inputTokens || 0;
-        report.outputTokens += cdResp.outputTokens || 0;
-        report.cacheReadTokens += cdResp.cacheReadTokens || 0;
-        report.cacheWriteTokens += cdResp.cacheWriteTokens || 0;
-        report.callLog.push({
-          type: 'classdrop-card', label: 'Class Drop Intel Card',
-          inputTokens: cdResp.inputTokens || 0, outputTokens: cdResp.outputTokens || 0,
-          cacheReadTokens: cdResp.cacheReadTokens || 0, cacheWriteTokens: cdResp.cacheWriteTokens || 0
-        });
-      } catch (e) {
-        console.log('[daily-build] classDropCard: ' + e.message);
-        report.errors.push('classDropCard: ' + e.message);
-        report.classDropCard = null;
-      } finally {
-        if (cdTimer) clearTimeout(cdTimer);
-      }
-    }
+    // The preview has done its job once promoted; today's report carries the
+    // canonical fields from here on.
+    delete report.classDropPreview;
   }
 }
 module.exports.runDailyIntelligenceCards = runDailyIntelligenceCards;
+module.exports.computeClassDropHorses = computeClassDropHorses;
+module.exports.generateClassDropCardText = generateClassDropCardText;
+module.exports.classDropSignature = classDropSignature;
+module.exports.maxOffDt = maxOffDt;
+module.exports.refreshTodayClassDrop = refreshTodayClassDrop;
 
 exports.handler = async function(event) {
   console.log('[BUILD START]', new Date().toISOString(), 'ctx:', process.env.CONTEXT, 'scheduled:', !event.httpMethod);
@@ -2746,6 +2845,16 @@ exports.handler = async function(event) {
     // 2.5 Seed report.analyses with prior stored analyses for races that already ran today
     try {
       const priorReport = await redisGet('daily:report:' + today);
+      // Carry the 02:00 job's Class Drop work onto this fresh report before the
+      // first safeWriteReport below would otherwise overwrite it: the preview
+      // written onto this date's report last night (classDropPreview) and any
+      // card the 02:00 late-declaration check already made canonical. The
+      // safety net in runDailyIntelligenceCards promotes/compares from these.
+      if (priorReport) {
+        ['classDropPreview', 'classDropCard', 'classDropHorses', 'classDropLastRaceOffTime'].forEach(function(f) {
+          if (priorReport[f] !== undefined && priorReport[f] !== null) report[f] = priorReport[f];
+        });
+      }
       if (priorReport && priorReport.analyses) {
         const upcomingLabels = new Set(racecards.map(r => {
           const t24 = (function(offDt){ if(!offDt) return r.off_time||''; var m=offDt.match(/T(\d{2}):(\d{2})/); return m?m[1]+':'+m[2]:r.off_time||''; })(r.off_dt);
