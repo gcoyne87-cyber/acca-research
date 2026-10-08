@@ -286,7 +286,10 @@ exports.handler = async function(event) {
                 return '';
               })(),
               or: (r.or !== undefined && r.or !== null && /^\d+$/.test(String(r.or).trim())) ? String(r.or).trim() : '',
-              age: r.age || ''
+              age: r.age || '',
+              // Post-race in-running description — only this view maps it; the
+              // lookup view (Winners tracker sync, below) stays untouched.
+              comment: r.comment || ''
             };
           })
           .filter(function(r) { return r.horse; })
