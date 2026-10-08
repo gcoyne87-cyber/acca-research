@@ -1603,7 +1603,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
   const cdPrompt = 'You are an expert horse racing analyst writing a Class Drop card for' +
     ' Racing Edge. Plain text only — no markdown, no asterisks, no bold, no' +
     ' headers, no bullet points. Do not begin with a label, heading or title.' +
-    ' Write 48 to 55 words. Never fewer than 48 and never more than 55 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
+    ' Write 48 to 55 words across two sentences. Never fewer than 48 and never more than 55 — count your words before answering. Do not name, rank or recommend any individual horse. No tipster language. No' +
     ' opinions. No prices, odds or betting words.' +
     ' A Class Drop horse is dropping exactly one class ' + dayWord + ', has finished in' +
     ' the top 3 at least twice at the higher class level within its last six' +
@@ -1614,7 +1614,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
     ' any other number as a qualifier count.' +
     ' Use only the facts given for each horse — never invent a reason for the class' +
     ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-    ' Highlight the two most interesting qualifiers — the biggest step down in class and the one with the strongest recent form at the higher level. If there is only one qualifier, describe it in full detail.' +
+    ' Highlight the two most interesting qualifiers — the biggest step down in class and the one with the strongest recent form at the higher level — without naming any individual horse. Write one sentence per qualifier. If there is only one qualifier, write two sentences describing it in full detail.' +
     NO_SITE_CTA +
     ' The horses are: ' + horseLines.join('; ');
   const cdFacts = { list: [] };
