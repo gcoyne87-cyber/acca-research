@@ -303,19 +303,36 @@ async function sendNotification(subject, bodyText) {
   }
 }
 
+// A bookmaker that hasn't opened a firm market yet (common 1+ days out) does
+// not omit its entry or send '-' — it sends the literal string "SP" as its
+// own fractional value, meaning "no price yet, see starting price". Found
+// live on 2026-10-08: every other bookmaker on a race had a real fraction
+// (20/1, 22/1, 25/1...) while "10 Bet" alone had fractional:"SP" on every
+// runner — which still passed the old "truthy and not '-'" check, so it won
+// the coverage count and extractPrice then faithfully returned that literal
+// string. Both checks below must treat "SP" as invalid, the same as '-'.
+function isUsablePrice(fractional) {
+  const f = String(fractional || '').trim();
+  return !!f && f !== '-' && f.toUpperCase() !== 'SP';
+}
+
 // One bookmaker locked per race for the whole day (selectRaceBookmaker below
 // picks it) — every runner in that race prices off that bookmaker only, so a
 // price never silently switches source mid-race. lockedBookmaker omitted/null
 // means the race has no lock yet (selectRaceBookmaker found nothing to lock
 // to); every runner shows SP until one exists — never a different bookmaker's
-// price as a fallback.
+// price as a fallback. The bookmaker-name comparison is trimmed and case-
+// insensitive — selectRaceBookmaker's return value always came from the same
+// o.bookmaker field this reads, so a mismatch here would only ever be
+// incidental casing/whitespace, never a different bookmaker.
 function extractPrice(oddsArr, lockedBookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
   if (!lockedBookmaker) return 'SP';
+  const lockedLc = String(lockedBookmaker).trim().toLowerCase();
   // The API spells even money 'evn'; every parser downstream understands 'EVS',
   // so it is normalised here, the moment it enters the card.
   const match = oddsArr.find(function(o) {
-    return (o.bookmaker || '') === lockedBookmaker && o.fractional && o.fractional !== '-';
+    return String(o.bookmaker || '').trim().toLowerCase() === lockedLc && isUsablePrice(o.fractional);
   });
   const frac = match && match.fractional;
   return frac ? (/^evn$/i.test(frac) ? 'EVS' : frac) : 'SP';
@@ -332,7 +349,7 @@ function selectRaceBookmaker(runners) {
     oddsArr.forEach(function(o) {
       const bk = o && o.bookmaker;
       if (!bk || bk.toLowerCase().includes('exchange')) return;
-      if (!o.fractional || o.fractional === '-') return;
+      if (!isUsablePrice(o.fractional)) return;
       counts[bk] = (counts[bk] || 0) + 1;
     });
   });
@@ -575,7 +592,6 @@ exports.handler = async function(event) {
       // Walk the existing cached (mapped) meetings structure and update the
       // price field, the price-movement flags, and the going fields — all in
       // the same single Redis write below.
-      const _debugRaceKeys = [];
       (cachedTomorrow.meetings || []).forEach(function(m) {
         if (freshGoingByMeetingTomorrow[m.id]) m.going = freshGoingByMeetingTomorrow[m.id];
         (m.races || []).forEach(function(race) {
@@ -593,19 +609,6 @@ exports.handler = async function(event) {
             if (!r.horse_id) return;
             freshOddsByHorseTomorrow[r.horse_id] = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
           });
-          // TEMPORARY DIAGNOSTIC — removed before the real fix is committed.
-          if (m.id === 'crs_988') {
-            _debugRaceKeys.push({
-              race: race.name, t: race.t, joinKey: m.id + '|' + (race.t || ''),
-              priceBookmaker: race.priceBookmaker,
-              freshRunnersTomorrowCount: freshRunnersTomorrow.length,
-              freshRunnerHorseIds: freshRunnersTomorrow.map(function(r) { return r.horse_id; }),
-              freshOddsByHorseTomorrowKeys: Object.keys(freshOddsByHorseTomorrow),
-              cachedRunnerHorseIds: (race.runners || []).map(function(ru) { return ru.horse_id; }),
-              sampleFreshRunnerRaw: freshRunnersTomorrow[0] ? { horse_id: freshRunnersTomorrow[0].horse_id, odds: freshRunnersTomorrow[0].odds, price: freshRunnersTomorrow[0].price } : null,
-              sampleCachedRunner: race.runners && race.runners[0] ? { horse_id: race.runners[0].horse_id, name: race.runners[0].name, price: race.runners[0].price } : null
-            });
-          }
           (race.runners || []).forEach(function(ru) {
             if (ru.horse_id && freshOddsByHorseTomorrow.hasOwnProperty(ru.horse_id)) {
               if (ru.nonRunner === true) return; // withdrawn — leave it alone, as today's block does
@@ -622,9 +625,6 @@ exports.handler = async function(event) {
 
       // No C&D-going recheck for tomorrow: the going is declared the morning
       // of racing, and today's pass (above) catches it when it changes.
-
-      // TEMPORARY DIAGNOSTIC — removed before the real fix is committed.
-      try { await redisSet('debug:price-refresh-tomorrow:' + tomorrow, { at: new Date().toISOString(), races: _debugRaceKeys }); } catch (eDbg) {}
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
       if (anchorsTomorrowDirty) {
