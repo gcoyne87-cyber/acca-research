@@ -1614,7 +1614,7 @@ async function generateClassDropCardText(classDropHorses, opts) {
     ' any other number as a qualifier count.' +
     ' Use only the facts given for each horse — never invent a reason for the class' +
     ' drop or the form shown. Write finishing positions as "3rd of 9".' +
-    ' Describe the qualifying evidence using the facts given — the class move, the placings at the higher class, the last run and the rating rank — without naming any horse.' +
+    ' Highlight the two most interesting qualifiers — the biggest step down in class and the one with the strongest recent form at the higher level. If there is only one qualifier, describe it in full detail.' +
     NO_SITE_CTA +
     ' The horses are: ' + horseLines.join('; ');
   const cdFacts = { list: [] };
