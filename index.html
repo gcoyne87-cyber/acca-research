@@ -18634,7 +18634,7 @@ function renderResultsFeed(){
       if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
       // In-running comment — this feed is Results-page-only (never the
       // homepage strip), so no opts.home gate is needed here.
-      if(r.comment) html+='<div style="font-size:11px;font-style:italic;color:#9aa3b5;margin-top:2px">'+escHtml(r.comment)+'</div>';
+      if(r.comment) html+='<div style="font-size:11px;font-style:italic;color:#000000;margin-top:2px">'+escHtml(r.comment)+'</div>';
       html+='</div>';
       if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
       html+='</div>';
@@ -18811,7 +18811,7 @@ function _buildResultCard(item,pickMap,bulked,opts){
     if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
     // In-running comment — Results page card only, never the homepage strip
     // (opts.home). No label, no truncation; renders nothing when empty.
-    if(!opts.home&&r.comment) html+='<div style="font-size:11px;font-style:italic;color:#9aa3b5;margin-top:2px">'+escHtml(r.comment)+'</div>';
+    if(!opts.home&&r.comment) html+='<div style="font-size:11px;font-style:italic;color:#000000;margin-top:2px">'+escHtml(r.comment)+'</div>';
     html+='</div>';
     if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
     html+='</div>';
