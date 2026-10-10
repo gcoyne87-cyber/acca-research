@@ -3142,6 +3142,12 @@ window.addEventListener('load',function(){
       if(!slot||!slot.raced) return null;
       return { sr:slot.sr, wins:slot.wins, placed:slot.placed, raced:slot.raced, avgStr:slot.avgDec?phase3DecToFrac(slot.avgDec):'—' };
     }
+    // Exposed on window — renderHomeSelections/renderRacingPicks call this
+    // from a separate top-level <script> block and can't see it through
+    // this IIFE's closure otherwise (that's why the season record block
+    // never rendered: typeof phase3SeasonRecord was always 'undefined'
+    // outside this scope, so _p3 was always null).
+    window.phase3SeasonRecord=phase3SeasonRecord;
 
     function ptRenderTypeRows(recs){
       var el=document.getElementById('pt-type-rows');
