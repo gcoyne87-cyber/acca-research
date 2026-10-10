@@ -53,6 +53,23 @@
 [functions."daily-engines-collect-trigger"]
   schedule = "*/15 * * * *"
 
+# Trainer Form table refresh (trainer-form:table:{date} only — no cards, no
+# report) — EVENING, intent is 18:30 IRISH time. Cron is UTC: 17:30 UTC is
+# 18:30 Irish in summer only, so it fires at 17:30 and 18:30 UTC;
+# trainer-form-refresh-background.js runs only when Irish time is 18:15-19:15
+# and once per slot (trainer-form-refresh:ran:{date}:evening), so the other
+# fire exits. Same cron in trainer-form-refresh-evening-trigger.js.
+[functions."trainer-form-refresh-evening-trigger"]
+  schedule = "30 17,18 * * *"
+
+# Trainer Form table refresh — LATE, intent is 21:30 IRISH time. Cron is
+# UTC: 20:30 UTC is 21:30 Irish in summer only, so it fires at 20:30 and
+# 21:30 UTC; the background job runs only when Irish time is 21:15-22:15 and
+# once per slot (trainer-form-refresh:ran:{date}:late), so the other fire
+# exits. Same cron in trainer-form-refresh-late-trigger.js.
+[functions."trainer-form-refresh-late-trigger"]
+  schedule = "30 20,21 * * *"
+
 # disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
 # [functions."form-summary-trigger"]
 #   schedule = "0 4,6,8 * * *"
