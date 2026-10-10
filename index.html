@@ -16111,6 +16111,7 @@ var BIG_RACE=null;
 var BIG_RACE_TOMORROW=null;  // report.bigRaceTomorrow — shown only when today's Big Race card is hidden/absent
 var CANDG_CARD=null;
 var CANDG_COUNT=0;
+var CANDG_HORSES=[];           // report.candgHorses — per-qualifier {horseName,course,time,...}, for the live remaining-count on the C&D+G card
 var GROUND_CARD=null;
 var GROUND_COUNT=0;
 var GROUND_HORSES=[];
@@ -16281,6 +16282,7 @@ function loadDailyBuild(){
       BIG_RACE_TOMORROW=data.bigRaceTomorrow||null;
       CANDG_CARD=data.candgCard||null;
       CANDG_COUNT=data.candgHorsesCount||0;
+      CANDG_HORSES=data.candgHorses||[];
       GROUND_CARD=data.groundLoverCard||null;
       GROUND_COUNT=data.groundLoverHorsesCount||0;
       GROUND_HORSES=data.groundLoverHorses||[];
@@ -16713,17 +16715,39 @@ function _diRemaining(list){
 }
 // "16 horses today" before the first qualifier has run, "4 horses remaining"
 // once at least one has — singular handled either way.
+// Floored at 1 while in the "remaining" state: a card stays visible for 15
+// minutes after its last qualifier goes off (_diHideExpired), and "0 horses
+// remaining" on a visible card reads as broken — it shows "1 horse
+// remaining" until it hides.
 function _diCountLabel(dr){
   var showRemaining=dr.remaining<dr.total;
-  var n=showRemaining?dr.remaining:dr.total;
+  var n=showRemaining?Math.max(dr.remaining,1):dr.total;
   return {count:n,label:'horse'+(n===1?'':'s')+' '+(showRemaining?'remaining':'today')};
+}
+// Card-hide boundary: the LAST qualifier's race time + 15 minutes has
+// passed. The count (_diRemaining) drops at the race time itself; the card
+// only disappears after this grace — the same 15-minutes-after-last-off
+// rule Class Drop's _classDropTodayExpired has always used. A list with no
+// parseable time never expires (never hides a card over a data gap).
+function _diHideExpired(list){
+  var now=_irishNowParts().mins,last=null;
+  (list||[]).forEach(function(h){
+    var m=String(h.time||'').match(/^(\d{1,2}):(\d{2})/);
+    if(!m) return;
+    var t=parseInt(m[1],10)*60+parseInt(m[2],10);
+    if(last===null||t>last) last=t;
+  });
+  return last!==null&&now>last+15;
 }
 // One string capturing every live-countable card's remaining count, diffed
 // tick to tick by the 60s Class Drop timer so it knows when a qualifier's
 // race time has just crossed "now" and the carousel needs a re-render.
 function _diRemainingSig(){
-  var parts=[_diRemaining(CLASSDROP_HORSES).remaining,_diRemaining(GROUND_HORSES).remaining];
-  (HOT_YARDS||[]).forEach(function(hy){ parts.push(_diRemaining(hy.runnersToday||[]).remaining); });
+  // "x" marks a list past its 15-minute hide boundary, so the boundary
+  // itself is a tick-to-tick change (remaining is already 0 by then).
+  var sig=function(list){ return _diRemaining(list).remaining+(_diHideExpired(list)?'x':''); };
+  var parts=[sig(CLASSDROP_HORSES),sig(GROUND_HORSES),sig(CANDG_HORSES)];
+  (HOT_YARDS||[]).forEach(function(hy){ parts.push(sig(hy.runnersToday||[])); });
   return parts.join(',');
 }
 function renderAIIntelligence(){
@@ -16812,21 +16836,24 @@ function renderAIIntelligence(){
   // the same _items array via its own special item (isCandDG:true). Only
   // appended when the build actually generated card copy — candgCard stays
   // null on a horseless day or a failed AI call (see daily-build-background.js).
-  // No per-horse race times reach the client for C&D+G (get-daily-build's
-  // response carries candgHorsesCount only, not a candgHorses list like
-  // Ground Lover/Class Drop have) — so this card shows the static total only,
-  // never "remaining", and never self-hides. Plumbing a candgHorses array
-  // through daily-build-background.js/get-daily-build.js is the follow-up
-  // that would unlock the same live-remaining treatment the other three get.
+  // Live remaining from CANDG_HORSES (report.candgHorses, each with its race
+  // time) — counts down as qualifiers run and hides 15 minutes after the
+  // last one goes off, exactly like Ground Lover. A report with no candgHorses array (none
+  // exist since the field was always built; guarded anyway) falls back to
+  // the static total via _diRemaining's empty-list result.
   if(CANDG_CARD){
-    _items=_items.concat([{
-      isCandDG:true,
-      signalType:'SPECIALIST',
-      sigColor:'#14b8a6',
-      diCount:CANDG_COUNT,
-      diLabel:'horse'+(CANDG_COUNT===1?'':'s')+' today',
-      intelligenceText:escHtml(CANDG_CARD||'')
-    }]);
+    var _cgDr=_diRemaining(CANDG_HORSES);
+    if(!(_cgDr.total>0&&_cgDr.remaining===0&&_diHideExpired(CANDG_HORSES))){
+      var _cgLbl=_cgDr.total>0?_diCountLabel(_cgDr):{count:CANDG_COUNT,label:'horse'+(CANDG_COUNT===1?'':'s')+' today'};
+      _items=_items.concat([{
+        isCandDG:true,
+        signalType:'SPECIALIST',
+        sigColor:'#14b8a6',
+        diCount:_cgLbl.count,
+        diLabel:_cgLbl.label,
+        intelligenceText:escHtml(CANDG_CARD||'')
+      }]);
+    }
   }
 
   // Ground Lover — data-summary card like C&D+G (isGroundLover:true): horses
@@ -16841,7 +16868,7 @@ function renderAIIntelligence(){
     (GROUND_HORSES||[]).forEach(function(h){var k=h.course||'';if(!_glVen[k])_glVen[k]={going:h.todayGoing||'',n:0};_glVen[k].n++;});
     var _glVenLabel=Object.keys(_glVen).map(function(k){return escHtml(k)+' &middot; '+escHtml(_glVen[k].going)+' ('+_glVen[k].n+')';}).join(' &nbsp;|&nbsp; ');
     var _glDr=_diRemaining(GROUND_HORSES);
-    if(!(_glDr.total>0&&_glDr.remaining===0)){
+    if(!(_glDr.total>0&&_glDr.remaining===0&&_diHideExpired(GROUND_HORSES))){
       var _glLbl=_diCountLabel(_glDr);
       _items=_items.concat([{
         isGroundLover:true,
@@ -16923,7 +16950,7 @@ function renderAIIntelligence(){
     var _hyText=_hy.cardText||(HOT_YARDS.length===1?HOT_YARD_CARD:'')||'';
     if(!_hyText) return;
     var _hyDr=_diRemaining(_hy.runnersToday||[]);
-    if(_hyDr.total>0&&_hyDr.remaining===0) return;
+    if(_hyDr.total>0&&_hyDr.remaining===0&&_diHideExpired(_hy.runnersToday||[])) return;
     var _hyLbl=_diCountLabel(_hyDr);
     _items=_items.concat([{
       isHotYardCard:true,

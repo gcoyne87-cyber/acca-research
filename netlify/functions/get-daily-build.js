@@ -132,6 +132,7 @@ exports.handler = async function(event) {
         bigRaceTomorrow: report.bigRaceTomorrow || null,
         candgCard: report.candgCard || null,
         candgHorsesCount: (report.candgHorses || []).length,
+        candgHorses: report.candgHorses || [],
         groundLoverCard: report.groundLoverCard || null,
         groundLoverHorsesCount: (report.groundLoverHorses || []).length,
         groundLoverHorses: report.groundLoverHorses || [],
