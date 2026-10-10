@@ -14704,6 +14704,87 @@ function _priceMoveRunnerByName(name){
   return null;
 }
 
+// Edge tag context line — one small evidence line under the racecard tag
+// chips (runnerRow only; the Results pages' _edgeTagChips stays bare).
+// Every fact comes from data already on the client: the runner's last-6
+// history rows (ru.history), the race/meeting the runner is declared in
+// (found by horse_id in today's / tomorrow's meetings — runnerRow's ctx is
+// only a string tag, not the race), the trainer form table
+// (_trainerFormData, HOT_YARDS) and ru.trainer14. A tag whose evidence isn't
+// on the client renders no text rather than a placeholder.
+function _edgeRaceCtxFor(ru,ctx){
+  var lists=ctx==='tm'
+    ?[typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null]
+    :[typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null,typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null];
+  var id=ru.horse_id||'',nm=String(ru.name||'').toLowerCase();
+  for(var li=0;li<lists.length;li++){
+    var ms=lists[li]; if(!ms||!ms.length) continue;
+    for(var mi=0;mi<ms.length;mi++){
+      var m=ms[mi],rs=m.races||[];
+      for(var ri=0;ri<rs.length;ri++){
+        var race=rs[ri];
+        var hit=(race.runners||[]).some(function(x){ return id?x.horse_id===id:String(x.name||'').toLowerCase()===nm; });
+        if(hit) return {course:m.name||'',dist:race.dist||'',going:race.going||m.going||'',cls:race.class||''};
+      }
+    }
+  }
+  return null;
+}
+function _edgePrimaryGoing(s){ return String(s||'').toLowerCase().replace(/^[a-z]+\s*:\s*/i,'').split(/[,(]/)[0].trim(); }
+function _edgeCourseKey(s){ return String(s||'').toLowerCase().replace(/\s*\([^)]*\)\s*$/,'').trim(); }
+function _edgeDistKey(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
+function _edgeMonthYear(h){ var d=String(h.date||'').split(' '),mo=d[1]||'',y=String(h.year||''); return (mo+(mo&&y?' ':'')+y).trim(); }
+function _edgeSurname(t){ var s=String(t||'').replace(/\s*\([^)]*\)\s*$/,'').trim().split(/\s+/); return s[s.length-1]||''; }
+function _edgeContextLine(ru,ctx){
+  if(!(ru.isCandDWinner||ru.isCandDGoing||ru.isIrishRaider||ru.isGBRaider||ru.isGroundLover||ru.isHotYard||ru.isProvenClassDrop)) return '';
+  var rc=_edgeRaceCtxFor(ru,ctx);
+  var hist=Array.isArray(ru.history)?ru.history:[];
+  var parts=[];
+  if(ru.isHotYard){
+    var tn=String(ru.trainer||'').toLowerCase().trim(),sn=_edgeSurname(ru.trainer);
+    var byName=function(t){ return String(t.trainerName||'').toLowerCase().trim()===tn; };
+    var row=((typeof _trainerFormData!=='undefined'&&Array.isArray(_trainerFormData))?_trainerFormData:[]).find(byName)
+      ||((typeof HOT_YARDS!=='undefined'&&Array.isArray(HOT_YARDS))?HOT_YARDS.find(byName):null);
+    if(row&&row.strikeRate7d!=null){
+      var w7=Number(row.winners7d)||0;
+      parts.push((sn?sn+' ':'')+Math.round(Number(row.strikeRate7d))+'% · '+w7+' winner'+(w7===1?'':'s')+' last 7 days');
+    } else if(ru.trainer14&&ru.trainer14.runs>0){
+      parts.push((sn?sn+' ':'')+ru.trainer14.wins+'/'+ru.trainer14.runs+' last 14 days'+(ru.trainer14.pct?' ('+ru.trainer14.pct+'%)':''));
+    }
+  }
+  if(ru.isGroundLover&&rc&&rc.going){
+    var gk=_edgePrimaryGoing(rc.going);
+    if(gk){
+      var on=hist.filter(function(h){ return _edgePrimaryGoing(h.going)===gk; });
+      var gw=on.filter(function(h){ return String(h.pos)==='1'; }).length;
+      if(gw) parts.push(gw+' win'+(gw===1?'':'s')+' from '+on.length+' start'+(on.length===1?'':'s')+' on '+_cleanGoing(gk));
+    }
+  }
+  if((ru.isCandDWinner||ru.isCandDGoing)&&rc&&rc.course){
+    var ck=_edgeCourseKey(rc.course),dk=_edgeDistKey(rc.dist);
+    var cd=hist.filter(function(h){ return String(h.pos)==='1'&&_edgeCourseKey(h.course)===ck&&(!dk||_edgeDistKey(h.dist)===dk); });
+    var cdGoing='';
+    if(ru.isCandDGoing&&rc.going){
+      var g2=_edgePrimaryGoing(rc.going);
+      var cdg=cd.filter(function(h){ return _edgePrimaryGoing(h.going)===g2; });
+      if(cdg.length) cd=cdg;
+      cdGoing=_cleanGoing(g2);
+    }
+    var when=cd.length?_edgeMonthYear(cd[0]):'';
+    parts.push('Won here over '+(rc.dist||'this trip')+(cdGoing?' on '+cdGoing:'')+(when?', '+when:''));
+  }
+  if(ru.isProvenClassDrop&&rc&&rc.cls){
+    var cn=parseInt(String(rc.cls).replace(/[^0-9]/g,''),10);
+    if(cn>1) parts.push('Class '+(cn-1)+' to Class '+cn+' today');
+  }
+  if(ru.isIrishRaider) parts.push('Irish-trained raider');
+  if(ru.isGBRaider) parts.push('GB-trained raider');
+  if(!parts.length) return '';
+  var st='font-size:10px;color:#444;margin-top:2px;font-weight:400;font-style:normal;line-height:1.4';
+  var joined=parts.join(' · ');
+  if(joined.length<=60) return '<div style="'+st+'">'+escHtml(joined)+'</div>';
+  return parts.map(function(p){ return '<div style="'+st+'">'+escHtml(p)+'</div>'; }).join('');
+}
 function runnerRow(ru,ctx,extraHtml,isFav){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   // extraHtml may carry two pieces joined by the <!--nrv--> marker (see
@@ -14869,6 +14950,8 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
           })()
         +'</div>'
+        // Edge tag evidence line — empty string when no tag / no client data
+        +_edgeContextLine(ru,ctx)
         // Form string on its own line directly below the name
         +formText
         // Jockey (own line), Trainer (own line below)
