@@ -18947,6 +18947,31 @@ function _fetchHomeResults(){
 // item + the date's pickMap in, one card's HTML out.
 // opts (optional): {home:true} selects the home-strip header variant above.
 // The Results page passes no opts.
+// Results page two only: show the in-running comment from its decisive
+// closing stage. The Racing API comment narrates the whole race; the useful
+// part starts at the first clause carrying one of these markers, checked in
+// priority order across the whole comment: "2 out"/"two out" (jumps) or
+// "2f out"/"two furlongs out" (flat), then "the last"/"at the last", then
+// "final furlong"/"inside the final"/"final 110".
+// No marker -> the final clause only. Clauses split on " - " (the feed's
+// separator), falling back to ", ". DISPLAY-ONLY: the stored comment,
+// get-results.js and the cache are untouched. REVERT: delete the
+// _trimRaceComment() call on the comment line in _buildResultCard and full
+// comments are back instantly — nothing else to undo.
+function _trimRaceComment(comment){
+  var s=String(comment||'').trim();
+  if(!s) return '';
+  var sep=s.indexOf(' - ')!==-1?' - ':', ';
+  var parts=s.split(sep).map(function(p){ return p.trim(); }).filter(Boolean);
+  if(parts.length<=1) return s.charAt(0).toUpperCase()+s.slice(1);
+  var markers=[/\b(2|two) out\b|\b(2f|two furlongs) out\b/i,/\b(at )?the last\b/i,/final furlong|inside the final|final 110/i];
+  var start=-1;
+  for(var mi=0;mi<markers.length&&start===-1;mi++){
+    for(var i=0;i<parts.length;i++){ if(markers[mi].test(parts[i])){ start=i; break; } }
+  }
+  var out=(start===-1?[parts[parts.length-1]]:parts.slice(start)).join(sep);
+  return out.charAt(0).toUpperCase()+out.slice(1);
+}
 function _buildResultCard(item,pickMap,bulked,opts){
   opts=opts||{};
   var race=item.race;
@@ -19029,7 +19054,7 @@ function _buildResultCard(item,pickMap,bulked,opts){
     if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
     // In-running comment — Results page card only, never the homepage strip
     // (opts.home). No label, no truncation; renders nothing when empty.
-    if(!opts.home&&r.comment) html+='<div style="font-size:11px;font-style:italic;color:#000000;margin-top:2px">'+escHtml(r.comment)+'</div>';
+    if(!opts.home&&r.comment) html+='<div style="font-size:11px;font-style:italic;color:#000000;margin-top:2px">'+escHtml(_trimRaceComment(r.comment))+'</div>';
     html+='</div>';
     if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
     html+='</div>';
