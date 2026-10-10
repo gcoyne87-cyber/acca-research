@@ -17922,6 +17922,12 @@ var tmOpenRace={};
 var _resData=null;
 var _resOpenVenue=null;
 var _resOpenRace={};
+// Results page two — which race's result card is showing at each venue,
+// keyed by courseId. Independent per venue (selecting a time at one course
+// never touches another's). Reset to the first race with a result whenever
+// the stored time no longer matches any current race (new date loaded, or
+// that race fell out of racesWithResults) — see renderResultsPage.
+var _resSelectedRaceTime={};
 var _resLoadedDate=null;
 var _resApiCache={};
 // Full Results view — per-venue detailed drill-down reached from a venue
@@ -19023,14 +19029,34 @@ function renderResultsPage(){
     html+='<span onclick="_openFullResults(\''+escHtml(cid)+'\')" style="font-size:12px;font-weight:700;color:#1e9e6b;cursor:pointer;white-space:nowrap;flex-shrink:0">View Full Results &rarr;</span>';
     html+='</div>';
 
-    // Horizontally-scrolling row of result cards — one per race with a
-    // result, full-width snap card (see _buildResultCard's bulked&&!opts.home
-    // case) — scroll-snap-type here is what makes the card's own
-    // scroll-snap-align/scroll-snap-stop actually take effect.
-    html+='<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
-    racesWithResults.forEach(function(race){
-      html+=_buildResultCard({venue:venue.course,flag:venue.flag||'🇬🇧',race:race},_pickMap,true);
+    // Times bar — one pill per race with a result at this venue, replacing
+    // the old free-scroll row of every race's card. Tapping a time shows
+    // only that race's card below, full width. Selected pill gets the same
+    // gold border the Edge tags use (#c9a84c). Defaults to the first race
+    // with a result; falls back to it again if the stored time no longer
+    // matches anything current (new date, or that race dropped off).
+    if(!_resSelectedRaceTime[cid]||!racesWithResults.some(function(r){return r.time===_resSelectedRaceTime[cid];})){
+      _resSelectedRaceTime[cid]=racesWithResults[0].time;
+    }
+    var _selTime=_resSelectedRaceTime[cid];
+    var _cidSafe=cid.replace(/'/g,"\\'");
+    // id matches _capturePillScrolls'/_restorePillScrolls' recognised
+    // "res-pills-" prefix, so this bar's own scroll position survives the
+    // full re-render a tap triggers, same as every other pill row on the page.
+    html+='<div id="res-pills-'+escHtml(cid)+'" style="display:flex;gap:6px;overflow-x:auto;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+    racesWithResults.forEach(function(r){
+      var isSel=r.time===_selTime;
+      var _timeSafe=String(r.time||'').replace(/'/g,"\\'");
+      html+='<span onclick="_resSelectRaceTime(\''+_cidSafe+'\',\''+_timeSafe+'\')" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;background:#fff;border:'+(isSel?'1.5px solid #c9a84c':'1px solid #e4e8f0')+';color:#0D1B3E">'+escHtml(r.time)+'</span>';
     });
+    html+='</div>';
+
+    // The selected race's card only — full width, no scroll/snap: FIX 1
+    // (nothing left to scroll to once there's one card; race choice lives in
+    // the times bar above, not in a swipe).
+    var _selRace=racesWithResults.filter(function(r){return r.time===_selTime;})[0]||racesWithResults[0];
+    html+='<div style="overflow-x:hidden;padding:0 14px 8px">';
+    html+=_buildResultCard({venue:venue.course,flag:venue.flag||'🇬🇧',race:_selRace},_pickMap,true);
     html+='</div>';
 
     html+='</div>';
@@ -19052,6 +19078,15 @@ function renderResultsPage(){
   _restorePillScrolls(_pillSave);
   // Re-open any horse profile panel the rebuild destroyed.
   setTimeout(_nrRestorePanels,0);
+}
+
+// Times bar tap — results page two. Each venue's selection is independent
+// (keyed by courseId in _resSelectedRaceTime); a full re-render is the same
+// pattern _selectFullResultsVenue uses below for the equivalent tab switch
+// on results page three.
+function _resSelectRaceTime(courseId,time){
+  _resSelectedRaceTime[courseId]=time;
+  renderResultsPage();
 }
 
 // ── FULL RESULTS VIEW ────────────────────────────────────────────────────────
