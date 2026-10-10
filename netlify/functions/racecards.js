@@ -470,10 +470,25 @@ function provenClassDrop(runner, race, fieldRunners, historyRows) {
   return !!provenClassDropDetail(runner, race, fieldRunners, historyRows);
 }
 
+// Evidence captured beside each tag — the specific run / count the rule
+// matched, a few fields per tag, never a history array. Lives on
+// runner.tagEvidence and, like the flags, is computed on every read (tags are
+// never stored on racecards:{date}); index.html's _edgeContextLine renders it.
+function setTagEvidence(runner, key, val) {
+  if (!runner.tagEvidence) runner.tagEvidence = {};
+  runner.tagEvidence[key] = val;
+}
+function primaryGoingKey(s) {
+  return String(s || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim();
+}
 function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
+  delete runner.tagEvidence;
+  const isCdWin = function(h) {
+    return String(h.pos) === '1' && stripParens(h.course) === courseKey && milesFurlongs(h.dist) === distKey;
+  };
 
   // C&D Winner / C&D+G — refresh-prices-background.js's hourly recheck
   // (recheckCandDGoing) already writes an exact-match isCandDGoing verdict
@@ -492,13 +507,27 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     // on write when the verdict is true; enforced here too so a runner that
     // somehow arrived with both flags true is never served that way.
     if (runner.isCandDGoing === true) runner.isCandDWinner = false;
+    // Evidence only — the persisted verdict is kept; the matching win row is
+    // looked up from the same history (exact going for +G), falling back to
+    // the cdgWinDate/cdgWinGoing the hourly recheck stored with its verdict.
+    if (runner.isCandDGoing === true) {
+      var pvGoing = primaryGoingKey(meetingGoing);
+      var pvRow = runs.find(function(h) { return isCdWin(h) && primaryGoingKey(h.going) === pvGoing; }) || runs.find(isCdWin);
+      setTagEvidence(runner, 'canddGoing', {
+        dist: (pvRow && pvRow.dist) || raceDist || '',
+        date: (pvRow && pvRow.date) || runner.cdgWinDate || '',
+        going: (pvRow && pvRow.going) || runner.cdgWinGoing || meetingGoing || ''
+      });
+    } else if (runner.isCandDWinner === true) {
+      var pvWin = runs.find(isCdWin);
+      setTagEvidence(runner, 'candd', { dist: (pvWin && pvWin.dist) || raceDist || '', date: (pvWin && pvWin.date) || '', going: (pvWin && pvWin.going) || '' });
+    }
   } else {
-    const isCandDWinner = runs.some(function(h) {
-      return String(h.pos) === '1'
-        && stripParens(h.course) === courseKey
-        && milesFurlongs(h.dist) === distKey;
-    });
-    if (isCandDWinner) runner.isCandDWinner = true;
+    const cdWinRow = runs.find(isCdWin);
+    if (cdWinRow) {
+      runner.isCandDWinner = true;
+      setTagEvidence(runner, 'candd', { dist: cdWinRow.dist || '', date: cdWinRow.date || '', going: cdWinRow.going || '' });
+    }
 
     // C&D+G — a stronger version of C&D Winner: the horse's course-and-distance
     // win came on EXACTLY today's going. Same exact primary-term comparison as
@@ -514,7 +543,7 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
       .split(/[,(]/)[0].trim();
     if (CDG_EASY_DAY_RE.test(cdgPrimaryGoing)) {
       var cdgDayKey = cdgPrimaryGoing.toLowerCase();
-      const isCandDGoing = runs.some(function(h) {
+      const cdgRow = runs.find(function(h) {
         if (String(h.pos) !== '1') return false;
         if (stripParens(h.course) !== courseKey) return false;
         if (milesFurlongs(h.dist) !== distKey) return false;
@@ -524,9 +553,11 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
           .split(/[,(]/)[0].trim();
         return cdgWinGoing === cdgDayKey;
       });
-      if (isCandDGoing) {
+      if (cdgRow) {
         runner.isCandDGoing = true;
         runner.isCandDWinner = false;
+        if (runner.tagEvidence) delete runner.tagEvidence.candd;
+        setTagEvidence(runner, 'canddGoing', { dist: cdgRow.dist || '', date: cdgRow.date || '', going: cdgRow.going || '' });
       }
     }
   }
@@ -563,15 +594,12 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     .split(/[,(]/)[0].trim();          // primary term before any ", x in places" / "(GoingStick"
   if(EASY_DAY_RE.test(primaryGoing)){
     var dayGoingKey = primaryGoing.toLowerCase();
-    var hasGroundWin = runs.some(function(h){
-      if (String(h.pos) !== '1') return false;
-      var winPrimaryGoing = String(h.going || '')
-        .toLowerCase()
-        .replace(/^[a-z]+\s*:\s*/i, '')
-        .split(/[,(]/)[0].trim();
-      return winPrimaryGoing === dayGoingKey;
-    });
-    if(hasGroundWin) runner.isGroundLover = true;
+    var onGoing = runs.filter(function(h){ return primaryGoingKey(h.going) === dayGoingKey; });
+    var groundWins = onGoing.filter(function(h){ return String(h.pos) === '1'; }).length;
+    if(groundWins){
+      runner.isGroundLover = true;
+      setTagEvidence(runner, 'groundLover', { wins: groundWins, starts: onGoing.length, going: primaryGoing });
+    }
   }
 
   // Hot Yard — trainer is one of today's top-3 in-form elite yards, computed
@@ -586,7 +614,15 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   // cannot qualify" true without provenClassDrop needing the meeting flag
   // itself as a parameter.
   if (meetingFlag === 'GB' && race) {
-    if (provenClassDrop(runner, race, race.runners, history)) runner.isProvenClassDrop = true;
+    const cdd = provenClassDropDetail(runner, race, race.runners, history);
+    if (cdd) {
+      runner.isProvenClassDrop = true;
+      setTagEvidence(runner, 'classDrop', {
+        fromClass: cdd.lastRunClassNum,
+        toClass: cdd.todayClassNum,
+        runs: (cdd.qualifyingRuns || []).slice(0, 2).map(function(r) { return { pos: r.pos, course: r.course, date: r.date }; })
+      });
+    }
   }
 }
 

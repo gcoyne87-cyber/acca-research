@@ -14735,8 +14735,29 @@ function _edgeCourseKey(s){ return String(s||'').toLowerCase().replace(/\s*\([^)
 function _edgeDistKey(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
 function _edgeMonthYear(h){ var d=String(h.date||'').split(' '),mo=d[1]||'',y=String(h.year||''); return (mo+(mo&&y?' ':'')+y).trim(); }
 function _edgeSurname(t){ var s=String(t||'').replace(/\s*\([^)]*\)\s*$/,'').trim().split(/\s+/); return s[s.length-1]||''; }
+// "2m0f16y" / "6f" / "1m2f" -> "2 miles" / "6 furlongs" / "1 mile 2" (yards dropped).
+function _edgeDistWords(d){
+  var s=String(d||''),m=(s.match(/(\d+)m/)||[])[1],f=(s.match(/(\d+)f/)||[])[1];
+  m=m?parseInt(m,10):0; f=f?parseInt(f,10):0;
+  if(!m&&!f) return s;
+  if(!m) return f+' furlong'+(f===1?'':'s');
+  return m+' mile'+(m===1?'':'s')+(f?' '+f:'');
+}
+function _edgeMonYr(iso){
+  var p=String(iso||'').split('-'); if(p.length<2) return '';
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1],10)-1]||'';
+  return (mo+' '+p[0]).trim();
+}
+function _edgeOrd(p){
+  var n=parseInt(p,10); if(!n) return String(p||'');
+  var v=n%100; return n+((v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'));
+}
 function _edgeContextLine(ru,ctx){
   if(!(ru.isCandDWinner||ru.isCandDGoing||ru.isIrishRaider||ru.isGBRaider||ru.isGroundLover||ru.isHotYard||ru.isProvenClassDrop)) return '';
+  // ru.tagEvidence — the exact run / counts the server's tag rule matched
+  // (racecards.js computeRunnerTags). Absent on cards served before it was
+  // added; every branch below then falls back to what the client can see.
+  var ev=ru.tagEvidence||{};
   var rc=_edgeRaceCtxFor(ru,ctx);
   var hist=Array.isArray(ru.history)?ru.history:[];
   var parts=[];
@@ -14752,15 +14773,26 @@ function _edgeContextLine(ru,ctx){
       parts.push((sn?sn+' ':'')+ru.trainer14.wins+'/'+ru.trainer14.runs+' last 14 days'+(ru.trainer14.pct?' ('+ru.trainer14.pct+'%)':''));
     }
   }
-  if(ru.isGroundLover&&rc&&rc.going){
-    var gk=_edgePrimaryGoing(rc.going);
-    if(gk){
-      var on=hist.filter(function(h){ return _edgePrimaryGoing(h.going)===gk; });
-      var gw=on.filter(function(h){ return String(h.pos)==='1'; }).length;
-      if(gw) parts.push(gw+' win'+(gw===1?'':'s')+' from '+on.length+' start'+(on.length===1?'':'s')+' on '+_cleanGoing(gk));
+  if(ru.isGroundLover){
+    if(ev.groundLover&&ev.groundLover.wins){
+      var gl=ev.groundLover;
+      parts.push(gl.wins+' win'+(gl.wins===1?'':'s')+' from '+gl.starts+' start'+(gl.starts===1?'':'s')+' on '+_cleanGoing(_edgePrimaryGoing(gl.going)));
+    } else if(rc&&rc.going){
+      var gk=_edgePrimaryGoing(rc.going);
+      if(gk){
+        var on=hist.filter(function(h){ return _edgePrimaryGoing(h.going)===gk; });
+        var gw=on.filter(function(h){ return String(h.pos)==='1'; }).length;
+        if(gw) parts.push(gw+' win'+(gw===1?'':'s')+' from '+on.length+' start'+(on.length===1?'':'s')+' on '+_cleanGoing(gk));
+      }
     }
   }
-  if((ru.isCandDWinner||ru.isCandDGoing)&&rc&&rc.course){
+  if(ru.isCandDGoing&&ev.canddGoing){
+    var cg=ev.canddGoing,cgWhen=_edgeMonYr(cg.date);
+    parts.push('Won here over '+_edgeDistWords(cg.dist||(rc&&rc.dist))+(cg.going?' on '+_cleanGoing(_edgePrimaryGoing(cg.going)):'')+(cgWhen?', '+cgWhen:''));
+  } else if(ru.isCandDWinner&&ev.candd){
+    var cw=ev.candd,cwWhen=_edgeMonYr(cw.date);
+    parts.push('Won here over '+_edgeDistWords(cw.dist||(rc&&rc.dist))+(cwWhen?', '+cwWhen:''));
+  } else if((ru.isCandDWinner||ru.isCandDGoing)&&rc&&rc.course){
     var ck=_edgeCourseKey(rc.course),dk=_edgeDistKey(rc.dist);
     var cd=hist.filter(function(h){ return String(h.pos)==='1'&&_edgeCourseKey(h.course)===ck&&(!dk||_edgeDistKey(h.dist)===dk); });
     var cdGoing='';
@@ -14771,11 +14803,17 @@ function _edgeContextLine(ru,ctx){
       cdGoing=_cleanGoing(g2);
     }
     var when=cd.length?_edgeMonthYear(cd[0]):'';
-    parts.push('Won here over '+(rc.dist||'this trip')+(cdGoing?' on '+cdGoing:'')+(when?', '+when:''));
+    parts.push('Won here over '+(rc.dist?_edgeDistWords(rc.dist):'this trip')+(cdGoing?' on '+cdGoing:'')+(when?', '+when:''));
   }
-  if(ru.isProvenClassDrop&&rc&&rc.cls){
-    var cn=parseInt(String(rc.cls).replace(/[^0-9]/g,''),10);
-    if(cn>1) parts.push('Class '+(cn-1)+' to Class '+cn+' today');
+  if(ru.isProvenClassDrop){
+    if(ev.classDrop&&ev.classDrop.toClass){
+      var cdE=ev.classDrop,cdOrds=(cdE.runs||[]).map(function(r){ return _edgeOrd(r.pos); });
+      var posStr=(cdOrds.length===2&&cdOrds[0]===cdOrds[1])?cdOrds[0]+' twice':cdOrds.join(' and ');
+      parts.push((posStr?posStr+' in Class '+cdE.fromClass+' · ':'')+'drops to Class '+cdE.toClass+' today');
+    } else if(rc&&rc.cls){
+      var cn=parseInt(String(rc.cls).replace(/[^0-9]/g,''),10);
+      if(cn>1) parts.push('Class '+(cn-1)+' to Class '+cn+' today');
+    }
   }
   if(ru.isIrishRaider) parts.push('Irish-trained raider');
   if(ru.isGBRaider) parts.push('GB-trained raider');
