@@ -13608,21 +13608,37 @@ var _rcDetailOpen={};
 function rcSetCompactDetail(mid,time,mname,wantDetail){
   var now=Date.now();
   if(now-_rcTabLastMs<350) return;
-  var key=mid+'-'+time;
-  if(!!_rcDetailOpen[key]===!!wantDetail) return;
   _rcTabLastMs=now;
+  var key=mid+'-'+time;
+  wantDetail=!!wantDetail;
+  var changed=!!_rcDetailOpen[key]!==wantDetail;
   _rcDetailOpen[key]=wantDetail;
-  _renderCurrentHomeList();
-  if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
-  var _fe=document.getElementById('racing-future-content');
-  if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
-  if(typeof nrRenderCard==='function') nrRenderCard();
-  if(typeof renderRcSingleList==='function') renderRcSingleList();
-  // Sync every runner's own Form panel + "More/Less detail" link in this
-  // race — found via the invisible per-runner marker _runnerExtraHtml emits
-  // (data-race-key/data-pfx/data-horseid), since pfx isn't otherwise
-  // derivable from mid/time/mname alone.
+  // Two states govern a runner's Form panel: this race-level mode and the
+  // per-horse nrOpenHistory, which _nrRestorePanels replays (setTimeout 0)
+  // after every list rebuild and which each "More/Less detail" link reads
+  // first. They must agree BEFORE the re-render: previously the sync loop
+  // below compared the wanted mode against the freshly rebuilt DOM — always
+  // closed — so a Compact press found nothing to close, never cleared the
+  // history, and the restore put every panel straight back (the one-click-
+  // behind bug). Markers are read now, from the DOM that is about to go.
   var markers=document.querySelectorAll('[data-race-key]');
+  for(var h=0;h<markers.length;h++){
+    if(markers[h].getAttribute('data-race-key')!==key) continue;
+    nrOpenHistory[markers[h].dataset.pfx]=wantDetail?'fe':false;
+  }
+  if(changed){
+    _renderCurrentHomeList();
+    if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
+    var _fe=document.getElementById('racing-future-content');
+    if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
+    if(typeof nrRenderCard==='function') nrRenderCard();
+    if(typeof renderRcSingleList==='function') renderRcSingleList();
+  }
+  // Open/close every runner's Form panel in this race explicitly. nrLoadForm
+  // TOGGLES, so it is only called when the panel's current state differs
+  // from the wanted one. Runs on a same-mode press too (no rebuild): Detail
+  // pressed again re-expands any horse collapsed by hand.
+  markers=document.querySelectorAll('[data-race-key]');
   for(var i=0;i<markers.length;i++){
     if(markers[i].getAttribute('data-race-key')!==key) continue;
     var pfx=markers[i].dataset.pfx,hid=markers[i].dataset.horseid||'';
