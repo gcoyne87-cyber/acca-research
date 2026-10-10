@@ -137,7 +137,7 @@ exports.handler = async function(event) {
     // (reproduced live 2026-08-23: first call 0 entries "API status 429",
     // immediate retry 436 entries, all meetings).
     // Debug only: ?raw=1&skip=N reads a later page of the raw feed.
-    const firstSkip = (qs.raw === '1' && /^d+$/.test(qs.skip || '')) ? qs.skip : '0';
+    const firstSkip = (qs.raw === '1' && /^[0-9]+$/.test(qs.skip || '')) ? qs.skip : '0';
     let resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + firstSkip);
     if (resp.status === 429) {
       await new Promise(function(r) { setTimeout(r, 1000); });
