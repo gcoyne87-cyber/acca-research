@@ -16768,45 +16768,10 @@ function renderAIIntelligence(){
     }]);
   }
 
-  // Find Your Edge — static, permanent explainer card for the 5 edge tags
-  // (C&D Winner, C&D+G, Ground Lover, Hot Yard, Class Drop). No data, no
-  // Claude call, no button — always the very last card, every day, after
-  // Tomorrow's Big Race when that's shown above.
-  _items=_items.concat([{ isFindYourEdge:true }]);
-
   // Keep the reader's place across the 5-minute refresh re-render: with
   // mandatory snapping, a rebuilt list otherwise jumps back to the first card.
   var _aiKeepX=el.scrollLeft;
   el.innerHTML=_items.map(function(item){
-    if(item.isFindYourEdge){
-      // Same chip _edgeTagChips builds on the racecards (gold border, white
-      // background, dark text, gold star), just enlarged to 14px so it's
-      // easy to read at carousel size. Explanation text is deliberately
-      // white, not the usual faded rgba(255,255,255,0.6) secondary text.
-      var _feRows=[
-        ['C&amp;D Winner',"Has won at today's course and distance."],
-        ['C&amp;D+G',"Won at this course and distance on today's going."],
-        ['Ground Lover',"On soft or yielding days, won on today's going recently."],
-        ['Hot Yard',"Trainer among today's best in-form yards this week."],
-        ['Class Drop',"Down one class after proving itself at the higher level."]
-      ];
-      var _feRowsHtml=_feRows.map(function(r){
-        return '<div style="display:flex;align-items:center;gap:8px">'
-          +'<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:3px 9px;font-size:14px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap">&#9733; '+r[0]+'</span>'
-          +'<span style="flex:1;min-width:0;font-size:12px;color:#fff;line-height:1.65">'+r[1]+'</span>'
-        +'</div>';
-      }).join('');
-      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
-        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
-          +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#d4af37;margin-bottom:2px">FIND YOUR EDGE</div>'
-          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:8px">Find Your Edge</div>'
-          +'<div style="display:flex;flex-direction:column;justify-content:space-between;flex:1;gap:4px">'
-            +_feRowsHtml
-          +'</div>'
-        +'</div>'
-      +'</div>';
-    }
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
       // Runner count for today's "N horses" pill — same substring,
