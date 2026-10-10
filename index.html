@@ -18755,7 +18755,11 @@ function _buildResultCard(item,pickMap,bulked,opts){
   var favNames=_resFavNames(race.runners);
   var ordinals=['1st','2nd','3rd','4th'];
   var html='';
-  html+='<div style="flex-shrink:0;scroll-snap-align:start;'+((bulked&&!opts.home)?'':'scroll-snap-stop:always;')+'width:'+(opts.home?240:(bulked?280:240))+'px;background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
+  // Results page two (bulked && !opts.home): full card width, one card per
+  // snap — was a fixed 280px with no scroll-snap-stop, which let the row
+  // free-scroll and leave the next card peeking in. Homepage strip and the
+  // plain compact card (unused today) are untouched, still 240px.
+  html+='<div style="flex-shrink:0;scroll-snap-align:start;scroll-snap-stop:always;width:'+(opts.home?'240px':(bulked?'100%':'240px'))+';background:#fff;border-radius:12px;padding:13px 15px 14px;box-shadow:0 1px 8px rgba(13,27,62,0.09)">';
   // Header: compact (homepage strip) keeps the original "time · venue" line
   // untouched. Bulked (Results page) drops the venue — the venue heading
   // already sits above this row — and puts the race name on the same line
@@ -19020,8 +19024,10 @@ function renderResultsPage(){
     html+='</div>';
 
     // Horizontally-scrolling row of result cards — one per race with a
-    // result, same 240px card the homepage Latest Results strip uses.
-    html+='<div style="display:flex;overflow-x:auto;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
+    // result, full-width snap card (see _buildResultCard's bulked&&!opts.home
+    // case) — scroll-snap-type here is what makes the card's own
+    // scroll-snap-align/scroll-snap-stop actually take effect.
+    html+='<div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding:0 14px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch">';
     racesWithResults.forEach(function(race){
       html+=_buildResultCard({venue:venue.course,flag:venue.flag||'🇬🇧',race:race},_pickMap,true);
     });
