@@ -136,23 +136,41 @@ exports.handler = async function(event) {
     // rate-limit hit here previously emptied the ENTIRE date's response
     // (reproduced live 2026-08-23: first call 0 entries "API status 429",
     // immediate retry 436 entries, all meetings).
-    let resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
+    // Debug only: ?raw=1&skip=N reads a later page of the raw feed.
+    const firstSkip = (qs.raw === '1' && /^d+$/.test(qs.skip || '')) ? qs.skip : '0';
+    let resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + firstSkip);
     if (resp.status === 429) {
       await new Promise(function(r) { setTimeout(r, 1000); });
-      resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=0');
+      resp = await apiGet('/v1/results?start_date=' + date + '&end_date=' + date + '&limit=' + PAGE_LIMIT + '&skip=' + firstSkip);
     }
 
     // Raw debug mode — call with ?raw=1 to see exactly what the API returns
     if (qs.raw === '1') {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          apiStatus: resp.status,
-          topKeys: Object.keys(resp.body || {}),
-          sample: JSON.stringify(resp.body).substring(0, 3000)
-        })
+      const rawBody = resp.body || {};
+      const rawOut = {
+        apiStatus: resp.status,
+        topKeys: Object.keys(rawBody),
+        total: rawBody.total, limit: rawBody.limit, skip: rawBody.skip,
+        returned: (rawBody.results || []).length
       };
+      // ?course=chep narrows to matching races and shows each runner's raw
+      // comment field untouched, so upstream data can be audited per race.
+      const wantCourse = String(qs.course || '').toLowerCase();
+      if (wantCourse) {
+        rawOut.races = (rawBody.results || []).filter(function(race) {
+          return String(race.course || '').toLowerCase().indexOf(wantCourse) !== -1;
+        }).map(function(race) {
+          return {
+            race_id: race.race_id, course: race.course, region: race.region, off: race.off, off_dt: race.off_dt,
+            runners: (race.runners || []).map(function(r) {
+              return { position: r.position, horse: r.horse, hasComment: Object.prototype.hasOwnProperty.call(r, 'comment'), comment: r.comment };
+            })
+          };
+        });
+      } else {
+        rawOut.sample = JSON.stringify(rawBody).substring(0, 3000);
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(rawOut) };
     }
 
     // Surface API errors clearly
