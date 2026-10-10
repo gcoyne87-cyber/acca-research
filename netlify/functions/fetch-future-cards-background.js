@@ -164,16 +164,27 @@ function formatRunDate(dateStr) {
   return { year: y, date: String(d).padStart(2, '0') + ' ' + (months[m] || '') };
 }
 
+// A price is usable only when it is actually fractional-shaped ("15/2",
+// "evn"/"evs"). Exchanges such as Matchbook put DECIMAL odds ("6.6", "46")
+// in the API's `fractional` field and do not say "exchange" in their name —
+// without this check the non-exchange fallback below could hand a decimal
+// to the card. Same rule as refresh-prices-background.js / racecards.js.
+function isUsablePrice(fractional) {
+  const f = String(fractional || '').trim();
+  if (!f || f === '-' || f.toUpperCase() === 'SP') return false;
+  return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
+}
+
 function extractPrice(oddsArr, bookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
   const bk = (bookmaker || '').toLowerCase();
   const match = oddsArr.find(function(o) {
     return (o.bookmaker || '').toLowerCase() === bk;
   });
-  if (match && match.fractional) return match.fractional;
-  // fall back to first non-exchange bookmaker
+  if (match && isUsablePrice(match.fractional)) return match.fractional;
+  // fall back to first non-exchange bookmaker with a fractional price
   const fallback = oddsArr.find(function(o) {
-    return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange');
+    return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange');
   });
   return (fallback && fallback.fractional) || 'SP';
 }

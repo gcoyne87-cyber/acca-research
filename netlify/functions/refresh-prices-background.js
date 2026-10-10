@@ -314,9 +314,39 @@ async function sendNotification(subject, bodyText) {
 // runner — which still passed the old "truthy and not '-'" check, so it won
 // the coverage count and extractPrice then faithfully returned that literal
 // string. Both checks below must treat "SP" as invalid, the same as '-'.
+// A price is usable only when it is actually fractional-shaped ("15/2",
+// "evn"/"evs"). Exchanges such as Matchbook put DECIMAL odds ("6.6", "46")
+// in the API's `fractional` field and do not say "exchange" in their name,
+// so the old non-empty check let one win a race's bookmaker lock on a day
+// where no real bookmaker had priced yet — the whole card then showed
+// decimals (2026-10-11, 27 of 30 races locked to Matchbook).
 function isUsablePrice(fractional) {
   const f = String(fractional || '').trim();
-  return !!f && f !== '-' && f.toUpperCase() !== 'SP';
+  if (!f || f === '-' || f.toUpperCase() === 'SP') return false;
+  return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
+}
+
+// True when a bookmaker IS pricing runners in this race but none of its
+// prices are fractional-shaped — a decimal-only feed. A lock to such a
+// bookmaker is invalid and is dropped so the race re-selects. A bookmaker
+// that simply has no prices at all is NOT a decimal feed: that lock is kept,
+// per the never-switch-source-mid-race rule.
+function bookmakerFeedIsDecimal(runners, bookmaker) {
+  const lockedLc = String(bookmaker || '').trim().toLowerCase();
+  if (!lockedLc) return false;
+  let priced = 0, fractional = 0;
+  (runners || []).forEach(function(r) {
+    const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
+    if (!Array.isArray(oddsArr)) return;
+    oddsArr.forEach(function(o) {
+      if (String(o && o.bookmaker || '').trim().toLowerCase() !== lockedLc) return;
+      const f = String(o.fractional || '').trim();
+      if (!f || f === '-' || f.toUpperCase() === 'SP') return;
+      priced++;
+      if (isUsablePrice(f)) fractional++;
+    });
+  });
+  return priced > 0 && fractional === 0;
 }
 
 // One bookmaker locked per race for the whole day (selectRaceBookmaker below
@@ -488,6 +518,7 @@ exports.handler = async function(event) {
           // Still none: leave it unset — every runner stays SP until a lock
           // exists (extractPrice never falls back to another bookmaker).
           const freshRunners = freshOddsByRace[m.id + '|' + (race.t || '')] || [];
+          if (race.priceBookmaker && bookmakerFeedIsDecimal(freshRunners, race.priceBookmaker)) race.priceBookmaker = null;
           if (!race.priceBookmaker) {
             const resolved = selectRaceBookmaker(freshRunners);
             if (resolved) race.priceBookmaker = resolved;
@@ -605,6 +636,7 @@ exports.handler = async function(event) {
           // Race-level bookmaker lock — same resolve-once-and-reuse rule as
           // today's block above.
           const freshRunnersTomorrow = freshOddsByRaceTomorrow[m.id + '|' + (race.t || '')] || [];
+          if (race.priceBookmaker && bookmakerFeedIsDecimal(freshRunnersTomorrow, race.priceBookmaker)) race.priceBookmaker = null;
           if (!race.priceBookmaker) {
             const resolvedTomorrow = selectRaceBookmaker(freshRunnersTomorrow);
             if (resolvedTomorrow) race.priceBookmaker = resolvedTomorrow;
@@ -695,6 +727,7 @@ exports.handler = async function(event) {
           (m.races || []).forEach(function(race) {
             const freshRunnersFar = freshOddsByRaceFar[m.id + '|' + (race.t || '')] || [];
             // Same resolve-once-and-reuse lock rule as today/tomorrow.
+            if (race.priceBookmaker && bookmakerFeedIsDecimal(freshRunnersFar, race.priceBookmaker)) race.priceBookmaker = null;
             if (!race.priceBookmaker) {
               const resolvedFar = selectRaceBookmaker(freshRunnersFar);
               if (resolvedFar) race.priceBookmaker = resolvedFar;

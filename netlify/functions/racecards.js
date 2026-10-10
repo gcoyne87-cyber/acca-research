@@ -84,13 +84,25 @@ function formatRunDate(dateStr) {
 // means the race has no lock yet (selectRaceBookmaker found nothing to lock
 // to); every runner shows SP until one exists — never a different bookmaker's
 // price as a fallback.
+// A price is usable only when it is actually fractional-shaped ("15/2",
+// "evn"/"evs"). Exchanges such as Matchbook put DECIMAL odds ("6.6", "46")
+// in the API's `fractional` field and do not say "exchange" in their name,
+// so the old non-empty check let one win a race's bookmaker lock on a day
+// where no real bookmaker had priced yet — the whole card then showed
+// decimals (2026-10-11). Same rule as refresh-prices-background.js.
+function isUsablePrice(fractional) {
+  const f = String(fractional || '').trim();
+  if (!f || f === '-' || f.toUpperCase() === 'SP') return false;
+  return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
+}
+
 function extractPrice(oddsArr, lockedBookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
   if (!lockedBookmaker) return 'SP';
   // The API spells even money 'evn'; every parser downstream understands 'EVS',
   // so it is normalised here, the moment it enters the card.
   const match = oddsArr.find(function(o) {
-    return (o.bookmaker || '') === lockedBookmaker && o.fractional && o.fractional !== '-';
+    return (o.bookmaker || '') === lockedBookmaker && isUsablePrice(o.fractional);
   });
   const frac = match && match.fractional;
   return frac ? (/^evn$/i.test(frac) ? 'EVS' : frac) : 'SP';
@@ -107,7 +119,7 @@ function selectRaceBookmaker(runners) {
     oddsArr.forEach(function(o) {
       const bk = o && o.bookmaker;
       if (!bk || bk.toLowerCase().includes('exchange')) return;
-      if (!o.fractional || o.fractional === '-') return;
+      if (!isUsablePrice(o.fractional)) return;
       counts[bk] = (counts[bk] || 0) + 1;
     });
   });
