@@ -18874,8 +18874,7 @@ function _buildResultCard(item,pickMap,bulked,opts){
     // _buildFullResultsRaceHtml()'s but without the venue (it sits above the
     // times bar). Race name wraps — no truncation. Blank fields drop out of
     // their line; a line with nothing left is skipped.
-    var _hDist=_nrAbDist(race.dist||'');
-    html+='<div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">'+escHtml(race.time)+(_hDist?' &middot; '+escHtml(_hDist):'')+'</div>';
+    html+='<div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">'+escHtml(race.time)+'</div>';
     if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#0b1628;line-height:1.35;margin-bottom:2px">'+escHtml(race.name)+'</div>';
     var _hPrize=_fmtPrize(race.winner_prize||race.prize,item.flag);
     var _hCp=[race.cls||'',_hPrize].filter(Boolean).join(' · ');
