@@ -18757,8 +18757,8 @@ function _buildResultCard(item,pickMap,bulked,opts){
     html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
   }
 
-  // Bulked (Results page) only: distance/class/prize/going meta line,
-  // inserted above the divider. Same field sources/formatters as
+  // Bulked (Results page) only: distance/class/prize/going/runners meta
+  // line, inserted above the divider. Same field sources/formatters as
   // _buildFullResultsRaceHtml()'s race header (_nrAbDist, _fmtPrize with the
   // item's flag, _cleanGoing) — blank fields just don't join in, no dangling
   // " · ". Homepage strip never sets bulked, so its markup is untouched.
@@ -18771,6 +18771,8 @@ function _buildResultCard(item,pickMap,bulked,opts){
     if(_prize) _metaParts.push(_prize);
     var _going=_cleanGoing(race.going);
     if(_going) _metaParts.push(_going);
+    var _runs=race.ran||((race.runners||[]).length||0);
+    if(_runs) _metaParts.push(_runs+' runners');
     if(_metaParts.length) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">'+escHtml(_metaParts.join(' · '))+'</div>';
   }
 
@@ -18788,7 +18790,11 @@ function _buildResultCard(item,pickMap,bulked,opts){
     html+='<div style="display:flex;align-items:flex-start;margin-bottom:'+(isLastRow?'0':'7px')+'">';
     html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
     html+='<div style="flex:1;min-width:0">';
-    html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_pickPill(r.horse,pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
+    // Down arrow — visual only (no onclick/handler yet), matches results page
+    // three's horse-profile arrow (_buildFullResultsRaceHtml) exactly. Results
+    // page two only (bulked && !opts.home); homepage strip untouched.
+    var _dnArrow=(bulked&&!opts.home)?'<span style="color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'';
+    html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_dnArrow+_pickPill(r.horse,pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
     if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
     // In-running comment — Results page card only, never the homepage strip
     // (opts.home). No label, no truncation; renders nothing when empty.
