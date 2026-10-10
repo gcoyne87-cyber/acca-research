@@ -18517,6 +18517,7 @@ function loadResultsPage(date){
                 if(apiRace.dist) rcRace.dist=apiRace.dist;
                 if(apiRace.cls) rcRace.cls=apiRace.cls;
                 if(apiRace.prize) rcRace.prize=apiRace.prize;
+                if(apiRace.winner_prize) rcRace.winner_prize=apiRace.winner_prize;
                 if(apiRace.going) rcRace.going=apiRace.going;
                 if(apiRace.ran) rcRace.ran=apiRace.ran;
                 if(apiRace.distances) rcRace.distances=apiRace.distances;
@@ -18869,21 +18870,30 @@ function _buildResultCard(item,pickMap,bulked,opts){
     html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(race.time)+' <span style="font-size:14px;font-weight:700;color:#0D1B3E">'+escHtml(item.venue)+'</span></div>';
     if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+escHtml(race.name)+'</div>';
   } else if(bulked){
-    html+='<div style="display:flex;align-items:center;margin-bottom:2px;white-space:nowrap;overflow:hidden">';
-    html+='<span style="font-size:14px;font-weight:700;color:#0b1628;flex-shrink:0">'+escHtml(race.time)+'</span>';
-    if(race.name) html+='<span style="width:1px;height:13px;background:#e0e4ea;display:inline-block;vertical-align:middle;margin:0 8px;flex-shrink:0"></span><span style="font-size:12px;font-weight:600;color:#0b1628;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">'+escHtml(race.name)+'</span>';
-    html+='</div>';
+    // Results page two: stacked header, same fields/formatters as
+    // _buildFullResultsRaceHtml()'s but without the venue (it sits above the
+    // times bar). Race name wraps — no truncation. Blank fields drop out of
+    // their line; a line with nothing left is skipped.
+    var _hDist=_nrAbDist(race.dist||'');
+    html+='<div style="font-size:14px;font-weight:700;color:#0b1628;margin-bottom:2px">'+escHtml(race.time)+(_hDist?' &middot; '+escHtml(_hDist):'')+'</div>';
+    if(race.name) html+='<div style="font-size:12px;font-weight:600;color:#0b1628;line-height:1.35;margin-bottom:2px">'+escHtml(race.name)+'</div>';
+    var _hPrize=_fmtPrize(race.winner_prize||race.prize,item.flag);
+    var _hCp=[race.cls||'',_hPrize].filter(Boolean).join(' · ');
+    if(_hCp) html+='<div style="font-size:12px;color:#9aa3b5;margin-bottom:2px">'+escHtml(_hCp)+'</div>';
+    var _hGoing=_cleanGoing(race.going);
+    var _hRuns=race.ran||((race.runners||[]).length||0);
+    var _hGr=[_hGoing,_hRuns?_hRuns+' runners':''].filter(Boolean).join(' · ');
+    if(_hGr) html+='<div style="font-size:11px;color:#9aa3b5;margin-bottom:6px">'+escHtml(_hGr)+'</div>';
   } else {
     html+='<div style="font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
     html+=escHtml(race.time)+' <span style="color:#9aa3b5;font-weight:500">'+escHtml(item.venue)+'</span></div>';
   }
 
-  // Bulked (Results page) only: distance/class/prize/going/runners meta
-  // line, inserted above the divider. Same field sources/formatters as
-  // _buildFullResultsRaceHtml()'s race header (_nrAbDist, _fmtPrize with the
-  // item's flag, _cleanGoing) — blank fields just don't join in, no dangling
-  // " · ". Homepage strip never sets bulked, so its markup is untouched.
-  if(bulked){
+  // Homepage strip (bulked && opts.home) only: the single
+  // distance/class/prize/going/runners meta line it has always shown,
+  // inserted above the divider — unchanged. Results page two now carries
+  // these fields in its stacked header above instead.
+  if(bulked&&opts.home){
     var _metaParts=[];
     var _dist=_nrAbDist(race.dist||'');
     if(_dist) _metaParts.push(_dist);
