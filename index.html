@@ -16116,6 +16116,7 @@ var GROUND_COUNT=0;
 var GROUND_HORSES=[];
 var CLASSDROP_CARD=null;
 var CLASSDROP_COUNT=0;
+var CLASSDROP_HORSES=[];       // report.classDropHorses — per-qualifier {horseName,course,time,...}, for the live remaining-count on today's card
 var CLASSDROP_LAST_OFF=null;   // report.classDropLastRaceOffTime — Irish-local ISO off time of today's last qualifier; today's card fades 15 min after it
 var CLASSDROP_PREVIEW=null;    // tomorrow's report .classDropPreview { text, qualifiers, generatedAt, lastRaceOffTime } from the 02:00 job
 var CLASSDROP_PREVIEW_DATE=''; // the Irish date that preview is for — "Tomorrow's Class Drop" until the Irish calendar reaches it, then "Class Drop"
@@ -16285,6 +16286,7 @@ function loadDailyBuild(){
       GROUND_HORSES=data.groundLoverHorses||[];
       CLASSDROP_CARD=data.classDropCard||null;
       CLASSDROP_COUNT=data.classDropHorsesCount||0;
+      CLASSDROP_HORSES=data.classDropHorses||[];
       CLASSDROP_LAST_OFF=data.classDropLastRaceOffTime||null;
       HOT_YARD=data.hotYard||null;
       HOT_YARD_CARD=data.hotYardCard||null;
@@ -16362,13 +16364,23 @@ function loadDailyBuild(){
       // clock passes its last off + 15 minutes, and the preview card's label
       // flips at Irish midnight. A change re-renders the carousel — after the
       // fade has had its half second when it is the card that is going.
+      // Same tick also carries the live remaining-count for Class Drop,
+      // Ground Lover and each Hot Yard card (their qualifiers' race times
+      // crossing "now" is exactly as frequent an event as Class Drop's own
+      // expiry, so one shared 60s interval covers all of them — no new
+      // polling). A signature string of each list's remaining count is
+      // diffed tick to tick; any change re-renders.
       if(!window._classDropTimer){
+        window._diRemainingSig=_diRemainingSig();
         window._classDropTimer=setInterval(function(){
           var _exp=_classDropTodayExpired();
           var _flip=_classDropPreviewIsToday();
           var _expChanged=_exp!==window._classDropExpiredShown;
           var _flipChanged=_flip!==window._classDropFlipShown;
-          if(!_expChanged&&!_flipChanged) return;
+          var _sig=_diRemainingSig();
+          var _sigChanged=_sig!==window._diRemainingSig;
+          window._diRemainingSig=_sig;
+          if(!_expChanged&&!_flipChanged&&!_sigChanged) return;
           var _card=document.querySelector('[data-ai-classdrop="today"]');
           if(_expChanged&&_exp&&_card){
             _card.style.opacity='0';
@@ -16682,6 +16694,38 @@ function _classDropPreviewIsToday(){
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
+// Live remaining-count for a Daily Intelligence qualifier list — list items
+// each carry a "HH:MM" Irish-local race time (classDropHorses/groundLoverHorses/
+// hotYards[i].runnersToday all share this shape). Compared against the Irish
+// wall clock (_irishNowParts), same convention racecards' own t24 minutes use.
+// An item with no parseable time is counted as still-remaining — the safe
+// default (never hides a card early over a data gap, per the "never guess"
+// rule this feature was built under).
+function _diRemaining(list){
+  var now=_irishNowParts().mins;
+  var total=(list||[]).length,remaining=0;
+  (list||[]).forEach(function(h){
+    var m=String(h.time||'').match(/^(\d{1,2}):(\d{2})/);
+    if(!m){ remaining++; return; }
+    if(parseInt(m[1],10)*60+parseInt(m[2],10)>now) remaining++;
+  });
+  return {total:total,remaining:remaining};
+}
+// "16 horses today" before the first qualifier has run, "4 horses remaining"
+// once at least one has — singular handled either way.
+function _diCountLabel(dr){
+  var showRemaining=dr.remaining<dr.total;
+  var n=showRemaining?dr.remaining:dr.total;
+  return {count:n,label:'horse'+(n===1?'':'s')+' '+(showRemaining?'remaining':'today')};
+}
+// One string capturing every live-countable card's remaining count, diffed
+// tick to tick by the 60s Class Drop timer so it knows when a qualifier's
+// race time has just crossed "now" and the carousel needs a re-render.
+function _diRemainingSig(){
+  var parts=[_diRemaining(CLASSDROP_HORSES).remaining,_diRemaining(GROUND_HORSES).remaining];
+  (HOT_YARDS||[]).forEach(function(hy){ parts.push(_diRemaining(hy.runnersToday||[]).remaining); });
+  return parts.join(',');
+}
 function renderAIIntelligence(){
   var _ldNow=new Date();
   var _todayStr = irishDateStr(_ldNow);
@@ -16768,12 +16812,19 @@ function renderAIIntelligence(){
   // the same _items array via its own special item (isCandDG:true). Only
   // appended when the build actually generated card copy — candgCard stays
   // null on a horseless day or a failed AI call (see daily-build-background.js).
+  // No per-horse race times reach the client for C&D+G (get-daily-build's
+  // response carries candgHorsesCount only, not a candgHorses list like
+  // Ground Lover/Class Drop have) — so this card shows the static total only,
+  // never "remaining", and never self-hides. Plumbing a candgHorses array
+  // through daily-build-background.js/get-daily-build.js is the follow-up
+  // that would unlock the same live-remaining treatment the other three get.
   if(CANDG_CARD){
     _items=_items.concat([{
       isCandDG:true,
       signalType:'SPECIALIST',
       sigColor:'#14b8a6',
-      countLabel:CANDG_COUNT+' horse'+(CANDG_COUNT===1?'':'s'),
+      diCount:CANDG_COUNT,
+      diLabel:'horse'+(CANDG_COUNT===1?'':'s')+' today',
       intelligenceText:escHtml(CANDG_CARD||'')
     }]);
   }
@@ -16782,18 +16833,26 @@ function renderAIIntelligence(){
   // that have won on exactly today's going in their last six runs, on a
   // Yielding/Soft/Heavy day. Only appended when the build produced card copy;
   // groundLoverCard stays null on a fast-ground day or a failed AI call.
+  // Hides once every qualifier's race has run (remaining reaches 0) — same
+  // disappear-from-the-carousel outcome as Big Race's own expiry, just driven
+  // by the qualifier list instead of a single off time.
   if(GROUND_CARD){
     var _glVen={};
     (GROUND_HORSES||[]).forEach(function(h){var k=h.course||'';if(!_glVen[k])_glVen[k]={going:h.todayGoing||'',n:0};_glVen[k].n++;});
     var _glVenLabel=Object.keys(_glVen).map(function(k){return escHtml(k)+' &middot; '+escHtml(_glVen[k].going)+' ('+_glVen[k].n+')';}).join(' &nbsp;|&nbsp; ');
-    _items=_items.concat([{
-      isGroundLover:true,
-      signalType:'GROUND LOVER',
-      sigColor:'#0ea5e9',
-      countLabel:GROUND_COUNT+' horse'+(GROUND_COUNT===1?'':'s'),
-      venuesLabel:_glVenLabel,
-      intelligenceText:escHtml(GROUND_CARD||'')
-    }]);
+    var _glDr=_diRemaining(GROUND_HORSES);
+    if(!(_glDr.total>0&&_glDr.remaining===0)){
+      var _glLbl=_diCountLabel(_glDr);
+      _items=_items.concat([{
+        isGroundLover:true,
+        signalType:'GROUND LOVER',
+        sigColor:'#0ea5e9',
+        diCount:_glLbl.count,
+        diLabel:_glLbl.label,
+        venuesLabel:_glVenLabel,
+        intelligenceText:escHtml(GROUND_CARD||'')
+      }]);
+    }
   }
 
   // Class Drop — data-summary card like Ground Lover/C&D+G (isProvenClassDrop
@@ -16805,13 +16864,19 @@ function renderAIIntelligence(){
   // out first, then re-renders without it.
   var _cdTodayShown=!!CLASSDROP_CARD&&!_classDropTodayExpired();
   window._classDropExpiredShown=_classDropTodayExpired();
+  // Live remaining — the card itself never self-hides on remaining===0
+  // (that stays on the 15-min-after-last-off timer above); only the count
+  // switches from the day's total to how many are still to run.
+  var _cdDr=_diRemaining(CLASSDROP_HORSES);
+  var _cdLbl=_diCountLabel(_cdDr);
   if(_cdTodayShown){
     _items=_items.concat([{
       isClassDrop:true,
       cdToday:true,
       signalType:'CLASS DROP',
       sigColor:'#f59e0b',
-      countLabel:CLASSDROP_COUNT+' horse'+(CLASSDROP_COUNT===1?'':'s'),
+      diCount:_cdLbl.count,
+      diLabel:_cdLbl.label,
       intelligenceText:escHtml(CLASSDROP_CARD||'')
     }]);
   }
@@ -16823,6 +16888,10 @@ function renderAIIntelligence(){
   var _cdFlip=_classDropPreviewIsToday();
   window._classDropFlipShown=_cdFlip;
   if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&(!_cdFlip||!_cdTodayShown)){
+    // Static total, not a live remaining count — these qualifiers' race
+    // times are tomorrow's, so comparing their raw HH:MM against today's
+    // Irish clock (_diRemaining) would misread an early tomorrow time as
+    // already passed. Every one of them is still to come by definition.
     var _cdPrevCount=(CLASSDROP_PREVIEW.qualifiers||[]).length;
     _items=_items.concat([{
       isClassDrop:true,
@@ -16830,7 +16899,8 @@ function renderAIIntelligence(){
       cdFlipped:_cdFlip,
       signalType:_cdFlip?'CLASS DROP':"TOMORROW'S CLASS DROP",
       sigColor:'#f59e0b',
-      countLabel:_cdPrevCount+' horse'+(_cdPrevCount===1?'':'s'),
+      diCount:_cdPrevCount,
+      diLabel:'horse'+(_cdPrevCount===1?'':'s')+' '+(_cdFlip?'today':'tomorrow'),
       intelligenceText:escHtml(CLASSDROP_PREVIEW.text||'')
     }]);
   }
@@ -16845,10 +16915,16 @@ function renderAIIntelligence(){
   // One card per yard, each with its own text (hotYards[i].cardText) and its
   // own button. A report built before per-yard text existed has a single
   // combined hotYardCard: it is used only when exactly one yard qualified.
+  // Each yard hides once its own runnersToday have all raced — same
+  // disappear-from-the-carousel outcome as Big Race/Ground Lover, scoped per
+  // trainer since each yard is its own card with its own qualifier list.
   HOT_YARDS.forEach(function(_hy){
     if(!_hy||!_hy.trainerName) return;
     var _hyText=_hy.cardText||(HOT_YARDS.length===1?HOT_YARD_CARD:'')||'';
     if(!_hyText) return;
+    var _hyDr=_diRemaining(_hy.runnersToday||[]);
+    if(_hyDr.total>0&&_hyDr.remaining===0) return;
+    var _hyLbl=_diCountLabel(_hyDr);
     _items=_items.concat([{
       isHotYardCard:true,
       signalType:'HOT YARD',
@@ -16857,6 +16933,8 @@ function renderAIIntelligence(){
       strikeLabel:(_hy.strikeRate7d!=null?_hy.strikeRate7d:0)+'%',
       winners7d:_hy.winners7d||0,
       runners7d:_hy.runners7d||0,
+      diCount:_hyLbl.count,
+      diLabel:_hyLbl.label,
       intelligenceText:escHtml(_hyText)
     }]);
   });
@@ -16895,26 +16973,6 @@ function renderAIIntelligence(){
   el.innerHTML=_items.map(function(item){
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
-      // Runner count for today's "N horses" pill — same substring,
-      // case-insensitive trainer match setTrainerFilter/_tfMatchesForDay use
-      // (ru.trainer indexOf trainerName), so this number matches what the
-      // "View ... runners today" button filters to. Counted across the whole
-      // day (RC_TODAY_MEETINGS, every race, including ones already run), not
-      // just upcoming races. null (no pill) when racecards haven't loaded yet
-      // — never shows "0 horses".
-      var _hyRunnerCount=null;
-      if(RC_TODAY_MEETINGS&&RC_TODAY_MEETINGS.length){
-        var _hyTnLc=String(item.trainerName||'').toLowerCase();
-        _hyRunnerCount=0;
-        RC_TODAY_MEETINGS.forEach(function(m){
-          (m.races||[]).forEach(function(race){
-            (race.runners||[]).forEach(function(ru){
-              if((ru.trainer||'').toLowerCase().indexOf(_hyTnLc)!==-1) _hyRunnerCount++;
-            });
-          });
-        });
-      }
-      var _hyCountLabel=_hyRunnerCount!=null?(_hyRunnerCount+' horse'+(_hyRunnerCount===1?'':'s')):null;
       return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
@@ -16927,7 +16985,7 @@ function renderAIIntelligence(){
           +'</div>'
           +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+escHtml(item.trainerName)+'</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
-          +(_hyCountLabel?'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+_hyCountLabel+'</div>':'')
+          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
@@ -16948,7 +17006,7 @@ function renderAIIntelligence(){
           +'</div>'
           +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Course, Distance &amp; Ground Winners</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">Winners at today\'s exact course, distance and going</div>'
-          +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
+          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
@@ -16970,7 +17028,7 @@ function renderAIIntelligence(){
           +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ground Lovers</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Winners on exactly today\'s going in their last six runs</div>'
           +(item.venuesLabel?'<div style="font-size:11px;color:rgba(255,255,255,0.85);margin-bottom:8px">'+item.venuesLabel+'</div>':'')
-          +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
+          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
@@ -16998,7 +17056,7 @@ function renderAIIntelligence(){
           +'</div>'
           +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_cdTitle+'</div>'
           +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Dropping one class, proven at the higher level and rated among '+_cdDay+'\'s best</div>'
-          +'<div style="display:inline-block;font-size:11px;font-weight:700;color:#0D1B3E;background:#fff;border-radius:5px;padding:2px 8px;margin-bottom:10px">'+escHtml(item.countLabel)+'</div>'
+          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
