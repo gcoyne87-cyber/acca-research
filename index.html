@@ -13571,19 +13571,6 @@ function rcSetCompactDetail(mid,time,mname,wantDetail){
   wantDetail=!!wantDetail;
   var changed=!!_rcDetailOpen[key]!==wantDetail;
   _rcDetailOpen[key]=wantDetail;
-  // Two states govern a runner's Form panel: this race-level mode and the
-  // per-horse nrOpenHistory, which _nrRestorePanels replays (setTimeout 0)
-  // after every list rebuild and which each "More/Less detail" link reads
-  // first. They must agree BEFORE the re-render: previously the sync loop
-  // below compared the wanted mode against the freshly rebuilt DOM — always
-  // closed — so a Compact press found nothing to close, never cleared the
-  // history, and the restore put every panel straight back (the one-click-
-  // behind bug). Markers are read now, from the DOM that is about to go.
-  var markers=document.querySelectorAll('[data-race-key]');
-  for(var h=0;h<markers.length;h++){
-    if(markers[h].getAttribute('data-race-key')!==key) continue;
-    nrOpenHistory[markers[h].dataset.pfx]=wantDetail?'fe':false;
-  }
   if(changed){
     _renderCurrentHomeList();
     if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
@@ -13592,24 +13579,25 @@ function rcSetCompactDetail(mid,time,mname,wantDetail){
     if(typeof nrRenderCard==='function') nrRenderCard();
     if(typeof renderRcSingleList==='function') renderRcSingleList();
   }
-  // Open/close every runner's Form panel in this race explicitly. nrLoadForm
-  // TOGGLES, so it is only called when the panel's current state differs
-  // from the wanted one. Runs on a same-mode press too (no rebuild): Detail
-  // pressed again re-expands any horse collapsed by hand.
-  markers=document.querySelectorAll('[data-race-key]');
-  for(var i=0;i<markers.length;i++){
-    if(markers[i].getAttribute('data-race-key')!==key) continue;
-    var pfx=markers[i].dataset.pfx,hid=markers[i].dataset.horseid||'';
-    var wrap=document.getElementById('nrh-'+pfx);
-    var isOpen=!!(wrap&&wrap.dataset.openPanel==='fe');
-    if(wantDetail!==isOpen){ nrLoadForm(pfx,hid); _nrSyncDetailLink(pfx); }
-  }
-  // Second pass on the next tick through the per-horse restore path: rows
-  // that a deferred render (e.g. todaySelectRace's post-fetch _render) puts
-  // in after this click are opened from nrOpenHistory — written above for
-  // the rows that existed, and by _runnerExtraHtml at render time for the
-  // rest — via nrLoadForm, exactly as the "More detail" link does it.
-  setTimeout(_nrRestorePanels,0);
+  // The dumb way, deliberately: Detail/Compact is N presses of the per-horse
+  // "More detail"/"Less detail" link — the one thing that has always
+  // worked. After the rebuild above and after the restore pass it schedules
+  // (_nrRestorePanels, setTimeout 0) have both run, every link in this race
+  // (found via the per-runner marker's pfx) is read by its own label: "More
+  // detail" means closed, "Less detail" means open. Detail clicks the closed
+  // ones, Compact clicks the open ones — the element's own click(), so the
+  // handler, panel and label update exactly as a finger tap would. No state
+  // reconciliation, no nrOpenHistory writes.
+  setTimeout(function(){
+    var markers=document.querySelectorAll('[data-race-key]');
+    for(var i=0;i<markers.length;i++){
+      if(markers[i].getAttribute('data-race-key')!==key) continue;
+      var link=document.getElementById('nrh-moredetail-'+markers[i].dataset.pfx);
+      if(!link) continue;
+      var isOpen=/less detail/i.test(link.textContent||'');
+      if(wantDetail!==isOpen) link.click();
+    }
+  },60);
 }
 // Data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
@@ -13683,16 +13671,12 @@ function _runnerExtraHtml(mid,time,mname,ru,ctx){
 
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var key=mid+'-'+time;
-  // A horse individually toggled since the last full re-render keeps its
-  // own state (nrOpenHistory, maintained by nrTogglePanel already); only a
-  // horse that's never been touched falls back to the race-level toggle —
-  // and is written INTO nrOpenHistory here, at render time, so the restore
-  // pass every rebuild schedules (_nrRestorePanels -> nrLoadForm, the same
-  // path the "More detail" link takes) opens its panel whatever order the
-  // tap, the fetch and the rebuild happened in. Detail can't depend on the
-  // rows already being in the DOM at the moment the button was pressed.
-  if(typeof nrOpenHistory!=='undefined'&&!(pfx in nrOpenHistory)&&_rcDetailOpen[key]) nrOpenHistory[pfx]='fe';
-  var linkOpen=(typeof nrOpenHistory!=='undefined'&&(pfx in nrOpenHistory))?(nrOpenHistory[pfx]==='fe'):!!_rcDetailOpen[key];
+  // The link's label mirrors the horse's own panel state only (nrOpenHistory,
+  // maintained by nrTogglePanel; after a rebuild _nrRestorePanels reopens
+  // exactly those panels). It never reads the race-level Compact/Detail flag
+  // — rcSetCompactDetail drives these links by reading this label, so the
+  // label must mean what it says: "Less detail" = the panel is open.
+  var linkOpen=(typeof nrOpenHistory!=='undefined')&&nrOpenHistory[pfx]==='fe';
   var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
   var linkHtml='<div style="padding:4px 12px 0"><span id="nrh-moredetail-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\');_nrSyncDetailLink(\''+pfx+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:500;color:#1a7a4a;cursor:pointer">'
     +(linkOpen?'Less detail &#9650;':'More detail &#9660;')
