@@ -13583,35 +13583,36 @@ function rcSetCompactDetail(mid,time,mname,wantDetail){
   _rcTabLastMs=now;
   var key=mid+'-'+time;
   wantDetail=!!wantDetail;
-  var changed=!!_rcDetailOpen[key]!==wantDetail;
   _rcDetailOpen[key]=wantDetail;
-  if(changed){
-    _renderCurrentHomeList();
-    if(typeof renderTomorrowMeetingsList==='function') renderTomorrowMeetingsList();
-    var _fe=document.getElementById('racing-future-content');
-    if(_fe&&_fe.style.display!=='none') renderFutureDateContent(_cardsDay);
-    if(typeof nrRenderCard==='function') nrRenderCard();
-    if(typeof renderRcSingleList==='function') renderRcSingleList();
+  // No list rebuild and no timer. The old version re-rendered the whole list
+  // on a mode change and fired the link clicks 60ms later — on a phone the
+  // rebuild of 20+ rows outlasted the timer, so the first press clicked
+  // stale/missing links (silent no-op) and only the second press, which
+  // skipped the rebuild, landed. The rebuild did exactly one thing for this
+  // toggle — repaint the two buttons' active styling — so that is done in
+  // place: every Compact/Detail pair for this race (any view) carries its
+  // on/off styles as data attributes (_raceTabsHtml).
+  var btns=document.querySelectorAll('[data-rc-key][data-rc-cd]');
+  for(var b=0;b<btns.length;b++){
+    if(btns[b].getAttribute('data-rc-key')!==key) continue;
+    var on=(btns[b].getAttribute('data-rc-cd')==='detail')===wantDetail;
+    btns[b].style.cssText=btns[b].getAttribute(on?'data-on':'data-off');
   }
   // The dumb way, deliberately: Detail/Compact is N presses of the per-horse
   // "More detail"/"Less detail" link — the one thing that has always
-  // worked. After the rebuild above and after the restore pass it schedules
-  // (_nrRestorePanels, setTimeout 0) have both run, every link in this race
-  // (found via the per-runner marker's pfx) is read by its own label: "More
-  // detail" means closed, "Less detail" means open. Detail clicks the closed
-  // ones, Compact clicks the open ones — the element's own click(), so the
-  // handler, panel and label update exactly as a finger tap would. No state
-  // reconciliation, no nrOpenHistory writes.
-  setTimeout(function(){
-    var markers=document.querySelectorAll('[data-race-key]');
-    for(var i=0;i<markers.length;i++){
-      if(markers[i].getAttribute('data-race-key')!==key) continue;
-      var link=document.getElementById('nrh-moredetail-'+markers[i].dataset.pfx);
-      if(!link) continue;
-      var isOpen=/less detail/i.test(link.textContent||'');
-      if(wantDetail!==isOpen) link.click();
-    }
-  },60);
+  // worked. The DOM is untouched, so every link is present right now: each
+  // one in this race (found via the per-runner marker's pfx) is read by its
+  // own label — "More detail" closed, "Less detail" open — and Detail clicks
+  // the closed ones, Compact the open ones, synchronously, via the element's
+  // own click() so handler, panel and label update exactly as a tap would.
+  var markers=document.querySelectorAll('[data-race-key]');
+  for(var i=0;i<markers.length;i++){
+    if(markers[i].getAttribute('data-race-key')!==key) continue;
+    var link=document.getElementById('nrh-moredetail-'+markers[i].dataset.pfx);
+    if(!link) continue;
+    var isOpen=/less detail/i.test(link.textContent||'');
+    if(wantDetail!==isOpen) link.click();
+  }
 }
 // Data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
@@ -13924,8 +13925,8 @@ function _raceTabsHtml(mid,time,mname){
   var cOff=cBase+'background:transparent;color:#6b7280';
   var detailOn=!!_rcDetailOpen[key];
   var html='<div style="display:flex;gap:5px;padding:8px 12px 8px">'
-    +'<button style="'+(!detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',false)"><span>Compact</span></button>'
-    +'<button style="'+(detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',true)"><span>Detail</span></button>'
+    +'<button data-rc-cd="compact" data-rc-key="'+escHtml(key)+'" data-on="'+cOn+'" data-off="'+cOff+'" style="'+(!detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',false)"><span>Compact</span></button>'
+    +'<button data-rc-cd="detail" data-rc-key="'+escHtml(key)+'" data-on="'+cOn+'" data-off="'+cOff+'" style="'+(detailOn?cOn:cOff)+'" onclick="rcSetCompactDetail(\''+me+'\',\''+te+'\',\''+ne+'\',true)"><span>Detail</span></button>'
     +'</div>';
   if(active==='analysis'){
     var ck=(mname+' '+time).toLowerCase().trim();
