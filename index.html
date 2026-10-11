@@ -14993,8 +14993,12 @@ function runnerRow(ru,ctx,extraHtml,isFav){
 // synchronously before the fetch starts) and by rcSetCompactDetail for
 // every horse it opens or closes.
 function _nrSyncDetailLink(pfx){
-  var wrap=document.getElementById('nrh-'+pfx);
-  var open=!!(wrap&&wrap.dataset.openPanel==='fe');
+  // nrOpenHistory, not wrap.dataset.openPanel: nrTogglePanel writes the
+  // history synchronously but only clears data-open-panel after its 250ms
+  // close animation, so reading the attribute here left a just-closed horse
+  // labelled "Less detail" — and rcSetCompactDetail drives these links by
+  // this label, so a lying label is a horse Detail can't reopen.
+  var open=(typeof nrOpenHistory!=='undefined')&&nrOpenHistory[pfx]==='fe';
   var el=document.getElementById('nrh-moredetail-'+pfx);
   if(el) el.innerHTML=open?'Less detail &#9650;':'More detail &#9660;';
 }
