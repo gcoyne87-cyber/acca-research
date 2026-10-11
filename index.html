@@ -15037,7 +15037,9 @@ function nrTogglePanel(pfx,panel){
     nrOpenHistory[pfx]=false;
   } else {
     if(wrap._closeTimer){ clearTimeout(wrap._closeTimer); wrap._closeTimer=null; }
-    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 0 8px;position:relative;border-radius:0;background:#fff;border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
+    // Form panel ('fe') carries no top border; the Edge panel keeps its gold
+    // one and the profile panel its grey hairline.
+    wrap.style.cssText=panel==='pe'?'display:block;margin:0;position:relative;border-radius:0;background:#fff;border-top:1px solid #e5e7eb':'display:block;margin:3px 0 8px;position:relative;border-radius:0;background:#fff'+(panel==='se'?';border-top:3px solid '+accent:'');wrap.dataset.openPanel=panel;
     wrap.style.maxHeight='0'; wrap.style.overflow='hidden'; wrap.style.transition='max-height 0.25s ease'; requestAnimationFrame(function(){ wrap.style.maxHeight='8000px'; });
     if(feDiv)feDiv.style.display=panel==='fe'?'block':'none';
     if(seDiv)seDiv.style.display=panel==='se'?'block':'none';
@@ -15799,7 +15801,8 @@ function tipsPanelToggle(i,panel,horse){
   var accent=panel==='ee'?'#d4af37':'#1e9e6b';
   if(cur===panel){wrap.style.cssText='display:none';wrap.dataset.openPanel='';_tipsPillState(feBtn,false);_tipsPillState(eeBtn,false);}
   else{
-    wrap.style.cssText='display:block;margin-top:3px;margin-bottom:10px;position:relative;border-radius:10px;background:rgba(255,255,255,0.07);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-top:3px solid '+accent;wrap.dataset.openPanel=panel;
+    // Form panel ('fe') carries no top border; the Edge panel ('ee') keeps its gold one.
+    wrap.style.cssText='display:block;margin-top:3px;margin-bottom:10px;position:relative;border-radius:10px;background:rgba(255,255,255,0.07);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)'+(panel==='ee'?';border-top:3px solid '+accent:'');wrap.dataset.openPanel=panel;
     if(feDiv)feDiv.style.display=panel==='fe'?'block':'none';
     if(eeDiv)eeDiv.style.display=panel==='ee'?'block':'none';
     _tipsPillState(feBtn,panel==='fe');_tipsPillState(eeBtn,panel==='ee');
