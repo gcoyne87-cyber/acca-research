@@ -19673,10 +19673,21 @@ function selectRacingSection(s){
       selectRacingDate("today");
       renderTodayMeetingsList();
     } else {
+      // Non-today _homeRcDay (tomorrow, or a future date) — same new-system
+      // pattern the evening auto-switch already uses correctly (the 60s tick
+      // and the on-load tomorrow-data handler, both: flip the day, render via
+      // _renderCurrentHomeList). selectRacingDate('today') keeps
+      // #racing-today-content (title + #today-meetings-list) the visible
+      // container; _renderCurrentHomeList() then paints the right day's
+      // content into it. Previously this called selectRacingDate(_homeRcDay)
+      // directly, which for 'tomorrow' switches to the legacy, titleless
+      // #racing-tomorrow-content instead — same bug the Class Drop CTA fix
+      // addressed, reached here via the plain Cards nav button instead.
       if(todayC) todayC.style.display="";
       var e8f=document.getElementById("racing-today-meetings");
       if(e8f) e8f.style.display="";
-      selectRacingDate(_homeRcDay);
+      selectRacingDate("today");
+      _renderCurrentHomeList();
     }
   } else if(s==="nextrace"){
     if(nrPanel) nrPanel.style.display="";
