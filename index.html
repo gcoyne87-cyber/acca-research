@@ -5730,40 +5730,18 @@ function unlockCorkAnalysis(){
       </div>
       <div id="today-racecards-subheading" style="font-size:12px;color:#9aa3b5;margin:0 0 6px;padding-left:13px">Race analysis and form guide for today's meetings</div>
     </div>
-    <!-- Filter panel — trainer search plus the four edge toggle rows (moved
-         here from the former Today's Edges section). Opened by #rc-filter-btn.
-         The filter logic underneath is unchanged: _selectEdgeChip /
-         clearEdgeFilter for the edge rows, setTrainerFilter / clearTrainerFilter
-         for the trainer input; the result view is renderTrainerFilterMultiDay.
-         The row visuals are painted by _renderEdgeChips by id. -->
+    <!-- Filter panel — trainer search only. Opened by #rc-filter-btn. The
+         manual edge toggle rows that used to live here were removed — DI
+         card CTAs (_activateEdgeFilterFromCta -> _selectEdgeChip) are now the
+         only entry point into edge filtering. The engine underneath is
+         unchanged: _selectEdgeChip / clearEdgeFilter, setTrainerFilter /
+         clearTrainerFilter for the trainer input; the result view is
+         renderTrainerFilterMultiDay, including the "Edge: X ×" clear chip. -->
     <div id="rc-filter-panel" style="display:none;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:0 14px 12px">
       <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by trainer</div>
       <div id="rc-trainer-chips-label" style="font-size:11px;color:#9ca3af;margin-bottom:6px">Popular today</div>
       <div id="rc-trainer-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f1f1f1;-webkit-overflow-scrolling:touch"></div>
       <div style="position:relative;margin-bottom:14px"><input id="rc-trainer-search" type="text" placeholder="Or enter any trainer name..." autocomplete="off" oninput="_onTrainerSearchInput(this.value,'rc-trainer-search-dropdown')" onkeydown="if(event.key==='Enter'){setTrainerFilter(this.value);_rcFilterClose();}" style="width:100%;height:36px;border:1px solid #e5e7eb;border-radius:8px;padding:0 10px;font-size:14px;box-sizing:border-box;font-family:inherit"><div id="rc-trainer-search-dropdown" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);z-index:100;max-height:220px;overflow-y:auto;display:none"></div></div>
-      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Filter by edge</div>
-      <div id="edge-filter-chips">
-        <div id="edge-row-cd" onclick="_toggleEdgeRow('cd')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
-          <div><div id="edge-row-cd-name" style="font-size:13px;font-weight:700;color:#0b1628">Course &amp; Distance</div><div style="font-size:11px;color:#6b7280">Runners who have already won over today's course and trip</div></div>
-          <div id="edge-row-cd-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-cd-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
-        </div>
-        <div id="edge-row-ground" onclick="_toggleEdgeRow('ground')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
-          <div><div id="edge-row-ground-name" style="font-size:13px;font-weight:700;color:#0b1628">Ground</div><div style="font-size:11px;color:#6b7280">Runners with a proven record on today's going</div></div>
-          <div id="edge-row-ground-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-ground-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
-        </div>
-        <div id="edge-row-cdg" onclick="_toggleEdgeRow('cdg')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
-          <div><div id="edge-row-cdg-name" style="font-size:13px;font-weight:700;color:#0b1628">C&amp;D + Going</div><div style="font-size:11px;color:#6b7280">Course and distance winners who also handle today's going</div></div>
-          <div id="edge-row-cdg-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-cdg-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
-        </div>
-        <div id="edge-row-hotyard" onclick="_toggleEdgeRow('hotyard')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
-          <div><div id="edge-row-hotyard-name" style="font-size:13px;font-weight:700;color:#0b1628">Hot Yard</div><div style="font-size:11px;color:#6b7280">Runners from yards in red-hot form over the last 7 days</div></div>
-          <div id="edge-row-hotyard-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-hotyard-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
-        </div>
-        <div id="edge-row-classdrop" onclick="_toggleEdgeRow('classdrop')" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px">
-          <div><div id="edge-row-classdrop-name" style="font-size:13px;font-weight:700;color:#0b1628">Class Drop</div><div style="font-size:11px;color:#6b7280">Dropping one class, proven at the higher level and rated among today's best</div></div>
-          <div id="edge-row-classdrop-tog" style="width:36px;height:20px;border-radius:10px;background:#e5e7eb;position:relative;flex-shrink:0"><div id="edge-row-classdrop-dot" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></div></div>
-        </div>
-      </div>
       <div style="display:flex;gap:8px;margin-top:14px"><button onclick="_rcFilterClear()" style="flex:1;height:38px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button onclick="_rcFilterClose()" style="flex:2;height:38px;border-radius:8px;border:none;background:#1e9e6b;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Apply</button></div>
       <!-- Legacy trainer input kept in the DOM but hidden: setTrainerFilter /
            _resetTrainerFilterState / clearTrainerFilter still read and write it. -->
@@ -12203,10 +12181,11 @@ function _edgeDayMeetings(k){
   return _tfDayMeetings[k]||[];
 }
 
-// Option C toggle rows — paints every row from _edgeChipMode. 'trainer' is
-// the no-edge-filter default, so all four rows read as off in that state.
-// Styles here must match the static markup of the rows inside #rc-filter-panel
-// (#edge-filter-chips).
+// Paints the #edge-row-* rows from _edgeChipMode — kept even though those
+// rows no longer exist in the Filter panel (removed; edge filtering is now
+// entered only via DI card CTAs). Every lookup below is null-guarded, so this
+// is a harmless no-op today; it still calls _rcFilterBadge(), which is its
+// real remaining job — that badge lives on the Filter button, not the panel.
 function _renderEdgeChips(){
   var rowOn='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #1e9e6b;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
   var rowOff='display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:6px';
@@ -12224,18 +12203,11 @@ function _renderEdgeChips(){
   _rcFilterBadge();
 }
 
-// Row tap: an already-active row switches off (clearEdgeFilter restores the
-// normal list); any other row activates through the unchanged _selectEdgeChip
-// path, whose render hook scrolls the racecards into view.
-function _toggleEdgeRow(mode){
-  if(_edgeChipMode===mode){ clearEdgeFilter(); return; }
-  _selectEdgeChip(mode);
-  _rcFilterClose();
-}
-
 // Racecards-header Filter button + panel (#rc-filter-btn / #rc-filter-panel).
-// Presentation only — every tap inside the panel lands on the unchanged
-// _toggleEdgeRow / setTrainerFilter / clear* paths.
+// Presentation only — the panel now holds just the trainer filter; every tap
+// inside it lands on the unchanged setTrainerFilter / clear* paths. Edge
+// filtering is entered only via DI card CTAs (_activateEdgeFilterFromCta ->
+// _selectEdgeChip) — see that function and clearEdgeFilter.
 function _rcFilterToggle(){
   var p=document.getElementById('rc-filter-panel');
   if(!p) return;
