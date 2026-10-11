@@ -13604,6 +13604,12 @@ function rcSetCompactDetail(mid,time,mname,wantDetail){
     var isOpen=!!(wrap&&wrap.dataset.openPanel==='fe');
     if(wantDetail!==isOpen){ nrLoadForm(pfx,hid); _nrSyncDetailLink(pfx); }
   }
+  // Second pass on the next tick through the per-horse restore path: rows
+  // that a deferred render (e.g. todaySelectRace's post-fetch _render) puts
+  // in after this click are opened from nrOpenHistory — written above for
+  // the rows that existed, and by _runnerExtraHtml at render time for the
+  // rest — via nrLoadForm, exactly as the "More detail" link does it.
+  setTimeout(_nrRestorePanels,0);
 }
 // Data shape, read from the cached race analysis entry for this runner:
 //   runnerAnalysis[i].verdict = { text: '...', tag: { label: '...', text: '...' } }
@@ -13679,7 +13685,13 @@ function _runnerExtraHtml(mid,time,mname,ru,ctx){
   var key=mid+'-'+time;
   // A horse individually toggled since the last full re-render keeps its
   // own state (nrOpenHistory, maintained by nrTogglePanel already); only a
-  // horse that's never been touched falls back to the race-level toggle.
+  // horse that's never been touched falls back to the race-level toggle —
+  // and is written INTO nrOpenHistory here, at render time, so the restore
+  // pass every rebuild schedules (_nrRestorePanels -> nrLoadForm, the same
+  // path the "More detail" link takes) opens its panel whatever order the
+  // tap, the fetch and the rebuild happened in. Detail can't depend on the
+  // rows already being in the DOM at the moment the button was pressed.
+  if(typeof nrOpenHistory!=='undefined'&&!(pfx in nrOpenHistory)&&_rcDetailOpen[key]) nrOpenHistory[pfx]='fe';
   var linkOpen=(typeof nrOpenHistory!=='undefined'&&(pfx in nrOpenHistory))?(nrOpenHistory[pfx]==='fe'):!!_rcDetailOpen[key];
   var hid=escHtml(ru.horse_id||'').replace(/'/g,"\\'");
   var linkHtml='<div style="padding:4px 12px 0"><span id="nrh-moredetail-'+pfx+'" onclick="nrLoadForm(\''+pfx+'\',\''+hid+'\');_nrSyncDetailLink(\''+pfx+'\')" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:500;color:#1a7a4a;cursor:pointer">'
@@ -16347,15 +16359,18 @@ function loadDailyBuild(){
       // polling). A signature string of each list's remaining count is
       // diffed tick to tick; any change re-renders.
       if(!window._classDropTimer){
-        window._diRemainingSig=_diRemainingSig();
+        // Stored under its own name — window._diRemainingSig would shadow the
+        // global function _diRemainingSig() itself (a string, "is not a
+        // function" on the next tick, timer dead).
+        window._diRemainingSigLast=_diRemainingSig();
         window._classDropTimer=setInterval(function(){
           var _exp=_classDropTodayExpired();
           var _flip=_classDropPreviewIsToday();
           var _expChanged=_exp!==window._classDropExpiredShown;
           var _flipChanged=_flip!==window._classDropFlipShown;
           var _sig=_diRemainingSig();
-          var _sigChanged=_sig!==window._diRemainingSig;
-          window._diRemainingSig=_sig;
+          var _sigChanged=_sig!==window._diRemainingSigLast;
+          window._diRemainingSigLast=_sig;
           if(!_expChanged&&!_flipChanged&&!_sigChanged) return;
           var _card=document.querySelector('[data-ai-classdrop="today"]');
           if(_expChanged&&_exp&&_card){
