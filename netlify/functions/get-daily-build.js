@@ -38,6 +38,38 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading' }) };
     }
 
+    // Overnight handover — midnight UTC until the ~10:30 build. Today's key
+    // may be nothing but the preview shell the 02:00 Class Drop job wrote
+    // while today was still "tomorrow" (classDropPreview and no analyses), so
+    // the carousel went empty at midnight even though tomorrow's Class Drop
+    // and tomorrow's Big Race cards had been showing all evening. Serve the
+    // overnight state as today's cards, response-only (nothing is stored):
+    //  - classDropPreview -> classDropCard/classDropHorses/classDropLastRaceOffTime
+    //    (the exact promotion refreshTodayClassDrop performs at 02:00)
+    //  - yesterday's bigRaceTomorrow, when dated today -> today's bigRace
+    // NAP/NB picks, intelPicks, analyses and the countdown cards (Ground
+    // Lover, C&D+G, Hot Yard) are never carried over — those stay empty until
+    // the build. Only for the default (today) request: ?date={tomorrow} keeps
+    // returning the raw preview the client reads as a preview. The 10:30
+    // build then overwrites the key and this block no longer applies.
+    const isPreviewShell = !dateParam && !(report.analyses || []).length && !report.completedAt;
+    let overnight = null;
+    if (isPreviewShell) {
+      overnight = { classDropCard: null, classDropHorses: [], classDropLastRaceOffTime: null, bigRace: null };
+      const pv = report.classDropPreview;
+      if (!report.classDropCard && pv && (pv.text || (pv.qualifiers || []).length)) {
+        overnight.classDropCard = pv.text || null;
+        overnight.classDropHorses = pv.qualifiers || [];
+        overnight.classDropLastRaceOffTime = pv.lastRaceOffTime || null;
+      }
+      if (!report.bigRace) {
+        const yd = new Date(reportDate + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1);
+        const yesterday = await redisGet('daily:report:' + yd.toISOString().slice(0, 10));
+        const brt = yesterday && yesterday.bigRaceTomorrow;
+        if (brt && brt.raceIntelligence && brt.date === reportDate) overnight.bigRace = brt;
+      }
+    }
+
     // Pull top picks — top 3 become picks, rest are noted. Ranking rule: the
     // build's stored pickRank (stamped by the NB reorder step as the final
     // pick order — rank 1 is always the highest-confidence NAP) wins when
@@ -128,7 +160,7 @@ exports.handler = async function(event) {
         picks,
         intelPicks,
         valuePicks,
-        bigRace: report.bigRace || null,
+        bigRace: report.bigRace || (overnight && overnight.bigRace) || null,
         bigRaceTomorrow: report.bigRaceTomorrow || null,
         candgCard: report.candgCard || null,
         candgHorsesCount: (report.candgHorses || []).length,
@@ -136,10 +168,10 @@ exports.handler = async function(event) {
         groundLoverCard: report.groundLoverCard || null,
         groundLoverHorsesCount: (report.groundLoverHorses || []).length,
         groundLoverHorses: report.groundLoverHorses || [],
-        classDropCard: report.classDropCard || null,
-        classDropHorsesCount: (report.classDropHorses || []).length,
-        classDropHorses: report.classDropHorses || [],
-        classDropLastRaceOffTime: report.classDropLastRaceOffTime || null,
+        classDropCard: report.classDropCard || (overnight && overnight.classDropCard) || null,
+        classDropHorsesCount: ((report.classDropHorses && report.classDropHorses.length) ? report.classDropHorses : (overnight ? overnight.classDropHorses : [])).length,
+        classDropHorses: (report.classDropHorses && report.classDropHorses.length) ? report.classDropHorses : (overnight ? overnight.classDropHorses : []),
+        classDropLastRaceOffTime: report.classDropLastRaceOffTime || (overnight && overnight.classDropLastRaceOffTime) || null,
         // Tomorrow's Class Drop preview, written onto this date's report by the
         // 02:00 nightly job while this date was still "tomorrow"; the client
         // reads it via ?date={tomorrow}. null once the 10:30 build has promoted
