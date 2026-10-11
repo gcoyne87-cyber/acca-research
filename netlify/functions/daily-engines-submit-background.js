@@ -6,15 +6,22 @@ const nodemailer = require('nodemailer');
 // x-build-secret; a schedule on a -background function never fires — see
 // form-summary-background.js).
 //
-// 1. newDate = today + 6 (Europe/Dublin): the date that entered the 7-day
-//    window via last night's fetch-future-cards.
-// 2. goingtrip batch for newDate — form-sections-run-background ?mode=batch.
+// 1. History readiness per window date (today .. today+6, Europe/Dublin):
+//    a date is swept only when >=90% of its runners have a form:history key.
+// 2. goingtrip SWEEP of every history-ready date — one form-sections-run-
+//    background ?mode=batch&horseIds= batch per date that has uncovered
+//    horses. Skip rule: a horse whose form-sections:{horse_id} key exists
+//    is never resubmitted, so a normal day submits only late declarations
+//    and the newest date entering the window. (Previously one date per day,
+//    never revisited — every horse declared after that single pass had no
+//    Trip/Going/Track text for good.)
 // 3. trainer-history batch for the whole window (today .. today+6) —
 //    trainer-history-v2-background ?mode=batch&dates=. Its skip rule means
 //    only horses that have run since their record was written are
 //    submitted; everything else skips free.
-// 4. batch:daily:{today} records both batchIds and counts for the collector
-//    (daily-engines-collect-background.js), which sends the one daily email.
+// 4. batch:daily:{today} records every batchId and per-date counts for the
+//    collector (daily-engines-collect-background.js), which sends the one
+//    daily email.
 //
 // The engines are invoked IN-PROCESS — their exported handler is called with
 // a synthetic secret-bearing event — not over HTTP. Over HTTP a -background
@@ -92,6 +99,35 @@ function redisExistsCount(keys) {
   }, Promise.resolve(0));
 }
 
+// Per-key existence, same pipelined EXISTS as redisExistsCount but returning
+// one boolean per key in order. The goingtrip sweep's skip rule: a horse
+// whose form-sections:{horse_id} already exists is never resubmitted. A
+// pipeline failure reports every key in that chunk as present — which can
+// only SKIP horses (caught on the next day's sweep), never double-submit.
+function redisExistsEach(keys) {
+  const url = new URL(UPSTASH_URL);
+  const chunks = []; for (let i = 0; i < keys.length; i += 150) chunks.push(keys.slice(i, i + 150));
+  return chunks.reduce(function(p, chunk) {
+    return p.then(function(acc) {
+      return new Promise(function(resolve) {
+        const body = JSON.stringify(chunk.map(function(k) { return ['EXISTS', k]; }));
+        const req = https.request({
+          hostname: url.hostname, path: '/pipeline', method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+        }, function(res) {
+          let d = ''; res.on('data', function(c) { d += c; });
+          res.on('end', function() {
+            let arr = null; try { arr = JSON.parse(d); } catch (e) { arr = null; }
+            resolve(acc.concat(chunk.map(function(k, i) { return Array.isArray(arr) ? !!(arr[i] && arr[i].result) : true; })));
+          });
+        });
+        req.on('error', function() { resolve(acc.concat(chunk.map(function() { return true; }))); });
+        req.write(body); req.end();
+      });
+    });
+  }, Promise.resolve([]));
+}
+
 // Distinct non-NR horse_ids on a stored racecard — the same eligibility the
 // engines' own eligibleHorses() applies.
 function cardHorseIds(card) {
@@ -159,7 +195,8 @@ async function submitEngine(label, handler, query, worklistKey) {
   throw new Error(label + ': ' + (b.error || b.reason || ('unexpected engine response HTTP ' + r.statusCode + ' ' + JSON.stringify(b).slice(0, 300))));
 }
 
-function failureBody(date, newDate, failedEngine, error, goingtrip) {
+// goingtrip is the sweep summary { batches: [{ date, batchId, submitted }], failedDate }.
+function failureBody(date, goingtrip, failedEngine, error) {
   const lines = [
     'Racing Edge daily engines — ' + date,
     '',
@@ -167,13 +204,18 @@ function failureBody(date, newDate, failedEngine, error, goingtrip) {
     'Error: ' + error,
     ''
   ];
+  const done = ((goingtrip && goingtrip.batches) || []).filter(function(b) { return b.batchId; });
+  const doneLines = done.map(function(b) { return '  ' + b.date + ': batchId ' + b.batchId + ' (' + b.submitted + ' horses) — collect manually with form-sections-run-background?collect=' + b.batchId + ' — the collector will not run for today because batch:daily is marked failed.'; });
   if (failedEngine === 'goingtrip') {
-    lines.push('Nothing was submitted. The goingtrip batch for ' + newDate + ' was not created and the trainer history batch was not attempted.');
-  } else if (goingtrip && goingtrip.batchId) {
+    lines.push('The goingtrip sweep failed' + (goingtrip && goingtrip.failedDate ? ' on ' + goingtrip.failedDate : '') + '; the trainer history batch was not attempted.');
+    if (done.length) { lines.push('goingtrip batches submitted BEFORE the failure:'); lines.push.apply(lines, doneLines); }
+    else lines.push('No goingtrip batch was submitted.');
+  } else if (done.length) {
     lines.push('The trainer history batch was not created.');
-    lines.push('The goingtrip batch for ' + newDate + ' WAS submitted before this failure — batchId ' + goingtrip.batchId + ' (' + goingtrip.submitted + ' horses). Collect it manually with form-sections-run-background?collect=' + goingtrip.batchId + ' — the collector will not run for today because batch:daily is marked failed.');
+    lines.push('goingtrip batches WERE submitted before this failure:');
+    lines.push.apply(lines, doneLines);
   } else {
-    lines.push('Nothing was submitted: the goingtrip batch had no eligible horses and the trainer history batch was not created.');
+    lines.push('Nothing was submitted: the goingtrip sweep found nothing uncovered and the trainer history batch was not created.');
   }
   return lines.join('\n');
 }
@@ -229,45 +271,69 @@ exports.handler = async function(event) {
     readiness[d] = { horses: ids.length, withHistory: withHistory, ready: ids.length > 0 && withHistory / ids.length >= 0.9 };
   }
   const trainerDates = windowDates.filter(function(d) { return readiness[d].ready; });
-  let newDate = null;
-  for (let i = 6; i >= 0; i--) {
-    const d = windowDates[i];
-    if (!readiness[d].ready) continue;
-    const marker = await redisGet('batch:daily:goingtrip-date:' + d);
-    const coverage = await redisGet('form-sections:coverage:goingtrip:' + d);
-    if (marker || coverage) continue;
-    newDate = d; break;
-  }
-  console.log('[daily-engines-submit] START ' + new Date().toISOString() + ' today=' + today + ' newDate=' + (newDate || 'none') + ' trainerDates=' + (trainerDates.join(',') || 'none') + (force ? ' (forced)' : ''));
+  // goingtrip sweeps the same history-ready dates every day (see step 2).
+  const goingtripDates = trainerDates.slice();
+  console.log('[daily-engines-submit] START ' + new Date().toISOString() + ' today=' + today + ' goingtripDates=' + (goingtripDates.join(',') || 'none') + ' trainerDates=' + (trainerDates.join(',') || 'none') + (force ? ' (forced)' : ''));
   console.log('[daily-engines-submit] history readiness ' + JSON.stringify(readiness));
 
   const record = {
-    date: today, newDate: newDate, windowDates: windowDates, trainerDates: trainerDates, historyReadiness: readiness, submittedAt: null, status: 'submitting',
-    goingtripBatchId: null, trainerBatchId: null, goingtripSubmitted: 0, trainerSubmitted: 0,
-    goingtripTemplated: 0, trainerSkipped: 0, trainerNoData: 0,
-    goingtripStatus: null, trainerStatus: null, collected: { goingtrip: false, trainer: false }, error: null
+    date: today, windowDates: windowDates, goingtripDates: goingtripDates, trainerDates: trainerDates, historyReadiness: readiness, submittedAt: null, status: 'submitting',
+    // goingtrip: one batch per swept date that had uncovered horses —
+    // [{ date, batchId, status, eligible, skipped, submitted, templated }].
+    // goingtripBatchId stays as the FIRST batch's id for anything that still
+    // reads the old single-id field; the collector iterates goingtripBatches.
+    goingtripBatches: [], goingtripBatchId: null, goingtripSubmitted: 0, goingtripSkipped: 0, goingtripTemplated: 0, goingtripEligible: 0, goingtripStatus: null,
+    trainerBatchId: null, trainerSubmitted: 0, trainerSkipped: 0, trainerNoData: 0, trainerStatus: null,
+    collected: { goingtrip: false, trainer: false }, error: null
   };
 
-  // 2. goingtrip for the new date (no new date -> clean zero, no error).
-  let gt;
+  // 2. goingtrip — a daily SWEEP of every history-ready window date, the
+  // same structure as the trainer sweep in step 3, not a once-per-date run.
+  // The old "one newDate, never revisit a date with a coverage record" rule
+  // generated each date exactly once, against whatever card existed 5 days
+  // out — so every horse declared after that first pass (e.g. 10 of 11
+  // runners in Roscommon 13:30 on 2026-10-12) permanently had no
+  // Trip/Going/Track text. Now, per date: every non-NR runner on
+  // racecards:{date} whose form-sections:{horse_id} key does not yet exist
+  // is submitted (the skip rule — one pipelined EXISTS per date, no model
+  // call for anything already written, templated horses included since
+  // storeTemplates writes the same key); the engine's own batch mode runs
+  // once per date with that horseIds list, so one Message Batch per date
+  // that has anything to do. On a normal day the skip rule leaves only the
+  // late declarations and the newest date entering the window.
+  let gt = { batches: [], eligible: 0, skipped: 0, submitted: 0, templated: 0, failedDate: null };
   try {
-    if (!newDate) {
-      gt = { batchId: null, submitted: 0, status: 'nothing_to_submit', templated: 0, skipped: 0, noData: 0 };
-      console.log('[daily-engines-submit] goingtrip: no window date without a goingtrip run — nothing to submit');
-    } else {
-      gt = await submitEngine('goingtrip', goingTripEngine.handler, { mode: 'batch', date: newDate }, 'form-sections:goingtrip:worklist:' + newDate);
-      await redisSet('batch:daily:goingtrip-date:' + newDate, { submittedAt: new Date().toISOString(), batchId: gt.batchId, status: gt.status, submitted: gt.submitted, templated: gt.templated, dailyKey: key });
+    for (const d of goingtripDates) {
+      const ids = cardHorseIds(await redisGet('racecards:' + d));
+      const present = ids.length ? await redisExistsEach(ids.map(function(id) { return 'form-sections:' + id; })) : [];
+      const uncovered = ids.filter(function(id, i) { return !present[i]; });
+      gt.eligible += ids.length; gt.skipped += ids.length - uncovered.length;
+      if (!uncovered.length) {
+        console.log('[daily-engines-submit] goingtrip ' + d + ': ' + ids.length + ' runners, all already covered — nothing to submit');
+        continue;
+      }
+      gt.failedDate = d;
+      const r = await submitEngine('goingtrip', goingTripEngine.handler, { mode: 'batch', date: d, horseIds: uncovered.join(',') }, 'form-sections:goingtrip:worklist:' + d);
+      gt.failedDate = null;
+      gt.submitted += r.submitted; gt.templated += r.templated;
+      gt.batches.push({ date: d, batchId: r.batchId, status: r.status, eligible: ids.length, skipped: ids.length - uncovered.length, submitted: r.submitted, templated: r.templated });
+      await redisSet('batch:daily:goingtrip-date:' + d, { submittedAt: new Date().toISOString(), batchId: r.batchId, status: r.status, submitted: r.submitted, templated: r.templated, skipped: ids.length - uncovered.length, dailyKey: key });
+      console.log('[daily-engines-submit] goingtrip ' + d + ': ' + r.status + (r.batchId ? ' ' + r.batchId : '') + ' runners=' + ids.length + ' skipped=' + (ids.length - uncovered.length) + ' submitted=' + r.submitted + ' templated=' + r.templated);
     }
   } catch (e) {
-    record.status = 'failed'; record.error = 'goingtrip: ' + e.message; record.submittedAt = new Date().toISOString();
+    record.status = 'failed'; record.error = 'goingtrip ' + (gt.failedDate || '') + ': ' + e.message; record.submittedAt = new Date().toISOString();
+    record.goingtripBatches = gt.batches; record.goingtripBatchId = gt.batches.length ? gt.batches[0].batchId : null;
     try { await redisSet(key, record); } catch (we) {}
-    const sent = await sendEmail('Racing Edge daily engines FAILED — ' + today, failureBody(today, newDate, 'goingtrip', e.message, null));
-    console.log('[daily-engines-submit] FAILED goingtrip: ' + e.message + ' (email ' + (sent ? 'sent' : 'NOT sent') + ')');
+    const sent = await sendEmail('Racing Edge daily engines FAILED — ' + today, failureBody(today, gt, 'goingtrip', e.message));
+    console.log('[daily-engines-submit] FAILED goingtrip ' + (gt.failedDate || '') + ': ' + e.message + ' (email ' + (sent ? 'sent' : 'NOT sent') + ')');
     return { statusCode: 500, headers, body: JSON.stringify(record) };
   }
-  record.goingtripBatchId = gt.batchId; record.goingtripSubmitted = gt.submitted; record.goingtripTemplated = gt.templated; record.goingtripStatus = gt.status;
-  if (gt.status === 'nothing_to_submit') record.collected.goingtrip = true;
-  console.log('[daily-engines-submit] goingtrip ' + newDate + ': ' + gt.status + (gt.batchId ? ' ' + gt.batchId : '') + ' submitted=' + gt.submitted + ' templated=' + gt.templated);
+  const gtWithBatch = gt.batches.filter(function(b) { return b.batchId; });
+  record.goingtripBatches = gt.batches; record.goingtripBatchId = gtWithBatch.length ? gtWithBatch[0].batchId : null;
+  record.goingtripSubmitted = gt.submitted; record.goingtripSkipped = gt.skipped; record.goingtripTemplated = gt.templated; record.goingtripEligible = gt.eligible;
+  record.goingtripStatus = gtWithBatch.length ? 'submitted' : 'nothing_to_submit';
+  if (!gtWithBatch.length) record.collected.goingtrip = true;
+  console.log('[daily-engines-submit] goingtrip sweep [' + (goingtripDates.join(',') || 'none') + ']: batches=' + gtWithBatch.length + ' runners=' + gt.eligible + ' skipped=' + gt.skipped + ' submitted=' + gt.submitted + ' templated=' + gt.templated);
 
   // 3. trainer history across the window — the history-ready dates only (a
   // horse's history is read from form:history:{horse}:{its date}; an
@@ -284,7 +350,7 @@ exports.handler = async function(event) {
   } catch (e) {
     record.status = 'failed'; record.error = 'trainer-history: ' + e.message; record.submittedAt = new Date().toISOString();
     try { await redisSet(key, record); } catch (we) {}
-    const sent = await sendEmail('Racing Edge daily engines FAILED — ' + today, failureBody(today, newDate, 'trainer-history', e.message, gt));
+    const sent = await sendEmail('Racing Edge daily engines FAILED — ' + today, failureBody(today, gt, 'trainer-history', e.message));
     console.log('[daily-engines-submit] FAILED trainer-history: ' + e.message + ' (email ' + (sent ? 'sent' : 'NOT sent') + ')');
     return { statusCode: 500, headers, body: JSON.stringify(record) };
   }

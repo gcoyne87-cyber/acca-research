@@ -117,13 +117,18 @@ function failedNames(job) {
 function listOrNone(n, names) { return n + (names.length ? ' (' + names.join(', ') + ')' : ''); }
 
 // The one completion email, built from the daily record plus both job records.
-function completionBody(rec, gtJob, trJob) {
-  const gtResults = (gtJob && gtJob.results) || [];
+// gtJobs: one batch:job record per goingtrip batch the sweep submitted
+// (array; may be empty on a quiet day). Totals are summed across them.
+function completionBody(rec, gtJobs, trJob) {
+  gtJobs = (Array.isArray(gtJobs) ? gtJobs : [gtJobs]).filter(Boolean);
+  const gtResults = gtJobs.reduce(function(a, j) { return a.concat(j.results || []); }, []);
   const gtClean = gtResults.filter(function(r) { return r.stored && !(r.attempt > 1); }).length;
   const gtRecovered = gtResults.filter(function(r) { return r.stored && r.attempt > 1; }).length;
-  const gtFailedNames = failedNames(gtJob);
-  const gtFailed = gtJob ? ((gtJob.counts && gtJob.counts.failed) || 0) + ((gtJob.counts && gtJob.counts.errored) || 0) : 0;
-  const gtCost = gtJob ? (gtJob.totalCostUSD || 0) : 0;
+  const gtFailedNames = gtJobs.reduce(function(a, j) { return a.concat(failedNames(j)); }, []);
+  const gtFailed = gtJobs.reduce(function(n, j) { return n + ((j.counts && j.counts.failed) || 0) + ((j.counts && j.counts.errored) || 0); }, 0);
+  const gtCost = gtJobs.reduce(function(n, j) { return n + (j.totalCostUSD || 0); }, 0);
+  const gtDates = (rec.goingtripDates && rec.goingtripDates.length) ? rec.goingtripDates.join(', ') : (rec.newDate || 'none history-ready');
+  const gtPerDate = (rec.goingtripBatches || []).map(function(b) { return '  ' + b.date + ': ' + b.eligible + ' runners, ' + b.skipped + ' already covered, ' + b.submitted + ' submitted' + (b.templated ? ', ' + b.templated + ' templated' : ''); });
 
   const trFailedNames = failedNames(trJob);
   const trFailed = trJob ? ((trJob.counts && trJob.counts.failed) || 0) + ((trJob.counts && trJob.counts.errored) || 0) : 0;
@@ -133,7 +138,11 @@ function completionBody(rec, gtJob, trJob) {
   const trCost = trJob ? (trJob.totalCostUSD || 0) : 0;
 
   const lines = [
-    'FORM SUMMARIES (Going/Trip/Track) — ' + rec.newDate,
+    'FORM SUMMARIES (Going/Trip/Track) — full 7-day window sweep',
+    'Dates swept: ' + gtDates
+  ].concat(gtPerDate).concat([
+    'Horses checked: ' + (rec.goingtripEligible != null ? rec.goingtripEligible : rec.goingtripSubmitted),
+    'Skipped (already have texts): ' + (rec.goingtripSkipped || 0),
     'Horses submitted: ' + rec.goingtripSubmitted,
     'Stored clean: ' + gtClean,
     'Retried and recovered: ' + gtRecovered,
@@ -151,13 +160,25 @@ function completionBody(rec, gtJob, trJob) {
     '',
     'TOTAL COST TODAY: ' + money(gtCost + trCost),
     'Everything is live on site.'
-  ];
-  if (rec.trainerNoData) lines.splice(lines.indexOf('Cost: ' + money(trCost), 9), 0, 'No history (no-data marker): ' + rec.trainerNoData);
+  ]);
+  // lastIndexOf: the trainer block's Cost line is the final "Cost:" line; the
+  // goingtrip block's own Cost line (same text when the two costs match) must
+  // never be the insertion point.
+  if (rec.trainerNoData) lines.splice(lines.lastIndexOf('Cost: ' + money(trCost)), 0, 'No history (no-data marker): ' + rec.trainerNoData);
   return lines.join('\n');
 }
 
+// Every goingtrip batchId on the daily record — the sweep's per-date list,
+// or the pre-sweep single goingtripBatchId as a one-item list.
+function goingtripBatchIds(rec) {
+  const list = Array.isArray(rec.goingtripBatches) ? rec.goingtripBatches : [{ batchId: rec.goingtripBatchId }];
+  return list.map(function(b) { return b && b.batchId; }).filter(Boolean);
+}
 function idsLine(rec) {
-  return 'goingtrip batchId: ' + (rec.goingtripBatchId || 'none (nothing to submit)') + '\n'
+  const gt = Array.isArray(rec.goingtripBatches) && rec.goingtripBatches.length
+    ? rec.goingtripBatches.filter(function(b) { return b.batchId; }).map(function(b) { return b.date + ' ' + b.batchId; }).join(', ')
+    : rec.goingtripBatchId;
+  return 'goingtrip batchId(s): ' + (gt || 'none (nothing to submit)') + '\n'
     + 'trainer-history batchId: ' + (rec.trainerBatchId || 'none (nothing to submit)');
 }
 
@@ -185,17 +206,32 @@ exports.handler = async function(event) {
   if (rec.status !== 'submitted') return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'status ' + rec.status + ' — submit still running' }) };
 
   rec.collected = rec.collected || { goingtrip: false, trainer: false };
-  const engines = [
-    { name: 'goingtrip', handler: goingTripEngine.handler, batchId: rec.goingtripBatchId, flag: 'goingtrip' },
-    { name: 'trainer-history', handler: trainerEngine.handler, batchId: rec.trainerBatchId, flag: 'trainer' }
-  ];
+  // goingtrip is a sweep — one batch per swept date that had uncovered
+  // horses (rec.goingtripBatches). Its flag flips only once EVERY batch is
+  // complete, tracked per batchId in rec.goingtripCollected. A record from
+  // before the sweep (single goingtripBatchId, no goingtripBatches) goes
+  // through the same path as a one-item list.
+  rec.goingtripCollected = rec.goingtripCollected || {};
+  const gtBatchIds = goingtripBatchIds(rec);
+  const engines = gtBatchIds.map(function(id) { return { name: 'goingtrip', handler: goingTripEngine.handler, batchId: id, flag: 'goingtrip' }; })
+    .concat([{ name: 'trainer-history', handler: trainerEngine.handler, batchId: rec.trainerBatchId, flag: 'trainer' }]);
+  if (!gtBatchIds.length) rec.collected.goingtrip = true;
 
   for (const eng of engines) {
     if (rec.collected[eng.flag]) continue;
+    if (eng.flag === 'goingtrip' && rec.goingtripCollected[eng.batchId]) continue;
     if (!eng.batchId) { rec.collected[eng.flag] = true; continue; }
     try {
       const state = await collectOne(eng.name, eng.handler, eng.batchId);
-      if (state === 'complete') { rec.collected[eng.flag] = true; console.log('[daily-engines-collect] ' + eng.name + ' ' + eng.batchId + ' collected'); }
+      if (state === 'complete') {
+        console.log('[daily-engines-collect] ' + eng.name + ' ' + eng.batchId + ' collected');
+        if (eng.flag === 'goingtrip') {
+          rec.goingtripCollected[eng.batchId] = true;
+          if (gtBatchIds.every(function(id) { return rec.goingtripCollected[id]; })) rec.collected.goingtrip = true;
+        } else {
+          rec.collected[eng.flag] = true;
+        }
+      }
     } catch (e) {
       rec.status = 'failed'; rec.error = e.message; rec.failedAt = new Date().toISOString();
       try { await redisSet(key, rec); } catch (we) {}
@@ -216,13 +252,14 @@ exports.handler = async function(event) {
   }
 
   if (rec.collected.goingtrip && rec.collected.trainer) {
-    const gtJob = rec.goingtripBatchId ? await redisGet('batch:job:goingtrip:' + rec.goingtripBatchId) : null;
+    const gtJobs = [];
+    for (const id of goingtripBatchIds(rec)) { const j = await redisGet('batch:job:goingtrip:' + id); if (j) gtJobs.push(j); }
     const trJob = rec.trainerBatchId ? await redisGet('batch:job:trainer-history:' + rec.trainerBatchId) : null;
     rec.status = 'complete'; rec.completedAt = new Date().toISOString();
-    rec.goingtripCostUSD = gtJob ? (gtJob.totalCostUSD || 0) : 0;
+    rec.goingtripCostUSD = +gtJobs.reduce(function(n, j) { return n + (j.totalCostUSD || 0); }, 0).toFixed(4);
     rec.trainerCostUSD = trJob ? (trJob.totalCostUSD || 0) : 0;
     rec.totalCostUSD = +(rec.goingtripCostUSD + rec.trainerCostUSD).toFixed(4);
-    const body = completionBody(rec, gtJob, trJob);
+    const body = completionBody(rec, gtJobs, trJob);
     rec.emailBody = body;
     await redisSet(key, rec);
     const sent = await sendEmail('Racing Edge daily engines complete — ' + today, body);
