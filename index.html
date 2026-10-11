@@ -11954,6 +11954,12 @@ function _irishNowHHMM(){
 // resolves with real race data and can check the actual last race off time
 // (below). Never overrides a manual tab click — see _rcDayUserChosen.
 var _homeRcDay='today';
+// Last plain section name selectRacingSection actually dispatched on — set
+// once, right after its _KNOWN_SECTIONS guard, so a CTA destination string
+// ('race:...'/'trainer:...') never stamps itself here, only the section it
+// resolves to. Lets a CTA handler (e.g. _activateEdgeFilterFromCta) tell
+// whether the user is already in a section instead of re-entering it.
+var _currentSection='home';
 var _rcDayUserChosen=false;
 var _cardsDay='today';
 var _trainerFilter=null;
@@ -12298,7 +12304,15 @@ function clearEdgeFilter(){
 // horses". Switches to the Racecards section, activates the matching chip,
 // and scrolls down — same scroll pattern _navToday uses in selectRacingSection.
 function _activateEdgeFilterFromCta(mode){
-  selectRacingSection('racecards');
+  // Only navigate when not already on racecards — entering it afresh is what
+  // used to fall into selectRacingSection's legacy selectRacingDate('tomorrow')
+  // path whenever _homeRcDay was 'tomorrow', hiding #racing-today-content
+  // (title + #today-meetings-list, where the filtered results actually land)
+  // behind the titleless #racing-tomorrow-content instead. Already there with
+  // tomorrow showing: re-render through the current single-section system
+  // instead, so the filter lands in the visible container.
+  if(_currentSection!=='racecards') selectRacingSection('racecards');
+  else if(_homeRcDay==='tomorrow') _renderCurrentHomeList();
   // _selectEdgeChip -> _tfLoadDays -> renderTodayMeetingsList(true) ->
   // renderTrainerFilterMultiDay(el, true) already scrolls the meetings list
   // into view via _scrollAfterRender() — no separate scroll needed here.
@@ -19548,6 +19562,7 @@ function selectRacingSection(s){
     try{ console.warn('[RacingEdge] selectRacingSection: unrecognized destination, ignoring:',s); }catch(_e4){}
     return;
   }
+  _currentSection=s;
   if(typeof _syncMainTab==='function') _syncMainTab(s);
   // #topnav-subbar/#subbar-cards is otherwise only managed by selectMainTab —
   // any entry into this section via a path other than the top "Cards" nav
