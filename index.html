@@ -12835,6 +12835,7 @@ function renderTrainerFormTable(trainers){
   out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">Wins</div>';
   out+='<div style="flex-shrink:0;width:36px;text-align:center;'+colHeadStyle+'">Runs</div>';
   out+='<div style="flex-shrink:0;width:44px;text-align:center;'+colHeadStyle+'">Strike %</div>';
+  out+='<div style="flex-shrink:0;width:26px;text-align:center;'+colHeadStyle+'">Trend</div>';
   out+='</div>';
   rows.forEach(function(t,i){
     var name=t.trainerName||'';
@@ -12842,12 +12843,21 @@ function renderTrainerFormTable(trainers){
     var winsVal=t.winners7d!=null?t.winners7d:'-';
     var runsVal=t.runners7d!=null?t.runners7d:'-';
     var sr7=Math.round(t.strikeRate7d||0);
+    // Trend arrow — display only, compares 7d vs 14d strike rate. The
+    // 14-day figure itself is never shown, only used for this comparison.
+    var trendHtml='<span style="color:#9aa3b5;font-weight:800">&mdash;</span>';
+    if(t.strikeRate14d!=null){
+      var sr14=Math.round(t.strikeRate14d||0);
+      if(sr7>sr14) trendHtml='<span style="color:#1e9e6b;font-weight:800">&uarr;</span>';
+      else if(sr7<sr14) trendHtml='<span style="color:#e53e3e;font-weight:800">&darr;</span>';
+    }
     var isLastVisible=(i===rows.length-1)&&!hasMore;
     out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
     out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(winsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:44px;text-align:center;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr7)+'">'+sr7+'%</div>';
+    out+='<div style="flex-shrink:0;width:26px;text-align:center;font-size:13px">'+trendHtml+'</div>';
     out+='</div>';
   });
   if(hasMore){
