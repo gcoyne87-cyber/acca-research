@@ -12791,7 +12791,7 @@ function renderTrainerFormTable(trainers){
   // Display filter: a yard must have run in the last 7 days and be striking
   // at 20% or better; ranked by 7-day strike rate.
   var allRows=trainers.filter(function(t){
-    return (Number(t.runners7d)||0)>=5 && (Number(t.strikeRate7d)||0)>=20;
+    return (Number(t.runners7d)||0)>=5 && (Number(t.winners7d)||0)>=3 && (Number(t.strikeRate7d)||0)>=20;
   }).sort(function(a,b){ return (b.strikeRate7d||0)-(a.strikeRate7d||0); }).slice(0,15);
   if(!allRows.length){
     el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No yards at 20%+ over the last 7 days today</div>';
