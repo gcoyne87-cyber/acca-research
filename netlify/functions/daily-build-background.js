@@ -1689,7 +1689,7 @@ async function refreshTodayClassDrop(dateStr, report, opts) {
   const fresh = await computeClassDropHorses(dateStr, meetings);
   summary.qualifiers = fresh.length;
   summary.changed = classDropSignature(fresh) !== classDropSignature(report.classDropHorses);
-  if (!summary.changed && !force) return summary;
+  if (!summary.changed && !force && report.classDropCard) return summary;
 
   report.classDropHorses = fresh;
   report.classDropLastRaceOffTime = maxOffDt(fresh);
