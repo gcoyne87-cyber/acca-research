@@ -16764,6 +16764,66 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // Hot Yard — trainer-level data card, same special-item pattern as Big Race
+  // and C&D+G (isHotYardCard:true). Only appended when the build produced
+  // card copy — hotYardCard stays null when no yard met the Hot Yard criteria
+  // or the AI call failed (see daily-build-background.js step 3.6).
+  // Hot Yard — up to two yards from the build's hotYards (best first); the card
+  // is appended only when the build produced card copy, so a day with no
+  // qualifier shows no Hot Yard card at all.
+  // One card per yard, each with its own text (hotYards[i].cardText) and its
+  // own button. A report built before per-yard text existed has a single
+  // combined hotYardCard: it is used only when exactly one yard qualified.
+  // Each yard hides once its own runnersToday have all raced — same
+  // disappear-from-the-carousel outcome as Big Race/Ground Lover, scoped per
+  // trainer since each yard is its own card with its own qualifier list.
+  HOT_YARDS.forEach(function(_hy){
+    if(!_hy||!_hy.trainerName) return;
+    var _hyText=_hy.cardText||(HOT_YARDS.length===1?HOT_YARD_CARD:'')||'';
+    if(!_hyText) return;
+    var _hyDr=_diRemaining(_hy.runnersToday||[]);
+    if(_hyDr.total>0&&_hyDr.remaining===0&&_diHideExpired(_hy.runnersToday||[])) return;
+    var _hyLbl=_diCountLabel(_hyDr);
+    _items=_items.concat([{
+      isHotYardCard:true,
+      signalType:'HOT YARD',
+      sigColor:'#10b981',
+      trainerName:_hy.trainerName||'',
+      strikeLabel:(_hy.strikeRate7d!=null?_hy.strikeRate7d:0)+'%',
+      winners7d:_hy.winners7d||0,
+      runners7d:_hy.runners7d||0,
+      diCount:_hyLbl.count,
+      diLabel:_hyLbl.label,
+      intelligenceText:escHtml(_hyText)
+    }]);
+  });
+
+  // Class Drop — data-summary card like Ground Lover/C&D+G (isProvenClassDrop
+  // runners, same deterministic rule racecards.js's tag chip uses). Only
+  // appended when the build produced card copy; classDropCard stays null on
+  // a day with no qualifiers or a failed AI call.
+  // Today's card hides once Irish time is 15 minutes past its last off
+  // (_classDropTodayExpired); the 60-second timer in loadDailyBuild fades it
+  // out first, then re-renders without it.
+  var _cdTodayShown=!!CLASSDROP_CARD&&!_classDropTodayExpired();
+  window._classDropExpiredShown=_classDropTodayExpired();
+  // Live remaining — the card itself never self-hides on remaining===0
+  // (that stays on the 15-min-after-last-off timer above); only the count
+  // switches from the day's total to how many are still to run.
+  var _cdDr=_diRemaining(CLASSDROP_HORSES);
+  var _cdLbl=_diCountLabel(_cdDr);
+  if(_cdTodayShown){
+    _items=_items.concat([{
+      isClassDrop:true,
+      cdToday:true,
+      signalType:'CLASS DROP',
+      sigColor:'#f59e0b',
+      diCount:_cdLbl.count,
+      diLabel:_cdLbl.label,
+      intelligenceText:escHtml(CLASSDROP_CARD||'')
+    }]);
+  }
+
   // C&D+G — a data-summary card like Big Race, not a horse pick, so it rides
   // the same _items array via its own special item (isCandDG:true). Only
   // appended when the build actually generated card copy — candgCard stays
@@ -16814,92 +16874,8 @@ function renderAIIntelligence(){
     }
   }
 
-  // Class Drop — data-summary card like Ground Lover/C&D+G (isProvenClassDrop
-  // runners, same deterministic rule racecards.js's tag chip uses). Only
-  // appended when the build produced card copy; classDropCard stays null on
-  // a day with no qualifiers or a failed AI call.
-  // Today's card hides once Irish time is 15 minutes past its last off
-  // (_classDropTodayExpired); the 60-second timer in loadDailyBuild fades it
-  // out first, then re-renders without it.
-  var _cdTodayShown=!!CLASSDROP_CARD&&!_classDropTodayExpired();
-  window._classDropExpiredShown=_classDropTodayExpired();
-  // Live remaining — the card itself never self-hides on remaining===0
-  // (that stays on the 15-min-after-last-off timer above); only the count
-  // switches from the day's total to how many are still to run.
-  var _cdDr=_diRemaining(CLASSDROP_HORSES);
-  var _cdLbl=_diCountLabel(_cdDr);
-  if(_cdTodayShown){
-    _items=_items.concat([{
-      isClassDrop:true,
-      cdToday:true,
-      signalType:'CLASS DROP',
-      sigColor:'#f59e0b',
-      diCount:_cdLbl.count,
-      diLabel:_cdLbl.label,
-      intelligenceText:escHtml(CLASSDROP_CARD||'')
-    }]);
-  }
-  // Tomorrow's Class Drop — the 02:00 preview from tomorrow's report, right
-  // after today's card, same markup. After the Irish midnight flip it is
-  // labelled as today's card and shown only while today's own card is hidden
-  // or absent — the same handover rule as Tomorrow's Big Race — so two
-  // "Class Drop" cards never sit side by side.
-  var _cdFlip=_classDropPreviewIsToday();
-  window._classDropFlipShown=_cdFlip;
-  if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&(!_cdFlip||!_cdTodayShown)){
-    // Static total, not a live remaining count — these qualifiers' race
-    // times are tomorrow's, so comparing their raw HH:MM against today's
-    // Irish clock (_diRemaining) would misread an early tomorrow time as
-    // already passed. Every one of them is still to come by definition.
-    var _cdPrevCount=(CLASSDROP_PREVIEW.qualifiers||[]).length;
-    _items=_items.concat([{
-      isClassDrop:true,
-      cdToday:false,
-      cdFlipped:_cdFlip,
-      signalType:_cdFlip?'CLASS DROP':"TOMORROW'S CLASS DROP",
-      sigColor:'#f59e0b',
-      diCount:_cdPrevCount,
-      diLabel:'horse'+(_cdPrevCount===1?'':'s')+' '+(_cdFlip?'today':'tomorrow'),
-      intelligenceText:escHtml(CLASSDROP_PREVIEW.text||'')
-    }]);
-  }
-
-  // Hot Yard — trainer-level data card, same special-item pattern as Big Race
-  // and C&D+G (isHotYardCard:true). Only appended when the build produced
-  // card copy — hotYardCard stays null when no yard met the Hot Yard criteria
-  // or the AI call failed (see daily-build-background.js step 3.6).
-  // Hot Yard — up to two yards from the build's hotYards (best first); the card
-  // is appended only when the build produced card copy, so a day with no
-  // qualifier shows no Hot Yard card at all.
-  // One card per yard, each with its own text (hotYards[i].cardText) and its
-  // own button. A report built before per-yard text existed has a single
-  // combined hotYardCard: it is used only when exactly one yard qualified.
-  // Each yard hides once its own runnersToday have all raced — same
-  // disappear-from-the-carousel outcome as Big Race/Ground Lover, scoped per
-  // trainer since each yard is its own card with its own qualifier list.
-  HOT_YARDS.forEach(function(_hy){
-    if(!_hy||!_hy.trainerName) return;
-    var _hyText=_hy.cardText||(HOT_YARDS.length===1?HOT_YARD_CARD:'')||'';
-    if(!_hyText) return;
-    var _hyDr=_diRemaining(_hy.runnersToday||[]);
-    if(_hyDr.total>0&&_hyDr.remaining===0&&_diHideExpired(_hy.runnersToday||[])) return;
-    var _hyLbl=_diCountLabel(_hyDr);
-    _items=_items.concat([{
-      isHotYardCard:true,
-      signalType:'HOT YARD',
-      sigColor:'#10b981',
-      trainerName:_hy.trainerName||'',
-      strikeLabel:(_hy.strikeRate7d!=null?_hy.strikeRate7d:0)+'%',
-      winners7d:_hy.winners7d||0,
-      runners7d:_hy.runners7d||0,
-      diCount:_hyLbl.count,
-      diLabel:_hyLbl.label,
-      intelligenceText:escHtml(_hyText)
-    }]);
-  });
-
   // Tomorrow's Big Race — only when today's Big Race card is hidden (15 min
-  // past its off) or absent, never alongside it, and always the last card.
+  // past its off) or absent, never alongside it, and after every today card.
   // After midnight the held report is yesterday's build, so its
   // bigRaceTomorrow IS today's race: it is then labelled and dated as today's
   // Big Race of the Day, with a today route, until the new build replaces
@@ -16923,6 +16899,31 @@ function renderAIIntelligence(){
       raceClass:BIG_RACE_TOMORROW.raceClass||'',
       intelligenceText:escHtml(BIG_RACE_TOMORROW.raceIntelligence||''),
       ctaDestination:(_tmIsToday?'race:':'tomorrowrace:')+(BIG_RACE_TOMORROW.course||'')+':'+(BIG_RACE_TOMORROW.time||'')
+    }]);
+  }
+
+  // Tomorrow's Class Drop — the 02:00 preview from tomorrow's report, shown
+  // after every today card and Tomorrow's Big Race, same markup. After the Irish midnight flip it is
+  // labelled as today's card and shown only while today's own card is hidden
+  // or absent — the same handover rule as Tomorrow's Big Race — so two
+  // "Class Drop" cards never sit side by side.
+  var _cdFlip=_classDropPreviewIsToday();
+  window._classDropFlipShown=_cdFlip;
+  if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&(!_cdFlip||!_cdTodayShown)){
+    // Static total, not a live remaining count — these qualifiers' race
+    // times are tomorrow's, so comparing their raw HH:MM against today's
+    // Irish clock (_diRemaining) would misread an early tomorrow time as
+    // already passed. Every one of them is still to come by definition.
+    var _cdPrevCount=(CLASSDROP_PREVIEW.qualifiers||[]).length;
+    _items=_items.concat([{
+      isClassDrop:true,
+      cdToday:false,
+      cdFlipped:_cdFlip,
+      signalType:_cdFlip?'CLASS DROP':"TOMORROW'S CLASS DROP",
+      sigColor:'#f59e0b',
+      diCount:_cdPrevCount,
+      diLabel:'horse'+(_cdPrevCount===1?'':'s')+' '+(_cdFlip?'today':'tomorrow'),
+      intelligenceText:escHtml(CLASSDROP_PREVIEW.text||'')
     }]);
   }
 
