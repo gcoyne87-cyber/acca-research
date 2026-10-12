@@ -15505,9 +15505,25 @@ function nrLoadForm(pfx,horseId,silent){
   if(!silent)nrTogglePanel(pfx,'fe');
   var tDiv=document.getElementById('nrh-ft-'+pfx);
   if(!tDiv)return;
-  if(_cached==='loading')return;
+  var _loadingRow='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>';
+  if(_cached==='loading'){
+    // The fetch is already in flight, but this may be a brand-new tDiv: the
+    // race list is rebuilt when its form-summaries fetch lands, and
+    // _nrRestorePanels then reopens every panel through this path. On a cold
+    // cache that rebuild lands between the tap and the horse-form response,
+    // and returning here left the restored frame with no loading row — an
+    // open panel showing nothing (the real-phone "first Detail press does
+    // nothing"). Always leave a visible loading row; the fetch's .then
+    // overwrites it when the form arrives.
+    if(!/Loading form/.test(tDiv.textContent||'')){
+      tDiv.innerHTML=_loadingRow+tDiv.innerHTML;
+      var _pftL=document.getElementById('nrh-pft-'+pfx);
+      if(_pftL)_pftL.innerHTML=tDiv.innerHTML;
+    }
+    return;
+  }
   _nrFormCache[horseId]='loading';
-  tDiv.innerHTML='<div style="padding:10px 12px;font-size:11px;color:#9aa3b5">Loading form…</div>'+tDiv.innerHTML;
+  tDiv.innerHTML=_loadingRow+tDiv.innerHTML;
   var _pft1=document.getElementById('nrh-pft-'+pfx);
   if(_pft1)_pft1.innerHTML=tDiv.innerHTML;
   var _futureEl=document.getElementById('racing-future-content');
