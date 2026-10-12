@@ -1746,9 +1746,9 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
     // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
     // _buildPopularTrainers list). Needed here so every elite yard running
     // today is guaranteed a slot in the stored table below, regardless of
-    // where they rank by 14-day strike rate, and reused by the Hot Yard card
-    // qualifier filter in step 3.6. Stored lowercase to match the
-    // case-insensitive comparisons used against it.
+    // where they rank by 14-day strike rate. It is NOT used by the Hot Yard
+    // card qualifier in step 3.6 — that has no whitelist bypass. Stored
+    // lowercase to match the case-insensitive comparisons used against it.
     const ELITE_TRAINERS_LC = [
       "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
       'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
@@ -1890,28 +1890,23 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       console.log('[daily-build] trainer-form:table write failed: ' + e.message);
     }
 
-    // 3.6 Hot Yard card — the yard(s) the site's own Trainer Form table would
-    // show green with an upward trend, so the card can never disagree with the
-    // table: 7-day strike rate >= 30 (the table's green threshold in
-    // index.html _trainerFormSrColor), and — only while the 14-day rate is below
-    // 30 — a 7-day rate more than 3 points above it (the table's green up-arrow
-    // rule; a yard green over both windows needs no arrow), and EITHER on the elite
-    // whitelist (no minimum-runs test) OR 9+ runners in the 7-day window. Rates
-    // are rounded exactly as the table rounds them. Up to two qualifiers, best
-    // 7-day rate first. No qualifier means no Hot Yard card that day — never a
-    // fallback to the best available below the bar. The racecard chip rule in
-    // racecards.js is separate and untouched. report.hotYards holds 0-2 yards;
-    // report.hotYard is the first of them (or null) for readers of the old shape.
+    // 3.6 Hot Yard card — the yard(s) the site's own Trainer Form table shows
+    // in the green, so the card can never disagree with the table. Exactly two
+    // rules, no exceptions: 5+ runners in the 7-day window (the table's own
+    // display floor) and a 7-day strike rate >= 30 (the table's green
+    // threshold in index.html _trainerFormSrColor). No elite-whitelist bypass,
+    // no 14-day trend test — every yard earns its place on the same terms.
+    // Rates are rounded exactly as the table rounds them. Up to two qualifiers,
+    // best 7-day rate first. No qualifier means no Hot Yard card that day —
+    // never a fallback to the best available below the bar. The racecard chip
+    // rule in racecards.js is separate and untouched. report.hotYards holds 0-2
+    // yards; report.hotYard is the first of them (or null) for readers of the
+    // old shape.
     try {
       const hyRound = function(v) { return Math.round(Number(v) || 0); };
       const hotYardQualifiers = hotYardSource.filter(function(t) {
-        const name = (t.trainerName || '').toLowerCase().trim();
-        const sr7 = hyRound(t.strikeRate7d), sr14 = hyRound(t.strikeRate14d);
-        const elite = ELITE_TRAINERS_LC.indexOf(name) !== -1;
-        // Trend test only while the 14-day rate is below green: a yard already at
-        // 30+ over both windows is sustained green and qualifies without an arrow.
-        const trendOk = sr14 >= 30 || sr7 > sr14 + 3;
-        return sr7 >= 30 && trendOk && (elite || Number(t.runners7d) >= 9);
+        const sr7 = hyRound(t.strikeRate7d);
+        return Number(t.runners7d) >= 5 && sr7 >= 30;
       }).sort(function(a, b) { return hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d); }).slice(0, 2);
 
       const runnersTodayFor = function(trainerName) {
