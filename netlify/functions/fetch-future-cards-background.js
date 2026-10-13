@@ -175,18 +175,39 @@ function isUsablePrice(fractional) {
   return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
 }
 
+// Standard UK/Irish board ladder. Any usable fractional is snapped to the
+// nearest rung by decimal value (an exact tie takes the shorter price), so a
+// bookmaker's 85/40 or 100/30 never reaches a prompt, card or record. A price
+// already on the ladder passes through unchanged; evens is written 'EVS'.
+// Anything that is not a usable price comes back as 'SP'.
+const BOARD_LADDER = ['1/10', '1/9', '1/8', '1/7', '1/6', '1/5', '2/9', '1/4', '2/7', '3/10', '1/3', '4/11', '2/5', '4/9', '1/2', '8/15', '4/7', '8/13', '4/6', '8/11', '4/5', '5/6', '10/11', '1/1', '11/10', '6/5', '5/4', '11/8', '6/4', '13/8', '7/4', '15/8', '2/1', '9/4', '5/2', '11/4', '3/1', '10/3', '7/2', '4/1', '9/2', '5/1', '11/2', '6/1', '13/2', '7/1', '15/2', '8/1', '17/2', '9/1', '10/1', '11/1', '12/1', '14/1', '16/1', '18/1', '20/1', '22/1', '25/1', '28/1', '33/1', '40/1', '50/1', '66/1', '80/1', '100/1', '125/1', '150/1', '200/1'];
+function toBoardPrice(fractional) {
+  const f = String(fractional || '').trim();
+  if (!isUsablePrice(f)) return 'SP';
+  if (/^ev[ns]$/i.test(f)) return 'EVS';
+  const m = f.match(/^(\d+)\/(\d+)$/);
+  const dec = Number(m[1]) / Number(m[2]);
+  let best = null, bestDiff = Infinity;
+  BOARD_LADDER.forEach(function(r) {
+    const p = r.split('/');
+    const diff = Math.abs(Number(p[0]) / Number(p[1]) - dec);
+    if (diff < bestDiff) { bestDiff = diff; best = r; }   // ladder ascends: a tie keeps the shorter price
+  });
+  return best === '1/1' ? 'EVS' : best;
+}
+
 function extractPrice(oddsArr, bookmaker) {
   if (!Array.isArray(oddsArr) || !oddsArr.length) return 'SP';
   const bk = (bookmaker || '').toLowerCase();
   const match = oddsArr.find(function(o) {
     return (o.bookmaker || '').toLowerCase() === bk;
   });
-  if (match && isUsablePrice(match.fractional)) return match.fractional;
+  if (match && isUsablePrice(match.fractional)) return toBoardPrice(match.fractional);
   // fall back to first non-exchange bookmaker with a fractional price
   const fallback = oddsArr.find(function(o) {
     return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange');
   });
-  return (fallback && fallback.fractional) || 'SP';
+  return fallback ? toBoardPrice(fallback.fractional) : 'SP';
 }
 
 function mapRunner(r, idx) {
