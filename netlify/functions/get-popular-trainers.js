@@ -49,6 +49,11 @@ function dayBefore(dateStr) {
   return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
 }
 
+function dayAfter(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
 function redisGet(key) {
   const url = new URL(UPSTASH_URL);
   return new Promise((resolve) => {
@@ -109,6 +114,8 @@ exports.handler = async function() {
 
     const cards = await redisGet('racecards:' + today);
     const meetings = (cards && Array.isArray(cards.meetings)) ? cards.meetings : [];
+    const tmCards = await redisGet('racecards:' + dayAfter(today));
+    const tmMeetings = (tmCards && Array.isArray(tmCards.meetings)) ? tmCards.meetings : [];
 
     const out = POPULAR_TRAINERS.map(function(entry) {
       const row = table.find(function(t) { return namesMatch(entry, t && t.trainerName); });
@@ -124,13 +131,26 @@ exports.handler = async function() {
           });
         });
       });
+      // Tomorrow's runner count — same matching rule as runnersToday.
+      let runnersTomorrow = 0;
+      tmMeetings.forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(ru) {
+            const t = ru && ru.trainer;
+            if (!namesMatch(entry, t)) return;
+            runnersTomorrow++;
+            if (!dataName) dataName = String(t).trim();
+          });
+        });
+      });
       return {
         name: entry.name,
         matchName: dataName || entry.match || entry.name,
         winners7d: row ? (Number(row.winners7d) || 0) : 0,
         runners7d: row ? (Number(row.runners7d) || 0) : 0,
         strikeRate7d: row ? (Number(row.strikeRate7d) || 0) : 0,
-        runnersToday: runnersToday
+        runnersToday: runnersToday,
+        runnersTomorrow: runnersTomorrow
       };
     });
 
