@@ -5776,6 +5776,14 @@ function unlockCorkAnalysis(){
         <div style="font-size:12px;color:#9aa3b5;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
       </div>
       <div id="popular-trainers-v2-strip" style="display:flex;gap:10px;padding:0 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+      <!-- Popular Trainers search — filters _popularTrainers by display name, top 5. -->
+      <div style="padding:14px 16px 0;position:relative">
+        <div style="background:#ffffff;border-radius:14px;border:1px solid #e0e4ee;box-shadow:0 2px 8px rgba(0,0,0,0.07);display:flex;align-items:center;gap:10px;padding:0 14px;height:48px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c0c8d8" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <input id="popular-trainers-v2-search" type="text" placeholder="Search any trainer&hellip;" autocomplete="off" oninput="_ptV2SearchInput(this.value)" onblur="_ptV2SearchBlur()" style="flex:1;min-width:0;border:none;outline:none;font-size:14px;color:#0b1628;background:#ffffff;font-family:inherit">
+        </div>
+        <div id="popular-trainers-v2-dropdown" style="display:none;position:absolute;top:100%;left:16px;right:16px;background:#fff;border-radius:0 0 14px 14px;border:1px solid #e0e4ee;border-top:none;box-shadow:0 8px 20px rgba(0,0,0,0.10);overflow:hidden;z-index:20"></div>
+      </div>
     </div>
     <!-- Trainer block: Trainer Form, then Popular Trainers, then the trainer
          filter directly below (moved from below the date strip) — one
@@ -12903,6 +12911,52 @@ function loadPopularTrainers(){
     .catch(function(){ _popularTrainers=[]; renderPopularTrainers(); });
 }
 loadPopularTrainers();
+
+// Popular Trainers search bar — auto-populate dropdown over _popularTrainers.
+// Fewer than 2 characters hides it; otherwise a case-insensitive match on the
+// display name, top 5, with the typed run highlighted in gold. A row tap goes
+// through the same selectRacingSection('trainer:'+matchName) path as the cards.
+function _ptV2SearchHide(){
+  var dd=document.getElementById('popular-trainers-v2-dropdown');
+  if(dd){ dd.style.display='none'; dd.innerHTML=''; }
+}
+function _ptV2SearchInput(val){
+  var dd=document.getElementById('popular-trainers-v2-dropdown');
+  if(!dd) return;
+  var q=String(val||'').trim().toLowerCase();
+  if(q.length<2){ _ptV2SearchHide(); return; }
+  var matches=_popularTrainers.filter(function(t){
+    return String(t.name||'').toLowerCase().indexOf(q)!==-1;
+  }).slice(0,5);
+  if(!matches.length){ _ptV2SearchHide(); return; }
+  dd.innerHTML=matches.map(function(t,i){
+    var name=String(t.name||'');
+    var at=name.toLowerCase().indexOf(q);
+    var nameHtml=escHtml(name.slice(0,at))+'<span style="color:#c9a84c;font-weight:700">'+escHtml(name.slice(at,at+q.length))+'</span>'+escHtml(name.slice(at+q.length));
+    var n=Number(t.runnersToday)||0;
+    var dot=n>0
+      ?'<span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
+      :'<span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span>';
+    var idx=_popularTrainers.indexOf(t);
+    return '<div onclick="_ptV2SearchSelect('+idx+')" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;'+(i<matches.length-1?'border-bottom:0.5px solid #f4f5f8':'')+'">'
+      +'<div style="min-width:0"><div style="font-size:14px;font-weight:500;color:#0b1628">'+nameHtml+'</div>'
+      +'<div style="font-size:11px;color:#9aa3b5">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'% &middot; 7 days</div></div>'
+      +dot+'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+function _ptV2SearchSelect(idx){
+  var t=_popularTrainers[idx];
+  if(!t) return;
+  selectRacingSection('trainer:'+String(t.matchName||t.name||''));
+  _ptV2SearchHide();
+  var inp=document.getElementById('popular-trainers-v2-search');
+  if(inp) inp.value='';
+}
+function _ptV2SearchBlur(){
+  // Short delay so a dropdown row tap registers before the list disappears.
+  setTimeout(_ptV2SearchHide,150);
+}
 
 function _onTrainerSearchInput(val,ddId){
   ddId=ddId||'trainer-search-dropdown';
