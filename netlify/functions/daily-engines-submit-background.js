@@ -6,7 +6,9 @@ const nodemailer = require('nodemailer');
 // x-build-secret; a schedule on a -background function never fires — see
 // form-summary-background.js).
 //
-// 1. History readiness per window date (today .. today+6, Europe/Dublin):
+// 1. History readiness per window date (today .. today+3, Europe/Dublin —
+//    dates 4-6 days out are not swept at all; a date is picked up by the
+//    normal sweep on the morning it crosses inside the 3-day boundary):
 //    a date is swept only when >=90% of its runners have a form:history key.
 // 2. goingtrip SWEEP of every history-ready date — one form-sections-run-
 //    background ?mode=batch&horseIds= batch per date that has uncovered
@@ -15,7 +17,7 @@ const nodemailer = require('nodemailer');
 //    and the newest date entering the window. (Previously one date per day,
 //    never revisited — every horse declared after that single pass had no
 //    Trip/Going/Track text for good.)
-// 3. trainer-history batch for the whole window (today .. today+6) —
+// 3. trainer-history batch for the whole window (today .. today+3) —
 //    trainer-history-v2-background ?mode=batch&dates=. Its skip rule means
 //    only horses that have run since their record was written are
 //    submitted; everything else skips free.
@@ -241,7 +243,9 @@ exports.handler = async function(event) {
   }
 
   const today = now.date;
-  const windowDates = []; for (let i = 0; i <= 6; i++) windowDates.push(addDays(today, i));
+  // Today through 3 days out inclusive (four Irish dates). Dates 4-6 days out
+  // are skipped entirely — no horse lists, no EXISTS checks, no batches.
+  const windowDates = []; for (let i = 0; i <= 3; i++) windowDates.push(addDays(today, i));
   const key = 'batch:daily:' + today;
 
   const existing = await redisGet(key);
