@@ -12903,19 +12903,19 @@ function renderPopularTrainers(){
     // the same 'tomorrowtrainer:' route the DI tomorrow preview CTAs use.
     var dest=(n===0&&nm>0)?'tomorrowtrainer:':'trainer:';
     out+='<div onclick="selectRacingSection(\''+dest+tEsc+'\')" style="flex-shrink:0;width:158px;background:#fff;border-radius:14px;border:0.5px solid #e4e8f0;border-top:3px solid #c9a84c;cursor:pointer">';
-    out+='<div style="padding:11px 13px 9px">';
-    out+='<div style="font-size:16px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">'+escHtml(t.name)+'</div>';
-    out+='<div style="font-size:10px;color:#9aa3b5;margin-bottom:7px"><span style="font-weight:600;color:#c9a84c">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'%</span> &middot; 7 days</div>';
-    out+='<div style="border-top:0.5px solid #f0f2f7;margin-bottom:8px"></div>';
+    out+='<div style="padding:10px 13px 6px">';
+    out+='<div style="font-size:16px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">'+escHtml(t.name)+'</div>';
+    out+='<div style="font-size:10px;color:#9aa3b5;margin-bottom:6px"><span style="font-weight:600;color:#c9a84c">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'%</span> &middot; 7 days</div>';
+    out+='<div style="border-top:0.5px solid #f0f2f7;margin-bottom:6px"></div>';
     if(n>0){
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#0b1628">'+n+(n===1?' runner today':' runners today')+'</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#0b1628">'+n+(n===1?' runner today':' runners today')+'</span></div>';
     }else if(nm>0){
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#92680a">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#92680a">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</span></div>';
     }else{
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span><span style="font-size:13px;font-weight:400;color:#c0c8d8">No runners</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span><span style="font-size:13px;font-weight:400;color:#c0c8d8">No runners</span></div>';
     }
     out+='</div>';
-    out+='<div style="margin:0 13px 11px;background:#ecfdf5;border:1.5px solid #1e9e6b;border-radius:22px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:#1e9e6b">View runners</span><span style="color:#1e9e6b;font-size:13px">&#8250;</span></div>';
+    out+='<div style="margin:8px 13px 10px;background:#ecfdf5;border:1.5px solid #1e9e6b;border-radius:22px;padding:7px 13px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:#1e9e6b">View runners</span><span style="color:#1e9e6b;font-size:13px">&#8250;</span></div>';
     out+='</div>';
   });
   strip.innerHTML=out;
