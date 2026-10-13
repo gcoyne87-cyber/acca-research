@@ -12903,9 +12903,22 @@ function _ptV2Sig(){
 // multi-day and auto-selects the first day with runners, so a tomorrow-only
 // yard lands on its Tomorrow tab — the same way DI's tomorrow Class Drop
 // CTA does. No legacy selectRacingDate('tomorrow') container swap.
+// Flicker fix: setTrainerFilter (shared, untouched) paints the filtered view
+// twice — its own renderTodayMeetingsList, then trainerFilterSelectRace —
+// BEFORE its _tfLoadDays call sets _tfDayMeetings.today, the only source the
+// filtered view reads for today. Both early paints therefore see no data and
+// show "No races found …" until the third render corrects it. The DI CTAs
+// never show that because _selectEdgeChip goes straight to _tfLoadDays, so
+// the data is in place before the first paint. Give the trainer tap the same
+// ordering: prime today's day data and reset the day/race selection exactly
+// as _tfLoadDays/_selectEdgeChip do, then make the unchanged shared call —
+// every paint it does now already has the matches in hand.
 function _ptV2Open(matchName){
   if(_currentSection!=='racecards') selectRacingSection('racecards');
   else if(_homeRcDay==='tomorrow') _renderCurrentHomeList();
+  _tfDayMeetings.today=_getLiveMeetings();
+  _tfSelectedDay=null;
+  _tfRaceSel={};
   setTrainerFilter(String(matchName||''));
 }
 function renderPopularTrainers(){
