@@ -291,6 +291,16 @@ function rankedPicksFrozen(report) {
     .slice(0, 5);
 }
 
+// Same rule as racecards.js isUsablePrice: only a real fractional (or
+// evens) is a price. The literal "SP", "-" and empty are not — they are
+// stored as null (sanitize drops the field; the tracker shows no price)
+// instead of the string "SP" (2026-10-13: every slot record carried "SP").
+function usablePrice(v) {
+  const f = String(v || '').trim();
+  if (!f || f === '-' || f.toUpperCase() === 'SP') return false;
+  return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
+}
+
 function angleFrom(q) {
   q = String(q || '').replace(/\s+/g, ' ').trim();
   return q.length > 120 ? q.slice(0, 120) + '…' : q;
@@ -331,7 +341,9 @@ function reconcileSlotsForDate(stored, date, report) {
       time: (ex && ex.time) || time,
       horse: horse,
       type: type,
-      price: (a.strongestSelection.odds && a.strongestSelection.odds !== '-') ? a.strongestSelection.odds : 'SP',
+      // Report odds when usable; otherwise keep a usable price already on the
+      // stored record (a corrected one survives the per-POST reconcile); else null.
+      price: usablePrice(a.strongestSelection.odds) ? a.strongestSelection.odds : (ex && usablePrice(ex.price) ? ex.price : null),
       angle: (ex && ex.angle) || angleFrom(a.strongestSelection.pullQuote),
       sp: ex ? (ex.sp || '') : '',
       pos: ex ? (ex.pos || '') : '',

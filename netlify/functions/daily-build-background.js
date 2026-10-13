@@ -155,6 +155,18 @@ async function fetchHorseHistory(horse_id) {
   }
 }
 
+// Same rule as racecards.js / refresh-prices-background.js: a bookmaker
+// entry only counts as a price when it is a real fractional (or evens).
+// The literal "SP", "-" and empty are not prices — a bookmaker returning
+// them is skipped and the next one tried, so "Odds: SP" never reaches a
+// prompt while another bookmaker has priced the runner (2026-10-13: "10 Bet"
+// was first in every odds array and returned "SP" for 367 of 377 runners).
+function isUsablePrice(fractional) {
+  const f = String(fractional || '').trim();
+  if (!f || f === '-' || f.toUpperCase() === 'SP') return false;
+  return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
+}
+
 function isJumps(raceName, raceType) {
   const s = ((raceName || '') + ' ' + (raceType || '')).toLowerCase();
   return /hurdle|chase|bumper|steeplechase|national hunt|hrd/.test(s);
@@ -1065,7 +1077,7 @@ async function analyseRace(race, NH, tipsterContext) {
   const runners = raceRunners.map(r => {
     const name = r.horse || r.name || 'Unknown';
     const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-    const price = oddsArr ? (oddsArr.find(o => o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange')) || oddsArr[0] || {}).fractional || 'SP' : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+    const price = oddsArr ? (oddsArr.find(o => isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange')) || {}).fractional || 'SP' : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
 
     const history = formByName[name] || [];
     const historyText = history.length
@@ -1124,7 +1136,7 @@ async function generateIntelligence(racecards) {
 
   function extractPrice(r) {
     const oddsArr = Array.isArray(r.odds) ? r.odds : [];
-    return (oddsArr.find(function(o) { return o.fractional && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP';
+    return (oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP';
   }
 
   function milesFurlongs(distStr) {
@@ -1918,8 +1930,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
             if ((r.trainer || '').toLowerCase().trim() !== nameLc) return;
             const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
             const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+              ? ((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
             out.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
           });
         });
@@ -2122,8 +2134,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           const brRunnerLines = brRunners.map(function(r) {
             const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
             const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return o.fractional && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || oddsArr[0] || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' ? r.odds : 'SP');
+              ? ((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP')
+              : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
             const parts = [r.horse || r.name || 'Unknown'];
             if (r.trainer) parts.push('trainer ' + r.trainer);
             if (r.jockey) parts.push('jockey ' + r.jockey);
