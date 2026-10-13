@@ -121,12 +121,16 @@ exports.handler = async function() {
       const row = table.find(function(t) { return namesMatch(entry, t && t.trainerName); });
       let runnersToday = 0;
       let dataName = row ? row.trainerName : '';
+      // One "HH:MM" Irish-local off-time per matched runner today — the
+      // frontend counts a runner as remaining until 15 minutes after its off.
+      const offTimes = [];
       meetings.forEach(function(m) {
         (m.races || []).forEach(function(race) {
           (race.runners || []).forEach(function(ru) {
             const t = ru && ru.trainer;
             if (!namesMatch(entry, t)) return;
             runnersToday++;
+            offTimes.push(String(race.t || ''));
             if (!dataName) dataName = String(t).trim();
           });
         });
@@ -150,7 +154,8 @@ exports.handler = async function() {
         runners7d: row ? (Number(row.runners7d) || 0) : 0,
         strikeRate7d: row ? (Number(row.strikeRate7d) || 0) : 0,
         runnersToday: runnersToday,
-        runnersTomorrow: runnersTomorrow
+        runnersTomorrow: runnersTomorrow,
+        offTimes: offTimes
       };
     });
 

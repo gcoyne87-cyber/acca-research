@@ -12874,9 +12874,40 @@ loadTrainerFormTable();
 // ── Popular Trainers (v2) ────────────────────────────────────────────────────
 // 20 fixed yards from get-popular-trainers (7-day form from the trainer-form
 // table + today's runner count from racecards), rendered in the endpoint's
-// order. Tapping anywhere on a card opens that trainer's runners through the
-// existing selectRacingSection('trainer:'+name) path.
+// order. Tapping anywhere on a card opens that trainer's runners through
+// _ptV2Open (the DI CTA route) below.
 var _popularTrainers=[];
+// Live remaining count — a runner counts until 15 minutes after its race's
+// "HH:MM" Irish off-time (the DI cards' grace), measured on the Irish clock
+// via _irishNowParts. No parseable time counts as remaining (DI's safe
+// default). A row without offTimes (older payload) falls back to runnersToday.
+function _ptV2Remaining(t){
+  if(!t||!Array.isArray(t.offTimes)) return Number(t&&t.runnersToday)||0;
+  var now=_irishNowParts().mins, rem=0;
+  t.offTimes.forEach(function(s){
+    var m=String(s||'').match(/^(\d{1,2}):(\d{2})/);
+    if(!m){ rem++; return; }
+    if(parseInt(m[1],10)*60+parseInt(m[2],10)+15>=now) rem++;
+  });
+  return rem;
+}
+// One string of every card's remaining count, diffed tick to tick by the
+// Popular Trainers 60s timer (same concept as _diRemainingSig).
+function _ptV2Sig(){
+  return _popularTrainers.map(function(t){ return _ptV2Remaining(t); }).join(',');
+}
+// Card / dropdown tap — the proven DI CTA route (_activateEdgeFilterFromCta):
+// enter 'racecards' only when not already there (re-entering repaints the
+// list and Next Race before the filter is set), re-render in place when the
+// home list is on tomorrow, then set the filter. The filter view is
+// multi-day and auto-selects the first day with runners, so a tomorrow-only
+// yard lands on its Tomorrow tab — the same way DI's tomorrow Class Drop
+// CTA does. No legacy selectRacingDate('tomorrow') container swap.
+function _ptV2Open(matchName){
+  if(_currentSection!=='racecards') selectRacingSection('racecards');
+  else if(_homeRcDay==='tomorrow') _renderCurrentHomeList();
+  setTrainerFilter(String(matchName||''));
+}
 function renderPopularTrainers(){
   var sec=document.getElementById('popular-trainers-v2-section');
   var strip=document.getElementById('popular-trainers-v2-strip');
@@ -12885,7 +12916,7 @@ function renderPopularTrainers(){
   // Order: runners today (desc), then tomorrow-only (desc), then neither in
   // the endpoint's original order.
   var sorted=_popularTrainers.map(function(t,i){ return {t:t,i:i}; }).sort(function(a,b){
-    var at=Number(a.t.runnersToday)||0, bt=Number(b.t.runnersToday)||0;
+    var at=_ptV2Remaining(a.t), bt=_ptV2Remaining(b.t);
     var am=Number(a.t.runnersTomorrow)||0, bm=Number(b.t.runnersTomorrow)||0;
     var ag=at>0?0:(am>0?1:2), bg=bt>0?0:(bm>0?1:2);
     if(ag!==bg) return ag-bg;
@@ -12897,12 +12928,9 @@ function renderPopularTrainers(){
   sorted.forEach(function(t){
     var matchName=String(t.matchName||t.name||'');
     var tEsc=matchName.replace(/'/g,"\\'");
-    var n=Number(t.runnersToday)||0;
+    var n=_ptV2Remaining(t);
     var nm=Number(t.runnersTomorrow)||0;
-    // Tomorrow-only yards open tomorrow's racecards filtered to the trainer —
-    // the same 'tomorrowtrainer:' route the DI tomorrow preview CTAs use.
-    var dest=(n===0&&nm>0)?'tomorrowtrainer:':'trainer:';
-    out+='<div onclick="selectRacingSection(\''+dest+tEsc+'\')" style="flex-shrink:0;width:158px;background:#fff;border-radius:14px;border:0.5px solid #e4e8f0;border-top:3px solid #c9a84c;cursor:pointer">';
+    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:158px;background:#fff;border-radius:14px;border:0.5px solid #e4e8f0;border-top:3px solid #c9a84c;cursor:pointer">';
     out+='<div style="padding:10px 13px 6px">';
     out+='<div style="font-size:16px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">'+escHtml(t.name)+'</div>';
     out+='<div style="font-size:10px;color:#9aa3b5;margin-bottom:6px"><span style="font-weight:600;color:#c9a84c">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'%</span> &middot; 7 days</div>';
@@ -12924,8 +12952,21 @@ function renderPopularTrainers(){
 function loadPopularTrainers(){
   fetch('/.netlify/functions/get-popular-trainers')
     .then(function(r){ return r.json(); })
-    .then(function(data){ _popularTrainers=Array.isArray(data)?data:[]; renderPopularTrainers(); })
+    .then(function(data){ _popularTrainers=Array.isArray(data)?data:[]; renderPopularTrainers(); _ptV2StartTimer(); })
     .catch(function(){ _popularTrainers=[]; renderPopularTrainers(); });
+}
+// Self-contained 60s tick — the DI tick's signature only covers the DI lists
+// and lives in shared code, so this owns its own interval. Re-renders (and
+// so re-sorts) only when a card's remaining count has changed.
+function _ptV2StartTimer(){
+  if(window._ptV2Timer) return;
+  window._ptV2SigLast=_ptV2Sig();
+  window._ptV2Timer=setInterval(function(){
+    var _sig=_ptV2Sig();
+    if(_sig===window._ptV2SigLast) return;
+    window._ptV2SigLast=_sig;
+    renderPopularTrainers();
+  },60*1000);
 }
 loadPopularTrainers();
 
@@ -12950,7 +12991,7 @@ function _ptV2SearchInput(val){
     var name=String(t.name||'');
     var at=name.toLowerCase().indexOf(q);
     var nameHtml=escHtml(name.slice(0,at))+'<span style="color:#c9a84c;font-weight:700">'+escHtml(name.slice(at,at+q.length))+'</span>'+escHtml(name.slice(at+q.length));
-    var n=Number(t.runnersToday)||0;
+    var n=_ptV2Remaining(t);
     var nm=Number(t.runnersTomorrow)||0;
     var dot=n>0
       ?'<span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
@@ -12958,7 +12999,7 @@ function _ptV2SearchInput(val){
         ?'<span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
         :'<span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span>');
     var idx=_popularTrainers.indexOf(t);
-    return '<div onclick="_ptV2SearchSelect('+idx+')" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;'+(i<matches.length-1?'border-bottom:0.5px solid #f4f5f8':'')+'">'
+    return '<div onclick="_ptV2SearchSelect('+idx+')" onmousedown="event.preventDefault();_ptV2RowPress()" ontouchstart="_ptV2RowPress()" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;'+(i<matches.length-1?'border-bottom:0.5px solid #f4f5f8':'')+'">'
       +'<div style="min-width:0"><div style="font-size:14px;font-weight:500;color:#0b1628">'+nameHtml+'</div>'
       +'<div style="font-size:11px;color:#9aa3b5">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'% &middot; 7 days</div></div>'
       +dot+'</div>';
@@ -12968,16 +13009,22 @@ function _ptV2SearchInput(val){
 function _ptV2SearchSelect(idx){
   var t=_popularTrainers[idx];
   if(!t) return;
-  // Same per-state route as the cards: tomorrow-only -> tomorrow's racecards.
-  var _dest=((Number(t.runnersToday)||0)===0&&(Number(t.runnersTomorrow)||0)>0)?'tomorrowtrainer:':'trainer:';
-  selectRacingSection(_dest+String(t.matchName||t.name||''));
   _ptV2SearchHide();
+  _ptV2Open(t.matchName||t.name||'');
   var inp=document.getElementById('popular-trainers-v2-search');
   if(inp) inp.value='';
 }
+// A row press (mousedown / touchstart) is recorded so the blur that the same
+// tap causes does not clear the rows before their click lands — otherwise the
+// tap fell through to whatever sat under the dropdown (Trainer Form rows).
+var _ptV2PressedAt=0;
+function _ptV2RowPress(){ _ptV2PressedAt=Date.now(); }
 function _ptV2SearchBlur(){
   // Short delay so a dropdown row tap registers before the list disappears.
-  setTimeout(_ptV2SearchHide,150);
+  setTimeout(function(){
+    if(Date.now()-_ptV2PressedAt<600) return; // row tap in flight — its click hides
+    _ptV2SearchHide();
+  },150);
 }
 
 function _onTrainerSearchInput(val,ddId){
