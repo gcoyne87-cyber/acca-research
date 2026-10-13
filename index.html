@@ -5775,14 +5775,18 @@ function unlockCorkAnalysis(){
         </div>
         <div style="font-size:12px;color:#9aa3b5;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
       </div>
-      <div id="popular-trainers-v2-strip" style="display:flex;gap:10px;padding:0 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+      <!-- One white panel holds the carousel strip and the search bar together. -->
+      <style>#popular-trainers-v2-search::placeholder{color:#b8bfcc}</style>
+      <div style="margin:0 14px;background:#fff;border:0.5px solid #e4e8f0;border-radius:16px;padding:13px 0;box-shadow:0 1px 6px rgba(13,27,62,0.05)">
+      <div id="popular-trainers-v2-strip" style="display:flex;gap:10px;padding:0 13px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
       <!-- Popular Trainers search — filters _popularTrainers by display name, top 5. -->
-      <div style="padding:14px 16px 0;position:relative">
-        <div style="background:#ffffff;border-radius:14px;border:1px solid #e0e4ee;box-shadow:0 2px 8px rgba(0,0,0,0.07);display:flex;align-items:center;gap:10px;padding:0 14px;height:48px">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#c0c8d8" stroke-width="2.5" stroke-linecap="round"/></svg>
-          <input id="popular-trainers-v2-search" type="text" placeholder="Search any trainer&hellip;" autocomplete="off" oninput="_ptV2SearchInput(this.value)" onblur="_ptV2SearchBlur()" style="flex:1;min-width:0;border:none;outline:none;font-size:14px;color:#0b1628;background:#ffffff;font-family:inherit">
+      <div style="padding:11px 13px 0;position:relative">
+        <div style="background:#f5f7fb;border-radius:12px;border:0.5px solid #e4e8f0;display:flex;align-items:center;gap:10px;padding:0 13px;height:44px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;font-size:15px"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="#9aa3b5" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <input id="popular-trainers-v2-search" type="text" placeholder="Search any trainer&hellip;" autocomplete="off" oninput="_ptV2SearchInput(this.value)" onblur="_ptV2SearchBlur()" style="flex:1;min-width:0;border:none;outline:none;font-size:13px;color:#0b1628;background:#f5f7fb;font-family:inherit">
         </div>
-        <div id="popular-trainers-v2-dropdown" style="display:none;position:absolute;top:100%;left:16px;right:16px;background:#fff;border-radius:0 0 14px 14px;border:1px solid #e0e4ee;border-top:none;box-shadow:0 8px 20px rgba(0,0,0,0.10);overflow:hidden;z-index:20"></div>
+        <div id="popular-trainers-v2-dropdown" style="display:none;position:absolute;top:100%;left:13px;right:13px;background:#fff;border-radius:0 0 14px 14px;border:1px solid #e0e4ee;border-top:none;box-shadow:0 8px 20px rgba(0,0,0,0.10);overflow:hidden;z-index:20"></div>
+      </div>
       </div>
     </div>
     <!-- Trainer block: Trainer Form, then Popular Trainers, then the trainer
@@ -12943,20 +12947,20 @@ function renderPopularTrainers(){
     var tEsc=matchName.replace(/'/g,"\\'");
     var n=_ptV2Remaining(t);
     var nm=Number(t.runnersTomorrow)||0;
-    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:158px;background:#fff;border-radius:14px;border:0.5px solid #e4e8f0;border-top:3px solid #c9a84c;cursor:pointer">';
-    out+='<div style="padding:10px 13px 6px">';
-    out+='<div style="font-size:16px;font-weight:700;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">'+escHtml(t.name)+'</div>';
-    out+='<div style="font-size:10px;color:#9aa3b5;margin-bottom:6px"><span style="font-weight:600;color:#c9a84c">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'%</span> &middot; 7 days</div>';
-    out+='<div style="border-top:0.5px solid #f0f2f7;margin-bottom:6px"></div>';
+    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:150px;background:#0D1B3E;border-radius:14px;overflow:hidden;border-top:3px solid #c9a84c;cursor:pointer">';
+    out+='<div style="padding:11px 12px 7px">';
+    out+='<div style="font-size:13.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">'+escHtml(t.name)+'</div>';
+    out+='<div style="font-size:9.5px;color:#7a86a0;margin-bottom:7px"><span style="font-weight:600;color:#c9a84c">'+(Number(t.winners7d)||0)+'W / '+(Number(t.runners7d)||0)+'R &middot; '+(Number(t.strikeRate7d)||0)+'%</span> &middot; 7 days</div>';
+    out+='<div style="height:0.5px;background:rgba(255,255,255,0.10);margin-bottom:7px"></div>';
     if(n>0){
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#0b1628">'+n+(n===1?' runner today':' runners today')+'</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#2fd08a;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:12px;font-weight:600;color:#fff">'+n+(n===1?' runner today':' runners today')+'</span></div>';
     }else if(nm>0){
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:13px;font-weight:600;color:#92680a">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:12px;font-weight:600;color:#e3c876">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</span></div>';
     }else{
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span><span style="font-size:13px;font-weight:400;color:#c0c8d8">No runners</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#3a4a6e;flex-shrink:0"></span><span style="font-size:12px;font-weight:400;color:#5b6a8c">No runners</span></div>';
     }
     out+='</div>';
-    out+='<div style="margin:8px 13px 10px;background:#ecfdf5;border:1.5px solid #1e9e6b;border-radius:22px;padding:7px 13px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:#1e9e6b">View runners</span><span style="color:#1e9e6b;font-size:13px">&#8250;</span></div>';
+    out+='<div style="margin:8px 12px 10px;background:rgba(47,208,138,0.12);border:1px solid #2fd08a;border-radius:20px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:#2fd08a">View runners</span><span style="color:#2fd08a;font-size:12px">&#8250;</span></div>';
     out+='</div>';
   });
   strip.innerHTML=out;
@@ -13007,7 +13011,7 @@ function _ptV2SearchInput(val){
     var n=_ptV2Remaining(t);
     var nm=Number(t.runnersTomorrow)||0;
     var dot=n>0
-      ?'<span style="width:7px;height:7px;border-radius:50%;background:#1e9e6b;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
+      ?'<span style="width:7px;height:7px;border-radius:50%;background:#2fd08a;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
       :(nm>0
         ?'<span style="width:7px;height:7px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span>'
         :'<span style="width:7px;height:7px;border-radius:50%;background:#e4e8f0;flex-shrink:0"></span>');
