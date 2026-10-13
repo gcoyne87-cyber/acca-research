@@ -167,6 +167,27 @@ function isUsablePrice(fractional) {
   return /^\d+\/\d+$/.test(f) || /^ev[ns]$/i.test(f);
 }
 
+// Standard UK/Irish board ladder. Any usable fractional is snapped to the
+// nearest rung by decimal value (an exact tie takes the shorter price), so a
+// bookmaker's 85/40 or 100/30 never reaches a prompt, card or record. A price
+// already on the ladder passes through unchanged; evens is written 'EVS'.
+// Anything that is not a usable price comes back as 'SP'.
+const BOARD_LADDER = ['1/10', '1/9', '1/8', '1/7', '1/6', '1/5', '2/9', '1/4', '2/7', '3/10', '1/3', '4/11', '2/5', '4/9', '1/2', '8/15', '4/7', '8/13', '4/6', '8/11', '4/5', '5/6', '10/11', '1/1', '11/10', '6/5', '5/4', '11/8', '6/4', '13/8', '7/4', '15/8', '2/1', '9/4', '5/2', '11/4', '3/1', '10/3', '7/2', '4/1', '9/2', '5/1', '11/2', '6/1', '13/2', '7/1', '15/2', '8/1', '17/2', '9/1', '10/1', '11/1', '12/1', '14/1', '16/1', '18/1', '20/1', '22/1', '25/1', '28/1', '33/1', '40/1', '50/1', '66/1', '80/1', '100/1', '125/1', '150/1', '200/1'];
+function toBoardPrice(fractional) {
+  const f = String(fractional || '').trim();
+  if (!isUsablePrice(f)) return 'SP';
+  if (/^ev[ns]$/i.test(f)) return 'EVS';
+  const m = f.match(/^(\d+)\/(\d+)$/);
+  const dec = Number(m[1]) / Number(m[2]);
+  let best = null, bestDiff = Infinity;
+  BOARD_LADDER.forEach(function(r) {
+    const p = r.split('/');
+    const diff = Math.abs(Number(p[0]) / Number(p[1]) - dec);
+    if (diff < bestDiff) { bestDiff = diff; best = r; }   // ladder ascends: a tie keeps the shorter price
+  });
+  return best === '1/1' ? 'EVS' : best;
+}
+
 function isJumps(raceName, raceType) {
   const s = ((raceName || '') + ' ' + (raceType || '')).toLowerCase();
   return /hurdle|chase|bumper|steeplechase|national hunt|hrd/.test(s);
@@ -1077,7 +1098,7 @@ async function analyseRace(race, NH, tipsterContext) {
   const runners = raceRunners.map(r => {
     const name = r.horse || r.name || 'Unknown';
     const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
-    const price = oddsArr ? (oddsArr.find(o => isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange')) || {}).fractional || 'SP' : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
+    const price = oddsArr ? toBoardPrice((oddsArr.find(o => isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange')) || {}).fractional) : (r.odds && typeof r.odds === 'string' ? toBoardPrice(r.odds) : 'SP');
 
     const history = formByName[name] || [];
     const historyText = history.length
@@ -1136,7 +1157,7 @@ async function generateIntelligence(racecards) {
 
   function extractPrice(r) {
     const oddsArr = Array.isArray(r.odds) ? r.odds : [];
-    return (oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP';
+    return toBoardPrice((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker||'').toLowerCase().includes('exchange'); }) || {}).fractional);
   }
 
   function milesFurlongs(distStr) {
@@ -1930,8 +1951,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
             if ((r.trainer || '').toLowerCase().trim() !== nameLc) return;
             const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
             const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
+              ? toBoardPrice((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional)
+              : (r.odds && typeof r.odds === 'string' ? toBoardPrice(r.odds) : 'SP');
             out.push({ horseName: r.horse || r.name || 'Unknown', course: race.course || '', time: t24, sp: sp });
           });
         });
@@ -2134,8 +2155,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
           const brRunnerLines = brRunners.map(function(r) {
             const oddsArr = Array.isArray(r.odds) ? r.odds : (Array.isArray(r.price) ? r.price : null);
             const sp = oddsArr
-              ? ((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional || 'SP')
-              : (r.odds && typeof r.odds === 'string' && isUsablePrice(r.odds) ? r.odds : 'SP');
+              ? toBoardPrice((oddsArr.find(function(o) { return isUsablePrice(o.fractional) && !(o.bookmaker || '').toLowerCase().includes('exchange'); }) || {}).fractional)
+              : (r.odds && typeof r.odds === 'string' ? toBoardPrice(r.odds) : 'SP');
             const parts = [r.horse || r.name || 'Unknown'];
             if (r.trainer) parts.push('trainer ' + r.trainer);
             if (r.jockey) parts.push('jockey ' + r.jockey);
