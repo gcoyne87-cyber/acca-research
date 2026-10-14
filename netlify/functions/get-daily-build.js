@@ -28,7 +28,14 @@ function redisGet(key) {
 
 exports.handler = async function(event) {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
-  const today = new Date().toISOString().slice(0, 10);
+  // Europe/Dublin calendar date, never UTC: in Irish summer time UTC midnight
+  // is 01:00 Irish, so the UTC date served yesterday's finished report for
+  // the first hour of the Irish day and the overnight handover below never
+  // ran (observed 00:30 Irish, 2026-10-14). Same Intl parts read as
+  // class-drop-nightly-background.js irishNow().
+  const _dp = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const _dg = function(type) { return (_dp.find(function(p) { return p.type === type; }) || {}).value || ''; };
+  const today = _dg('year') + '-' + _dg('month') + '-' + _dg('day');
   const dateParam = (event.queryStringParameters || {}).date;
   const reportDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : today;
 

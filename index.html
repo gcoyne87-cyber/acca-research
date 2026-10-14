@@ -16931,6 +16931,11 @@ function _classDropPreviewIsToday(){
 // default (never hides a card early over a data gap, per the "never guess"
 // rule this feature was built under).
 function _diRemaining(list){
+  // A held report from an earlier racing day has nothing left to run — same
+  // report-date rule as _bigRaceTodayExpired/_classDropTodayExpired. Without
+  // it, yesterday's "HH:MM" times read as still-to-come after midnight.
+  var _rd=window._intelPicksDate||'';
+  if(_rd&&_rd<_irishNowParts().date) return {total:(list||[]).length,remaining:0};
   var now=_irishNowParts().mins;
   var total=(list||[]).length,remaining=0;
   (list||[]).forEach(function(h){
@@ -16957,6 +16962,10 @@ function _diCountLabel(dr){
 // rule Class Drop's _classDropTodayExpired has always used. A list with no
 // parseable time never expires (never hides a card over a data gap).
 function _diHideExpired(list){
+  // Report-date guard first (see _diRemaining): a card from an earlier
+  // racing day is always past its hide boundary, whatever its times say.
+  var _rd=window._intelPicksDate||'';
+  if(_rd&&_rd<_irishNowParts().date) return true;
   var now=_irishNowParts().mins,last=null;
   (list||[]).forEach(function(h){
     var m=String(h.time||'').match(/^(\d{1,2}):(\d{2})/);
