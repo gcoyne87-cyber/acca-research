@@ -11870,7 +11870,7 @@ function _renderFormSectionsStacked(s){
   var block=function(label,text,placeholder){
     return '<div style="margin:0 0 10px;padding:2px 0 2px 10px;border-left:3px solid #0b1628">'
       +'<div style="font-size:10px;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">'+label+'</div>'
-      +(text?'<div style="font-size:13px;color:#111;line-height:1.6">'+_esc(text)+'</div>'
+      +(text?'<div style="font-size:13px;color:#111;line-height:1.35;letter-spacing:-0.01em">'+_esc(text)+'</div>'
              :'<div style="font-size:13px;color:#9ca3af;line-height:1.6;font-style:italic">'+placeholder+'</div>')
     +'</div>';
   };
@@ -15586,7 +15586,7 @@ function nrLoadProfile(pfx,horseId){
           out+='<div style="flex:1;min-width:0;padding-bottom:'+(last?'2px':'10px')+'">';
           out+='<div style="background:#ffffff;border:1px solid #d4af37;border-radius:8px;padding:10px 12px">';
           out+='<div style="font-size:10px;font-weight:600;color:#0b1628;margin-bottom:4px">'+escHtml(pp.name)+'<span style="color:#9ca3af;font-weight:400"> · '+escHtml(dateStr)+'</span></div>';
-          if(note)out+='<div style="font-size:13px;line-height:1.5;color:#374151">'+escHtml(note)+'</div>';
+          if(note)out+='<div style="font-size:13px;line-height:1.35;letter-spacing:-0.01em;color:#374151">'+escHtml(note)+'</div>';
           else out+='<div style="font-size:13px;line-height:1.5;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
           out+='</div>';
           out+='</div></div>';
@@ -15958,14 +15958,14 @@ function nrLoadForm(pfx,horseId,silent){
           out+='</div>';
           out+='<div style="flex:1;min-width:0;padding-bottom:'+(last?'2px':(tier===3?'6px':'10px'))+'">';
           if(tier===3){
-            out+='<div style="font-size:11px;line-height:1.5;color:#6b7280"><span style="font-weight:700;color:#0b1628">'+escHtml(p.name)+'</span><span style="color:#9ca3af"> · '+escHtml(dateStr)+'</span>'+(note?' '+escHtml(note):'')+'</div>';
+            out+='<div style="font-size:11px;line-height:1.35;letter-spacing:-0.01em;color:#6b7280"><span style="font-weight:700;color:#0b1628">'+escHtml(p.name)+'</span><span style="color:#9ca3af"> · '+escHtml(dateStr)+'</span>'+(note?' '+escHtml(note):'')+'</div>';
           } else {
             var cardB=tier===1?'1px solid #1e9e6b':'0.5px solid #d9efe4';
             var cardP=tier===1?'10px 12px':'8px 12px';
             var txtS=tier===1?'13px':'12px';
             out+='<div style="background:#ffffff;border:'+cardB+';border-radius:8px;padding:'+cardP+'">';
             out+='<div style="font-size:10px;font-weight:600;color:#0b1628;margin-bottom:4px">'+escHtml(p.name)+'<span style="color:#9ca3af;font-weight:400"> · '+escHtml(dateStr)+'</span></div>';
-            if(note)out+='<div style="font-size:'+txtS+';line-height:1.5;color:#374151">'+escHtml(note)+'</div>';
+            if(note)out+='<div style="font-size:'+txtS+';line-height:1.35;letter-spacing:-0.01em;color:#374151">'+escHtml(note)+'</div>';
             else out+='<div style="font-size:'+txtS+';line-height:1.5;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
             out+='</div>';
           }
