@@ -13898,7 +13898,7 @@ function _runnerExtraHtml(mid,time,mname,ru,ctx){
   var v=(hit&&hit.verdict)?hit.verdict:null;
   var vFromVerdict=(v&&typeof v==='object')?String(v.text||'').trim():(typeof v==='string'?v.trim():'');
   var vText=vFromVerdict||((hit&&hit.analysis)?String(hit.analysis).trim():'');
-  var verdictHtml=vText?'<div style="padding:4px 12px 0;font-size:13px;color:#000;line-height:1.6">'+escHtml(vText)+'</div>':'';
+  var verdictHtml=vText?'<div style="padding:4px 12px 0;font-size:13px;color:#000;line-height:1.25;letter-spacing:-0.01em">'+escHtml(vText)+'</div>':'';
 
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   var key=mid+'-'+time;
