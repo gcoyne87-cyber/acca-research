@@ -1939,8 +1939,12 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       const hyRound = function(v) { return Math.round(Number(v) || 0); };
       const hotYardQualifiers = hotYardSource.filter(function(t) {
         const sr7 = hyRound(t.strikeRate7d);
-        return Number(t.runners7d) >= 5 && sr7 >= 30;
-      }).sort(function(a, b) { return hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d); }).slice(0, 2);
+        return Number(t.runners7d) >= 5 && Number(t.winners7d) >= 3 && sr7 >= 30;
+      }).sort(function(a, b) {
+        return (hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d))
+          || (Number(b.winners7d) - Number(a.winners7d))
+          || (Number(b.runners7d) - Number(a.runners7d));
+      }).slice(0, 2);
 
       const runnersTodayFor = function(trainerName) {
         const nameLc = (trainerName || '').toLowerCase().trim();
