@@ -7,36 +7,53 @@ const https = require('https');
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-// 20 trainers, fixed order — Flat first, then Jumps. `name` is the display
-// name shown on the card. `id` is the Racing API trainer_id — the primary
-// identity: every stored runner carries trainer_id, and the API is migrating
-// name forms ("A P O'Brien" -> "Aidan O'Brien") so names can no longer be
-// trusted. `match` (exact name form) and the tolerant surname rule in
-// namesMatch() below survive only as fallbacks for stored rows written
+// 26 trainers, fixed order — the 16 Flat yards first, then the 10 Jumps
+// yards. List order IS the response order IS the display order; nothing is
+// appended dynamically. `name` is the display name shown on the card.
+// `section` groups the carousel. `id` is the Racing API trainer_id — the
+// primary identity: every stored runner carries trainer_id, and the API is
+// migrating name forms ("A P O'Brien" -> "Aidan O'Brien") so names can no
+// longer be trusted. `match` (exact name form) and the tolerant surname rule
+// in namesMatch() below survive only as fallbacks for stored rows written
 // before ids were kept.
 const POPULAR_TRAINERS = [
-  { name: "Aidan O'Brien", id: 'trn_71802', match: "A P O'Brien" },
-  { name: 'John & Thady Gosden', id: 'trn_344619' },
-  { name: 'Charlie Appleby', id: 'trn_255042' },
-  { name: 'William Haggas', id: 'trn_30735' },
-  { name: 'Roger Varian', id: 'trn_224010' },
-  { name: 'Andrew Balding', id: 'trn_140445' },
-  { name: 'Richard Hannon', id: 'trn_259083' },
-  { name: 'Clive Cox', id: 'trn_52767' },
-  { name: 'Karl Burke', id: 'trn_45171', match: 'K. R. Burke' },
-  { name: 'Simon & Ed Crisford', id: 'trn_337302' },
-  { name: 'Willie Mullins', id: 'trn_13275', match: 'W P Mullins' },
-  { name: 'Gordon Elliott', id: 'trn_163305' },
-  { name: 'Nicky Henderson', id: 'trn_2799' },
-  { name: 'Paul Nicholls', id: 'trn_51903' },
-  { name: 'Dan Skelton', id: 'trn_146430' },
-  { name: 'Nigel Twiston-Davies', id: 'trn_381060' },
-  { name: 'Alan King', id: 'trn_125352' },
-  { name: "Jonjo O'Neill", id: 'trn_372456', match: "Jonjo & A.J. O'Neill" },
+  // ---- Flat ----
+  { name: 'Charlie Appleby', id: 'trn_255042', section: 'flat' },
+  { name: "Aidan O'Brien", id: 'trn_71802', section: 'flat', match: "A P O'Brien" },
+  { name: 'John & Thady Gosden', id: 'trn_344619', section: 'flat' },
+  { name: 'William Haggas', id: 'trn_30735', section: 'flat' },
+  // Card form "Joseph Patrick O'Brien"
+  { name: "Joseph O'Brien", id: 'trn_289305', section: 'flat' },
+  { name: 'Andrew Balding', id: 'trn_140445', section: 'flat' },
+  { name: 'Roger Varian', id: 'trn_224010', section: 'flat' },
+  // Card form "D K Weld"
+  { name: 'Dermot Weld', id: 'trn_9090', section: 'flat' },
+  { name: 'Richard Hannon', id: 'trn_259083', section: 'flat' },
+  // Card form "Mrs J. Harrington" — surname rule can't bridge "Jessica"/"Mrs",
+  // so the explicit match stays as the id-less fallback.
+  { name: 'Jessica Harrington', id: 'trn_11565', section: 'flat', match: 'Mrs J. Harrington' },
+  { name: 'Karl Burke', id: 'trn_45171', section: 'flat', match: 'K. R. Burke' },
+  // Card form "G. M. Lyons"
+  { name: 'Ger Lyons', id: 'trn_77103', section: 'flat' },
+  { name: 'Simon & Ed Crisford', id: 'trn_337302', section: 'flat' },
+  // Card form "J. P. Murtagh"
+  { name: 'Johnny Murtagh', id: 'trn_253620', section: 'flat' },
+  { name: 'Clive Cox', id: 'trn_52767', section: 'flat' },
+  // Card form "P. Twomey"
+  { name: 'Paddy Twomey', id: 'trn_238923', section: 'flat' },
+  // ---- Jumps ----
+  { name: 'Willie Mullins', id: 'trn_13275', section: 'jumps', match: 'W P Mullins' },
+  { name: 'Gordon Elliott', id: 'trn_163305', section: 'jumps' },
+  { name: 'Nicky Henderson', id: 'trn_2799', section: 'jumps' },
+  { name: 'Paul Nicholls', id: 'trn_51903', section: 'jumps' },
+  { name: 'Dan Skelton', id: 'trn_146430', section: 'jumps' },
+  { name: 'Nigel Twiston-Davies', id: 'trn_381060', section: 'jumps' },
+  { name: 'Alan King', id: 'trn_125352', section: 'jumps' },
+  { name: "Jonjo O'Neill", id: 'trn_372456', section: 'jumps', match: "Jonjo & A.J. O'Neill" },
   // The yard races as the "Kim Bailey & Mat Nicholls" partnership since
   // Oct 2026 — this is that partnership's id; the display name stays short.
-  { name: 'Kim Bailey', id: 'trn_378207' },
-  { name: 'Henry de Bromhead', id: 'trn_11241', match: 'Henry De Bromhead' }
+  { name: 'Kim Bailey', id: 'trn_378207', section: 'jumps' },
+  { name: 'Henry de Bromhead', id: 'trn_11241', section: 'jumps', match: 'Henry De Bromhead' }
 ];
 
 // Same Europe/Dublin calendar date as racecards.js — the Netlify runtime is
@@ -155,9 +172,6 @@ exports.handler = async function() {
     const todayById = aggregate(meetings);
     const tomorrowById = aggregate(tmMeetings);
 
-    const fixedIds = {};
-    POPULAR_TRAINERS.forEach(function(e) { if (e.id) fixedIds[e.id] = 1; });
-
     const out = POPULAR_TRAINERS.map(function(entry) {
       const row = table.find(function(t) { return rowMatches(entry, t); });
       const todayAgg = entry.id ? todayById[entry.id] : null;
@@ -190,6 +204,8 @@ exports.handler = async function() {
       const matchName = (todayAgg && todayAgg.name) || (tmAgg && tmAgg.name) || (row && row.trainerName) || entry.match || entry.name;
       return {
         name: entry.name,
+        section: entry.section,
+        order: POPULAR_TRAINERS.indexOf(entry) + 1,
         matchName: matchName,
         winners7d: row ? (Number(row.winners7d) || 0) : 0,
         runners7d: row ? (Number(row.runners7d) || 0) : 0,
@@ -200,33 +216,7 @@ exports.handler = async function() {
       };
     });
 
-    // Dynamic additions — any other yard with 4+ runners today, by id, so no
-    // big yard with a strong hand is ever missing from the carousel. Same
-    // response shape as the fixed entries; display name is the card's own
-    // form. The frontend re-sorts by runners-today itself, but these are
-    // appended most-runners-first anyway.
-    const DYNAMIC_MIN_RUNNERS = 4;
-    const dynamics = [];
-    Object.keys(todayById).forEach(function(id) {
-      if (fixedIds[id]) return;
-      const agg = todayById[id];
-      if (agg.count < DYNAMIC_MIN_RUNNERS || !agg.name) return;
-      const pseudo = { id: id, name: agg.name };
-      const row = table.find(function(t) { return rowMatches(pseudo, t); });
-      dynamics.push({
-        name: agg.name,
-        matchName: agg.name,
-        winners7d: row ? (Number(row.winners7d) || 0) : 0,
-        runners7d: row ? (Number(row.runners7d) || 0) : 0,
-        strikeRate7d: row ? (Number(row.strikeRate7d) || 0) : 0,
-        runnersToday: agg.count,
-        runnersTomorrow: (tomorrowById[id] || { count: 0 }).count,
-        offTimes: agg.offTimes
-      });
-    });
-    dynamics.sort(function(a, b) { return b.runnersToday - a.runnersToday || String(a.name).localeCompare(String(b.name)); });
-
-    return { statusCode: 200, headers, body: JSON.stringify(out.concat(dynamics)) };
+    return { statusCode: 200, headers, body: JSON.stringify(out) };
   } catch (e) {
     return { statusCode: 200, headers, body: JSON.stringify([]) };
   }
