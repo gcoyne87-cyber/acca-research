@@ -8,30 +8,35 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // 20 trainers, fixed order — Flat first, then Jumps. `name` is the display
-// name shown on the card. `match`, where present, is the exact Racing API
-// name form the data carries for that yard; entries without `match` use the
-// tolerant surname + first-name/initial rule in namesMatch() below.
+// name shown on the card. `id` is the Racing API trainer_id — the primary
+// identity: every stored runner carries trainer_id, and the API is migrating
+// name forms ("A P O'Brien" -> "Aidan O'Brien") so names can no longer be
+// trusted. `match` (exact name form) and the tolerant surname rule in
+// namesMatch() below survive only as fallbacks for stored rows written
+// before ids were kept.
 const POPULAR_TRAINERS = [
-  { name: "Aidan O'Brien", match: "A P O'Brien" },
-  { name: 'John & Thady Gosden' },
-  { name: 'Charlie Appleby' },
-  { name: 'William Haggas' },
-  { name: 'Roger Varian' },
-  { name: 'Andrew Balding' },
-  { name: 'Richard Hannon' },
-  { name: 'Clive Cox' },
-  { name: 'Karl Burke', match: 'K. R. Burke' },
-  { name: 'Simon & Ed Crisford' },
-  { name: 'Willie Mullins', match: 'W P Mullins' },
-  { name: 'Gordon Elliott' },
-  { name: 'Nicky Henderson' },
-  { name: 'Paul Nicholls' },
-  { name: 'Dan Skelton' },
-  { name: 'Nigel Twiston-Davies' },
-  { name: 'Alan King' },
-  { name: "Jonjo O'Neill", match: "Jonjo & A.J. O'Neill" },
-  { name: 'Kim Bailey' },
-  { name: 'Henry de Bromhead', match: 'Henry De Bromhead' }
+  { name: "Aidan O'Brien", id: 'trn_71802', match: "A P O'Brien" },
+  { name: 'John & Thady Gosden', id: 'trn_344619' },
+  { name: 'Charlie Appleby', id: 'trn_255042' },
+  { name: 'William Haggas', id: 'trn_30735' },
+  { name: 'Roger Varian', id: 'trn_224010' },
+  { name: 'Andrew Balding', id: 'trn_140445' },
+  { name: 'Richard Hannon', id: 'trn_259083' },
+  { name: 'Clive Cox', id: 'trn_52767' },
+  { name: 'Karl Burke', id: 'trn_45171', match: 'K. R. Burke' },
+  { name: 'Simon & Ed Crisford', id: 'trn_337302' },
+  { name: 'Willie Mullins', id: 'trn_13275', match: 'W P Mullins' },
+  { name: 'Gordon Elliott', id: 'trn_163305' },
+  { name: 'Nicky Henderson', id: 'trn_2799' },
+  { name: 'Paul Nicholls', id: 'trn_51903' },
+  { name: 'Dan Skelton', id: 'trn_146430' },
+  { name: 'Nigel Twiston-Davies', id: 'trn_381060' },
+  { name: 'Alan King', id: 'trn_125352' },
+  { name: "Jonjo O'Neill", id: 'trn_372456', match: "Jonjo & A.J. O'Neill" },
+  // The yard races as the "Kim Bailey & Mat Nicholls" partnership since
+  // Oct 2026 — this is that partnership's id; the display name stays short.
+  { name: 'Kim Bailey', id: 'trn_378207' },
+  { name: 'Henry de Bromhead', id: 'trn_11241', match: 'Henry De Bromhead' }
 ];
 
 // Same Europe/Dublin calendar date as racecards.js — the Netlify runtime is
@@ -97,6 +102,14 @@ function namesMatch(entry, dataName) {
   return ta[0] === tb[0] || ta[0].charAt(0) === tb[0].charAt(0);
 }
 
+// ID-first table-row match: rows written since trainerId was stored match on
+// it alone; older rows (no trainerId field) fall back to the name rule.
+function rowMatches(entry, row) {
+  if (!row) return false;
+  if (entry.id && row.trainerId) return row.trainerId === entry.id;
+  return namesMatch(entry, row.trainerName);
+}
+
 exports.handler = async function() {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   const today = irishTodayStr();
@@ -117,39 +130,67 @@ exports.handler = async function() {
     const tmCards = await redisGet('racecards:' + dayAfter(today));
     const tmMeetings = (tmCards && Array.isArray(tmCards.meetings)) ? tmCards.meetings : [];
 
+    // One pass per day: aggregate runners by trainer_id. Every stored runner
+    // has carried trainer_id since the cards were stored with ids; the
+    // name-rule fallback inside the fixed-entry loop below covers any id-less
+    // runner in an older payload.
+    function aggregate(ms) {
+      const byId = {};
+      ms.forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          (race.runners || []).forEach(function(ru) {
+            const id = ru && ru.trainer_id;
+            if (!id) return;
+            const a = byId[id] || (byId[id] = { name: '', count: 0, offTimes: [] });
+            a.count++;
+            // One "HH:MM" Irish-local off-time per runner today — the
+            // frontend counts a runner as remaining until 15 min after its off.
+            a.offTimes.push(String(race.t || ''));
+            if (!a.name) a.name = String(ru.trainer || '').trim();
+          });
+        });
+      });
+      return byId;
+    }
+    const todayById = aggregate(meetings);
+    const tomorrowById = aggregate(tmMeetings);
+
+    const fixedIds = {};
+    POPULAR_TRAINERS.forEach(function(e) { if (e.id) fixedIds[e.id] = 1; });
+
     const out = POPULAR_TRAINERS.map(function(entry) {
-      const row = table.find(function(t) { return namesMatch(entry, t && t.trainerName); });
-      let runnersToday = 0;
-      let dataName = row ? row.trainerName : '';
-      // One "HH:MM" Irish-local off-time per matched runner today — the
-      // frontend counts a runner as remaining until 15 minutes after its off.
-      const offTimes = [];
+      const row = table.find(function(t) { return rowMatches(entry, t); });
+      const todayAgg = entry.id ? todayById[entry.id] : null;
+      const tmAgg = entry.id ? tomorrowById[entry.id] : null;
+      let runnersToday = todayAgg ? todayAgg.count : 0;
+      let runnersTomorrow = tmAgg ? tmAgg.count : 0;
+      const offTimes = todayAgg ? todayAgg.offTimes.slice() : [];
+      // Name-rule fallback, id-less runners only (older stored payloads).
       meetings.forEach(function(m) {
         (m.races || []).forEach(function(race) {
           (race.runners || []).forEach(function(ru) {
-            const t = ru && ru.trainer;
-            if (!namesMatch(entry, t)) return;
-            runnersToday++;
-            offTimes.push(String(race.t || ''));
-            if (!dataName) dataName = String(t).trim();
+            if (ru && !ru.trainer_id && namesMatch(entry, ru.trainer)) {
+              runnersToday++;
+              offTimes.push(String(race.t || ''));
+            }
           });
         });
       });
-      // Tomorrow's runner count — same matching rule as runnersToday.
-      let runnersTomorrow = 0;
       tmMeetings.forEach(function(m) {
         (m.races || []).forEach(function(race) {
           (race.runners || []).forEach(function(ru) {
-            const t = ru && ru.trainer;
-            if (!namesMatch(entry, t)) return;
-            runnersTomorrow++;
-            if (!dataName) dataName = String(t).trim();
+            if (ru && !ru.trainer_id && namesMatch(entry, ru.trainer)) runnersTomorrow++;
           });
         });
       });
+      // The tap-through trainer filter compares raw card strings, so
+      // matchName must be whatever form today's card carries for this id —
+      // resolved at response time. Falls back to tomorrow's form, the form
+      // table's, then the static alias only when the yard is on no card.
+      const matchName = (todayAgg && todayAgg.name) || (tmAgg && tmAgg.name) || (row && row.trainerName) || entry.match || entry.name;
       return {
         name: entry.name,
-        matchName: dataName || entry.match || entry.name,
+        matchName: matchName,
         winners7d: row ? (Number(row.winners7d) || 0) : 0,
         runners7d: row ? (Number(row.runners7d) || 0) : 0,
         strikeRate7d: row ? (Number(row.strikeRate7d) || 0) : 0,
@@ -159,7 +200,33 @@ exports.handler = async function() {
       };
     });
 
-    return { statusCode: 200, headers, body: JSON.stringify(out) };
+    // Dynamic additions — any other yard with 4+ runners today, by id, so no
+    // big yard with a strong hand is ever missing from the carousel. Same
+    // response shape as the fixed entries; display name is the card's own
+    // form. The frontend re-sorts by runners-today itself, but these are
+    // appended most-runners-first anyway.
+    const DYNAMIC_MIN_RUNNERS = 4;
+    const dynamics = [];
+    Object.keys(todayById).forEach(function(id) {
+      if (fixedIds[id]) return;
+      const agg = todayById[id];
+      if (agg.count < DYNAMIC_MIN_RUNNERS || !agg.name) return;
+      const pseudo = { id: id, name: agg.name };
+      const row = table.find(function(t) { return rowMatches(pseudo, t); });
+      dynamics.push({
+        name: agg.name,
+        matchName: agg.name,
+        winners7d: row ? (Number(row.winners7d) || 0) : 0,
+        runners7d: row ? (Number(row.runners7d) || 0) : 0,
+        strikeRate7d: row ? (Number(row.strikeRate7d) || 0) : 0,
+        runnersToday: agg.count,
+        runnersTomorrow: (tomorrowById[id] || { count: 0 }).count,
+        offTimes: agg.offTimes
+      });
+    });
+    dynamics.sort(function(a, b) { return b.runnersToday - a.runnersToday || String(a.name).localeCompare(String(b.name)); });
+
+    return { statusCode: 200, headers, body: JSON.stringify(out.concat(dynamics)) };
   } catch (e) {
     return { statusCode: 200, headers, body: JSON.stringify([]) };
   }

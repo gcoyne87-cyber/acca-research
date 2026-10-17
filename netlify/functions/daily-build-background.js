@@ -1775,26 +1775,55 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
     report.hotYardCard = null;
     report.hotYards = [];
     let hotYardSource = [];
-    // Hot Yard whitelist — a copy of the 39-name eliteTrainers list in
-    // racecards.js's ELITE_TRAINERS_LC (itself a copy of index.html's
-    // _buildPopularTrainers list). Needed here so every elite yard running
+    // Hot Yard whitelist — the same 39 elite yards as racecards.js's
+    // ELITE_TRAINERS_LC and index.html's _buildPopularTrainers list (both
+    // still name-based copies). Needed here so every elite yard running
     // today is guaranteed a slot in the stored table below, regardless of
     // where they rank by 14-day strike rate. It is NOT used by the Hot Yard
-    // card qualifier in step 3.6 — that has no whitelist bypass. Stored
-    // lowercase to match the case-insensitive comparisons used against it.
-    const ELITE_TRAINERS_LC = [
-      "A P O'Brien", 'W P Mullins', 'John & Thady Gosden', 'William Haggas',
-      'Charlie Appleby', 'Roger Varian', 'Andrew Balding', 'K. R. Burke',
-      'Richard Hannon', 'Simon & Ed Crisford', 'Ralph Beckett', 'Hugo Palmer',
-      'Ed Walker', 'Clive Cox', 'George Boughey', 'Harry Eustace', 'James Tate',
-      'Archie Watson', 'Ed Dunlop', 'Marco Botti', 'Gordon Elliott',
-      'Henry De Bromhead', "Joseph Patrick O'Brien", 'Gavin Cromwell',
-      'Mrs John Harrington', "Donnacha Aidan O'Brien", 'J P Murtagh',
-      'Richard & Peter Fahey', 'Adrian McGuinness', 'Dan Skelton',
-      'Nicky Henderson', 'Paul Nicholls', "Jonjo & A.J. O'Neill", 'Ben Pauling',
-      "David O'Meara", 'Tim Easterby', 'Kevin Ryan', 'Julie Camacho',
-      'Sir Mark Prescott Bt'
-    ].map(function(t) { return t.toLowerCase(); });
+    // card qualifier in step 3.6 — that has no whitelist bypass. Keyed by
+    // Racing API trainer_id: the API is migrating name forms ("A P O'Brien"
+    // -> "Aidan O'Brien"), so names are no longer a stable identity.
+    const ELITE_TRAINER_IDS = [
+      'trn_71802',  // Aidan O'Brien (was "A P O'Brien")
+      'trn_13275',  // Willie Mullins ("W. P. Mullins")
+      'trn_344619', // John & Thady Gosden
+      'trn_30735',  // William Haggas
+      'trn_255042', // Charlie Appleby
+      'trn_224010', // Roger Varian
+      'trn_140445', // Andrew Balding
+      'trn_45171',  // K. R. Burke
+      'trn_259083', // Richard Hannon
+      'trn_337302', // Simon & Ed Crisford
+      'trn_125253', // Ralph Beckett
+      'trn_225081', // Hugo Palmer
+      'trn_215334', // Ed Walker
+      'trn_52767',  // Clive Cox
+      'trn_325899', // George Boughey
+      'trn_344736', // Harry Eustace
+      'trn_233226', // James Tate
+      'trn_290484', // Archie Watson
+      'trn_81324',  // Ed Dunlop
+      'trn_81027',  // Marco Botti
+      'trn_163305', // Gordon Elliott
+      'trn_11241',  // Henry de Bromhead
+      'trn_289305', // Joseph Patrick O'Brien
+      'trn_160524', // Gavin Cromwell
+      'trn_11565',  // Jessica Harrington ("Mrs J. Harrington")
+      'trn_331254', // Donnacha Aidan O'Brien
+      'trn_253620', // J. P. Murtagh
+      'trn_386964', // Richard & Peter Fahey
+      'trn_126792', // Adrian McGuinness
+      'trn_146430', // Dan Skelton
+      'trn_2799',   // Nicky Henderson
+      'trn_51903',  // Paul Nicholls
+      'trn_372456', // Jonjo & A.J. O'Neill
+      'trn_256320', // Ben Pauling
+      'trn_205551', // David O'Meara
+      'trn_91368',  // Tim Easterby
+      'trn_202725', // Kevin Ryan
+      'trn_110025', // Julie Camacho
+      'trn_603'     // Sir Mark Prescott Bt
+    ];
     try {
       const trainerTableMap = {};
       racecards.forEach(function(race) {
@@ -1828,8 +1857,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       const eliteTodayMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-          const nameLc = (r.trainer || '').toLowerCase().trim();
-          if (!nameLc || !r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINERS_LC.indexOf(nameLc) === -1) return;
+          if (!r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINER_IDS.indexOf(r.trainer_id || '') === -1) return;
           const existing = trainerTableMap[r.trainer];
           if (existing) { eliteTodayMap[r.trainer] = existing; return; }
           const t14 = r.trainer_14_days || {};
@@ -1894,6 +1922,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       const trainerFormTable = trainerTableToStore.map(function(entry) {
         return {
           trainerName: entry.trainer,
+          trainerId: entry.trainer_id || '',
           runners14d: entry.runs,
           winners14d: entry.wins,
           strikeRate: entry.pct, // kept under its original name so cached frontends still read it
@@ -1912,6 +1941,7 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       hotYardSource = trainerTableToStore.map(function(entry) {
         return {
           trainerName: entry.trainer,
+          trainerId: entry.trainer_id || '',
           runners7d: entry.runs7,
           winners7d: entry.wins7,
           strikeRate7d: entry.pct7,

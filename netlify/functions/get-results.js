@@ -287,6 +287,7 @@ exports.handler = async function(event) {
               draw: r.draw !== undefined && r.draw !== null ? String(r.draw) : '',
               jockey: r.jockey || r.jockey_name || '',
               trainer: r.trainer || r.trainer_name || '',
+              trainer_id: r.trainer_id || '',
               sp: sp,
               btn: r.btn !== undefined ? String(r.btn) : '',
               // sp_dec kept so the client can derive the favourite exactly
