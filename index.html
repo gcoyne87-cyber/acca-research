@@ -5765,8 +5765,10 @@ function unlockCorkAnalysis(){
        <div style="font-size:12px;color:#9aa3b5;margin-top:4px;padding-left:13px">Select a venue and pick a race time for AI analysis</div>
     </div>
      <div id="rc-single-meetings-list" style="display:none;background:#fff;padding:0 0 6px"></div>
-    <!-- POPULAR TRAINERS (v2) — 20 fixed yards, 7-day form + today's runner
-         count from get-popular-trainers. Tap a card -> selectRacingSection('trainer:'+matchName). -->
+    <!-- POPULAR TRAINERS (v2) — 26 fixed yards (16 Flat + 10 Jumps), 7-day
+         form + today's runner count from get-popular-trainers, shown in the
+         endpoint's order. Flat/Jumps pills switch the carousel's section
+         client-side. Tap a card -> selectRacingSection('trainer:'+matchName). -->
     <div id="popular-trainers-v2-section" style="display:none">
       <div style="background:#f5f7fb;padding:10px 14px 0">
         <div style="display:flex;align-items:center;gap:10px">
@@ -5774,6 +5776,13 @@ function unlockCorkAnalysis(){
           <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Popular Trainers</div>
         </div>
         <div style="font-size:12px;color:#9aa3b5;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
+      </div>
+      <!-- Flat / Jumps toggle — same pill pattern as the Racecards day pills.
+           Switches which section renders; no refetch (every entry carries
+           section). The search bar below still covers all 26 yards. -->
+      <div style="background:#f5f7fb;display:flex;gap:8px;padding:0 14px 10px">
+        <button id="pt-v2-toggle-flat" onclick="_ptV2SetSection('flat')" style="background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Flat</button>
+        <button id="pt-v2-toggle-jumps" onclick="_ptV2SetSection('jumps')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Jumps</button>
       </div>
       <!-- One white panel holds the carousel strip and the search bar together. -->
       <style>#popular-trainers-v2-search::placeholder{color:#b8bfcc}</style>
@@ -13015,19 +13024,12 @@ function renderPopularTrainers(){
   var strip=document.getElementById('popular-trainers-v2-strip');
   if(!sec||!strip) return;
   if(!_popularTrainers.length){ sec.style.display='none'; return; }
-  // Order: runners today (desc), then tomorrow-only (desc), then neither in
-  // the endpoint's original order.
-  var sorted=_popularTrainers.map(function(t,i){ return {t:t,i:i}; }).sort(function(a,b){
-    var at=_ptV2Remaining(a.t), bt=_ptV2Remaining(b.t);
-    var am=Number(a.t.runnersTomorrow)||0, bm=Number(b.t.runnersTomorrow)||0;
-    var ag=at>0?0:(am>0?1:2), bg=bt>0?0:(bm>0?1:2);
-    if(ag!==bg) return ag-bg;
-    if(ag===0&&at!==bt) return bt-at;
-    if(ag===1&&am!==bm) return bm-am;
-    return a.i-b.i;
-  }).map(function(x){ return x.t; });
+  // No client-side re-sort: the endpoint's response order IS the display
+  // order. Only the selected section's yards render (Flat default); yards
+  // with no runners today keep their position.
+  var shown=_popularTrainers.filter(function(t){ return (t.section||'flat')===_ptV2Section; });
   var out='';
-  sorted.forEach(function(t){
+  shown.forEach(function(t){
     var matchName=String(t.matchName||t.name||'');
     var tEsc=matchName.replace(/'/g,"\\'");
     var n=_ptV2Remaining(t);
@@ -13042,7 +13044,7 @@ function renderPopularTrainers(){
     }else if(nm>0){
       out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#c9a84c;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></span><span style="font-size:12px;font-weight:600;color:#e3c876">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</span></div>';
     }else{
-      out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#3a4a6e;flex-shrink:0"></span><span style="font-size:12px;font-weight:400;color:#5b6a8c">No runners</span></div>';
+      out+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:0"><span style="width:6px;height:6px;border-radius:50%;background:#3a4a6e;flex-shrink:0"></span><span style="font-size:12px;font-weight:400;color:#5b6a8c">0 runners today</span></div>';
     }
     out+='</div>';
     out+='<div style="margin:8px 12px 10px;background:rgba(47,208,138,0.12);border:1px solid #2fd08a;border-radius:20px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:#2fd08a">View runners</span><span style="color:#2fd08a;font-size:12px">&#8250;</span></div>';
@@ -13051,6 +13053,18 @@ function renderPopularTrainers(){
   strip.innerHTML=out;
   sec.style.display='';
 }
+// Flat / Jumps toggle state — 'flat' on load. Switching repaints the pills
+// and re-renders the carousel from the already-fetched list; never refetches.
+var _ptV2Section='flat';
+function _ptV2SetSection(sect){
+  _ptV2Section=sect==='jumps'?'jumps':'flat';
+  var act='background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s';
+  var ina='background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s';
+  var fb=document.getElementById('pt-v2-toggle-flat'),jb=document.getElementById('pt-v2-toggle-jumps');
+  if(fb) fb.style.cssText=_ptV2Section==='flat'?act:ina;
+  if(jb) jb.style.cssText=_ptV2Section==='jumps'?act:ina;
+  renderPopularTrainers();
+}
 function loadPopularTrainers(){
   fetch('/.netlify/functions/get-popular-trainers')
     .then(function(r){ return r.json(); })
@@ -13058,8 +13072,8 @@ function loadPopularTrainers(){
     .catch(function(){ _popularTrainers=[]; renderPopularTrainers(); });
 }
 // Self-contained 60s tick — the DI tick's signature only covers the DI lists
-// and lives in shared code, so this owns its own interval. Re-renders (and
-// so re-sorts) only when a card's remaining count has changed.
+// and lives in shared code, so this owns its own interval. Re-renders only
+// when a card's remaining count has changed (order never changes).
 function _ptV2StartTimer(){
   if(window._ptV2Timer) return;
   window._ptV2SigLast=_ptV2Sig();
