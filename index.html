@@ -15046,6 +15046,50 @@ function _edgeContextLine(ru,ctx){
   if(joined.length<=60) return '<div style="'+st+'">'+escHtml(joined)+'</div>';
   return parts.map(function(p){ return '<div style="'+st+'">'+escHtml(p)+'</div>'; }).join('');
 }
+// Elite Bloodline — fixed nine-stallion list. Matching is ID-first: a runner
+// with a sire_id/damsire_id matches only by that ID; the case-insensitive
+// exact name match is the fallback for runners whose card row carries no ID.
+// The same stallion carries a sir_* id as sire and a dsi_* id as dam sire —
+// both forms below were recovered from the stored racecards (3–18 Oct 2026).
+var ELITE_BLOODLINES=[
+  {name:'Frankel',sireId:'sir_5344171',damsireId:'dsi_5344171'},
+  {name:'Dubawi',sireId:'sir_4127830',damsireId:'dsi_4127830'},
+  {name:'Galileo',sireId:'sir_3722383',damsireId:'dsi_3722383'},
+  {name:'Sea The Stars',sireId:'sir_4868829',damsireId:'dsi_4868829'},
+  {name:'Wootton Bassett',sireId:'sir_5246346',damsireId:'dsi_5246346'},
+  {name:'Night Of Thunder',sireId:'sir_5876514',damsireId:'dsi_5876514'},
+  {name:'Kingman',sireId:'sir_5880140',damsireId:'dsi_5880140'},
+  {name:'Siyouni',sireId:'sir_5133128',damsireId:'dsi_5133128'},
+  {name:'Lope De Vega',sireId:'sir_5186867',damsireId:'dsi_5186867'}
+];
+// Returns {label:'Sire'|'Dam sire', name} or null. Sire wins when both hit —
+// one Elite Bloodline tag per runner maximum.
+function _eliteBloodlineFor(ru){
+  if(!ru) return null;
+  function norm(n){ return String(n||'').replace(/\s*\([A-Z]{2,3}\)\s*$/,'').trim().toLowerCase(); }
+  var sid=ru.sire_id||'', sn=norm(ru.sire), did=ru.damsire_id||'', dn=norm(ru.damsire);
+  var i,e;
+  for(i=0;i<ELITE_BLOODLINES.length;i++){
+    e=ELITE_BLOODLINES[i];
+    if(sid?sid===e.sireId:(sn&&sn===e.name.toLowerCase())) return {label:'Sire',name:e.name};
+  }
+  for(i=0;i<ELITE_BLOODLINES.length;i++){
+    e=ELITE_BLOODLINES[i];
+    if(did?did===e.damsireId:(dn&&dn===e.name.toLowerCase())) return {label:'Dam sire',name:e.name};
+  }
+  return null;
+}
+// The tag pill (design option 1): navy fill, 0.5px gold border, gold 8px
+// "ELITE BLOODLINE" caps + white 10px "Sire: Frankel". Empty string when the
+// runner's sire and dam sire are both off the list.
+function _eliteBloodlineTagHtml(ru){
+  var e=_eliteBloodlineFor(ru);
+  if(!e) return '';
+  return '<span style="display:inline-flex;align-items:baseline;gap:5px;background:#0D1B3E;border:0.5px solid #c9a84c;border-radius:5px;padding:3px 7px;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">'
+    +'<span style="font-size:8px;font-weight:700;color:#c9a84c;letter-spacing:0.8px">ELITE BLOODLINE</span>'
+    +'<span style="font-size:10px;font-weight:700;color:#fff">'+e.label+': '+escHtml(e.name)+'</span>'
+  +'</span>';
+}
 function runnerRow(ru,ctx,extraHtml,isFav){
   var pfx=(ctx||'nr')+'_'+ru.name.replace(/[^a-zA-Z0-9]/g,'_');
   // extraHtml may carry two pieces joined by the <!--nrv--> marker (see
@@ -15207,8 +15251,9 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
             if(ru.isProvenClassDrop) _t.push('Class Drop');
-            if(!_t.length) return '';
-            return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('');
+            var _ebTag=_eliteBloodlineTagHtml(ru);
+            if(!_t.length) return _ebTag;
+            return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('')+_ebTag;
           })()
         +'</div>'
         // Edge tag evidence line — empty string when no tag / no client data
