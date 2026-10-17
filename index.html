@@ -15079,15 +15079,16 @@ function _eliteBloodlineFor(ru){
   }
   return null;
 }
-// The tag pill (design option 1): navy fill, 0.5px gold border, gold 8px
-// "ELITE BLOODLINE" caps + white 10px "Sire: Frankel". Empty string when the
-// runner's sire and dam sire are both off the list.
+// The tag pill: same flat format as the other runner tag pills, but with a
+// purple border and a family-tree icon in place of their gold star. Reads
+// "Elite Bloodline · Sire: Frankel" / "Elite Bloodline · Dam sire: Galileo".
+// Empty string when the runner's sire and dam sire are both off the list.
 function _eliteBloodlineTagHtml(ru){
   var e=_eliteBloodlineFor(ru);
   if(!e) return '';
-  return '<span style="display:inline-flex;align-items:baseline;gap:5px;background:#0D1B3E;border:0.5px solid #c9a84c;border-radius:5px;padding:3px 7px;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">'
-    +'<span style="font-size:8px;font-weight:700;color:#c9a84c;letter-spacing:0.8px">ELITE BLOODLINE</span>'
-    +'<span style="font-size:10px;font-weight:700;color:#fff">'+e.label+': '+escHtml(e.name)+'</span>'
+  return '<span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid #7a4bbf;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">'
+    +'<svg viewBox="0 0 24 24" style="width:9px;height:9px;flex-shrink:0"><circle cx="12" cy="5" r="3.2" fill="#7a4bbf"/><circle cx="5.5" cy="18.5" r="3.2" fill="#7a4bbf"/><circle cx="18.5" cy="18.5" r="3.2" fill="#7a4bbf"/><path d="M12 8v4M12 12l-5 4.5M12 12l5 4.5" stroke="#7a4bbf" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>'
+    +'Elite Bloodline &#183; '+e.label+': '+escHtml(e.name)
   +'</span>';
 }
 function runnerRow(ru,ctx,extraHtml,isFav){
