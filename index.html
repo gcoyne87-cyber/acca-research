@@ -13389,7 +13389,10 @@ function renderFutureDateContent(dateStr,targetEl){
           out+=_raceTabsHtml(m.id,sr.t,m.name);
           out+='</div>';
         }
-        out+=rcRaceDetailHtml(m);
+        // Home list keeps 'rc'; the Cards-tab future container gets its own
+        // 'rcf' ctx so its nrh-* ids never duplicate a home-rendered copy
+        // (taps were opening the hidden first-in-DOM panel instead).
+        out+=rcRaceDetailHtml(m,targetEl?'rc':'rcf');
         out+='</div>';
       }
       out+='</div>';
@@ -14224,7 +14227,12 @@ function rcTimesHtml(m,large){
 
 }
 
-function rcRaceDetailHtml(m){
+function rcRaceDetailHtml(m,ctx){
+
+  // ctx keys every per-runner element id (nrh-*): a caller rendering into a
+  // second live container must pass its own ctx (the nr/nrhome pattern) so
+  // the ids never collide with the home list's 'rc' copies.
+  var _ctx=ctx||'rc';
 
   var selRace=rcOpenRace[m.id];
 
@@ -14236,7 +14244,7 @@ function rcRaceDetailHtml(m){
 
   var runners=_sortByPrice(((race&&race.runners&&race.runners.length)?race.runners:RC_RUNNERS).filter(function(r){return r.nonRunner!==true;}));
   var favNames=_rcFavNames(runners);
-  out+=runners.map(function(r){return runnerRow(r,'rc',_runnerExtraHtml(m.id,race.t,m.name,r,'rc'),!!favNames[r.name]);}).join('');
+  out+=runners.map(function(r){return runnerRow(r,_ctx,_runnerExtraHtml(m.id,race.t,m.name,r,_ctx),!!favNames[r.name]);}).join('');
 
   out+='</div>';
 
@@ -15345,7 +15353,7 @@ function nrLoadEdge(pfx,horseId){
 
 var _nrProfileCache={};
 function nrLoadProfile(pfx,horseId){
-  if(!horseId){nrTogglePanel(pfx,'pe');return;}
+  if(!horseId){var _naDiv=document.getElementById('nrh-pai-'+pfx);if(_naDiv)_naDiv.innerHTML='<div style="padding:10px 12px;font-size:12px;color:#888">Profile unavailable</div>';nrTogglePanel(pfx,'pe');return;}
   var c=_nrProfileCache[horseId];
   var tDiv=document.getElementById('nrh-pai-'+pfx);
   if(c&&c.html){nrTogglePanel(pfx,'pe');if(tDiv)tDiv.innerHTML=c.html;return;}
@@ -19252,10 +19260,13 @@ function _buildResultCard(item,pickMap,bulked,opts){
     html+='<div style="display:flex;align-items:flex-start;margin-bottom:'+(isLastRow?'0':'7px')+'">';
     html+='<span style="width:32px;font-size:12px;font-weight:700;color:'+(isW?'#0D1B3E':'#9aa3b5')+';flex-shrink:0;padding-top:1px">'+ord+'</span>';
     html+='<div style="flex:1;min-width:0">';
-    // Down arrow — visual only (no onclick/handler yet), same style as the
-    // racecard horse-profile arrow (#0D1B3E, 14px, bold). Results
+    // Down arrow — opens the horse profile via nrLoadProfile, same style as
+    // the racecard horse-profile arrow (#0D1B3E, 14px, bold). Results
     // page two only (bulked && !opts.home); homepage strip untouched.
-    var _dnArrow=(bulked&&!opts.home)?'<span style="color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'';
+    var _resWire=(bulked&&!opts.home);
+    var _resPfx=_resWire?'res_'+String(r.horse||'').replace(/[^a-zA-Z0-9]/g,'_'):'';
+    var _resHid=escHtml(r.horse_id||'').replace(/'/g,"\\'");
+    var _dnArrow=_resWire?'<span id="nrh-arr-'+_resPfx+'" onclick="nrLoadProfile(\''+_resPfx+'\',\''+_resHid+'\')" title="Horse profile" style="cursor:pointer;color:#0D1B3E;font-weight:700;font-size:14px;line-height:1;margin-left:4px">&#9660;</span>':'';
     html+='<div style="font-size:13px;font-weight:600;color:#0D1B3E;display:flex;align-items:center;flex-wrap:wrap;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(r.horse)+'</span>'+_dnArrow+_pickPill(r.horse,pickMap,7)+_edgeTagChips(r,7,'0 4px')+'</div>';
     if(r.jockey||r.trainer) html+='<div style="font-size:10px;color:#9aa3b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">'+(r.jockey?escHtml(r.jockey):'')+(r.jockey&&r.trainer?' · ':'')+(r.trainer?escHtml(r.trainer):'')+'</div>';
     // In-running comment — Results page card only, never the homepage strip
@@ -19264,6 +19275,18 @@ function _buildResultCard(item,pickMap,bulked,opts){
     html+='</div>';
     if(r.sp) html+='<span style="font-size:13px;font-weight:700;color:#5a6378;flex-shrink:0;margin-left:8px;padding-top:1px">'+escHtml(r.sp)+(favNames[r.horse]?'F':'')+'</span>';
     html+='</div>';
+    // Profile panel host for the wired arrow above — same wrap + child ids
+    // runnerRow emits, so nrLoadProfile/nrTogglePanel work unchanged here.
+    if(_resWire){
+      html+='<div id="nrh-'+_resPfx+'" data-horsename="'+escHtml(r.horse||'')+'" data-horseid="'+escHtml(r.horse_id||'')+'" style="display:none">'
+        +'<div id="nrh-pe-'+_resPfx+'" style="display:none;padding:0">'
+          +'<div id="nrh-pai-'+_resPfx+'" style="padding:0"></div>'
+          +'<div id="nrh-pmeta-'+_resPfx+'" style="padding:0 6px"></div>'
+          +'<div id="nrh-pft-'+_resPfx+'" style="display:none"></div>'
+          +'<div id="nrh-pcareer-'+_resPfx+'" style="padding:0"></div>'
+        +'</div>'
+      +'</div>';
+    }
   });
 
   // Bulked only: results footer — ran/distances, winning time, winning
