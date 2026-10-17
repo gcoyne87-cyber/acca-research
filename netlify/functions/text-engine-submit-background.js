@@ -141,6 +141,49 @@ function surname(name) {
 }
 function classLabel(c) { const m = String(c || '').match(/\d+/); return m ? 'Class ' + m[0] : (c ? String(c) : ''); }
 
+// ── Trainer name canonicaliser ─────────────────────────────────────────────
+// History rows carry no trainer_id and the Racing API is migrating name forms
+// ("A P O'Brien" -> "Aidan O'Brien"), so spell grouping compares names through
+// sameTrainer() instead of exact lowercase equality.
+
+// Alias map for forms the initials rule cannot bridge. Keys and the value are
+// NORMALISED forms (lowercase, no punctuation, titles stripped — what
+// normTrainerName produces before the alias lookup). One line per alias.
+const TRAINER_ALIASES = {
+  'john harrington': 'jessica harrington',   // "Mrs John Harrington" (title already stripped)
+  'j harrington': 'jessica harrington'       // "Mrs J. Harrington"
+};
+
+// lowercase, strip punctuation, collapse whitespace, strip title prefixes,
+// then resolve aliases.
+function normTrainerName(s) {
+  let n = String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  n = n.replace(/^(mr|mrs|ms|miss|sir|dr)\s+/, '');
+  return TRAINER_ALIASES[n] || n;
+}
+
+// Same trainer under the canonicaliser: equal once normalised, or same
+// surname with one side's forenames being initials consistent with the
+// other's ("a p obrien" ~ "aidan obrien", "d k weld" ~ "dermot weld").
+// Two full-forename names that differ ("joseph patrick obrien" vs
+// "aidan obrien") stay different trainers — the bridge needs initials.
+function sameTrainer(a, b) {
+  const na = normTrainerName(a), nb = normTrainerName(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const ta = na.split(' '), tb = nb.split(' ');
+  if (ta.length < 2 || tb.length < 2) return false;
+  if (ta[ta.length - 1] !== tb[tb.length - 1]) return false;
+  const fa = ta.slice(0, -1), fb = tb.slice(0, -1);
+  const isInitials = function(arr) { return arr.every(function(x) { return x.length === 1; }); };
+  if (!isInitials(fa) && !isInitials(fb)) return false;
+  const shorter = fa.length <= fb.length ? fa : fb, longer = fa.length <= fb.length ? fb : fa;
+  for (let i = 0; i < shorter.length; i++) {
+    if (shorter[i].charAt(0) !== longer[i].charAt(0)) return false;
+  }
+  return true;
+}
+
 // ── Facts computed in code from ALL rows ───────────────────────────────────
 // rows: form:history rows, newest first. cardTrainer: the card's current
 // trainer, appended as a zero-run spell when the newest row's trainer differs.
@@ -216,15 +259,20 @@ function buildFacts(rowsNewestFirst, raceDistF, cardTrainer) {
   // last 4, newest first
   facts.last4 = rows.slice(0, 4).map(function(r) { return { date: r.date, course: stripParens(r.course), pos: r.pos, ran: Number(r.ran) || 0, distance: distLabel(furlongs(r.dist)), going: primaryGoing(r.going) }; });
 
-  // spells — consecutive runs under the same trainer, career order
+  // spells — consecutive runs under the same trainer, career order. "Same
+  // trainer" is sameTrainer() (canonicalised), so a mid-career name-form
+  // switch ("A P O'Brien" -> "Aidan O'Brien") stays one continuous spell;
+  // the spell keeps the newest form seen for display.
   const spells = [];
   asc.forEach(function(r) {
     const t = String(r.trainer || '').trim() || 'Unknown';
     const cur = spells[spells.length - 1];
-    if (cur && cur.trainer.toLowerCase() === t.toLowerCase()) cur.rows.push(r); else spells.push({ trainer: t, rows: [r] });
+    if (cur && sameTrainer(cur.trainer, t)) { cur.trainer = t; cur.rows.push(r); } else spells.push({ trainer: t, rows: [r] });
   });
   const cardT = String(cardTrainer || '').trim();
-  if (cardT && (!spells.length || spells[spells.length - 1].trainer.toLowerCase() !== cardT.toLowerCase())) spells.push({ trainer: cardT, rows: [] });
+  // No phantom zero-run spell when the card trainer is the newest history
+  // trainer under a different name form.
+  if (cardT && (!spells.length || !sameTrainer(spells[spells.length - 1].trainer, cardT))) spells.push({ trainer: cardT, rows: [] });
   facts.spells = spells.map(function(s, i) {
     const rs = s.rows; const current = i === spells.length - 1;
     const uniq = function(arr) { return arr.filter(function(x, k) { return x && arr.indexOf(x) === k; }); };
