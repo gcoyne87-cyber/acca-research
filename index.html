@@ -17274,14 +17274,16 @@ function renderAIIntelligence(){
     }]);
   }
 
-  // Tomorrow's Class Drop — the 02:00 preview from tomorrow's report, shown
-  // after every today card and Tomorrow's Big Race, same markup. After the Irish midnight flip it is
-  // labelled as today's card and shown only while today's own card is hidden
-  // or absent — the same handover rule as Tomorrow's Big Race — so two
-  // "Class Drop" cards never sit side by side.
+  // Tomorrow's Class Drop — the 02:00 preview from tomorrow's report, same
+  // markup as today's card. Sequential handover, identical to Big Race's
+  // (!_showTodayBig gate above): the preview renders ONLY while today's own
+  // card is hidden or absent — today's card alone until it expires 15 minutes
+  // after its last runner, then this card alone, which flips its label from
+  // "Tomorrow's Class Drop" to "Class Drop" at Irish midnight. At no point do
+  // two Class Drop cards sit side by side.
   var _cdFlip=_classDropPreviewIsToday();
   window._classDropFlipShown=_cdFlip;
-  if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&(!_cdFlip||!_cdTodayShown)){
+  if(CLASSDROP_PREVIEW&&CLASSDROP_PREVIEW.text&&!_cdTodayShown){
     // Static total, not a live remaining count — these qualifiers' race
     // times are tomorrow's, so comparing their raw HH:MM against today's
     // Irish clock (_diRemaining) would misread an early tomorrow time as
