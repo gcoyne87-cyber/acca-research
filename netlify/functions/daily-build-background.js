@@ -571,7 +571,11 @@ async function callClaude(systemPrompt, userMessage, tokens, noSearch, maxSearch
   const body = {
     model: 'claude-sonnet-4-6',
     max_tokens: tokens || 6000,
-    system: systemPrompt,
+    // Prompt caching: a non-empty system prompt goes as a cache_control block,
+    // so the big fixed prompts (FLAT/NH race analysis) bill at the cache-read
+    // rate after the first call. Prompts under the cache minimum are simply
+    // not cached — no conditional needed; '' keeps the plain string shape.
+    system: systemPrompt ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] : systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   };
   if (!noSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxSearches || 2 }];
@@ -866,7 +870,8 @@ async function callClaudeSimple(systemPrompt, userMessage, maxTokens) {
   }, {
     model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
-    system: systemPrompt,
+    // Same cached system-block shape as callClaude above.
+    system: systemPrompt ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] : systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   });
   const usage = resp.usage || {};
@@ -3476,6 +3481,17 @@ exports.handler = async function(event) {
 
     // 4. Analyse each upcoming race — tipster consensus from intelligence passed in, 1 web search per race
     if (RUN_FULL_BUILD) {
+    // Prompt-cache warm-up — one priming call per system-prompt variant on
+    // today's card (trainer-history-v2's warm-up pattern: the cache is written
+    // once before concurrent calls read it, instead of the first batch of 4
+    // racing four duplicate cache writes). Best-effort: a failed warm-up just
+    // means the first batch pays the writes, exactly as before.
+    try {
+      const anyFlat = racecards.some(race => !isJumps(race.race_name, race.type));
+      const anyNH = racecards.some(race => isJumps(race.race_name, race.type));
+      if (anyFlat) await callClaude(FLAT_PROMPT, 'Cache warm-up. Reply with OK only.', 8, true);
+      if (anyNH) await callClaude(NH_PROMPT, 'Cache warm-up. Reply with OK only.', 8, true);
+    } catch (e) { console.log('[daily-build] cache warm-up skipped: ' + e.message); }
     const BATCH = 4;
     for (let i = 0; i < racecards.length; i += BATCH) {
       const batch = racecards.slice(i, i + BATCH);

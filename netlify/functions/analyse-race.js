@@ -160,7 +160,7 @@ function callClaude(payload) {
       model: 'claude-sonnet-4-6',
       max_tokens: 6000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      system: SYSTEM_PROMPT,
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }]
     });
 
