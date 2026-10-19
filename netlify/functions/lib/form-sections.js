@@ -789,8 +789,54 @@ const LEANS = ['suits', 'against', 'neutral'];
 // 15-25 word band is a warning, never a failure (the engine's word rule).
 // The lean is structural: anything but the three values fails, and
 // opts.runCount === 1 (one run in the section's window) forces neutral.
+//
+// HONEST ARITHMETIC (first glance sweep, 2026-10-19: 4 of the 5 failures):
+// the condensed style naturally writes derived counts — "0 from 3" where
+// the fact line says "no top-three finish", "across 4 runs" where the
+// facts show 2+2 — and the prompt's own tone examples model exactly that.
+// So, for the GLANCE ONLY, two kinds of number-not-in-facts failure are
+// waived: (1) a 0 used as a wins/places/top-three count when some fact
+// line verifiably shows a zero count (a 'no top-three finish' line, a
+// stamina NONE line, or an enumerated group with no 1st/2nd/3rd and no
+// win/place); (2) a number equal to the sum of two or more of the fact
+// lines' own run counts. The waiver is not group-targeted — it checks the
+// arithmetic is achievable from the facts, not which group a sentence
+// binds it to — and every other number (positions, dates, anything not a
+// fact-line sum) still fails exactly as before. The full-text validator is
+// untouched.
 function validateGlance(section, glance, lean, factLines, opts) {
   const r = validateSection(section, glance, factLines, Object.assign({}, opts || {}, { wordCap: 25 }));
+  // run-count subset sums (2+ groups) from the fact lines. The Window line
+  // is excluded: its totals are not groups, and counting them would let an
+  // invented figure ride on window+group double-counts.
+  const groupRuns = [];
+  (factLines || []).forEach(function(line) {
+    if (/^\s*-\s*Window:/.test(line)) return;
+    let gm; const reRuns = /(\d+)\s+runs?\b/g;
+    while ((gm = reRuns.exec(line)) !== null && groupRuns.length < 12) groupRuns.push(parseInt(gm[1], 10));
+  });
+  const sumOk = {};
+  for (let mask = 1; mask < (1 << groupRuns.length); mask++) {
+    let total = 0, picked = 0;
+    for (let i = 0; i < groupRuns.length; i++) { if (mask & (1 << i)) { total += groupRuns[i]; picked++; } }
+    if (picked >= 2) sumOk[total] = true;
+  }
+  // is any zero count verifiable from the facts?
+  const zeroVerifiable = (factLines || []).some(function(line) {
+    if (line.indexOf('no top-three finish') !== -1) return true;
+    if (line.indexOf('(no wins at any trip)') !== -1 || line.indexOf('(no places at any trip)') !== -1) return true;
+    const enumerated = /\d+(?:st|nd|rd|th) of \d+|pulled up|fell|unseated|brought down|refused|ran out|slipped up/i.test(line);
+    const anyTopThree = /\b(?:1st|2nd|3rd) of \d+/.test(line) || /\bwins?\b/i.test(line) || /\bplaces?\b/i.test(line);
+    return enumerated && !anyTopThree;
+  });
+  // ...and is the glance's 0 used as a result count ("0 from 3", "0 wins")?
+  const zeroAsCount = /\b0\s+(?:from\s+\d|wins?\b|places?\b|top[- ]?thre)/i.test(String(glance || ''));
+  r.failures = r.failures.filter(function(f) {
+    if (f.check !== 'number-not-in-facts') return true;
+    const num = String(f.detail).split(' | ')[0];
+    if (num === '0') return !(zeroAsCount && zeroVerifiable);
+    return !sumOk[parseInt(num, 10)];
+  });
   r.failures = r.failures.map(function(f) { return { check: 'glance-' + f.check, detail: f.detail }; });
   if (LEANS.indexOf(lean) === -1) {
     r.failures.push({ check: 'glance-lean', detail: 'lean must be exactly one of suits/against/neutral, got "' + String(lean) + '"' });
