@@ -81,6 +81,15 @@ exports.handler = async function(event) {
       } else if (going || trip || track) {
         summaries[id] = { going: going || undefined, trip: trip || undefined, track: track || undefined };
       }
+      // Glance layer passthrough — the six condensed-verdict fields ride
+      // along whenever the stored record carries them. Old records without
+      // the fields simply omit them (JSON.stringify drops undefined), and
+      // the front end falls back to the full text.
+      if (summaries[id] && sectionsVals[i]) {
+        ['goingGlance', 'goingLean', 'tripGlance', 'tripLean', 'trackGlance', 'trackLean'].forEach(function(k) {
+          if (sectionsVals[i][k] !== undefined && sectionsVals[i][k] !== null) summaries[id][k] = sectionsVals[i][k];
+        });
+      }
     });
 
     return { statusCode: 200, headers, body: JSON.stringify({ summaries: summaries }) };
