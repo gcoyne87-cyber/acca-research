@@ -581,9 +581,23 @@ const EXAMPLES =
 "TRIP facts (thin record):\n- 1m2f (Flat): 1 run, 7th of 11.\n- 1m4f (Flat): 1 run, 0 wins, 1 place; best 2nd of 10 at Newbury on 3 Jul 2026.\n- Flat total: 2 runs, 0 wins, 1 place.\n- Flat stamina: longest won NONE (no wins at any trip); longest placed 1m4f; longest tried 1m4f; shortest tried 1m2f.\n- Window: last 2 runs — 2 runs, 0 wins, 1 place.\n- Too few runs to show a pattern.\n" +
 "TRIP text: Only 2 runs to go on, a 7th of 11 at 1m2f and a 2nd of 10 at Newbury on 3 Jul 2026 at 1m4f, so there is no trip pattern to read yet. The horse has not won at any trip in the last 2 runs.";
 
-const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": \"...\", \"trip\": \"...\", \"track\": \"...\"}. Your reply must begin with { and end with } — the JSON object and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it. Do not write anything that is not one of the three section texts.";
+// ── F2. GLANCE AND LEAN ── added on top of the full texts, which are
+// untouched: each section also returns a 15-25 word condensed verdict
+// (glance) and a one-word lean, under the same fact rules the full texts
+// obey. The tone examples are approved lines drawn from real stored texts.
+const GLANCE_RULES =
+"GLANCE AND LEAN\n" +
+"Alongside each section's text, write that section's glance: a 15 to 25 word condensed verdict — the section's conclusion plus its key evidence, written to stand alone. Same interpretive voice as the section text, never a results recital, and the same fact rules: every number, position, distance, going and course copied from that section's own fact lines, positions as '3rd of 9', distances exactly as the fact lines spell them, history only, no betting or tipster language. Never conclude a horse won't stay or won't handle a trip or ground it has not tried.\n" +
+"Each section also gets a lean: exactly one of suits / against / neutral, lowercase. 'suits' only when the record clearly supports a positive pattern and 'against' only when it clearly supports a negative one; 'neutral' for thin, mixed or unproven records. A section whose window holds just 1 run is always neutral. A 'Too few runs to show a pattern' line means neutral.\n" +
+"GLANCE EXAMPLES (tone):\n" +
+"- Quicker ground is the story — both wins came on Good to Firm and Good to Soft, with Heavy producing an 8th of 11. (lean: suits)\n" +
+"- Galloping tracks are the pattern — 4 top-threes from 11 runs on them, 0 from 4 on tight circuits. (lean: suits)\n" +
+"- 1m looks the limit of the promise — the only place came there; 0 from 6 at 1m2f and beyond. (lean: against)\n" +
+"- Just one run — a 3rd of 5 at Salisbury on Good to Firm; too early for any pattern. (lean: neutral)";
 
-const GOINGTRIP_PROMPT = FACT_CONTRACT + "\n\n" + VOICE_RULES + "\n\n" + GOING_NOTES + "\n\n" + TRIP_NOTES + "\n\n" + TRACK_NOTES + "\n\n" + EXAMPLES + "\n\n" + OUTPUT_LINE;
+const OUTPUT_LINE = "OUTPUT: strict JSON only: {\"going\": {\"text\": \"...\", \"glance\": \"...\", \"lean\": \"suits|against|neutral\"}, \"trip\": {\"text\": \"...\", \"glance\": \"...\", \"lean\": \"...\"}, \"track\": {\"text\": \"...\", \"glance\": \"...\", \"lean\": \"...\"}}. Each text is that section written to the rules above; each glance and lean follows GLANCE AND LEAN. Your reply must begin with { and end with } — the JSON object and nothing else. No reasoning, no planning, no word counts, no notes, no commentary before or after it. Do not write anything that is not one of these fields.";
+
+const GOINGTRIP_PROMPT = FACT_CONTRACT + "\n\n" + VOICE_RULES + "\n\n" + GOING_NOTES + "\n\n" + TRIP_NOTES + "\n\n" + TRACK_NOTES + "\n\n" + GLANCE_RULES + "\n\n" + EXAMPLES + "\n\n" + OUTPUT_LINE;
 const GOINGTRIP_MAX_TOKENS = 1600;
 
 // ── G. VALIDATOR ──────────────────────────────────────────────────────────
@@ -748,6 +762,45 @@ function validateSection(section, text, factLines, opts) {
   if (pct !== -1) fail('banned-format', 'percentage language', pct);
 
   return { ok: failures.length === 0, failures: failures, warnings: warnings, wordCount: wc, text: t };
+}
+
+// ── G2. GLANCE PARSE + CHECK ──────────────────────────────────────────
+// Each parsed section is now { text, glance, lean }; a bare string (an old
+// reply shape or a model slip) is accepted as text-only, so the text check
+// still runs and the missing glance fails cleanly.
+function sectionFields(parsedSection) {
+  if (parsedSection && typeof parsedSection === 'object') {
+    return {
+      text: typeof parsedSection.text === 'string' ? parsedSection.text : null,
+      glance: typeof parsedSection.glance === 'string' ? parsedSection.glance : null,
+      lean: typeof parsedSection.lean === 'string' ? parsedSection.lean.trim().toLowerCase() : null
+    };
+  }
+  if (typeof parsedSection === 'string') return { text: parsedSection, glance: null, lean: null };
+  return { text: null, glance: null, lean: null };
+}
+
+const LEANS = ['suits', 'against', 'neutral'];
+// The glance goes through the SAME zero-error validator as the full text —
+// number membership, course/going names, banned words, banned format,
+// future words, the lot — so a glance whose numbers aren't in the data
+// fails the record exactly as a bad full text does. Its failures are
+// retagged 'glance-*' so telemetry and retry notes name the field. The
+// 15-25 word band is a warning, never a failure (the engine's word rule).
+// The lean is structural: anything but the three values fails, and
+// opts.runCount === 1 (one run in the section's window) forces neutral.
+function validateGlance(section, glance, lean, factLines, opts) {
+  const r = validateSection(section, glance, factLines, Object.assign({}, opts || {}, { wordCap: 25 }));
+  r.failures = r.failures.map(function(f) { return { check: 'glance-' + f.check, detail: f.detail }; });
+  if (LEANS.indexOf(lean) === -1) {
+    r.failures.push({ check: 'glance-lean', detail: 'lean must be exactly one of suits/against/neutral, got "' + String(lean) + '"' });
+  } else if (opts && opts.runCount === 1 && lean !== 'neutral') {
+    r.failures.push({ check: 'glance-lean', detail: 'one run in the window — lean must be neutral, got "' + lean + '"' });
+  }
+  if (r.wordCount > 0 && r.wordCount < 15) r.warnings.push({ section: section, glanceWords: r.wordCount, floor: 15 });
+  r.ok = r.failures.length === 0;
+  r.lean = LEANS.indexOf(lean) === -1 ? null : lean;
+  return r;
 }
 
 // ── H. TRAINER HISTORY — spell splitter, fact builder, prompt, validator ──
@@ -1009,6 +1062,8 @@ module.exports = {
   // validator
   parseJsonSections: parseJsonSections,
   validateSection: validateSection,
+  sectionFields: sectionFields,
+  validateGlance: validateGlance,
   numberTokens: numberTokens,
   nameTokens: nameTokens,
   COURSE_NAME_LIST: COURSE_NAME_LIST,

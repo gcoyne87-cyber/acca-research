@@ -24,8 +24,10 @@
 // ?date=YYYY-MM-DD (default: Irish today). Self-chains on the 780s-budget /
 // persisted-worklist / lock-released-before-chaining pattern.
 //
-// Writes: form-sections:{horse_id} = { going, goingWindow, generatedAt,
-// trip, tripWindow, tripGeneratedAt, track, trackGeneratedAt } (no TTL),
+// Writes: form-sections:{horse_id} = { going, goingGlance, goingLean,
+// goingWindow, generatedAt, trip, tripGlance, tripLean, tripWindow,
+// tripGeneratedAt, track, trackGlance, trackLean, trackGeneratedAt }
+// (no TTL),
 // form-sections:coverage:goingtrip:{date} once the worklist is empty, and
 // form-sections:telemetry:{date} (append-only failure detail, never cleared
 // by lock/worklist logic).
@@ -106,14 +108,22 @@ async function callModelGoingTrip(userText) {
 // and nothing is written for it; the rest of the record is left untouched).
 // Track carries no trackWindow: its window (last 15 runs / 24 months,
 // wall-clock) is independent of win (Going/Trip's race-day 18-month window).
-async function storeGoingTrip(h, win, goingText, tripText, trackText) {
+// Each section argument is null (not stored), a bare string (the
+// templates), or { text, glance, lean }. The section's text keeps its
+// original flat field (record.going etc. — every existing reader sees
+// exactly what it saw before); glance and lean are stored alongside as
+// goingGlance/goingLean, tripGlance/tripLean, trackGlance/trackLean.
+// Old records are never migrated: one without the new fields stays valid.
+async function storeGoingTrip(h, win, going, trip, track) {
+  const norm = function(v) { return (v === null || v === undefined) ? null : (typeof v === 'string' ? { text: v, glance: null, lean: null } : v); };
+  const g = norm(going), t = norm(trip), k = norm(track);
   const existing = await E.redisGet('form-sections:' + h.horse_id);
   const record = Object.assign({}, existing || {});
   const nowIso = new Date().toISOString();
   const windowInfo = { size: win.size, limit: win.limitApplied, oldest: win.oldestDate, newest: win.newestDate, excludedNoGoing: win.excludedNoGoing };
-  if (goingText !== null && goingText !== undefined) { record.going = goingText; record.goingWindow = windowInfo; record.generatedAt = nowIso; }
-  if (tripText !== null && tripText !== undefined) { record.trip = tripText; record.tripWindow = windowInfo; record.tripGeneratedAt = nowIso; }
-  if (trackText !== null && trackText !== undefined) { record.track = trackText; record.trackGeneratedAt = nowIso; }
+  if (g) { record.going = g.text; record.goingWindow = windowInfo; record.generatedAt = nowIso; if (g.glance !== null) { record.goingGlance = g.glance; record.goingLean = g.lean; } }
+  if (t) { record.trip = t.text; record.tripWindow = windowInfo; record.tripGeneratedAt = nowIso; if (t.glance !== null) { record.tripGlance = t.glance; record.tripLean = t.lean; } }
+  if (k) { record.track = k.text; record.trackGeneratedAt = nowIso; if (k.glance !== null) { record.trackGlance = k.glance; record.trackLean = k.lean; } }
   await E.redisSet('form-sections:' + h.horse_id, record);
   return record;
 }
@@ -166,7 +176,7 @@ async function prepareGoingTrip(h, date) {
   }
   const envelope = F.buildFactsEnvelope(h, goingFacts, tripFacts, trackFacts);
   const courseNames = F.courseNamesForExemption(win.rows.concat(trackRows));
-  return { h: h, date: date, template: false, win: win, trackIsTemplate: trackIsTemplate, goingFacts: goingFacts, tripFacts: tripFacts, trackFacts: trackFacts, envelope: envelope, courseNames: courseNames };
+  return { h: h, date: date, template: false, win: win, trackIsTemplate: trackIsTemplate, trackRunCount: trackRows.length, goingFacts: goingFacts, tripFacts: tripFacts, trackFacts: trackFacts, envelope: envelope, courseNames: courseNames };
 }
 
 // Template store — the three sections are generated together or not at all.
@@ -190,11 +200,29 @@ async function writeGoingTrip(job, userText, stage, rawCaptures) {
 function validateGoingTrip(job, text) {
   const parsed = F.parseJsonSections(text);
   if (!parsed) return { parsed: null, going: null, trip: null, track: null, jsonFail: true };
+  // Each section is its parsed { text, glance, lean }: the full text and
+  // the glance/lean each run the one zero-error standard, and the section
+  // passes only when BOTH do — a bad glance fails the record exactly as a
+  // bad full text does. The full-text checks themselves are unchanged.
+  const one = function(section, facts, wordCap, runCount) {
+    const sf = F.sectionFields(parsed[section]);
+    const vText = F.validateSection(section, sf.text, facts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: wordCap });
+    const vGlance = F.validateGlance(section, sf.glance, sf.lean, facts, { courseNames: job.courseNames, horseName: job.h.name, runCount: runCount });
+    return {
+      ok: vText.ok && vGlance.ok,
+      failures: vText.failures.concat(vGlance.failures),
+      warnings: vText.warnings.concat(vGlance.warnings),
+      wordCount: vText.wordCount,
+      text: vText.text,
+      glance: vGlance.text,
+      lean: vGlance.lean
+    };
+  };
   return {
     parsed: parsed,
-    going: F.validateSection('going', parsed.going, job.goingFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 65 }),
-    trip: F.validateSection('trip', parsed.trip, job.tripFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 65 }),
-    track: job.trackIsTemplate ? null : F.validateSection('track', parsed.track, job.trackFacts, { courseNames: job.courseNames, horseName: job.h.name, wordCap: 85 }),
+    going: one('going', job.goingFacts, 65, job.win.size),
+    trip: one('trip', job.tripFacts, 65, job.win.size),
+    track: job.trackIsTemplate ? null : one('track', job.trackFacts, 85, job.trackRunCount),
     jsonFail: false
   };
 }
@@ -220,7 +248,8 @@ async function finishGoingTrip(job, first) {
   // One LIVE retry — the whole envelope again, plus the failed sections'
   // notes. Sections that passed are kept from the first pass regardless of
   // what the retry produces for them.
-  let keep = { going: v.going && v.going.ok ? v.going.text : null, trip: v.trip && v.trip.ok ? v.trip.text : null, track: v.track && v.track.ok ? v.track.text : null };
+  const sectionOut = function(x) { return x && x.ok ? { text: x.text, glance: x.glance, lean: x.lean } : null; };
+  let keep = { going: sectionOut(v.going), trip: sectionOut(v.trip), track: sectionOut(v.track) };
   let retryFailures = null;
   if (anyFail(firstFailures)) {
     ['going', 'trip', 'track'].forEach(function(s) { if (firstFailures[s]) telemetry = telemetry.concat(telemetryFromFailures(h, date, s, firstFailures[s], 'first', factsText[s])); });
@@ -235,7 +264,7 @@ async function finishGoingTrip(job, first) {
       const v2 = validateGoingTrip(job, second.text);
       retryFailures = goingTripFailures(job, v2);
       ['going', 'trip', 'track'].forEach(function(s) {
-        if (keep[s] === null && v2[s] && v2[s].ok) keep[s] = v2[s].text;
+        if (keep[s] === null && v2[s] && v2[s].ok) keep[s] = sectionOut(v2[s]);
         if (keep[s] === null && retryFailures[s]) telemetry = telemetry.concat(telemetryFromFailures(h, date, s, retryFailures[s], 'retry', factsText[s]));
       });
     } else {
