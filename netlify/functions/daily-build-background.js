@@ -2011,7 +2011,53 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       });
       report.hotYard = report.hotYards[0] || null;
 
-      if (report.hotYards.length) {
+      // Overnight handover — the 22:00 job's hotYardPreview was written onto
+      // this date's report last night and carried onto this fresh report in
+      // step 2.5. Compare its yards with the fresh morning qualifiers BY
+      // TRAINER ID (any order): same yards and the preview carries text →
+      // the overnight card is kept, texts matched to yards by ID, and the
+      // Claude call below is skipped. Different yards → regenerate below
+      // exactly as a day with no preview, logging what changed. Missing or
+      // empty preview → generate as always. The preview is consumed either
+      // way (one-shot, same lifecycle as classDropPreview's delete).
+      let hyOvernightTexts = null; // per-yard texts aligned to report.hotYards, or null to regenerate
+      try {
+        const hyPrev = report.hotYardPreview;
+        delete report.hotYardPreview;
+        const hyPrevYards = (hyPrev && Array.isArray(hyPrev.yards)) ? hyPrev.yards : [];
+        if (hyPrevYards.length && hyPrev.text) {
+          const hyIdOf = function(x) { return String(x.trainerId || ''); };
+          const prevIds = hyPrevYards.map(hyIdOf).sort();
+          const freshIds = hotYardQualifiers.map(hyIdOf).sort();
+          const sameYards = prevIds.length === freshIds.length
+            && prevIds.every(function(id, i) { return id && id === freshIds[i]; });
+          if (sameYards) {
+            const hyParts = hyPrevYards.length === 2
+              ? String(hyPrev.text).split(/^\s*={3,}\s*$/m).map(function(p) { return p.trim(); }).filter(Boolean)
+              : [String(hyPrev.text).trim()];
+            if (hyParts.length === hyPrevYards.length) {
+              const hyTextById = {};
+              hyPrevYards.forEach(function(y, i) { hyTextById[hyIdOf(y)] = hyParts[i]; });
+              const aligned = hotYardQualifiers.map(function(t) { return hyTextById[hyIdOf(t)] || ''; });
+              if (aligned.every(Boolean)) hyOvernightTexts = aligned;
+              else console.log('[daily-build] Hot Yard: preview texts could not be matched to yards by trainer ID — regenerating');
+            } else {
+              console.log('[daily-build] Hot Yard: preview confirmed but its text does not split into ' + hyPrevYards.length + ' yard texts — regenerating');
+            }
+          } else {
+            const note = 'Hot Yard: qualifier yards changed since the 22:00 preview — was [' + hyPrevYards.map(function(y) { return y.name; }).join(', ') + '], now [' + hotYardQualifiers.map(function(t) { return t.trainerName; }).join(', ') + '] — card regenerated';
+            report.warnings.push(note); console.log('[daily-build] ' + note);
+          }
+        }
+      } catch (eHYP) {
+        console.log('[daily-build] Hot Yard preview handover: ' + eHYP.message + ' — regenerating');
+      }
+
+      if (report.hotYards.length && hyOvernightTexts) {
+        report.hotYards.forEach(function(y, i) { y.cardText = hyOvernightTexts[i]; });
+        report.hotYardCard = report.hotYards[0].cardText || null;
+        console.log('[daily-build] hot yard preview confirmed — same yards as 22:00, overnight card kept, no Claude call');
+      } else if (report.hotYards.length) {
         const yardBlocks = report.hotYards.map(function(y, i) {
           const runnersLine = y.runnersToday.length
             ? y.runnersToday.map(function(x) { return x.horseName + ', ' + x.course + ', ' + x.time; }).join('; ')
@@ -2939,8 +2985,11 @@ exports.handler = async function(event) {
       // written onto this date's report last night (classDropPreview) and any
       // card the 02:00 late-declaration check already made canonical. The
       // safety net in runDailyIntelligenceCards promotes/compares from these.
+      // hotYardPreview rides the same carry: the 22:00 job wrote it onto this
+      // date's report last night, and step 3.6 compares it with the fresh
+      // morning qualifiers (confirm or regenerate) before its card call.
       if (priorReport) {
-        ['classDropPreview', 'classDropCard', 'classDropHorses', 'classDropLastRaceOffTime'].forEach(function(f) {
+        ['classDropPreview', 'classDropCard', 'classDropHorses', 'classDropLastRaceOffTime', 'hotYardPreview'].forEach(function(f) {
           if (priorReport[f] !== undefined && priorReport[f] !== null) report[f] = priorReport[f];
         });
       }

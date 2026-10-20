@@ -62,12 +62,38 @@ exports.handler = async function(event) {
     const isPreviewShell = !dateParam && !(report.analyses || []).length && !report.completedAt;
     let overnight = null;
     if (isPreviewShell) {
-      overnight = { classDropCard: null, classDropHorses: [], classDropLastRaceOffTime: null, bigRace: null };
+      overnight = { classDropCard: null, classDropHorses: [], classDropLastRaceOffTime: null, bigRace: null, hotYard: null, hotYards: [], hotYardCard: null };
       const pv = report.classDropPreview;
       if (!report.classDropCard && pv && (pv.text || (pv.qualifiers || []).length)) {
         overnight.classDropCard = pv.text || null;
         overnight.classDropHorses = pv.qualifiers || [];
         overnight.classDropLastRaceOffTime = pv.lastRaceOffTime || null;
+      }
+      // hotYardPreview -> hotYard/hotYards/hotYardCard, exactly as the Class
+      // Drop promotion above (written onto this report by the 22:00 job while
+      // this date was still "tomorrow"). The preview's yards carry no per-
+      // runner times, so runnersToday is synthesised as runnersTomorrow
+      // entries with no time — _diRemaining counts a timeless entry as
+      // still-remaining, so the count shows and the card never hides early.
+      // A two-yard preview stores both texts in one string split by a lone
+      // "===" line; a split that doesn't yield one text per yard promotes the
+      // yards without text (the client renders no card without text), never
+      // a merged text — the 22:00 job's own rule.
+      const hpv = report.hotYardPreview;
+      if (!report.hotYardCard && hpv && (hpv.text || (hpv.yards || []).length)) {
+        const hpvYards = hpv.yards || [];
+        const hpvTexts = hpv.text ? String(hpv.text).split(/^\s*={3,}\s*$/m).map(s => s.trim()).filter(Boolean) : [];
+        const textsUsable = hpvTexts.length === hpvYards.length;
+        overnight.hotYards = hpvYards.map((y, i) => ({
+          trainerName: y.name || '',
+          runners7d: y.runners7d,
+          winners7d: y.winners7d,
+          strikeRate7d: y.strikeRate7d,
+          runnersToday: Array.from({ length: y.runnersTomorrow || 0 }, () => ({ time: '' })),
+          cardText: textsUsable ? hpvTexts[i] : null
+        }));
+        overnight.hotYard = overnight.hotYards[0] || null;
+        overnight.hotYardCard = (overnight.hotYards[0] && overnight.hotYards[0].cardText) || null;
       }
       if (!report.bigRace) {
         const yd = new Date(reportDate + 'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate() - 1);
@@ -184,9 +210,14 @@ exports.handler = async function(event) {
         // reads it via ?date={tomorrow}. null once the 10:30 build has promoted
         // it into the three fields above.
         classDropPreview: report.classDropPreview || null,
-        hotYard: report.hotYard || null,
-        hotYards: report.hotYards || [],
-        hotYardCard: report.hotYardCard || null,
+        hotYard: report.hotYard || (overnight && overnight.hotYard) || null,
+        hotYards: (report.hotYards && report.hotYards.length) ? report.hotYards : (overnight ? overnight.hotYards : []),
+        hotYardCard: report.hotYardCard || (overnight && overnight.hotYardCard) || null,
+        // Tomorrow's Hot Yard preview, written onto this date's report by the
+        // 22:00 nightly job while this date was still "tomorrow"; the client
+        // reads it via ?date={tomorrow}. null once the 10:30 build has
+        // confirmed or regenerated it into the three fields above.
+        hotYardPreview: report.hotYardPreview || null,
         intelligence: report.intelligence || [],
         analyses: report.analyses || [],
         cost: report.costUSD,

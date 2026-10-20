@@ -16446,6 +16446,8 @@ var CLASSDROP_PREVIEW_DATE=''; // the Irish date that preview is for — "Tomorr
 var HOT_YARD=null;
 var HOT_YARD_CARD=null;
 var HOT_YARDS=[];
+var HOTYARD_PREVIEW=null;      // tomorrow's report .hotYardPreview { text, yards, generatedAt, lastRaceOffTime } from the 22:00 job
+var HOTYARD_PREVIEW_DATE='';   // the Irish date that preview is for — "Tomorrow's Hot Yard" until the Irish calendar reaches it, then "Hot Yard"
 var _horseEdgeFlags={};  // { "horse name lower": { draw:true, class:true, jockey:true, trainer:true } }
 
 function _buildEdgeFlags(horseName, factors){
@@ -16516,6 +16518,11 @@ function loadDailyBuild(){
       // report may hold nothing but this preview until tomorrow's own build.
       CLASSDROP_PREVIEW=(tomorrowData&&tomorrowData.classDropPreview&&tomorrowData.classDropPreview.text)?tomorrowData.classDropPreview:null;
       CLASSDROP_PREVIEW_DATE=CLASSDROP_PREVIEW?tomorrowDate:'';
+      // Tomorrow's Hot Yard preview rides the same tomorrow report (written
+      // there by the 22:00 nightly job); a preview stored without text
+      // renders nothing, so it is dropped here exactly like Class Drop's.
+      HOTYARD_PREVIEW=(tomorrowData&&tomorrowData.hotYardPreview&&tomorrowData.hotYardPreview.text)?tomorrowData.hotYardPreview:null;
+      HOTYARD_PREVIEW_DATE=HOTYARD_PREVIEW?tomorrowDate:'';
       if(!tomorrowData||tomorrowData.status!=='done') tomorrowData=null;
       if(!data||data.status==='loading'||data.status==='error'){
         // Today's report legitimately doesn't exist between midnight UTC and
@@ -16704,10 +16711,15 @@ function loadDailyBuild(){
           var _flip=_classDropPreviewIsToday();
           var _expChanged=_exp!==window._classDropExpiredShown;
           var _flipChanged=_flip!==window._classDropFlipShown;
+          // Hot Yard preview's own midnight flip rides this same tick — its
+          // today-cards-hidden handover is already covered by _diRemainingSig
+          // (each yard's runnersToday list is part of the signature).
+          var _hyFlipNow=_hotYardPreviewIsToday();
+          var _hyFlipChanged=_hyFlipNow!==window._hotYardFlipShown;
           var _sig=_diRemainingSig();
           var _sigChanged=_sig!==window._diRemainingSigLast;
           window._diRemainingSigLast=_sig;
-          if(!_expChanged&&!_flipChanged&&!_sigChanged) return;
+          if(!_expChanged&&!_flipChanged&&!_hyFlipChanged&&!_sigChanged) return;
           var _card=document.querySelector('[data-ai-classdrop="today"]');
           if(_expChanged&&_exp&&_card){
             _card.style.opacity='0';
@@ -16918,6 +16930,12 @@ function _classDropTodayExpired(){
 // "Class Drop". Label only — no fetch, no regeneration.
 function _classDropPreviewIsToday(){
   return !!(CLASSDROP_PREVIEW_DATE&&CLASSDROP_PREVIEW_DATE<=_irishNowParts().date);
+}
+// Same midnight flip for the Hot Yard preview: "Tomorrow's Hot Yard" until
+// the Irish calendar reaches its date, then "Hot Yard". Label only — no
+// fetch, no regeneration (the 10:30 build confirms or regenerates).
+function _hotYardPreviewIsToday(){
+  return !!(HOTYARD_PREVIEW_DATE&&HOTYARD_PREVIEW_DATE<=_irishNowParts().date);
 }
 // One swipe, one card — homepage Daily Intelligence and Latest Results, touch
 // devices only. The browser's own sideways panning is switched off
@@ -17179,6 +17197,11 @@ function renderAIIntelligence(){
   // Each yard hides once its own runnersToday have all raced — same
   // disappear-from-the-carousel outcome as Big Race/Ground Lover, scoped per
   // trainer since each yard is its own card with its own qualifier list.
+  // _hyTodayShown — did any today Hot Yard card make the carousel? The
+  // tomorrow preview below renders ONLY when this stays false (every yard's
+  // last race done + 15 min, or no card today) — sequential handover, same
+  // as Class Drop's _cdTodayShown gate: never two Hot Yard eras side by side.
+  var _hyTodayShown=false;
   HOT_YARDS.forEach(function(_hy){
     if(!_hy||!_hy.trainerName) return;
     var _hyText=_hy.cardText||(HOT_YARDS.length===1?HOT_YARD_CARD:'')||'';
@@ -17186,6 +17209,7 @@ function renderAIIntelligence(){
     var _hyDr=_diRemaining(_hy.runnersToday||[]);
     if(_hyDr.total>0&&_hyDr.remaining===0&&_diHideExpired(_hy.runnersToday||[])) return;
     var _hyLbl=_diCountLabel(_hyDr);
+    _hyTodayShown=true;
     _items=_items.concat([{
       isHotYardCard:true,
       signalType:'HOT YARD',
@@ -17331,12 +17355,54 @@ function renderAIIntelligence(){
     }]);
   }
 
+  // Tomorrow's Hot Yard — the 22:00 preview from tomorrow's report, same
+  // markup as today's Hot Yard card (isHotYardCard). Sequential handover,
+  // identical to Class Drop's above: renders ONLY while no today Hot Yard
+  // card is showing (_hyTodayShown — every yard's last race done + 15 min,
+  // or no card today), and flips its label from "Tomorrow's Hot Yard" to
+  // "Hot Yard" at Irish midnight. A preview stored with text null renders
+  // nothing (the HOTYARD_PREVIEW fill already drops it). A two-yard preview
+  // carries both texts in one string split by a lone === line — one card
+  // per yard, best first, exactly as today's cards render. The count is the
+  // static runnersTomorrow per yard, not a live remaining count: those
+  // races are tomorrow's, so today's clock can't count them down.
+  var _hyFlip=_hotYardPreviewIsToday();
+  window._hotYardFlipShown=_hyFlip;
+  if(HOTYARD_PREVIEW&&HOTYARD_PREVIEW.text&&!_hyTodayShown){
+    var _hyPrevTexts=String(HOTYARD_PREVIEW.text).split(/^\s*={3,}\s*$/m).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+    var _hyPrevYards=HOTYARD_PREVIEW.yards||[];
+    if(_hyPrevTexts.length===_hyPrevYards.length){
+      _hyPrevYards.forEach(function(_py,_pi){
+        if(!_py||!_py.name) return;
+        var _pyN=_py.runnersTomorrow||0;
+        _items=_items.concat([{
+          isHotYardCard:true,
+          hyPreview:true,
+          hyFlipped:_hyFlip,
+          signalType:_hyFlip?'HOT YARD':"TOMORROW'S HOT YARD",
+          sigColor:'#10b981',
+          trainerName:_py.name||'',
+          strikeLabel:(_py.strikeRate7d!=null?_py.strikeRate7d:0)+'%',
+          winners7d:_py.winners7d||0,
+          runners7d:_py.runners7d||0,
+          diCount:_pyN,
+          diLabel:'horse'+(_pyN===1?'':'s')+' '+(_hyFlip?'today':'tomorrow'),
+          intelligenceText:escHtml(_hyPrevTexts[_pi]||'')
+        }]);
+      });
+    }
+  }
+
   // Keep the reader's place across the 5-minute refresh re-render: with
   // mandatory snapping, a rebuilt list otherwise jumps back to the first card.
   var _aiKeepX=el.scrollLeft;
   el.innerHTML=_items.map(function(item){
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
+      // One template for today's card and the tomorrow preview — identical
+      // dimensions, fonts and CTA; only the label (signalType, set by the
+      // builder) and the CTA's day word differ, same split as Class Drop's.
+      var _hyDay=(item.hyPreview&&!item.hyFlipped)?'tomorrow':'today';
       return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
         +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
         +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
@@ -17353,7 +17419,7 @@ function renderAIIntelligence(){
           +'</div>'
           +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px">'
-            +'<button class="ai-cta-light" onclick="selectRacingSection(\'trainer:'+_hyNameJs+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View '+escHtml(item.trainerName)+'\'s runners today &rarr;</button>'
+            +'<button class="ai-cta-light" onclick="selectRacingSection(\'trainer:'+_hyNameJs+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View '+escHtml(item.trainerName)+'\'s runners '+_hyDay+' &rarr;</button>'
           +'</div>'
         +'</div>'
       +'</div>';
