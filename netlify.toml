@@ -70,6 +70,15 @@
 [functions."trainer-form-refresh-late-trigger"]
   schedule = "30 20,21 * * *"
 
+# Tomorrow's Hot Yard preview — intent is 22:00 IRISH time, after the 21:30
+# trainer-form refresh has rewritten today's table. Cron is UTC: 21:00 UTC is
+# 22:00 Irish in summer only, so it fires at 21:00 and 22:00 UTC;
+# hotyard-nightly-background.js runs only when Irish time is 21:45-22:59 and
+# once per night (hotyard-nightly:ran:{date}), so the other fire exits. Same
+# cron in hotyard-nightly-trigger.js's module.exports.config.
+[functions."hotyard-nightly-trigger"]
+  schedule = "0 21,22 * * *"
+
 # disabled 2026-10-06 — replaced by goingtrip engine; uncomment to restore
 # [functions."form-summary-trigger"]
 #   schedule = "0 4,6,8 * * *"
