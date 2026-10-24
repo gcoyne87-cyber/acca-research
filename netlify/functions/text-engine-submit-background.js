@@ -156,7 +156,8 @@ const TRAINER_ALIASES = {
   // one yard, one trainer_id, a new partnership name form on the cards:
   'nigel willy twistondavies': 'nigel twistondavies',   // "Nigel & Willy Twiston-Davies"
   'kim bailey mat nicholls': 'kim bailey',              // "Kim Bailey & Mat Nicholls"
-  'philip hobbs johnson white': 'philip hobbs'          // "Philip Hobbs & Johnson White"
+  'philip hobbs johnson white': 'philip hobbs',         // "Philip Hobbs & Johnson White"
+  'donnacha aidan obrien': 'donnacha obrien'            // "Donnacha Aidan O'Brien" — same yard as "Donnacha O'Brien" (trn_331254)
 };
 
 // lowercase, strip punctuation, collapse whitespace, strip title prefixes,
