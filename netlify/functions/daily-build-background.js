@@ -3784,153 +3784,127 @@ exports.handler = async function(event) {
       }
     } catch (pfErr) { report.warnings.push('Price filter failed: ' + pfErr.message); }
 
-    // 5.7 NB reorder — the LAST step of pick selection. Every race is analysed
-    // and every confidence score is final by this point; nothing after this
-    // block changes a pick or a score. Position 1 of the confidence ranking
-    // (the NAP) is never touched. Positions 2-6 are re-ordered by one Claude
-    // call judging genuine cross-race win probability — each confidence score
-    // was produced with its race analysed in isolation, so ordering ACROSS
-    // races is a question the scores alone can't answer. Confidence scores are
-    // NOT modified: the call sets order only, stamped on each analysis as
-    // pickRank (1..N) and persisted in the final report so every consumer
-    // (site, email, tracker) reads the same stored ranking instead of
-    // re-deriving it from scores. On ANY failure — call error, timeout,
-    // malformed response, wrong or missing horse names — the day keeps the
-    // original confidence-score order (no pickRank written, consumers fall
-    // back to their score sort) and the failure is recorded in the build log
-    // AND the completion email, never silently.
-    let nbReorderStatusLine = 'NB Reorder: not run';
-    let napTiebreakLine = '';
+    // 5.7 NAP final screen — the LAST step of pick selection, replacing the
+    // old NAP tie-break + NB reorder pair with ONE judgement call that
+    // decides the NAP and NB from the day's top candidates in full context.
+    // Every race is analysed and every confidence score is final by this
+    // point; nothing here changes an analysis or a score, and everything
+    // upstream (per-race prompts, scoring, price filter) is untouched. The
+    // top 6 candidates by confidenceScore (fewer when fewer exist; Pass and
+    // the 1/3-or-shorter price filter above already removed ineligible
+    // selections) are sent in ONE direct call with their complete stored
+    // cases — verdict, pullQuote, price, form line — and ordered by genuine
+    // probability of winning. Rank 1 is the NAP, rank 2 the NB: the order is
+    // stamped on each analysis as pickRank (1..N), exactly the field every
+    // consumer (site, email, tracker) already reads. Confidence scores are
+    // NOT modified. On ANY failure — call error, timeout, malformed
+    // response, wrong or missing horse names — no pickRank is written and
+    // consumers fall back to their confidence-score sort (the pre-screen
+    // behaviour), with the failure recorded in the build log AND the
+    // completion email, never silently. The screen's order and one-sentence
+    // reasons are stored on the report (napScreen) and printed in the email,
+    // so the decision is visible daily.
+    let napScreenStatusLine = 'NAP screen: not run';
+    report.napScreen = [];
     // Hard 30s ceiling on this call — longer than the other card calls since
-    // it affects NAP/NB ordering. Same pattern as the Hot Yard card call
-    // above — apiPost's socket timeout only emits an event (never destroys
-    // the socket), so a hung Anthropic call here would otherwise stall the
-    // whole build. On timeout the catch block below leaves report.analyses
+    // it decides NAP/NB. Same pattern as the Hot Yard card call above —
+    // apiPost's socket timeout only emits an event (never destroys the
+    // socket), so a hung Anthropic call here would otherwise stall the whole
+    // build. On timeout the catch block below leaves report.analyses
     // untouched, so the day keeps its confidence-score order.
-    const NB_REORDER_TIMEOUT_MS = 30000;
-    let nbTimer = null;
+    const NAP_SCREEN_TIMEOUT_MS = 30000;
+    let nsTimer = null;
     try {
-      // Same filter + ranking get-daily-build.js applies at read time, so the
-      // horse at rank 1 here is exactly the NAP the site already shows.
+      // Same filter + ranking get-daily-build.js applies at read time when no
+      // pickRank exists, so the screen's candidates are exactly the day's top
+      // scored picks as the site would otherwise show them.
       const rankedAll = (report.analyses || [])
         .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName && a.strongestSelection.confidenceLevel !== 'Pass'; })
         .sort(function(a, b) { return (b.confidenceScore || 0) - (a.confidenceScore || 0); });
-      // NAP tie-break on merit. When two or more analyses share the top
-      // confidenceScore, the tied horses go to the same reorder call (same
-      // criteria, same validator) with their full analyses, and its first-ranked
-      // horse is the NAP. Equal top scores are separated by a head-to-head racing
-      // judgement of those specific horses, never by processing order. Price
-      // plays no part. On any failure the score order is kept and the failure is
-      // recorded in the warnings and the email, never silently.
-      if (rankedAll.length >= 2 && rankedAll[0].confidenceScore != null && rankedAll[1].confidenceScore === rankedAll[0].confidenceScore) {
-        const topScore = rankedAll[0].confidenceScore;
-        const tied = rankedAll.filter(function(a) { return a.confidenceScore === topScore; });
-        let tbTimer = null;
-        try {
-          const runnersByRaceTb = {};
-          (report.raceBreakdown || []).forEach(function(rb) { runnersByRaceTb[rb.race] = rb.runners; });
-          const tiedBlock = tied.map(function(a, i) {
-            const sel = a.strongestSelection || {};
-            const own = (a.runnerAnalysis || []).filter(function(h) { return normaliseHorseName(h.horseName || '') === normaliseHorseName(sel.horseName || ''); })[0];
-            return 'Candidate ' + (i + 1) + ': ' + sel.horseName
-              + '\nCourse and race time: ' + (a.race || 'unknown')
-              + '\nConfidence score: ' + topScore
-              + '\nRunners in race: ' + (runnersByRaceTb[a.race] || (a.runnerAnalysis || []).length || 'unknown')
-              + '\nCase: ' + (sel.pullQuote || 'none')
-              + '\nFactors: ' + ((sel.factors || []).join(' | ') || 'none')
-              + '\nRunner analysis: ' + ((own && own.analysis) || 'none');
-          }).join('\n\n');
-          const tbResp = await Promise.race([
-            callClaude(NAP_TIEBREAK_PROMPT.replace(/\{N\}/g, String(tied.length)), tiedBlock, 400, true),
-            new Promise(function(_, reject) {
-              tbTimer = setTimeout(function() { reject(new Error('timed out after ' + (NB_REORDER_TIMEOUT_MS / 1000) + 's')); }, NB_REORDER_TIMEOUT_MS);
-            })
-          ]);
-          report.inputTokens += tbResp.inputTokens || 0;
-          report.outputTokens += tbResp.outputTokens || 0;
-          report.cacheReadTokens += tbResp.cacheReadTokens || 0;
-          report.cacheWriteTokens += tbResp.cacheWriteTokens || 0;
-          report.callLog.push({ type: 'nap-tiebreak', label: 'NAP Tie-break', inputTokens: tbResp.inputTokens || 0, outputTokens: tbResp.outputTokens || 0, cacheReadTokens: tbResp.cacheReadTokens || 0, cacheWriteTokens: tbResp.cacheWriteTokens || 0 });
-          if (tbResp.apiError) throw new Error(String(tbResp.apiError).slice(0, 200));
-          const tbNames = extractJsonArray(tbResp.text || '');
-          const tbOrdered = validateNbReorderResponse(tbNames, tied);
-          if (!tbOrdered) throw new Error('response was not exactly the ' + tied.length + ' tied horse names: ' + JSON.stringify(tbNames).slice(0, 200));
-          // Rebuild in place: the tie-broken block first, then everything below
-          // the tie in its existing score order.
-          const belowTie = rankedAll.filter(function(a) { return tied.indexOf(a) === -1; });
-          rankedAll.length = 0;
-          tbOrdered.forEach(function(a) { rankedAll.push(a); });
-          belowTie.forEach(function(a) { rankedAll.push(a); });
-          napTiebreakLine = 'NAP tie-break: ' + tied.length + ' tied on ' + topScore + ' — NAP is ' + tbOrdered[0].strongestSelection.horseName;
-          console.log('[daily-build] ' + napTiebreakLine + ' | order: ' + tbNames.join(', '));
-        } catch (tbErr) {
-          napTiebreakLine = 'NAP tie-break: FAILED — score order kept (' + tbErr.message + ')';
-          report.warnings.push(napTiebreakLine);
-          console.error('[daily-build] ' + napTiebreakLine);
-        } finally {
-          if (tbTimer) clearTimeout(tbTimer);
-        }
-      }
-      if (rankedAll.length >= 6) {
-        const nbCandidates = rankedAll.slice(1, 6);
-        const runnersByRace = {};
-        (report.raceBreakdown || []).forEach(function(rb) { runnersByRace[rb.race] = rb.runners; });
-        const candidateBlock = nbCandidates.map(function(a, i) {
-          const runnerCount = runnersByRace[a.race] || (a.runnerAnalysis || []).length || 'unknown';
-          return 'Candidate ' + (i + 1) + ': ' + a.strongestSelection.horseName
+      if (rankedAll.length >= 2) {
+        const screenCandidates = rankedAll.slice(0, 6);
+        const candidateBlock = screenCandidates.map(function(a, i) {
+          const sel = a.strongestSelection || {};
+          const own = (a.runnerAnalysis || []).filter(function(h) { return normaliseHorseName(h.horseName || '') === normaliseHorseName(sel.horseName || ''); })[0];
+          return 'Candidate ' + (i + 1) + ': ' + sel.horseName
             + '\nCourse and race time: ' + (a.race || 'unknown')
             + '\nConfidence score: ' + (a.confidenceScore != null ? a.confidenceScore : 'unknown')
-            + '\nRunners in race: ' + runnerCount
-            + '\nCase: ' + (a.strongestSelection.pullQuote || 'none');
+            + '\nCurrent price: ' + (sel.odds || 'SP')
+            + '\nKey form line: ' + (sel.formFigures || 'unknown')
+            + '\nPull quote: ' + (sel.pullQuote || 'none')
+            + '\nStored verdict: ' + ((own && own.analysis) || 'none');
         }).join('\n\n');
-        const nbResp = await Promise.race([
-          callClaude(NB_REORDER_PROMPT, candidateBlock, 400, true),
+        const napScreenPrompt = 'You are a professional horse racing analyst. Below are the ' + screenCandidates.length + ' strongest candidates on today\'s card, each with its complete case from a race analysed in isolation.'
+          + '\n\nOrder these horses by genuine probability of WINNING their race today. Judge each horse\'s complete case — form, trip, going, course, the opposition it must actually beat, and the market as one factor among all of these. An edge in one dimension (e.g. ground) is evidence, not a decider: weigh it against the rest of the horse\'s case and against the other candidates\' full cases. A horse whose case rests on a single angle with weaknesses elsewhere should rank below a horse whose complete case is stronger. Do not default to the shortest price; do not ignore it either.'
+          + '\n\nThe horse you place first becomes the NAP — the single most important pick of the day. The horse you place second becomes the NB. Give those decisions particular care.'
+          + '\n\nRespond with ONLY a valid JSON array, most likely winner first, one object per horse: [{"horse":"exact horse name","reason":"one sentence of reasoning"}]. Every candidate appears exactly once. No other text.';
+        const nsResp = await Promise.race([
+          callClaude(napScreenPrompt, candidateBlock, 1000, true),
           new Promise(function(_, reject) {
-            nbTimer = setTimeout(function() { reject(new Error('timed out after ' + (NB_REORDER_TIMEOUT_MS / 1000) + 's — skipped')); }, NB_REORDER_TIMEOUT_MS);
+            nsTimer = setTimeout(function() { reject(new Error('timed out after ' + (NAP_SCREEN_TIMEOUT_MS / 1000) + 's — skipped')); }, NAP_SCREEN_TIMEOUT_MS);
           })
         ]);
-        report.inputTokens += nbResp.inputTokens || 0;
-        report.outputTokens += nbResp.outputTokens || 0;
-        report.cacheReadTokens += nbResp.cacheReadTokens || 0;
-        report.cacheWriteTokens += nbResp.cacheWriteTokens || 0;
-        report.callLog.push({ type: 'nb-reorder', label: 'NB Reorder', inputTokens: nbResp.inputTokens || 0, outputTokens: nbResp.outputTokens || 0, cacheReadTokens: nbResp.cacheReadTokens || 0, cacheWriteTokens: nbResp.cacheWriteTokens || 0, webSearch: false, webSearchCount: 0 });
+        report.inputTokens += nsResp.inputTokens || 0;
+        report.outputTokens += nsResp.outputTokens || 0;
+        report.cacheReadTokens += nsResp.cacheReadTokens || 0;
+        report.cacheWriteTokens += nsResp.cacheWriteTokens || 0;
+        report.callLog.push({ type: 'nap-screen', label: 'NAP Final Screen', inputTokens: nsResp.inputTokens || 0, outputTokens: nsResp.outputTokens || 0, cacheReadTokens: nsResp.cacheReadTokens || 0, cacheWriteTokens: nsResp.cacheWriteTokens || 0, webSearch: false, webSearchCount: 0 });
         // An API-level failure (rate limit, credit balance, overloaded) beats
         // "response was: null" as a diagnosis — report the real status and
         // message, truncated so a huge error body can't flood the email.
-        if (nbResp.apiError) {
-          throw new Error(String(nbResp.apiError).slice(0, 200));
+        if (nsResp.apiError) throw new Error(String(nsResp.apiError).slice(0, 200));
+        // Validate: exactly the candidate horses, each appearing once, each
+        // with its one-sentence reason. Name matching is case/punctuation-
+        // insensitive (normaliseHorseName) so a cosmetic difference never
+        // fails a genuinely correct answer. Anything else is a hard fail and
+        // the day keeps its confidence-score order.
+        const returned = extractJsonArray(nsResp.text || '');
+        if (!Array.isArray(returned) || returned.length !== screenCandidates.length) {
+          throw new Error('response was not exactly the ' + screenCandidates.length + ' expected entries: ' + JSON.stringify(returned).slice(0, 200));
         }
-        const returnedNames = extractJsonArray(nbResp.text || '');
-        const orderedCandidates = validateNbReorderResponse(returnedNames, nbCandidates);
-        if (!orderedCandidates) {
-          throw new Error('response was not exactly the five expected horse names: ' + JSON.stringify(returnedNames).slice(0, 200));
+        const byNorm = {};
+        screenCandidates.forEach(function(c) { byNorm[normaliseHorseName(c.strongestSelection.horseName)] = c; });
+        const ordered = [];
+        const reasons = [];
+        const used = new Set();
+        for (const item of returned) {
+          const name = item && item.horse;
+          if (typeof name !== 'string') throw new Error('entry without a horse name: ' + JSON.stringify(item).slice(0, 120));
+          const key = normaliseHorseName(name);
+          if (!byNorm[key] || used.has(key)) throw new Error('unexpected or duplicate horse name: ' + name);
+          used.add(key);
+          ordered.push(byNorm[key]);
+          reasons.push(String((item && item.reason) || '').trim());
         }
-        // Returned position 1 → NB (rank 2), positions 2-4 → Intel 3-5 (ranks
-        // 3-5), position 5 → the Intel 6 slot (rank 6). Everything below rank 6
-        // keeps its confidence order.
-        const finalRanked = [rankedAll[0]].concat(orderedCandidates).concat(rankedAll.slice(6));
+        // Stamp the final order: screen positions 1..N first (rank 1 = NAP,
+        // rank 2 = NB), then everything below the screen in its existing
+        // confidence order.
+        const finalRanked = ordered.concat(rankedAll.slice(screenCandidates.length));
         finalRanked.forEach(function(a, i) { a.pickRank = i + 1; });
         // Persist the analyses array itself in final rank order too; entries
         // with no usable selection (filtered out of rankedAll) follow the
         // ranked block with their relative order unchanged.
         const unrankedRest = (report.analyses || []).filter(function(a) { return finalRanked.indexOf(a) === -1; });
         report.analyses = finalRanked.concat(unrankedRest);
-        nbReorderStatusLine = 'NB Reorder: applied — NB is ' + orderedCandidates[0].strongestSelection.horseName;
-        console.log('[daily-build] ' + nbReorderStatusLine + ' | order: ' + returnedNames.join(', '));
+        report.napScreen = ordered.map(function(a, i) {
+          return { rank: i + 1, horse: a.strongestSelection.horseName, race: a.race, confidenceScore: a.confidenceScore, odds: a.strongestSelection.odds || 'SP', reason: reasons[i] };
+        });
+        napScreenStatusLine = 'NAP screen: applied — NAP is ' + ordered[0].strongestSelection.horseName + ', NB is ' + (ordered[1] ? ordered[1].strongestSelection.horseName : 'none');
+        console.log('[daily-build] ' + napScreenStatusLine);
+        report.napScreen.forEach(function(r) { console.log('[daily-build] NAP screen ' + r.rank + '. ' + r.horse + ' — ' + r.reason); });
       } else {
-        nbReorderStatusLine = 'NB Reorder: skipped — only ' + rankedAll.length + ' scored picks today (needs 6); confidence score order used';
-        report.warnings.push(nbReorderStatusLine);
-        console.log('[daily-build] ' + nbReorderStatusLine);
+        napScreenStatusLine = 'NAP screen: skipped — only ' + rankedAll.length + ' scored pick(s) today; confidence score order used';
+        report.warnings.push(napScreenStatusLine);
+        console.log('[daily-build] ' + napScreenStatusLine);
       }
-    } catch (nbErr) {
-      nbReorderStatusLine = 'NB Reorder: FAILED — using original confidence score order for today (' + nbErr.message + ')';
-      report.warnings.push(nbReorderStatusLine);
-      report.errors.push(nbReorderStatusLine);
-      console.error('[daily-build] ' + nbReorderStatusLine);
+    } catch (nsErr) {
+      napScreenStatusLine = 'NAP screen: FAILED — using original confidence score order for today (' + nsErr.message + ')';
+      report.warnings.push(napScreenStatusLine);
+      report.errors.push(napScreenStatusLine);
+      console.error('[daily-build] ' + napScreenStatusLine);
     } finally {
-      if (nbTimer) clearTimeout(nbTimer);
+      if (nsTimer) clearTimeout(nsTimer);
     }
-    if (napTiebreakLine) nbReorderStatusLine = napTiebreakLine + ' | ' + nbReorderStatusLine;
 
     // 6. Calculate cost and store final report
     // AUDIT-DAILY-INTELLIGENCE.md, finding S4: report.costUSD used to silently
@@ -4039,9 +4013,15 @@ exports.handler = async function(event) {
         ? ['🏇 Horse Selections For The Day'].concat(selectionLines, [''])
         : [];
 
+      // NAP screen visibility: the status line plus the screen's full order
+      // with its one-sentence reason per horse, so the day's NAP/NB decision
+      // is readable in every build email.
+      const napScreenEmailLines = [napScreenStatusLine].concat(
+        (report.napScreen || []).map(function(r) { return '  ' + r.rank + '. ' + r.horse + ' (' + r.race + ', conf ' + r.confidenceScore + ', ' + r.odds + ') — ' + r.reason; })
+      );
       const emailBody = selectionsSection.concat(signalLines).concat([
-        tomorrowLine,
-        nbReorderStatusLine,
+        tomorrowLine
+      ]).concat(napScreenEmailLines).concat([
         '',
         'Total Cost: $' + report.costUSD,
         '  Input: $' + (cb.inputTokenCost || '0.0000') + ' | Output: $' + (cb.outputTokenCost || '0.0000') + ' | Cache write: $' + (cb.cacheWriteCost || '0.0000') + ' | Cache read: $' + (cb.cacheReadCost || '0.0000') + ' | Web search: $' + (cb.webSearchCost || '0.0000') + ' (' + (cb.webSearchCount || 0) + ' searches)',
