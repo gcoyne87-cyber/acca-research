@@ -1,5 +1,6 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
+const TR = require('./lib/trainer-registry.js');
 
 module.exports.config = {};
 
@@ -417,7 +418,9 @@ exports.handler = async function(event) {
         }
         const meetings = mapRacecards(data);
         await redisSet('racecards:' + dateStr, { meetings, storedAt: new Date().toISOString() });
-        return { dateStr, stored: true };
+        // meetings travel on the result for the one registry pass below,
+        // then are stripped before the debug write.
+        return { dateStr, stored: true, meetings };
       }));
       settled.forEach(function(r, idx) {
         if (r.status === 'fulfilled') {
@@ -428,6 +431,25 @@ exports.handler = async function(event) {
       });
       if (bi + BATCH < dates.length) await sleep(1000);
     }
+
+    // Trainer registry maintenance (lib/trainer-registry.js): every stored
+    // card keeps trainer:registry current — new ids become entries, unseen
+    // name forms become aliases, the newest card form becomes canonical.
+    // One load/save AFTER the batches (per-date saves inside Promise.allSettled
+    // would race each other), idempotent, and never allowed to fail the fetch.
+    try {
+      const storedCards = results.filter(function(r) { return r.stored && r.meetings; });
+      if (storedCards.length) {
+        const registry = await TR.loadRegistry(redisGet);
+        let regChanges = 0;
+        storedCards.forEach(function(r) { regChanges += TR.updateFromRacecards(registry, r.meetings, r.dateStr); });
+        if (regChanges) await TR.saveRegistry(redisSet, registry);
+        console.log('[fetch-future-cards] trainer registry: ' + regChanges + ' touch(es), ' + Object.keys(registry).length + ' trainers');
+      }
+    } catch (eReg) {
+      console.log('[fetch-future-cards] trainer registry update failed: ' + eReg.message);
+    }
+    results.forEach(function(r) { delete r.meetings; });
 
     const stored = results.filter(function(r) { return r.stored; }).length;
     const empty = results.filter(function(r) { return !r.stored; }).length;
