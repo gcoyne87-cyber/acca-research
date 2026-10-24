@@ -12,11 +12,13 @@ const https = require('https');
 // 21:30 Irish refresh — trainer-form-refresh-background.js — minutes before
 // this runs; if today's table is missing, log and stop: NEVER fall back to
 // an older table or generate from stale data), compute tomorrow's Hot Yard
-// qualifiers with the 10:30 build's exact rule (daily-build-background.js
-// step 3.6: runners7d >= 5 AND winners7d >= 3 AND rounded strikeRate7d >= 30,
-// sorted best 7-day rate first then winners then runners, max 2), drop any
-// qualifier with no runner on tomorrow's card (racecards:{tomorrow}, matched
-// by trainer_id), and store the preview onto daily:report:{tomorrow} as
+// qualifiers with the 10:30 build's bar (daily-build-background.js
+// step 3.6: runners7d >= 5 AND winners7d >= 3 AND rounded strikeRate7d >= 30),
+// drop any qualifier with no runner on tomorrow's card (racecards:{tomorrow},
+// matched by trainer_id), THEN sort best 7-day rate first then winners then
+// runners and keep up to 2 — the runners-tomorrow filter runs before the
+// top-2 cap, so the card is empty only when NO bar-meeting yard runs
+// tomorrow — and store the preview onto daily:report:{tomorrow} as
 // hotYardPreview { text, yards, generatedAt, lastRaceOffTime } — exactly the
 // classDropPreview storage pattern (class-drop-nightly-background.js lines
 // 166-168), creating the report if needed. No survivor means an empty
@@ -334,18 +336,16 @@ exports.handler = async function(event) {
       return await finish(200);
     }
 
-    // 2. Tomorrow's qualifiers — the build's exact Hot Yard rule
-    // (daily-build-background.js step 3.6): rates rounded exactly as the
-    // table rounds them, best 7-day rate first, up to two, never a fallback
-    // below the bar.
+    // 2. Tomorrow's qualifiers — the build's exact Hot Yard bar
+    // (daily-build-background.js step 3.6), rates rounded exactly as the
+    // table rounds them. ALL bar-meeting rows here; the top-2 cap is applied
+    // only AFTER the runners-tomorrow filter below (2026-10-24: cap-first
+    // kept two yards with nothing declared tomorrow and cut three bar-meeting
+    // yards that did run — an empty card that should not have been empty).
     const hyRound = function(v) { return Math.round(Number(v) || 0); };
     const qualifiers = table.filter(function(t) {
       return Number(t.runners7d) >= 5 && Number(t.winners7d) >= 3 && hyRound(t.strikeRate7d) >= 30;
-    }).sort(function(a, b) {
-      return (hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d))
-        || (Number(b.winners7d) - Number(a.winners7d))
-        || (Number(b.runners7d) - Number(a.runners7d));
-    }).slice(0, 2);
+    });
     result.qualifiers = qualifiers.length;
 
     // 3. Tomorrow's card — a qualifier with nothing declared tomorrow is
@@ -371,9 +371,15 @@ exports.handler = async function(event) {
         });
       });
     });
+    // Yards with a runner tomorrow, THEN best 7-day rate first then winners
+    // then runners, up to two — never a fallback below the bar.
     const survivors = qualifiers.filter(function(t) {
       return (tomorrowByTrainer[t.trainerId] || { count: 0 }).count > 0;
-    });
+    }).sort(function(a, b) {
+      return (hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d))
+        || (Number(b.winners7d) - Number(a.winners7d))
+        || (Number(b.runners7d) - Number(a.runners7d));
+    }).slice(0, 2);
     result.survivors = survivors.length;
 
     // 4. The preview object — classDropPreview's shape and storage pattern.
