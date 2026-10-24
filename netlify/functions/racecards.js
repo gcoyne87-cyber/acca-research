@@ -635,12 +635,22 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
     }
   }
 
-  // Hot Yard — trainer is one of today's top-3 in-form elite yards, computed
-  // once per enrichment pass from trainer-form:table:{date} (see
-  // enrichRunnerTags). Empty list when the table is missing — tag skipped.
+  // Hot Yard — trainer is in the green on today's trainer form table
+  // (strikeRate7d >= 30 and winners7d >= 3, top 5 in the table's own display
+  // order), computed once per enrichment pass in enrichRunnerTags. ONE source
+  // of truth: the table did the qualifying; this only matches. Matched by
+  // trainer_id; a table row without a trainerId falls back to exact name
+  // match for that row only. Empty list when the table is missing — tag off.
   if(hotYardTrainers && hotYardTrainers.length){
+    var _tid = runner.trainer_id || '';
     var _tn = (runner.trainer || '').toLowerCase().trim();
-    if(_tn && hotYardTrainers.indexOf(_tn) !== -1) runner.isHotYard = true;
+    for(var _hyI = 0; _hyI < hotYardTrainers.length; _hyI++){
+      var _hy = hotYardTrainers[_hyI];
+      if(_hy.trainerId ? (_tid && _tid === _hy.trainerId) : (_tn && _tn === _hy.nameLc)){
+        runner.isHotYard = true;
+        break;
+      }
+    }
   }
 
   // Proven Class Drop — GB meetings only; this is what makes "Irish races
@@ -696,25 +706,28 @@ async function enrichRunnerTags(meetings, date) {
       req.end();
     });
     if (!Array.isArray(results)) return meetings;
-    // Hot Yard trainers — from today's trainer form table (pipeline slot 0):
-    // elite-whitelisted, 9+ runs and 4+ wins in 7 days, 7-day strike rate
-    // strictly above 14-day (upward trend), top 3 by 7-day rate. A missing
-    // key or bad parse leaves the list empty and the tag silently off.
+    // Hot Yard trainers — straight off today's trainer form table (pipeline
+    // slot 0). ONE source of truth: a trainer qualifies exactly when the
+    // table the site displays shows them in the green — strikeRate7d >= 30
+    // and winners7d >= 3 — taken in the table's own display order
+    // (strikeRate7d desc, winners7d desc, runners7d desc), maximum 5. No
+    // separate thresholds live here: if the table changes, the tags follow.
+    // Rows carry trainerId for the runner match; a row without one falls
+    // back to exact name match for that row only. A missing key or bad
+    // parse leaves the list empty and the tag silently off.
     let hotYardTrainers = [];
     try {
       const tfRaw = results[0] && results[0].result;
       const tfTable = tfRaw ? JSON.parse(tfRaw) : null;
       if (Array.isArray(tfTable)) {
         hotYardTrainers = tfTable.filter(function(t) {
-          const name = (t.trainerName || '').toLowerCase().trim();
-          const sr14 = t.strikeRate14d != null ? Number(t.strikeRate14d) : (Number(t.strikeRate) || 0);
-          return Number(t.runners7d) >= 4
-            && Number(t.winners7d) >= 4
-            && Number(t.strikeRate7d) > sr14
-            && Number(t.strikeRate7d) >= 30;
-        }).sort(function(a, b) { return Number(b.strikeRate7d) - Number(a.strikeRate7d); })
-          .slice(0, 3)
-          .map(function(t) { return (t.trainerName || '').toLowerCase().trim(); });
+          return Number(t.strikeRate7d) >= 30 && Number(t.winners7d) >= 3;
+        }).sort(function(a, b) {
+          return (Number(b.strikeRate7d) - Number(a.strikeRate7d))
+            || (Number(b.winners7d) - Number(a.winners7d))
+            || (Number(b.runners7d) - Number(a.runners7d));
+        }).slice(0, 5)
+          .map(function(t) { return { trainerId: t.trainerId || '', nameLc: (t.trainerName || '').toLowerCase().trim() }; });
       }
     } catch (eHY) { hotYardTrainers = []; }
     entries.forEach(function(e, i) {
