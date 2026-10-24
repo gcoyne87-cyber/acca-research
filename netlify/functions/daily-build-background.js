@@ -1172,7 +1172,16 @@ async function generateIntelligence(racecards) {
     return (miles ? parseInt(miles, 10) : 0) * 8 + (furlongs ? parseInt(furlongs, 10) : 0);
   }
 
-  // Pre-compute in-form trainer candidates (25%+ SR, min 5 runs last 14 days)
+  // Pre-compute in-form trainer candidates (25%+ SR, min 5 runs last 14 days).
+  // Keyed by trainer_id — one entry per yard however the API spells the name
+  // that day; name key only for an id-less runner (never observed in the
+  // 2026-10-24 audit, 5,758/5,758 carried ids). Display name = the registry
+  // canonical, the card's own form when the registry is unavailable.
+  let diTrainerRegistry = null;
+  try {
+    const regRaw = await redisGet('trainer:registry');
+    if (regRaw && typeof regRaw === 'object' && !Array.isArray(regRaw)) diTrainerRegistry = regRaw;
+  } catch (eReg) { diTrainerRegistry = null; }
   const trainerFormMap = {};
   racecards.forEach(function(race) {
     const t = raceTime(race);
@@ -1180,8 +1189,12 @@ async function generateIntelligence(racecards) {
       const t14 = r.trainer_14_days || {};
       const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
       if (runs >= 5 && pct >= 25 && r.trainer) {
-        if (!trainerFormMap[r.trainer]) trainerFormMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
-        trainerFormMap[r.trainer].horses.push({
+        const tfKey = r.trainer_id || r.trainer;
+        if (!trainerFormMap[tfKey]) {
+          const regE = (diTrainerRegistry && r.trainer_id) ? diTrainerRegistry[r.trainer_id] : null;
+          trainerFormMap[tfKey] = { trainer: (regE && regE.canonical) || r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct, horses: [] };
+        }
+        trainerFormMap[tfKey].horses.push({
           name: r.horse || r.name || 'Unknown',
           horse_id: r.horse_id || '',
           course: race.course,
@@ -1830,13 +1843,24 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       'trn_603'     // Sir Mark Prescott Bt
     ];
     try {
+      // Trainer registry — stored rows key by trainer_id and display the
+      // registry canonical name. Registry missing or unloadable → card name
+      // forms, never a crash.
+      let tfRegistry = null;
+      try {
+        const regRaw = await redisGet('trainer:registry');
+        if (regRaw && typeof regRaw === 'object' && !Array.isArray(regRaw)) tfRegistry = regRaw;
+      } catch (eReg) { tfRegistry = null; }
+      // Keyed by trainer_id — one entry per yard however the API spells the
+      // name that day; name key only for an id-less runner (never observed).
       const trainerTableMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
           const t14 = r.trainer_14_days || {};
           const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
-          if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
-            trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
+          const ttKey = r.trainer_id || r.trainer;
+          if (runs >= 3 && r.trainer && !trainerTableMap[ttKey]) {
+            trainerTableMap[ttKey] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
           }
         });
       });
@@ -1862,11 +1886,12 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       const eliteTodayMap = {};
       racecards.forEach(function(race) {
         (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-          if (!r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINER_IDS.indexOf(r.trainer_id || '') === -1) return;
-          const existing = trainerTableMap[r.trainer];
-          if (existing) { eliteTodayMap[r.trainer] = existing; return; }
+          const etKey = r.trainer_id || r.trainer;
+          if (!r.trainer || eliteTodayMap[etKey] || ELITE_TRAINER_IDS.indexOf(r.trainer_id || '') === -1) return;
+          const existing = trainerTableMap[etKey];
+          if (existing) { eliteTodayMap[etKey] = existing; return; }
           const t14 = r.trainer_14_days || {};
-          eliteTodayMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
+          eliteTodayMap[etKey] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
         });
       });
 
@@ -1875,8 +1900,8 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       // (not displaying) all 39 is what Change 2 asks for — the homepage
       // table continues to read only trainerTableTop15-derived rows.
       const trainerTableStoreMap = {};
-      trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer] = e; });
-      Object.keys(eliteTodayMap).forEach(function(name) { if (!trainerTableStoreMap[name]) trainerTableStoreMap[name] = eliteTodayMap[name]; });
+      trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer_id || e.trainer] = e; });
+      Object.keys(eliteTodayMap).forEach(function(key) { if (!trainerTableStoreMap[key]) trainerTableStoreMap[key] = eliteTodayMap[key]; });
       const trainerTableToStore = Object.values(trainerTableStoreMap);
 
       // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
@@ -1925,8 +1950,9 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
       }
 
       const trainerFormTable = trainerTableToStore.map(function(entry) {
+        const regE = (tfRegistry && entry.trainer_id) ? tfRegistry[entry.trainer_id] : null;
         return {
-          trainerName: entry.trainer,
+          trainerName: (regE && regE.canonical) || entry.trainer,
           trainerId: entry.trainer_id || '',
           runners14d: entry.runs,
           winners14d: entry.wins,
@@ -1942,7 +1968,10 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
 
       // Snapshot for the Hot Yard card (step 3.6) — same rows as the stored
       // table plus each yard's 7-day winning venues, which the table itself
-      // doesn't carry.
+      // doesn't carry. trainerName here stays the CARD's own form (not the
+      // registry canonical): step 3.6's runnersTodayFor matches today's
+      // runners by that exact name, and today's card form is the one string
+      // guaranteed to match it.
       hotYardSource = trainerTableToStore.map(function(entry) {
         return {
           trainerName: entry.trainer,

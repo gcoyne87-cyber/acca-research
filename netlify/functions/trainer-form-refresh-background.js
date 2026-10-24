@@ -176,13 +176,24 @@ async function fetchTodayRacecards(today) {
 
 // The table itself — daily-build-background.js step 3.5, unchanged.
 async function buildTrainerFormTable(racecards, today, errors) {
+  // Trainer registry — rows key by trainer_id and display the registry
+  // canonical name. Registry missing or unloadable → card name forms,
+  // never a crash.
+  let tfRegistry = null;
+  try {
+    const regRaw = await redisGet('trainer:registry');
+    if (regRaw && typeof regRaw === 'object' && !Array.isArray(regRaw)) tfRegistry = regRaw;
+  } catch (eReg) { tfRegistry = null; }
+  // Keyed by trainer_id — one entry per yard however the API spells the
+  // name that day; name key only for an id-less runner (never observed).
   const trainerTableMap = {};
   racecards.forEach(function(race) {
     (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
       const t14 = r.trainer_14_days || {};
       const runs = t14.runs || 0, wins = t14.wins || 0, pct = parseFloat(t14.percent) || 0;
-      if (runs >= 3 && r.trainer && !trainerTableMap[r.trainer]) {
-        trainerTableMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
+      const ttKey = r.trainer_id || r.trainer;
+      if (runs >= 3 && r.trainer && !trainerTableMap[ttKey]) {
+        trainerTableMap[ttKey] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: runs, wins: wins, pct: pct };
       }
     });
   });
@@ -198,19 +209,20 @@ async function buildTrainerFormTable(racecards, today, errors) {
   const eliteTodayMap = {};
   racecards.forEach(function(race) {
     (race.runners || []).filter(function(r) { return !r.is_non_runner; }).forEach(function(r) {
-      if (!r.trainer || eliteTodayMap[r.trainer] || ELITE_TRAINER_IDS.indexOf(r.trainer_id || '') === -1) return;
-      const existing = trainerTableMap[r.trainer];
-      if (existing) { eliteTodayMap[r.trainer] = existing; return; }
+      const etKey = r.trainer_id || r.trainer;
+      if (!r.trainer || eliteTodayMap[etKey] || ELITE_TRAINER_IDS.indexOf(r.trainer_id || '') === -1) return;
+      const existing = trainerTableMap[etKey];
+      if (existing) { eliteTodayMap[etKey] = existing; return; }
       const t14 = r.trainer_14_days || {};
-      eliteTodayMap[r.trainer] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
+      eliteTodayMap[etKey] = { trainer: r.trainer, trainer_id: r.trainer_id || '', runs: t14.runs || 0, wins: t14.wins || 0, pct: parseFloat(t14.percent) || 0 };
     });
   });
 
   // Rows to fetch 7-day stats for and store: the top-15 display set plus
   // any elite trainer running today not already in it.
   const trainerTableStoreMap = {};
-  trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer] = e; });
-  Object.keys(eliteTodayMap).forEach(function(name) { if (!trainerTableStoreMap[name]) trainerTableStoreMap[name] = eliteTodayMap[name]; });
+  trainerTableTop15.forEach(function(e) { trainerTableStoreMap[e.trainer_id || e.trainer] = e; });
+  Object.keys(eliteTodayMap).forEach(function(key) { if (!trainerTableStoreMap[key]) trainerTableStoreMap[key] = eliteTodayMap[key]; });
   const trainerTableToStore = Object.values(trainerTableStoreMap);
 
   // 7-day stats — the racecards only embed trainer_14_days, so the 7-day
@@ -247,8 +259,9 @@ async function buildTrainerFormTable(racecards, today, errors) {
   }
 
   return trainerTableToStore.map(function(entry) {
+    const regE = (tfRegistry && entry.trainer_id) ? tfRegistry[entry.trainer_id] : null;
     return {
-      trainerName: entry.trainer,
+      trainerName: (regE && regE.canonical) || entry.trainer,
       trainerId: entry.trainer_id || '',
       runners14d: entry.runs,
       winners14d: entry.wins,
