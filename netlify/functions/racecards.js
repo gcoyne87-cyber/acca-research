@@ -1,5 +1,5 @@
 const https = require('https');
-const TRAINER_LOCATIONS = require('./data/trainer-locations.json');
+const TR = require('./lib/trainer-registry.js');
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -514,7 +514,7 @@ function setTagEvidence(runner, key, val) {
 function primaryGoingKey(s) {
   return String(s || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim();
 }
-function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race) {
+function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race, trainerRegistry) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
   const distKey = milesFurlongs(raceDist);
@@ -598,16 +598,25 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   // Irish Raider — Irish or NI trainer running
   // at a GB meeting
   // GB Raider — GB trainer running at Irish meeting
-  var trainerLoc = TRAINER_LOCATIONS.find(function(t){
-    return t.name === runner.trainer;
-  });
-  if(trainerLoc){
-    if((trainerLoc.country==='Ireland'||
-        trainerLoc.country==='Northern Ireland')
+  // Country comes from trainer:registry (lib/trainer-registry.js) by
+  // trainer_id, never by name equality — the old trainer-locations.json
+  // name match missed "W. P. Mullins" (dots), "Aidan O'Brien" (old name
+  // form) and "de"/"De" case (2026-10-24 audit). findByName over the
+  // registry aliases covers an id-less runner only (the audit saw none in
+  // 5,758). Registry missing or unloadable → no raider tags this request.
+  if (trainerRegistry) {
+    var regEntry = TR.getById(trainerRegistry, runner.trainer_id);
+    if (!regEntry && !runner.trainer_id) {
+      var regHit = TR.findByName(trainerRegistry, runner.trainer);
+      regEntry = regHit ? regHit.entry : null;
+    }
+    var regCountry = regEntry ? regEntry.country : null;
+    if((regCountry==='Ireland'||
+        regCountry==='Northern Ireland')
         && meetingFlag==='GB'){
       runner.isIrishRaider = true;
     }
-    if(trainerLoc.country==='GB' &&
+    if(regCountry==='GB' &&
        meetingFlag==='IE'){
       runner.isGBRaider = true;
     }
@@ -686,9 +695,10 @@ async function enrichRunnerTags(meetings, date) {
     });
     if (!entries.length) return meetings;
     const url = new URL(UPSTASH_URL);
-    // First pipeline slot: today's trainer form table, for the Hot Yard tag —
-    // one extra command on the existing round trip, no separate request.
-    const cmds = [['GET', 'trainer-form:table:' + date]].concat(
+    // First pipeline slot: today's trainer form table, for the Hot Yard tag.
+    // Second slot: trainer:registry, for the Irish/GB Raider country lookup —
+    // two extra commands on the existing round trip, no separate request.
+    const cmds = [['GET', 'trainer-form:table:' + date], ['GET', TR.REGISTRY_KEY]].concat(
       entries.map(function(e) { return ['GET', 'form:history:' + e.r.horse_id + ':' + date]; })
     );
     const body = JSON.stringify(cmds);
@@ -730,6 +740,15 @@ async function enrichRunnerTags(meetings, date) {
           .map(function(t) { return { trainerId: t.trainerId || '', nameLc: (t.trainerName || '').toLowerCase().trim() }; });
       }
     } catch (eHY) { hotYardTrainers = []; }
+    // Trainer registry (pipeline slot 1) — the Irish/GB Raider country
+    // source. Missing key or bad parse leaves it null and the raider tags
+    // silently off; nothing else is affected.
+    let trainerRegistry = null;
+    try {
+      const regRaw = results[1] && results[1].result;
+      const reg = regRaw ? JSON.parse(regRaw) : null;
+      if (reg && typeof reg === 'object' && !Array.isArray(reg)) trainerRegistry = reg;
+    } catch (eTR) { trainerRegistry = null; }
     entries.forEach(function(e, i) {
       try {
         // A missing or unparseable form:history key must NOT skip tagging
@@ -738,12 +757,12 @@ async function enrichRunnerTags(meetings, date) {
         // tags (C&D, C&D+G, Ground Lover) simply find no runs and stay off,
         // while the trainer-based tags still fire for debutants and any horse
         // whose history fetch was missed.
-        const raw = results[i + 1] && results[i + 1].result;
+        const raw = results[i + 2] && results[i + 2].result;
         let history = [];
         if (raw) {
           try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) history = parsed; } catch (eH) { history = []; }
         }
-        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers, e.race);
+        computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers, e.race, trainerRegistry);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
   } catch (e) { /* enrichment is best-effort by design */ }
