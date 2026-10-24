@@ -15649,7 +15649,7 @@ function nrLoadProfile(pfx,horseId){
         // lowercase, punctuation/titles stripped, alias map, initials bridge
         // ("W P Mullins" ~ "Willie Mullins"). Same-surname different
         // trainers never merge. Display name = the newest row's form.
-        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs'};
+        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs','donnacha aidan obrien':'donnacha obrien'};
         var _normT=function(t){var n=String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim().replace(/^(mr|mrs|ms|miss|sir|dr)\s+/,'');return _ta[n]||n;};
         var _sameT=function(a,b){
           var na=_normT(a),nb=_normT(b);
@@ -16034,7 +16034,7 @@ function nrLoadForm(pfx,horseId,silent){
         // ONE grouping rule (Build 4) — identical to the block above and to
         // the engine's: trainer_id equality when both rows carry ids, the
         // canonicaliser's name bridging otherwise. Newest row's form displays.
-        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs'};
+        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs','donnacha aidan obrien':'donnacha obrien'};
         var _normT=function(t){var n=String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim().replace(/^(mr|mrs|ms|miss|sir|dr)\s+/,'');return _ta[n]||n;};
         var _sameT=function(a,b){
           var na=_normT(a),nb=_normT(b);
