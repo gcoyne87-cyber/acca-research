@@ -15640,26 +15640,48 @@ function nrLoadProfile(pfx,horseId){
       // of nrLoadForm's flat `hist`) and the same data.trainerHistory.spells
       // payload nrLoadForm reads. nrLoadForm itself is untouched.
       (function(){
-        var _runs=runsDesc.map(function(x){return {trainer:x.me.trainer,date:x.race.date};}).filter(function(h){return h.trainer&&h.date;});
+        var _runs=runsDesc.map(function(x){return {trainer:x.me.trainer,trainer_id:x.me.trainer_id||'',date:x.race.date};}).filter(function(h){return h.trainer&&h.date;});
         _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
         if(!_runs.length)return;
-        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+        // ONE grouping rule (Build 4) — identical in both timeline blocks and
+        // to the engine's: trainer_id equality decides when both rows carry
+        // ids (new history rows do); otherwise the engine's canonicaliser —
+        // lowercase, punctuation/titles stripped, alias map, initials bridge
+        // ("W P Mullins" ~ "Willie Mullins"). Same-surname different
+        // trainers never merge. Display name = the newest row's form.
+        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs'};
+        var _normT=function(t){var n=String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim().replace(/^(mr|mrs|ms|miss|sir|dr)\s+/,'');return _ta[n]||n;};
+        var _sameT=function(a,b){
+          var na=_normT(a),nb=_normT(b);
+          if(!na||!nb)return false;
+          if(na===nb)return true;
+          var ta=na.split(' '),tb=nb.split(' ');
+          if(ta.length<2||tb.length<2)return false;
+          if(ta[ta.length-1]!==tb[tb.length-1])return false;
+          var fa=ta.slice(0,-1),fb=tb.slice(0,-1);
+          var _ini=function(arr){for(var k=0;k<arr.length;k++){if(arr[k].length!==1)return false;}return true;};
+          if(!_ini(fa)&&!_ini(fb))return false;
+          var sh=fa.length<=fb.length?fa:fb,lo=fa.length<=fb.length?fb:fa;
+          for(var k=0;k<sh.length;k++){if(sh[k].charAt(0)!==lo[k].charAt(0))return false;}
+          return true;
+        };
         var _per=[];
         _runs.forEach(function(h){
           var _t=String(h.trainer).trim();
           var _last=_per[_per.length-1];
-          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
-          else _per.push({name:_t,from:h.date,to:h.date,runs:1});
+          var _same=_last&&((h.trainer_id&&_last.id)?h.trainer_id===_last.id:_sameT(_last.name,_t));
+          if(_same){_last.to=h.date;_last.runs++;_last.name=_t;if(h.trainer_id)_last.id=h.trainer_id;}
+          else _per.push({name:_t,id:h.trainer_id||'',from:h.date,to:h.date,runs:1});
         });
         var _cardTr=(ru&&ru.trainer)?String(ru.trainer).trim():'';
-        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
+        var _cardTid=(ru&&ru.trainer_id)?String(ru.trainer_id):'';
+        var _lastSp=_per[_per.length-1];
+        if(_cardTr&&!((_cardTid&&_lastSp.id)?_cardTid===_lastSp.id:_sameT(_lastSp.name,_cardTr)))_per.push({name:_cardTr,id:_cardTid,from:'',to:'',runs:0});
         _per.reverse();
         var _my=function(d){var pp=String(d||'').split('-');return pp.length>=2?(MON[parseInt(pp[1],10)-1]||'')+' '+pp[0]:'';};
         var _dmy=function(d){var pp=String(d||'').split('-');return pp.length===3?parseInt(pp[2],10)+' '+(MON[parseInt(pp[1],10)-1]||'')+' '+pp[0]:'';};
-        var _notes={};
-        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
-          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
-        }
+        var _noteSp=(data.trainerHistory&&Array.isArray(data.trainerHistory.spells))?data.trainerHistory.spells:[];
+        var _noteFor=function(nm){for(var k=0;k<_noteSp.length;k++){var s=_noteSp[k];if(s&&s.text&&_sameT(s.trainer,nm))return s.text;}return '';};
         out+='<div style="padding:10px 12px 12px">';
         out+=_shdr('Trainer History');
         // Condensed date label, identical to the Form tab's: 'since Aug 2025' for the
@@ -15675,7 +15697,7 @@ function nrLoadProfile(pfx,horseId){
           var cur=i===0;
           var last=i===_per.length-1;
           var dateStr=_span(pp,cur);
-          var note=_thTidy(_notes[_normT(pp.name)]||'');
+          var note=_thTidy(_noteFor(pp.name)||'');
           out+='<div style="display:flex;gap:10px">';
           out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0;padding-top:12px">';
           out+='<div style="width:8px;height:8px;border-radius:50%;background:'+(cur?'#d4af37':'#cbd5e1')+';flex-shrink:0"></div>';
@@ -16009,24 +16031,43 @@ function nrLoadForm(pfx,horseId,silent){
         var _runs=hist.filter(function(h){return h.trainer&&h.date;}).slice();
         _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
         if(!_runs.length)return;
-        var _normT=function(t){return (t||'').replace(/\./g,'').replace(/\s+/g,' ').trim().toLowerCase();};
+        // ONE grouping rule (Build 4) — identical to the block above and to
+        // the engine's: trainer_id equality when both rows carry ids, the
+        // canonicaliser's name bridging otherwise. Newest row's form displays.
+        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs'};
+        var _normT=function(t){var n=String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim().replace(/^(mr|mrs|ms|miss|sir|dr)\s+/,'');return _ta[n]||n;};
+        var _sameT=function(a,b){
+          var na=_normT(a),nb=_normT(b);
+          if(!na||!nb)return false;
+          if(na===nb)return true;
+          var ta=na.split(' '),tb=nb.split(' ');
+          if(ta.length<2||tb.length<2)return false;
+          if(ta[ta.length-1]!==tb[tb.length-1])return false;
+          var fa=ta.slice(0,-1),fb=tb.slice(0,-1);
+          var _ini=function(arr){for(var k=0;k<arr.length;k++){if(arr[k].length!==1)return false;}return true;};
+          if(!_ini(fa)&&!_ini(fb))return false;
+          var sh=fa.length<=fb.length?fa:fb,lo=fa.length<=fb.length?fb:fa;
+          for(var k=0;k<sh.length;k++){if(sh[k].charAt(0)!==lo[k].charAt(0))return false;}
+          return true;
+        };
         var _per=[];
         _runs.forEach(function(h){
           var _t=String(h.trainer).trim();
           var _last=_per[_per.length-1];
-          if(_last&&_normT(_last.name)===_normT(_t)){_last.to=h.date;_last.runs++;}
-          else _per.push({name:_t,from:h.date,to:h.date,runs:1});
+          var _same=_last&&((h.trainer_id&&_last.id)?h.trainer_id===_last.id:_sameT(_last.name,_t));
+          if(_same){_last.to=h.date;_last.runs++;_last.name=_t;if(h.trainer_id)_last.id=h.trainer_id;}
+          else _per.push({name:_t,id:h.trainer_id||'',from:h.date,to:h.date,runs:1});
         });
         var _cardTr=(_ru2&&_ru2.trainer)?String(_ru2.trainer).trim():'';
-        if(_cardTr&&_normT(_per[_per.length-1].name)!==_normT(_cardTr))_per.push({name:_cardTr,from:'',to:'',runs:0});
+        var _cardTid=(_ru2&&_ru2.trainer_id)?String(_ru2.trainer_id):'';
+        var _lastSp=_per[_per.length-1];
+        if(_cardTr&&!((_cardTid&&_lastSp.id)?_cardTid===_lastSp.id:_sameT(_lastSp.name,_cardTr)))_per.push({name:_cardTr,id:_cardTid,from:'',to:'',runs:0});
         _per.reverse();
         var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
         var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _notes={};
-        if(data.trainerHistory&&Array.isArray(data.trainerHistory.spells)){
-          data.trainerHistory.spells.forEach(function(s){ if(s&&s.text)_notes[_normT(s.trainer)]=s.text; });
-        }
+        var _noteSp=(data.trainerHistory&&Array.isArray(data.trainerHistory.spells))?data.trainerHistory.spells:[];
+        var _noteFor=function(nm){for(var k=0;k<_noteSp.length;k++){var s=_noteSp[k];if(s&&s.text&&_sameT(s.trainer,nm))return s.text;}return '';};
         out+='<div style="padding:10px 12px 12px">';
         out+=_shdr('Trainer History');
         // Tiered spells, most recent first: spell 1 in a green-bordered card (13px
@@ -16047,7 +16088,7 @@ function nrLoadForm(pfx,horseId,silent){
           var last=i===_per.length-1;
           var tier=i===0?1:i===1?2:3;
           var dateStr=_span(p,cur);
-          var note=_thTidy(_notes[_normT(p.name)]||'');
+          var note=_thTidy(_noteFor(p.name)||'');
           var dot=cur?'#1e9e6b':'#cbd5e1';
           out+='<div style="display:flex;gap:10px">';
           out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0;padding-top:'+(tier===3?'4px':'12px')+'">';

@@ -32,6 +32,10 @@ function buildHistoryRow(race, runner) {
     pattern: race.pattern || '',
     rating_band: race.rating_band || '',
     trainer: runner.trainer || '',
+    // The API provides trainer_id on every results runner; keeping it makes
+    // new rows id-matchable for spell grouping (Build 4, 2026-10-25). Old
+    // stored rows stay id-less — name canonicalisation bridges them.
+    trainer_id: runner.trainer_id || '',
     prize: runner.prize || '',
     surface: race.surface || '',
     type: race.type || ''

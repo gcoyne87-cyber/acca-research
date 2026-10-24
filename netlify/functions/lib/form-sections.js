@@ -854,11 +854,10 @@ function validateGlance(section, glance, lean, factLines, opts) {
 // consecutive-trainer spells and computes every figure, change and verdict;
 // the model phrases one paragraph per spell from those fact lines only.
 //
-// Spell boundary rule: a new spell starts only when the normalised trainer
-// names share NO surname token — "Jim Best" -> "Jim & Suzi Best" is one
-// spell (kept under the later name); "Denis Gerard Hogan" -> "Adrian
-// McGuinness" is a boundary. Surname = last token of each "&"-separated
-// partner, suffixes (Jnr/Snr/Jr/Sr) and honorifics dropped.
+// Spell boundary rule (Build 4): trainer_id equality decides when both rows
+// carry ids; otherwise sameTrainerSpell — the engine's canonicaliser (see
+// its definition below). trainerSurnames stays for the attribution check
+// and surnameForProse, which still work by surname token.
 const TRAINER_SUFFIXES = { jnr: 1, snr: 1, jr: 1, sr: 1, ii: 1, iii: 1, bt: 1, obe: 1, mbe: 1, cbe: 1 };
 const TRAINER_HONORIFICS = { mr: 1, mrs: 1, ms: 1, miss: 1, dr: 1, sir: 1, lady: 1, lord: 1, capt: 1, major: 1, col: 1 };
 function trainerSurnames(name) {
@@ -870,10 +869,14 @@ function trainerSurnames(name) {
   });
   return out;
 }
+// ONE rule (Build 4, 2026-10-25): the engine's canonicaliser — normalised
+// equality, alias map, initials bridge ("W P Mullins" ~ "Willie Mullins",
+// "A P O'Brien" ~ "Aidan O'Brien"). The old surname-token overlap merged
+// same-surname DIFFERENT trainers (Aidan -> Donnacha O'Brien back-to-back
+// became one spell); the canonicaliser keeps two full-forename names apart.
+// Known partnership renames are bridged by the shared alias map.
 function sameTrainerSpell(a, b) {
-  const sa = trainerSurnames(a), sb = trainerSurnames(b);
-  if (!sa.length || !sb.length) return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-  return sa.some(function(s) { return sb.indexOf(s) !== -1; });
+  return engineHelpers.sameTrainer(a, b);
 }
 // Surname(s) in the trainer's own casing ("McGuinness", "O'Brien", "Newland &
 // Insole"); a lone first name before an "&" ("Jim & Suzi Best") is dropped.
@@ -900,8 +903,13 @@ function buildTrainerSpells(rows) {
   dated.forEach(function(r) {
     const name = String(r.trainer).trim();
     const cur = spells[spells.length - 1];
-    if (cur && sameTrainerSpell(cur.trainer, name)) { cur.rows.push(r); cur.to = r.date; cur.trainer = name; }
-    else spells.push({ trainer: name, from: r.date, to: r.date, rows: [r] });
+    // trainer_id equality decides outright when both rows carry ids (new
+    // history rows do, Build 4); name canonicalisation bridges id-less rows.
+    const same = cur && ((r.trainer_id && cur.trainerId)
+      ? r.trainer_id === cur.trainerId
+      : sameTrainerSpell(cur.trainer, name));
+    if (same) { cur.rows.push(r); cur.to = r.date; cur.trainer = name; if (r.trainer_id) cur.trainerId = r.trainer_id; }
+    else spells.push({ trainer: name, trainerId: r.trainer_id || '', from: r.date, to: r.date, rows: [r] });
   });
   spells.forEach(function(s, i) {
     const st = statsOf(s.rows);

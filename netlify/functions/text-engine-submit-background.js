@@ -151,7 +151,12 @@ function classLabel(c) { const m = String(c || '').match(/\d+/); return m ? 'Cla
 // normTrainerName produces before the alias lookup). One line per alias.
 const TRAINER_ALIASES = {
   'john harrington': 'jessica harrington',   // "Mrs John Harrington" (title already stripped)
-  'j harrington': 'jessica harrington'       // "Mrs J. Harrington"
+  'j harrington': 'jessica harrington',      // "Mrs J. Harrington"
+  // Partnership renames evidenced in the 2026-10-24 trainer identity audit —
+  // one yard, one trainer_id, a new partnership name form on the cards:
+  'nigel willy twistondavies': 'nigel twistondavies',   // "Nigel & Willy Twiston-Davies"
+  'kim bailey mat nicholls': 'kim bailey',              // "Kim Bailey & Mat Nicholls"
+  'philip hobbs johnson white': 'philip hobbs'          // "Philip Hobbs & Johnson White"
 };
 
 // lowercase, strip punctuation, collapse whitespace, strip title prefixes,
@@ -481,4 +486,4 @@ module.exports.STATIC_PROMPT = STATIC_PROMPT;
 module.exports.buildEnvelope = buildEnvelope;
 module.exports.buildFacts = buildFacts;
 module.exports.debutantTexts = debutantTexts;
-module.exports.helpers = { furlongs: furlongs, distLabel: distLabel, primaryGoing: primaryGoing, stripParens: stripParens, monYear: monYear, surname: surname, posNum: posNum, redisGet: redisGet, redisSet: redisSet, redisMGet: redisMGet, anthropic: anthropic, irishDateStr: irishDateStr, MODEL: MODEL, MAX_TOKENS: MAX_TOKENS };
+module.exports.helpers = { furlongs: furlongs, distLabel: distLabel, primaryGoing: primaryGoing, stripParens: stripParens, monYear: monYear, surname: surname, posNum: posNum, redisGet: redisGet, redisSet: redisSet, redisMGet: redisMGet, anthropic: anthropic, irishDateStr: irishDateStr, MODEL: MODEL, MAX_TOKENS: MAX_TOKENS, normTrainerName: normTrainerName, sameTrainer: sameTrainer };
