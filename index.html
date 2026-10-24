@@ -5777,12 +5777,13 @@ function unlockCorkAnalysis(){
         </div>
         <div style="font-size:12px;color:#9aa3b5;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
       </div>
-      <!-- Flat / Jumps toggle — same pill pattern as the Racecards day pills.
+      <!-- Jumps / Flat toggle — same pill pattern as the Racecards day pills.
+           Jumps first and active by default (jump season, 2026-10-25).
            Switches which section renders; no refetch (every entry carries
            section). The search bar below still covers all 26 yards. -->
       <div style="background:#f5f7fb;display:flex;gap:8px;padding:0 14px 10px">
-        <button id="pt-v2-toggle-flat" onclick="_ptV2SetSection('flat')" style="background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Flat</button>
-        <button id="pt-v2-toggle-jumps" onclick="_ptV2SetSection('jumps')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Jumps</button>
+        <button id="pt-v2-toggle-jumps" onclick="_ptV2SetSection('jumps')" style="background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Jumps</button>
+        <button id="pt-v2-toggle-flat" onclick="_ptV2SetSection('flat')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Flat</button>
       </div>
       <!-- One white panel holds the carousel strip and the search bar together. -->
       <style>#popular-trainers-v2-search::placeholder{color:#b8bfcc}</style>
@@ -13053,9 +13054,10 @@ function renderPopularTrainers(){
   strip.innerHTML=out;
   sec.style.display='';
 }
-// Flat / Jumps toggle state — 'flat' on load. Switching repaints the pills
-// and re-renders the carousel from the already-fetched list; never refetches.
-var _ptV2Section='flat';
+// Jumps / Flat toggle state — 'jumps' on load (jump season, 2026-10-25;
+// Jumps pill also renders first). Switching repaints the pills and
+// re-renders the carousel from the already-fetched list; never refetches.
+var _ptV2Section='jumps';
 function _ptV2SetSection(sect){
   _ptV2Section=sect==='jumps'?'jumps':'flat';
   var act='background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s';
