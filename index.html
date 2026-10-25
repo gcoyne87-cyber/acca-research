@@ -3379,7 +3379,7 @@ window.addEventListener('load',function(){
           if(!allLookups[r.date]) return;
           var match=allLookups[r.date][normName(r.horse)];
           if(!match||!match.pos) return;
-          ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard'].forEach(function(k){ if(match[k]&&!r[k]){ r[k]=true; changed=true; } });
+          ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isWonFresh'].forEach(function(k){ if(match[k]&&!r[k]){ r[k]=true; changed=true; } });
           // Non-runner or void — never count against stats; auto-clear any accidental L
           var posStr=String(match.pos).toUpperCase().trim();
           if(posStr==='VOID'||posStr==='VOI'){
@@ -14979,7 +14979,7 @@ function _edgeOrd(p){
   var v=n%100; return n+((v>=11&&v<=13)?'th':(n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'));
 }
 function _edgeContextLine(ru,ctx){
-  if(!(ru.isCandDWinner||ru.isCandDGoing||ru.isIrishRaider||ru.isGBRaider||ru.isGroundLover||ru.isHotYard||ru.isProvenClassDrop)) return '';
+  if(!(ru.isCandDWinner||ru.isCandDGoing||ru.isIrishRaider||ru.isGBRaider||ru.isGroundLover||ru.isHotYard||ru.isProvenClassDrop||ru.isWonFresh)) return '';
   // ru.tagEvidence — the exact run / counts the server's tag rule matched
   // (racecards.js computeRunnerTags). Absent on cards served before it was
   // added; every branch below then falls back to what the client can see.
@@ -15040,6 +15040,13 @@ function _edgeContextLine(ru,ctx){
       var cn=parseInt(String(rc.cls).replace(/[^0-9]/g,''),10);
       if(cn>1) parts.push('Class '+(cn-1)+' to Class '+cn+' today');
     }
+  }
+  if(ru.isWonFresh&&ev.wonFresh&&ev.wonFresh.todayGap){
+    // Won Fresh is evidence-only — the rule needs the server's full stored
+    // history (todayGap/lastWinGap), which the client can't recompute from
+    // the 6-run slice it sees, so no fallback branch like the tags above.
+    var wf=ev.wonFresh;
+    parts.push('Won off a '+wf.lastWinGap+'-day break last time'+(wf.lastWinCourse?' at '+wf.lastWinCourse:'')+' — returns from '+wf.todayGap+' days today');
   }
   if(ru.isIrishRaider) parts.push('Irish-trained raider');
   if(ru.isGBRaider) parts.push('GB-trained raider');
@@ -15255,9 +15262,10 @@ function runnerRow(ru,ctx,extraHtml,isFav){
             if(ru.isGroundLover) _t.push('Ground Lover');
             if(ru.isHotYard) _t.push('Hot Yard');
             if(ru.isProvenClassDrop) _t.push('Class Drop');
+            if(ru.isWonFresh) _t.push('Won Fresh');
             var _ebTag=_eliteBloodlineTagHtml(ru);
             if(!_t.length) return _ebTag;
-            return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid #c9a84c;border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('')+_ebTag;
+            return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':(t==='Won Fresh'?' title="Won Fresh: returns from 250+ days off, having WON last time out when fresh off a 200+ day break."':'');var _bc=t==='Won Fresh'?'#0d9488':'#c9a84c';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:3px;border:1.5px solid '+_bc+';border-radius:20px;background:#fff;padding:2px 8px;font-size:9px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;position:relative;top:-1px">&#9733; '+t+'</span>';}).join('')+_ebTag;
           })()
         +'</div>'
         // Edge tag evidence line — empty string when no tag / no client data
@@ -17897,7 +17905,7 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs,races,partial){
     var sel=item.sel,time=item.time,course=item.course,nk=item.nk;
     var picks=item.extraLabels||(topPicks&&topPicks[nk])||null;
     var res=lookup?lookup[nk]:null;
-    if(res){['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard'].forEach(function(k){if(res[k])sel[k]=true;});}
+    if(res){['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isWonFresh'].forEach(function(k){if(res[k])sel[k]=true;});}
     var posStr=res?String(res.pos||''):'';
     var posNum=parseInt(posStr,10);
     var resultHtml='<span style="font-size:11px;font-weight:600;color:#9aa3b5">–</span>';
@@ -19136,8 +19144,9 @@ function _edgeTagChips(o,fs,pad){
   if(o.isGroundLover)_t.push('Ground Lover');
   if(o.isHotYard)_t.push('Hot Yard');
   if(o.isProvenClassDrop)_t.push('Class Drop');
+  if(o.isWonFresh)_t.push('Won Fresh');
   if(!_t.length)return '';
-  return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':'';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:2px;border:1px solid #c9a84c;border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
+  return _t.map(function(t){var _ti=t==='Class Drop'?' title="Class Drop: dropping one class; top 3 at least twice at the higher level in its last 6; top half of the field last time; top 3 rated today."':(t==='Won Fresh'?' title="Won Fresh: returns from 250+ days off, having WON last time out when fresh off a 200+ day break."':'');var _bc=t==='Won Fresh'?'#0d9488':'#c9a84c';return '<span'+_ti+' style="display:inline-flex;align-items:center;gap:2px;border:1px solid '+_bc+';border-radius:20px;background:#fff;padding:'+(pad||'1px 5px')+';font-size:'+(fs||8)+'px;font-weight:700;color:#0b1628;flex-shrink:0;white-space:nowrap;margin-left:4px">&#9733; '+t+'</span>';}).join('');
 }
 // NAP / NB pick lookup — one source of truth for Full Results and both Latest
 // Results strips. Tracker records (ptRecs2) for the date, then RACING_PICKS

@@ -514,6 +514,23 @@ function setTagEvidence(runner, key, val) {
 function primaryGoingKey(s) {
   return String(s || '').toLowerCase().replace(/^[a-z]+\s*:\s*/i, '').split(/[,(]/)[0].trim();
 }
+// Count the run figures in a racecard form string — byte-identical copy of
+// lib/form-sections.js's formStringRuns (the honesty guard's comparison; see
+// form-sections-run-background.js). Copied, not required: form-sections.js
+// pulls in text-engine-submit-background.js at module load, which has no
+// place on this request path. Every digit or letter is one run; the
+// separators "-" (season break) and "/" (long break) are not runs.
+function formStringRuns(form) {
+  return (String(form || '').match(/[0-9a-z]/gi) || []).length;
+}
+// Whole days between two YYYY-MM-DD dates (later minus earlier); null when
+// either side fails to parse. Used by the Won Fresh tag only.
+function daysBetweenDates(earlier, later) {
+  const ta = Date.parse(String(earlier || '').slice(0, 10));
+  const tb = Date.parse(String(later || '').slice(0, 10));
+  if (isNaN(ta) || isNaN(tb)) return null;
+  return Math.round((tb - ta) / 86400000);
+}
 function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, meetingGoing, hotYardTrainers, race, trainerRegistry) {
   const runs = (history || []).slice(0, 6);
   const courseKey = stripParens(meetingName);
@@ -674,6 +691,48 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
         toClass: cdd.todayClassNum,
         runs: (cdd.qualifyingRuns || []).slice(0, 2).map(function(r) { return { pos: r.pos, course: r.course, date: r.date }; })
       });
+    }
+  }
+
+  // Won Fresh — the horse returns today off a long break (>= 250 days since
+  // its most recent stored run), that most recent run was a WIN, and that win
+  // itself came off a long break (>= 200 days since the run before it).
+  // Checked against the FULL stored history, not the 6-run window the form
+  // tags above use — a 250-day absence pushes the relevant runs well back.
+  // Today's date comes from race._offDt, the same source Proven Class Drop
+  // uses; prior rows are filtered to strictly before today and re-sorted
+  // newest-first defensively, for the same reason as there.
+  //
+  // SAFETY: never fires when the card's form string counts more runs than the
+  // stored history holds (the Racing API results feed omits some old runs its
+  // own form figures count — the same formStringRuns comparison the honesty
+  // guard uses in form-sections-run-background.js), nor when fewer than 2
+  // prior rows exist, since the prior gap can't be computed.
+  if (race) {
+    const wfRaceDateStr = String(race._offDt || '').slice(0, 10);
+    const wfAll = Array.isArray(history) ? history : [];
+    if (wfRaceDateStr && wfAll.length >= 2 && formStringRuns(runner.form) <= wfAll.length) {
+      const wfPrior = wfAll
+        .filter(function(r) { return r && r.date && String(r.date).slice(0, 10) < wfRaceDateStr; })
+        .slice()
+        .sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+      if (wfPrior.length >= 2) {
+        const wfLast = wfPrior[0];
+        const todayGap = daysBetweenDates(wfLast.date, wfRaceDateStr);
+        const lastWinGap = daysBetweenDates(wfPrior[1].date, wfLast.date);
+        if (todayGap !== null && lastWinGap !== null
+            && todayGap >= 250 && String(wfLast.pos) === '1' && lastWinGap >= 200) {
+          runner.isWonFresh = true;
+          setTagEvidence(runner, 'wonFresh', {
+            todayGap: todayGap,
+            lastWinGap: lastWinGap,
+            lastWinCourse: wfLast.course || '',
+            lastWinPosition: wfLast.pos,
+            lastWinFieldSize: wfLast.ran || '',
+            lastWinDate: wfLast.date || ''
+          });
+        }
+      }
     }
   }
 }
