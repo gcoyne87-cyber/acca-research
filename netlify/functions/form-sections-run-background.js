@@ -66,7 +66,7 @@ async function eligibleHorses(date) {
         if (!ru || !ru.horse_id || seen[ru.horse_id]) return;
         if (ru.nonRunner === true || ru.price === 'NR') return;
         seen[ru.horse_id] = true;
-        list.push({ horse_id: ru.horse_id, name: ru.name || 'Unknown', age: ru.age || '?', sex: ru.sex || 'unknown sex', meeting: m.name || m.id });
+        list.push({ horse_id: ru.horse_id, name: ru.name || 'Unknown', age: ru.age || '?', sex: ru.sex || 'unknown sex', meeting: m.name || m.id, form: ru.form || '' });
       });
     });
   });
@@ -161,10 +161,17 @@ function telemetryFromFailures(h, date, section, failures, stage, factsText) {
 async function prepareGoingTrip(h, date) {
   const rows = await E.redisGet('form:history:' + h.horse_id + ':' + date);
   const allRows = Array.isArray(rows) ? rows : [];
+  // Honesty guard (2026-10-25): the Racing API's results feed omits some old
+  // runs its own form figures count (Order On Time: card form "21-", one
+  // stored row). When the card's form string counts more runs than the
+  // stored CAREER rows (never the 18-month window — window exclusion is
+  // correct behaviour), the texts must scope run counts to the available
+  // record and never read as unraced.
+  const recordIncomplete = F.formStringRuns(h.form) > allRows.length;
   const win = F.sectionWindow(allRows, date);
   const trackRows = F.trackWindowRows(allRows);
   const trackIsTemplate = trackRows.length === 0;
-  if (!win.size) return { h: h, date: date, template: true, win: win };
+  if (!win.size) return { h: h, date: date, template: true, win: win, recordIncomplete: recordIncomplete };
   const gGroups = F.goingGroups(win.rows);
   const goingFacts = F.buildGoingFacts(gGroups, F.goingNeverRun(gGroups), F.goingNeverRunAW(gGroups), win.size);
   const tGroups = F.tripGroups(win.rows);
@@ -174,13 +181,19 @@ async function prepareGoingTrip(h, date) {
     const kGroups = F.trackGroups(trackRows, F.COURSE_FACTS);
     trackFacts = F.buildTrackFacts(kGroups, F.trackRollups(kGroups), trackRows.length);
   }
-  const envelope = F.buildFactsEnvelope(h, goingFacts, tripFacts, trackFacts);
+  const envelope = F.buildFactsEnvelope(h, goingFacts, tripFacts, trackFacts, recordIncomplete);
   const courseNames = F.courseNamesForExemption(win.rows.concat(trackRows));
-  return { h: h, date: date, template: false, win: win, trackIsTemplate: trackIsTemplate, trackRunCount: trackRows.length, goingFacts: goingFacts, tripFacts: tripFacts, trackFacts: trackFacts, envelope: envelope, courseNames: courseNames };
+  return { h: h, date: date, template: false, win: win, recordIncomplete: recordIncomplete, trackIsTemplate: trackIsTemplate, trackRunCount: trackRows.length, goingFacts: goingFacts, tripFacts: tripFacts, trackFacts: trackFacts, envelope: envelope, courseNames: courseNames };
 }
 
 // Template store — the three sections are generated together or not at all.
+// An incomplete record (form string counts runs the stored record lacks)
+// takes the available-record templates so a horse is never read as unraced.
 async function storeTemplates(job) {
+  if (job.recordIncomplete) {
+    await storeGoingTrip(job.h, job.win, F.NO_RUNS_INCOMPLETE_TEMPLATE, F.NO_RUNS_INCOMPLETE_TRIP_TEMPLATE, F.NO_RUNS_INCOMPLETE_TRACK_TEMPLATE);
+    return { horse_id: job.h.horse_id, horseName: job.h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: true, attempt: 0, usage: EMPTY_USAGE };
+  }
   await storeGoingTrip(job.h, job.win, F.NO_RUNS_TEMPLATE, F.NO_RUNS_TRIP_TEMPLATE, F.NO_RUNS_TRACK_TEMPLATE);
   return { horse_id: job.h.horse_id, horseName: job.h.name, storedGoing: true, storedTrip: true, storedTrack: true, template: true, attempt: 0, usage: EMPTY_USAGE };
 }
@@ -273,7 +286,7 @@ async function finishGoingTrip(job, first) {
   }
 
   const goingOut = keep.going, tripOut = keep.trip;
-  const trackOut = job.trackIsTemplate ? F.NO_RUNS_TRACK_TEMPLATE : keep.track;
+  const trackOut = job.trackIsTemplate ? (job.recordIncomplete ? F.NO_RUNS_INCOMPLETE_TRACK_TEMPLATE : F.NO_RUNS_TRACK_TEMPLATE) : keep.track;
   if (goingOut !== null || tripOut !== null || trackOut !== null) await storeGoingTrip(h, job.win, goingOut, tripOut, trackOut);
   await appendTelemetry(date, telemetry.concat(rawCaptures));
 

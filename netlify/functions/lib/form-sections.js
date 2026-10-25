@@ -525,12 +525,19 @@ function buildTrackFacts(groups, rollups, windowSize) {
 // has a pronoun but no number that isn't a fact) and the three fact lists.
 // trackFacts === null means the Track window is empty: the runner stores the
 // template for that section and ignores whatever the model writes for it.
-function buildFactsEnvelope(horse, goingFacts, tripFacts, trackFacts) {
+function buildFactsEnvelope(horse, goingFacts, tripFacts, trackFacts, recordIncomplete) {
   const lines = ['HORSE: ' + (horse && horse.name || 'Unknown') + ' (' + (horse && horse.sex || 'sex unknown') + ').', ''];
   lines.push('GOING FACTS:'); lines.push(goingFacts.join('\n')); lines.push('');
   lines.push('TRIP FACTS:'); lines.push(tripFacts.join('\n')); lines.push('');
   lines.push('TRACK FACTS:');
   lines.push(trackFacts ? trackFacts.join('\n') : '- No runs in the track window; write exactly: No track record to assess in the recent window.');
+  // Honesty guard: the card's form figures count more runs than the stored
+  // record holds, so the texts must scope every run-count claim to the
+  // available record (see RECORD NOTE in the writer prompt).
+  if (recordIncomplete) {
+    lines.push('');
+    lines.push('RECORD NOTE: the facts above cover only the available record — the horse has run more often than they show. Follow the RECORD NOTE rule.');
+  }
   return lines.join('\n');
 }
 
@@ -538,6 +545,20 @@ function buildFactsEnvelope(horse, goingFacts, tripFacts, trackFacts) {
 const NO_RUNS_TEMPLATE = 'No runs in the last 18 months, so no going record to assess.';
 const NO_RUNS_TRIP_TEMPLATE = 'No runs in the last 18 months, so no trip record to assess.';
 const NO_RUNS_TRACK_TEMPLATE = 'No track record to assess in the recent window.';
+// Honesty-guard variants (record incomplete, 2026-10-25): the card's form
+// figures count runs the Racing API's results feed never returned (Order On
+// Time: form "21-", one stored row), so an absolute or unraced read would be
+// wrong. These never mention, count or guess the missing runs.
+const NO_RUNS_INCOMPLETE_TEMPLATE = 'No runs in the available record, so no going record to assess.';
+const NO_RUNS_INCOMPLETE_TRIP_TEMPLATE = 'No runs in the available record, so no trip record to assess.';
+const NO_RUNS_INCOMPLETE_TRACK_TEMPLATE = 'No track record to assess in the available record.';
+
+// Count the run figures in a racecard form string: every digit or letter is
+// one run (positions 0-9, non-completions F, P, U, R, B, C, O...); the
+// separators "-" (season break) and "/" (long break) are not runs.
+function formStringRuns(form) {
+  return (String(form || '').match(/[0-9a-z]/gi) || []).length;
+}
 
 // ── F. THE WRITER PROMPT — byte-identical on every call, cached ─────────
 // Over the ~1,024-token caching floor (see the runner's cache_control). The
@@ -549,7 +570,8 @@ const FACT_CONTRACT =
 "Write each section as 2-4 flowing sentences using ONLY the facts listed for it. Every number, name and date must be copied from a fact line. Do not add, combine, rank or compute anything not stated. You may reorder and connect facts for readability; you may drop a minor fact to fit the length; you may not introduce one. Never state how many courses, distances, goings or groups appear in the facts — no '7 courses tried', no '5 distances', no 'across 4 going types'. Those counts are not facts in the list; describe the groups themselves instead.\n" +
 "LENGTH: GOING and TRIP: 65 words maximum. TRACK: 85 words maximum. Keep within these limits by cutting connective detail — a course character can be a few words. Never cut numbers or results to fit. A section that runs over is rejected and rewritten.\n" +
 "The fact lines are listed with the leading group first — open with it. A 'Clear split' line is the only comparison you may draw; where there is none, draw none. A 'Too few runs to show a pattern' line means the honest read is that there is no pattern: say so plainly in a sentence and stop. Where a stamina fact says NONE, say the horse has not won (or not placed) at any trip in the last N runs; never give that field a distance. A 'Never run on' line may be mentioned only if it matters to the read.\n" +
-"THE WINDOW: each section's Window line names the runs it covers — 'last 8 runs' for GOING and TRIP, 'last 15 runs' for TRACK (fewer when the horse has fewer). Wherever you refer to the period, write 'in the last 8 runs' or 'in the last 15 runs', copying the number from that section's own Window line. Never write 'in this window', 'in the window', 'recently' or 'of late'. GOING and TRIP cover fewer runs than TRACK, so a win can appear in TRACK and not in GOING; that is correct — never reconcile or mention the other sections.";
+"THE WINDOW: each section's Window line names the runs it covers — 'last 8 runs' for GOING and TRIP, 'last 15 runs' for TRACK (fewer when the horse has fewer). Wherever you refer to the period, write 'in the last 8 runs' or 'in the last 15 runs', copying the number from that section's own Window line. Never write 'in this window', 'in the window', 'recently' or 'of late'. GOING and TRIP cover fewer runs than TRACK, so a win can appear in TRACK and not in GOING; that is correct — never reconcile or mention the other sections.\n" +
+"RECORD NOTE: when the envelope ends with a RECORD NOTE line, the listed facts cover only part of the horse's record. Scope every run-count claim to the available record — 'Just 1 run in the available record', '3 runs in the available record' — and never make an absolute claim such as 'has run only once', 'only start', 'sole run' or 'just 1 run to go on'. Never mention, count or guess the runs that are not listed. The glance lines follow the same rule. Without a RECORD NOTE line, write exactly as before.";
 
 const VOICE_RULES =
 "VOICE\n" +
@@ -1110,6 +1132,10 @@ module.exports = {
   NO_RUNS_TEMPLATE: NO_RUNS_TEMPLATE,
   NO_RUNS_TRIP_TEMPLATE: NO_RUNS_TRIP_TEMPLATE,
   NO_RUNS_TRACK_TEMPLATE: NO_RUNS_TRACK_TEMPLATE,
+  NO_RUNS_INCOMPLETE_TEMPLATE: NO_RUNS_INCOMPLETE_TEMPLATE,
+  NO_RUNS_INCOMPLETE_TRIP_TEMPLATE: NO_RUNS_INCOMPLETE_TRIP_TEMPLATE,
+  NO_RUNS_INCOMPLETE_TRACK_TEMPLATE: NO_RUNS_INCOMPLETE_TRACK_TEMPLATE,
+  formStringRuns: formStringRuns,
   // prompt
   GOINGTRIP_PROMPT: GOINGTRIP_PROMPT,
   GOINGTRIP_MAX_TOKENS: GOINGTRIP_MAX_TOKENS,
