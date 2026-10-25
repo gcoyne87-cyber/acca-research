@@ -3379,7 +3379,7 @@ window.addEventListener('load',function(){
           if(!allLookups[r.date]) return;
           var match=allLookups[r.date][normName(r.horse)];
           if(!match||!match.pos) return;
-          ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isWonFresh'].forEach(function(k){ if(match[k]&&!r[k]){ r[k]=true; changed=true; } });
+          ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isProvenClassDrop','isWonFresh'].forEach(function(k){ if(match[k]&&!r[k]){ r[k]=true; changed=true; } });
           // Non-runner or void — never count against stats; auto-clear any accidental L
           var posStr=String(match.pos).toUpperCase().trim();
           if(posStr==='VOID'||posStr==='VOI'){
@@ -17905,7 +17905,7 @@ function _buildSelRows(analyses,lookup,topPicks,date,dateRecs,races,partial){
     var sel=item.sel,time=item.time,course=item.course,nk=item.nk;
     var picks=item.extraLabels||(topPicks&&topPicks[nk])||null;
     var res=lookup?lookup[nk]:null;
-    if(res){['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isWonFresh'].forEach(function(k){if(res[k])sel[k]=true;});}
+    if(res){['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isProvenClassDrop','isWonFresh'].forEach(function(k){if(res[k])sel[k]=true;});}
     var posStr=res?String(res.pos||''):'';
     var posNum=parseInt(posStr,10);
     var resultHtml='<span style="font-size:11px;font-weight:600;color:#9aa3b5">–</span>';
