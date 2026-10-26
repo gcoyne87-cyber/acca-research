@@ -50,12 +50,16 @@ function apiPost(hostname, path, headers, body) {
   });
 }
 
-function redisSet(key, value) {
+// Optional exSeconds adds an Upstash ?EX= expiry to the write; omitted, the
+// key is persistent exactly as before. Only the form:history day-copy write
+// below passes it (14 days — those keys are read only around their stamped
+// date, never after).
+function redisSet(key, value, exSeconds) {
   const url = new URL(UPSTASH_URL);
   const body = JSON.stringify(value);
   return new Promise((resolve, reject) => {
     const req = https.request({
-      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key) + (exSeconds ? '?EX=' + exSeconds : ''), method: 'POST',
       headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { if(res.statusCode !== 200){ return reject(new Error('Redis write failed: HTTP '+res.statusCode+' '+d)); } try { const parsed=JSON.parse(d); if(parsed && parsed.error){ return reject(new Error('Redis write error: '+parsed.error)); } } catch(e){} resolve(d); }); });
     req.on('error', reject); req.write(body); req.end();
@@ -3656,8 +3660,9 @@ exports.handler = async function(event) {
           const history = await fetchHorseHistory(r.horse_id);
           if (history.length > 0) {
             runnerForms.push({ runner: r, history });
-            // Cache history to Redis so Form Focus never needs a live API call
-            redisSet(`form:history:${r.horse_id}:${today}`, history).catch(() => {});
+            // Cache history to Redis so Form Focus never needs a live API call.
+            // 14-day TTL: day-of copy, read only around its stamped date.
+            redisSet(`form:history:${r.horse_id}:${today}`, history, 1209600).catch(() => {});
           }
         }
 

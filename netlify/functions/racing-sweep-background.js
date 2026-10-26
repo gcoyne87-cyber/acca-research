@@ -24,7 +24,8 @@ const { buildHistoryRow, isGBCourse } = require('./lib/history-row.js');
 //      lookupHistory() cache-miss tier uses (date/course/dist/going/pos/
 //      ran/sp/or/jockey/race_class/trainer/prize/surface/type), now
 //      paginated for full careers — see fetchFullCareerResults below.
-//      Written with no TTL, matching the existing form:history pattern.
+//      Written with a 14-day TTL (form:history keys are day-of copies,
+//      read only around their stamped date).
 //      An empty result is written as [] ONLY when the card's own
 //      embedded history also shows no runs for that horse (cardHasForm
 //      false) — never for a horse the card says has run; that case is
@@ -108,9 +109,9 @@ function redisGet(key) {
   });
 }
 
-// No expiry — matches the existing form:history pattern (fetch-horse-
-// history-1/2-background.js's own redisSet) and is used here for every
-// control key too (heartbeat/lock/worklist/meta/failures/complete).
+// No expiry — used for the control keys only (heartbeat/lock/worklist/
+// meta/failures/complete). form:history writes use redisSetEx below with
+// a 14-day TTL (day-of copies, read only around their stamped date).
 function redisSet(key, value) {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return Promise.resolve(null);
   const url = new URL(UPSTASH_URL);
@@ -595,11 +596,11 @@ exports.handler = async function(event) {
             throw new Error('card shows prior form but live fetch returned zero results — possible API/data mismatch, left untouched');
           }
           // Genuine debutant — card agrees there's no form. Write [] to
-          // every declared date, no TTL, same as a real history write.
-          await Promise.all(item.dates.map(function(d) { return redisSet('form:history:' + item.horse_id + ':' + d, []); }));
+          // every declared date, 14-day TTL, same as a real history write.
+          await Promise.all(item.dates.map(function(d) { return redisSetEx('form:history:' + item.horse_id + ':' + d, [], 1209600); }));
           return { genuineDebutant: true };
         }
-        await Promise.all(item.dates.map(function(d) { return redisSet('form:history:' + item.horse_id + ':' + d, history); }));
+        await Promise.all(item.dates.map(function(d) { return redisSetEx('form:history:' + item.horse_id + ':' + d, history, 1209600); }));
         return { genuineDebutant: false };
       }));
 

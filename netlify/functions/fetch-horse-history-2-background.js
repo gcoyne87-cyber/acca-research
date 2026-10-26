@@ -54,12 +54,15 @@ function redisGet(key) {
   });
 }
 
-function redisSet(key, value) {
+// Optional exSeconds adds an Upstash ?EX= expiry; omitted, the key is
+// persistent exactly as before. Only the form:history writes pass it
+// (14 days — day-of copies, read only around their stamped date).
+function redisSet(key, value, exSeconds) {
   const url = new URL(UPSTASH_URL);
   const body = JSON.stringify(value);
   return new Promise((resolve, reject) => {
     const req = https.request({
-      hostname: url.hostname, path: '/set/' + encodeURIComponent(key), method: 'POST',
+      hostname: url.hostname, path: '/set/' + encodeURIComponent(key) + (exSeconds ? '?EX=' + exSeconds : ''), method: 'POST',
       headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { if(res.statusCode !== 200){ return reject(new Error('Redis write failed: HTTP '+res.statusCode+' '+d)); } try { const parsed=JSON.parse(d); if(parsed && parsed.error){ return reject(new Error('Redis write error: '+parsed.error)); } } catch(e){} resolve(d); }); });
     req.on('error', reject); req.write(body); req.end();
@@ -116,7 +119,7 @@ async function fetchAndStoreHorseHistory(horse_id, dateStrs) {
     return buildHistoryRow(race, runner);
   });
   if(history.length === 0){ throw new Error('Empty history returned for horse ' + horse_id + ' — skipping Redis write'); }
-  await Promise.all(dateStrs.map(dateStr => redisSet('form:history:' + horse_id + ':' + dateStr, history)));
+  await Promise.all(dateStrs.map(dateStr => redisSet('form:history:' + horse_id + ':' + dateStr, history, 1209600)));
   return history;
 }
 
