@@ -19539,12 +19539,14 @@ function renderHomeResultsStrip(){
     feed.innerHTML=html;
     if(_keepX) feed.scrollLeft=_keepX;
     window._homeResHasData=!!html;
-    // Only reveal in place if the user is still on the home section — the
-    // datepills bar is home-only, so its visibility is the section signal.
-    // selectRacingSection re-applies visibility on every later section change.
-    var _dpb=document.getElementById('racing-datepills-bar');
-    var _onHome=_dpb&&_dpb.style.display!=='none';
-    wrap.style.display=(html&&_onHome)?'block':'none';
+    // Reveal in place only on the sections where selectRacingSection itself
+    // shows the strip — the SAME home||racecards pair it applies at its own
+    // visibility line, read from the same _currentSection global. The old
+    // proxy (the datepills bar, which is home-only) hid the strip on every
+    // re-render while a race or trainer filter was open, flapping it during
+    // racing hours (942bf1d desync, fixed 2026-10-26).
+    var _onStripSection=(_currentSection==='home'||_currentSection==='racecards');
+    wrap.style.display=(html&&_onStripSection)?'block':'none';
   }
   renderFrom(_homeRes.data);
 }
