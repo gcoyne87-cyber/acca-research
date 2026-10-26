@@ -1,6 +1,7 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
 const TR = require('./lib/trainer-registry.js');
+const EC = require('./lib/enriched-cache.js');
 
 module.exports.config = {};
 
@@ -449,6 +450,10 @@ exports.handler = async function(event) {
     } catch (eReg) {
       console.log('[fetch-future-cards] trainer registry update failed: ' + eReg.message);
     }
+    // Fresh cards and (possibly) a fresh registry are both in — drop the
+    // enriched cache for every stored date AFTER the registry pass, so the
+    // next read rebuilds with both. Best-effort like everything above.
+    try { await EC.invalidate(results.filter(function(r) { return r.stored; }).map(function(r) { return r.dateStr; })); } catch (eInv) {}
     results.forEach(function(r) { delete r.meetings; });
 
     const stored = results.filter(function(r) { return r.stored; }).length;

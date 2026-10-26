@@ -1,8 +1,13 @@
 // Popular Trainers — homepage carousel data. Read-only: reads the existing
 // trainer-form:table:{today} (7-day form, written by the daily build) and
-// racecards:{today} (today's runners) and returns one row per hardcoded
-// trainer, in the order listed below. Writes nothing.
+// the day's meetings (today's runners) and returns one row per hardcoded
+// trainer, in the order listed below. Writes nothing except populating the
+// shared enriched-racecard cache on a miss (lib/enriched-cache.js) — the
+// aggregation below reads only trainer_id/trainer/race.t, which enriched and
+// raw meetings carry identically.
 const https = require('https');
+const EC = require('./lib/enriched-cache.js');
+const racecardsMod = require('./racecards.js');
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -142,10 +147,26 @@ exports.handler = async function() {
     }
     if (!Array.isArray(table)) table = [];
 
-    const cards = await redisGet('racecards:' + today);
-    const meetings = (cards && Array.isArray(cards.meetings)) ? cards.meetings : [];
-    const tmCards = await redisGet('racecards:' + dayAfter(today));
-    const tmMeetings = (tmCards && Array.isArray(tmCards.meetings)) ? tmCards.meetings : [];
+    // One source of truth with racecards/get-results: the shared enriched
+    // cache first; on a miss, read the raw card, enrich and populate the
+    // cache so the next reader (whichever endpoint it is) gets the hit.
+    async function loadDayMeetings(d) {
+      try {
+        const ec = await EC.getEnriched(d);
+        if (ec && ec.length) return ec;
+        const cards = await redisGet('racecards:' + d);
+        const ms = (cards && Array.isArray(cards.meetings)) ? cards.meetings : [];
+        if (ms.length) {
+          try {
+            await racecardsMod.enrichRunnerTags(ms, d);
+            await EC.setEnriched(d, ms);
+          } catch (eTag) { /* enrichment is additive — counting works either way */ }
+        }
+        return ms;
+      } catch (e) { return []; }
+    }
+    const meetings = await loadDayMeetings(today);
+    const tmMeetings = await loadDayMeetings(dayAfter(today));
 
     // One pass per day: aggregate runners by trainer_id. Every stored runner
     // has carried trainer_id since the cards were stored with ids; the

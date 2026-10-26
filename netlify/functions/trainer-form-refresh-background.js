@@ -1,4 +1,5 @@
 const https = require('https');
+const EC = require('./lib/enriched-cache.js');
 
 // Trainer Form table refresh — rewrites trainer-form:table:{today} from live
 // Racing API data twice an evening, so the Trainer Form table and the Hot
@@ -322,6 +323,7 @@ exports.handler = async function(event) {
       logEntry.trainerCount = table.length;
       if (table.length) {
         await redisSet('trainer-form:table:' + today, table);
+        await EC.invalidate(today); // Hot Yard tags come off this table — next read rebuilds
         logEntry.written = true;
         console.log('[trainer-form-refresh] wrote trainer-form:table:' + today + ' — ' + table.length + ' rows' + (errors.length ? ', ' + errors.length + ' 7d lookup error(s)' : ''));
       } else {

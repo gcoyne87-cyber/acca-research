@@ -1,5 +1,6 @@
 const https = require('https');
 const racecardsMod = require('./racecards');
+const EC = require('./lib/enriched-cache.js');
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -239,9 +240,23 @@ exports.handler = async function(event) {
     const tagsById = {}, tagsByName = {};
     let declaredCard = null;
     try {
-      declaredCard = await redisGetJson('racecards:' + date);
+      // Shared enriched cache first (lib/enriched-cache.js) — the same fully-
+      // tagged meetings the pipeline below produces, one rebuild per minute
+      // across racecards / get-results / get-popular-trainers instead of one
+      // per request. Miss -> existing read + enrich, then populate the cache.
+      const ecMeetings = await EC.getEnriched(date);
+      if (ecMeetings && ecMeetings.length) {
+        declaredCard = { meetings: ecMeetings };
+      } else {
+        declaredCard = await redisGetJson('racecards:' + date);
+        if (declaredCard && Array.isArray(declaredCard.meetings)) {
+          try {
+            await racecardsMod.enrichRunnerTags(declaredCard.meetings, date);
+            await EC.setEnriched(date, declaredCard.meetings);
+          } catch (eTag) { /* tags are additive */ }
+        }
+      }
       if (declaredCard && Array.isArray(declaredCard.meetings)) {
-        try { await racecardsMod.enrichRunnerTags(declaredCard.meetings, date); } catch (eTag) { /* tags are additive */ }
         declaredCard.meetings.forEach(function(m){ (m.races||[]).forEach(function(rc){ (rc.runners||[]).forEach(function(ru){
           const flags = {}; TAG_KEYS.forEach(function(k){ if (ru[k]) flags[k] = true; });
           if (ru.horse_id) tagsById[ru.horse_id] = flags;

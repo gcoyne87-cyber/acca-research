@@ -1,4 +1,5 @@
 const https = require('https');
+const EC = require('./lib/enriched-cache.js');
 const nodemailer = require('nodemailer');
 
 module.exports.config = { timeout: 900 };
@@ -1968,7 +1969,10 @@ async function runDailyIntelligenceCards(today, racecards, report, opts) {
         };
       });
 
-      if (updateTrainerFormTable) await redisSet('trainer-form:table:' + today, trainerFormTable);
+      if (updateTrainerFormTable) {
+        await redisSet('trainer-form:table:' + today, trainerFormTable);
+        await EC.invalidate(today); // Hot Yard tags come off this table — next read rebuilds
+      }
 
       // Snapshot for the Hot Yard card (step 3.6) — same rows as the stored
       // table plus each yard's 7-day winning venues, which the table itself

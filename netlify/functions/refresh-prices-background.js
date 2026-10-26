@@ -1,5 +1,6 @@
 const https = require('https');
 const nodemailer = require('nodemailer');
+const EC = require('./lib/enriched-cache.js');
 
 // 280s, not 120 — the far-day loop below adds up to 5 more live racecard
 // fetches (one per day+2..day+6) on top of today/tomorrow, each a full
@@ -580,6 +581,7 @@ exports.handler = async function(event) {
       else console.log('[refresh-prices] today: going unchanged on every race — C&D-going recheck skipped');
 
       await redisSet('racecards:' + today, cached);
+      await EC.invalidate(today); // next read rebuilds with the fresh prices/verdicts
       if (anchorsDirty) {
         await redisSet('price:anchors:' + today, anchors);
         await redisExpire('price:anchors:' + today, 172800);
@@ -685,6 +687,7 @@ exports.handler = async function(event) {
       // of racing, and today's pass (above) catches it when it changes.
 
       await redisSet('racecards:' + tomorrow, cachedTomorrow);
+      await EC.invalidate(tomorrow); // next read rebuilds with the fresh prices
       if (anchorsTomorrowDirty) {
         await redisSet('price:anchors:' + tomorrow, anchorsTomorrow);
         await redisExpire('price:anchors:' + tomorrow, 172800);
@@ -771,6 +774,7 @@ exports.handler = async function(event) {
         // date actually changed (no bookmaker has priced anything up yet).
         if (farUpdatedThisDate > 0) {
           await redisSet('racecards:' + farDate, cachedFar);
+          await EC.invalidate(farDate); // next read rebuilds with the fresh prices
           farDaysUpdated += farUpdatedThisDate;
         }
         console.log('[refresh-prices-background] far day ' + farDate + ':', farUpdatedThisDate, 'runners priced');

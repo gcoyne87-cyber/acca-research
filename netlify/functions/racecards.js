@@ -1,5 +1,6 @@
 const https = require('https');
 const TR = require('./lib/trainer-registry.js');
+const EC = require('./lib/enriched-cache.js');
 
 const USERNAME = process.env.RACING_API_USERNAME;
 const PASSWORD = process.env.RACING_API_KEY;
@@ -845,13 +846,23 @@ exports.handler = async function(event) {
       const dates = datesParam.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
       const days = await Promise.all(dates.map(async function(d) {
         try {
-          const cached = await redisGet('racecards:' + d);
-          const meetings = (cached && Array.isArray(cached.meetings)) ? cached.meetings : [];
-          // Tag enrichment for each date — without this the multi-day view
-          // (trainer filter / Today's Edges) had no isCandDWinner etc. flags
-          // on any future day. Best-effort like everywhere else: a failure
-          // just leaves that day untagged.
-          if (meetings.length) await enrichRunnerTags(meetings, d);
+          // Shared enriched cache first (lib/enriched-cache.js, 60s TTL,
+          // invalidated on every tag-affecting write) — a hit skips the whole
+          // card + table + registry + per-runner history pipeline.
+          let meetings = await EC.getEnriched(d);
+          if (!meetings) {
+            const cached = await redisGet('racecards:' + d);
+            meetings = (cached && Array.isArray(cached.meetings)) ? cached.meetings : [];
+            // Tag enrichment for each date — without this the multi-day view
+            // (trainer filter / Today's Edges) had no isCandDWinner etc. flags
+            // on any future day. Best-effort like everywhere else: a failure
+            // just leaves that day untagged. Cached BEFORE the m.date stamp
+            // below so the stored shape matches the single-date path's.
+            if (meetings.length) {
+              await enrichRunnerTags(meetings, d);
+              await EC.setEnriched(d, meetings);
+            }
+          }
           meetings.forEach(function(m) { m.date = d; });
           return { date: d, meetings: meetings };
         } catch (e) {
@@ -870,12 +881,25 @@ exports.handler = async function(event) {
     const today = irishTodayStr();
     const targetDate = dateParam || today;
 
+    // Shared enriched cache first (lib/enriched-cache.js, 60s TTL, writer-
+    // invalidated) — the fully-tagged meetings exactly as the pipeline below
+    // would produce them, so the response is byte-identical to a rebuild.
+    const ecMeetings = await EC.getEnriched(targetDate);
+    if (ecMeetings && ecMeetings.length) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ meetings: ecMeetings, _fromCache: true })
+      };
+    }
+
     // Check Redis cache first for any date, including today — fetch-future-cards-background.js
     // already caches today's card overnight, so a live-API gap (rate limit, provider timing)
     // no longer leaves the page empty when good data is sitting right there.
     const cached = await redisGet('racecards:' + targetDate);
     if (cached && cached.meetings && cached.meetings.length) {
       await enrichRunnerTags(cached.meetings, targetDate);
+      await EC.setEnriched(targetDate, cached.meetings);
       return {
         statusCode: 200,
         headers,
@@ -917,6 +941,7 @@ exports.handler = async function(event) {
     }
 
     await enrichRunnerTags(meetings, targetDate);
+    await EC.setEnriched(targetDate, meetings);
 
     return {
       statusCode: 200,
