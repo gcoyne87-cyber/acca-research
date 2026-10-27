@@ -1,5 +1,9 @@
 const https = require('https');
 const EC = require('./lib/enriched-cache.js');
+// Real tag logic for the tag-echo verdict layer (step 6.5) — the tags there
+// must be byte-identical to what the site serves, so the rules are never
+// reimplemented here: enrichRunnerTags is required straight from racecards.js.
+const RCTags = require('./racecards.js');
 const nodemailer = require('nodemailer');
 
 module.exports.config = { timeout: 900 };
@@ -2841,6 +2845,88 @@ module.exports.classDropSignature = classDropSignature;
 module.exports.maxOffDt = maxOffDt;
 module.exports.refreshTodayClassDrop = refreshTodayClassDrop;
 
+// ── TAG-ECHO VERDICT LAYER (step 6.5) — prompt + fact builder ────────────────
+// Display-only rewrite of a tagged runner's existing verdict into an
+// endorsement of its tag(s). The rewrite lands in a NEW displayVerdict field
+// beside runnerAnalysis — the original text is never modified, and everything
+// that decides picks (NAP screen, pickRank, NB order, pull quotes, tracker)
+// keeps reading the original fields. Fixed system prompt so the cache block
+// is written once and read by every call in the batch.
+const TAG_ECHO_PROMPT = `You are a professional horse racing analyst for RacingEdge. A horse on today's card carries one or more data-backed angle tags. You are given the tag name(s), the hard facts behind them, and the site's existing verdict on the horse. Rewrite the verdict so it reads as an endorsement of the tag(s): open from or weave in the tag's strongest fact so the tag and the verdict read as one piece.
+
+RULES:
+- 2-3 sentences, the same length band as the original verdict. Never more than 3 sentences.
+- Every number, date and name you use must come from the TAG FACTS or the ORIGINAL VERDICT — never derive, estimate or invent anything.
+- Keep the original verdict's honest overall stance: if it is lukewarm or negative, acknowledge the tag's fact but keep the reservations. Never upgrade a negative verdict into a recommendation.
+- Do not tip, do not give betting advice, do not mention odds unless the original verdict does, and do not mention tipsters, publications or external sources.
+- Write all dates in human form — "21 January 2026" or "Aug 2026" — never ISO format like "2026-08-10".
+- A horse with multiple tags gets one rewrite weaving the strongest facts together — do not list the tags mechanically.
+
+Return ONLY this exact JSON, no text before or after:
+{"displayVerdict":"string — the rewritten 2-3 sentence verdict"}`;
+
+// One plain-English fact line per tag the runner carries, built from the
+// tagEvidence the REAL enrichRunnerTags stamped (plus the trainer form table
+// row for Hot Yard, which stores no evidence object — its facts live on the
+// same table the tag itself is derived from). Every number handed to the
+// model comes from here or the original verdict; nothing else is permitted
+// by the prompt.
+function tagEchoFacts(runner, hotYardRow) {
+  const ev = runner.tagEvidence || {};
+  const facts = [];
+  if (runner.isCandDGoing === true) {
+    const g = ev.canddGoing || {};
+    facts.push('C&D+G: has WON over this exact course and distance'
+      + (g.dist ? ' (' + g.dist + ')' : '')
+      + (g.date ? ' on ' + String(g.date).slice(0, 10) : '')
+      + (g.going ? ', on ' + g.going + ' going — the same going as today' : ' on the same going as today'));
+  }
+  if (runner.isCandDWinner === true) {
+    const c = ev.candd || {};
+    facts.push('C&D Winner: has WON over this exact course and distance'
+      + (c.dist ? ' (' + c.dist + ')' : '')
+      + (c.date ? ' on ' + String(c.date).slice(0, 10) : '')
+      + (c.going ? ' (going that day: ' + c.going + ')' : ''));
+  }
+  if (runner.isCourseSpecialist === true && ev.courseSpecialist) {
+    const cs = ev.courseSpecialist;
+    facts.push('Course Specialist: ' + cs.winCount + ' career wins at ' + cs.course
+      + (cs.latestWinDate ? ', the latest on ' + cs.latestWinDate : '')
+      + (Array.isArray(cs.winDates) && cs.winDates.length ? ' (win dates: ' + cs.winDates.join(', ') + ')' : ''));
+  }
+  if (runner.isProvenClassDrop === true && ev.classDrop) {
+    const cd = ev.classDrop;
+    const runsTxt = (cd.runs || []).map(function(r) { return 'finished ' + r.pos + ' at ' + r.course + ' on ' + String(r.date || '').slice(0, 10); }).join('; ');
+    facts.push('Class Drop: drops from Class ' + cd.fromClass + ' to Class ' + cd.toClass + ' today'
+      + (runsTxt ? ' — proven at the higher level: ' + runsTxt : ''));
+  }
+  if (runner.isWonFresh === true && ev.wonFresh) {
+    const wf = ev.wonFresh;
+    facts.push('Won Fresh: returns today from a ' + wf.todayGap + '-day break, and its most recent run was a WIN'
+      + (wf.lastWinCourse ? ' at ' + wf.lastWinCourse : '')
+      + (wf.lastWinDate ? ' on ' + String(wf.lastWinDate).slice(0, 10) : '')
+      + ' — a win that itself came fresh off a ' + wf.lastWinGap + '-day break');
+  }
+  if (runner.isGroundLover === true && ev.groundLover) {
+    const gl = ev.groundLover;
+    facts.push('Ground Lover: ' + gl.wins + ' win' + (gl.wins === 1 ? '' : 's') + ' from ' + gl.starts + ' career runs on ' + gl.going + ' going — the going it faces today');
+  }
+  if (runner.isHotYard === true) {
+    if (hotYardRow) {
+      facts.push('Hot Yard: trainer ' + (hotYardRow.trainerName || runner.trainer || 'this yard') + ' has ' + (Number(hotYardRow.winners7d) || 0) + ' winners from ' + (Number(hotYardRow.runners7d) || 0) + ' runners in the last 7 days — a ' + (Number(hotYardRow.strikeRate7d) || 0) + '% strike rate');
+    } else {
+      facts.push('Hot Yard: the stable is among the hottest in the country over the last 7 days');
+    }
+  }
+  if (runner.isIrishRaider === true) facts.push('Irish Raider: an Irish-trained runner sent across for this race');
+  if (runner.isGBRaider === true) facts.push('GB Raider: a British-trained runner sent across for this race');
+  return facts;
+}
+
+// Exported for the tag-echo dry-run harness only — nothing on the serving
+// path imports these.
+module.exports.tagEchoInternals = { TAG_ECHO_PROMPT: TAG_ECHO_PROMPT, tagEchoFacts: tagEchoFacts };
+
 exports.handler = async function(event) {
   console.log('[BUILD START]', new Date().toISOString(), 'ctx:', process.env.CONTEXT, 'scheduled:', !event.httpMethod);
   // Heartbeat: fire-and-forget first write so even an invocation killed early leaves evidence in Redis
@@ -3983,6 +4069,155 @@ exports.handler = async function(event) {
     try { await safeWriteReport(today, report); } catch(re) { report.errors.push('redis-write daily:report:' + today + ': ' + re.message); }
     console.log(`[daily-build] Done. ${report.racesAnalysed}/${report.upcomingRaces} upcoming races analysed. Cost: $${report.costUSD}`);
 
+    // 6.5 TAG-ECHO verdict layer (Part 1 — display only). Positioned strictly
+    // AFTER everything that decides picks: NAP/NB selection and pick ranking
+    // (step 5.7 NAP final screen above — pickRank is stamped there), the NAP
+    // screen assembly, and the step-6 report write. No displayVerdict exists
+    // until this line, so nothing upstream can ever read one.
+    //
+    // For every TAGGED runner on today's stored card that has a runnerAnalysis
+    // entry, one Claude call rewrites that entry's text into an endorsement of
+    // its tag(s), grounded in the tagEvidence facts the REAL enrichRunnerTags
+    // stamped (required from racecards.js — the rules are never reimplemented,
+    // so the tags here are byte-identical to what the site serves). The
+    // rewrite lands in a NEW displayVerdict field BESIDE runnerAnalysis — the
+    // original is never modified, overwritten or re-generated, and the NAP
+    // screen, pick ranking, NB order, pull quotes and tracker keep reading the
+    // original fields exactly as before. A failed rewrite writes nothing: the
+    // front end simply shows the original, so failure is invisible.
+    // (Elite Bloodline is computed client-side in index.html only — the server
+    // card carries no flag for it, so it cannot appear here.)
+    let tagEchoStatusLine = 'Tag-echo: not run';
+    try {
+      const teCardStored = await redisGet('racecards:' + today);
+      const teMeetings = (teCardStored && Array.isArray(teCardStored.meetings)) ? teCardStored.meetings : [];
+      if (!teMeetings.length || !Array.isArray(report.analyses) || !report.analyses.length) {
+        tagEchoStatusLine = 'Tag-echo: skipped — ' + (teMeetings.length ? 'no analyses today' : 'no stored card');
+      } else {
+        await RCTags.enrichRunnerTags(teMeetings, today);
+        // Hot Yard stores no evidence object — its facts come from the same
+        // trainer form table the tag is derived from. Loaded once.
+        let teTable = [];
+        try { const tt = await redisGet('trainer-form:table:' + today); if (Array.isArray(tt)) teTable = tt; } catch (e) { teTable = []; }
+        const TE_FLAG_LABELS = {
+          isCandDGoing: 'C&D+G', isCandDWinner: 'C&D Winner',
+          isCourseSpecialist: 'Course Specialist', isProvenClassDrop: 'Class Drop',
+          isWonFresh: 'Won Fresh', isGroundLover: 'Ground Lover',
+          isHotYard: 'Hot Yard', isIrishRaider: 'Irish Raider', isGBRaider: 'GB Raider'
+        };
+        const taggedByName = {};
+        teMeetings.forEach(function(m) { (m.races || []).forEach(function(race) { (race.runners || []).forEach(function(ru) {
+          if (!ru || !ru.name) return;
+          const flags = Object.keys(TE_FLAG_LABELS).filter(function(k) { return ru[k] === true; });
+          if (!flags.length) return;
+          let hyRow = null;
+          if (ru.isHotYard === true) {
+            hyRow = teTable.find(function(t) {
+              if (t && t.trainerId && ru.trainer_id) return t.trainerId === ru.trainer_id;
+              return t && (t.trainerName || '').toLowerCase().trim() === (ru.trainer || '').toLowerCase().trim();
+            }) || null;
+          }
+          taggedByName[normaliseHorseName(ru.name)] = {
+            name: ru.name,
+            labels: flags.map(function(k) { return TE_FLAG_LABELS[k]; }),
+            facts: tagEchoFacts(ru, hyRow)
+          };
+        }); }); });
+
+        // Jobs: tagged runners with an analysis row and no displayVerdict yet.
+        // Rows rebuilt from the per-race analysis caches on a re-run already
+        // carry displayVerdict (persisted below), so re-runs never double-bill.
+        const teJobs = [];
+        let teSkippedExisting = 0;
+        report.analyses.forEach(function(a) { (a.runnerAnalysis || []).forEach(function(row) {
+          if (!row || !row.horseName || !row.analysis) return;
+          const hit = taggedByName[normaliseHorseName(row.horseName)];
+          if (!hit) return;
+          if (row.displayVerdict) { teSkippedExisting++; return; }
+          teJobs.push({ row: row, raceLabel: a.race, info: hit });
+        }); });
+
+        let teDone = 0, teFailed = 0;
+        let teIn = 0, teOut = 0, teCR = 0, teCW = 0;
+        const TE_BATCH = 4; // same concurrency as the race analyses
+        for (let ti = 0; ti < teJobs.length; ti += TE_BATCH) {
+          const tb = teJobs.slice(ti, ti + TE_BATCH);
+          await Promise.allSettled(tb.map(async function(job) {
+            try {
+              const msg = 'HORSE: ' + job.info.name
+                + '\nTAGS: ' + job.info.labels.join('; ')
+                + '\nTAG FACTS:\n' + job.info.facts.map(function(f) { return '- ' + f; }).join('\n')
+                + '\n\nORIGINAL VERDICT:\n"' + job.row.analysis + '"';
+              const r = await callClaudeSimple(TAG_ECHO_PROMPT, msg, 400);
+              teIn += r.inputTokens; teOut += r.outputTokens; teCR += r.cacheReadTokens; teCW += r.cacheWriteTokens;
+              report.callLog.push({ type: 'tag-echo', label: job.info.name + ' (' + job.raceLabel + ')', inputTokens: r.inputTokens, outputTokens: r.outputTokens, cacheReadTokens: r.cacheReadTokens, cacheWriteTokens: r.cacheWriteTokens, webSearch: false, webSearchCount: 0 });
+              const dv = (r.result && typeof r.result.displayVerdict === 'string') ? r.result.displayVerdict.trim() : '';
+              if (dv) { job.row.displayVerdict = dv; teDone++; } else { teFailed++; }
+            } catch (e) { teFailed++; }
+          }));
+        }
+
+        // Persist the rewrites into the per-race analysis:race:{...} caches:
+        // a re-run rebuilds report.analyses from those caches, so displayVerdict
+        // must live there for the idempotency skip above to hold.
+        if (teDone) {
+          const teLabelToKey = {};
+          (racecards || []).forEach(function(race) {
+            const t24 = (function(offDt) { if (!offDt) return race.off_time || ''; var m = offDt.match(/T(\d{2}):(\d{2})/); return m ? m[1] + ':' + m[2] : race.off_time || ''; })(race.off_dt);
+            teLabelToKey[race.course + ' ' + t24] = 'analysis:race:' + today + ':' + (race.course_id || race.course) + ':' + race.off_time;
+          });
+          const teTouched = {};
+          teJobs.forEach(function(j) { if (j.row.displayVerdict) teTouched[j.raceLabel] = true; });
+          for (const lbl of Object.keys(teTouched)) {
+            try {
+              const rk = teLabelToKey[lbl];
+              if (!rk) continue;
+              const existing = await redisGet(rk);
+              const target = (existing && existing.result) ? existing.result : existing;
+              if (!target || !Array.isArray(target.runnerAnalysis)) continue;
+              const aEntry = report.analyses.find(function(a) { return a.race === lbl; });
+              if (!aEntry) continue;
+              let changed = false;
+              target.runnerAnalysis.forEach(function(row) {
+                const src = (aEntry.runnerAnalysis || []).find(function(s) { return s && normaliseHorseName(s.horseName) === normaliseHorseName(row.horseName); });
+                if (src && src.displayVerdict && row.displayVerdict !== src.displayVerdict) { row.displayVerdict = src.displayVerdict; changed = true; }
+              });
+              if (changed) await redisSet(rk, existing);
+            } catch (e) { /* best-effort — a miss only means that race re-bills on a re-run */ }
+          }
+        }
+
+        // Fold the step's cost into the report totals (step 6 already ran, so
+        // the deltas are added rather than recomputed) and surface one line.
+        const teCost = teIn * PRICE_IN + teOut * PRICE_OUT + teCW * PRICE_CACHE_WRITE + teCR * PRICE_CACHE_READ;
+        report.inputTokens += teIn; report.outputTokens += teOut;
+        report.cacheReadTokens += teCR; report.cacheWriteTokens += teCW;
+        report.costUSD = (parseFloat(report.costUSD || '0') + teCost).toFixed(4);
+        if (report.costBreakdown) {
+          const cbx = report.costBreakdown;
+          cbx.inputTokenCost = (parseFloat(cbx.inputTokenCost || '0') + teIn * PRICE_IN).toFixed(4);
+          cbx.outputTokenCost = (parseFloat(cbx.outputTokenCost || '0') + teOut * PRICE_OUT).toFixed(4);
+          cbx.cacheWriteCost = (parseFloat(cbx.cacheWriteCost || '0') + teCW * PRICE_CACHE_WRITE).toFixed(4);
+          cbx.cacheReadCost = (parseFloat(cbx.cacheReadCost || '0') + teCR * PRICE_CACHE_READ).toFixed(4);
+          cbx.totalInputTokens = (cbx.totalInputTokens || 0) + teIn;
+          cbx.totalOutputTokens = (cbx.totalOutputTokens || 0) + teOut;
+          cbx.totalCacheWrite = (cbx.totalCacheWrite || 0) + teCW;
+          cbx.totalCacheRead = (cbx.totalCacheRead || 0) + teCR;
+          cbx.todayCostUSD = (parseFloat(cbx.todayCostUSD || '0') + teCost).toFixed(4);
+        }
+        report.tagEcho = { taggedOnCard: Object.keys(taggedByName).length, rewritten: teDone, failed: teFailed, skippedExisting: teSkippedExisting, costUSD: teCost.toFixed(4) };
+        tagEchoStatusLine = 'Tag-echo: ' + teDone + ' verdicts rewritten, $' + teCost.toFixed(2);
+        console.log('[daily-build] ' + tagEchoStatusLine);
+        try { await safeWriteReport(today, report); } catch (re) { report.errors.push('redis-write daily:report:' + today + ' (tag-echo): ' + re.message); }
+      }
+    } catch (teErr) {
+      // Failure is invisible by design: no displayVerdict is written, the
+      // front end shows the originals, and the build carries on to the email.
+      tagEchoStatusLine = 'Tag-echo: FAILED — ' + teErr.message + ' (originals shown, nothing lost)';
+      report.warnings.push(tagEchoStatusLine);
+      console.error('[daily-build] ' + tagEchoStatusLine);
+    }
+
     // 7. Send build report email — best-effort, must never crash the build
     try {
       const SIGNAL_TYPES = ['Tipster Consensus', 'Ground Edge', 'Course and Distance', 'Hot Yard', 'Intelligence'];
@@ -4060,6 +4295,7 @@ exports.handler = async function(event) {
       const emailBody = selectionsSection.concat(signalLines).concat([
         tomorrowLine
       ]).concat(napScreenEmailLines).concat([
+        tagEchoStatusLine,
         '',
         'Total Cost: $' + report.costUSD,
         '  Input: $' + (cb.inputTokenCost || '0.0000') + ' | Output: $' + (cb.outputTokenCost || '0.0000') + ' | Cache write: $' + (cb.cacheWriteCost || '0.0000') + ' | Cache read: $' + (cb.cacheReadCost || '0.0000') + ' | Web search: $' + (cb.webSearchCost || '0.0000') + ' (' + (cb.webSearchCount || 0) + ' searches)',
