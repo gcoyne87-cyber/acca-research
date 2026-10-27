@@ -236,7 +236,7 @@ exports.handler = async function(event) {
     const normName = function(s) {
       return String(s || '').toLowerCase().replace(/\s*\([^)]*\)\s*$/, '').replace(/[^a-z0-9]/g, '');
     };
-    const TAG_KEYS = ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isProvenClassDrop','isWonFresh'];
+    const TAG_KEYS = ['isCandDWinner','isCandDGoing','isIrishRaider','isGBRaider','isGroundLover','isHotYard','isProvenClassDrop','isWonFresh','isCourseSpecialist'];
     const tagsById = {}, tagsByName = {};
     let declaredCard = null;
     try {

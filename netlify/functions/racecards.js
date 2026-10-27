@@ -736,6 +736,36 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
       }
     }
   }
+
+  // COURSE SPECIALIST — 2 or more career WINS (position 1) at today's course,
+  // any distance, any going, counted across the FULL stored history (not the
+  // 6-run window the form tags use). Course matching is the C&D tag's own
+  // normalisation (stripParens, case-fold) via the courseKey computed above.
+  // Fully standalone: fires alongside C&D+G / C&D Winner or any other tag —
+  // the C&D pair's mutual exclusivity above is untouched.
+  //
+  // SAFETY: same honesty guard as Won Fresh — never fires when the card's
+  // form string counts more runs than the stored history holds (the Racing
+  // API results feed omits some old runs its own form figures count), nor
+  // with fewer than 2 stored rows (2 wins need at least 2 runs).
+  {
+    const csAll = Array.isArray(history) ? history : [];
+    if (csAll.length >= 2 && formStringRuns(runner.form) <= csAll.length) {
+      const csWins = csAll
+        .filter(function(r) { return r && String(r.pos) === '1' && stripParens(r.course) === courseKey; })
+        .slice()
+        .sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+      if (csWins.length >= 2) {
+        runner.isCourseSpecialist = true;
+        setTagEvidence(runner, 'courseSpecialist', {
+          course: meetingName || '',
+          winCount: csWins.length,
+          winDates: csWins.map(function(r) { return String(r.date || '').slice(0, 10); }),
+          latestWinDate: String(csWins[0].date || '').slice(0, 10)
+        });
+      }
+    }
+  }
 }
 
 // One pipelined Redis round-trip covering every runner's
