@@ -15016,10 +15016,14 @@ function _edgeContextLine(ru,ctx){
   }
   if(ru.isCandDGoing&&ev.canddGoing){
     var cg=ev.canddGoing,cgWhen=_edgeMonYr(cg.date);
-    parts.push('Won here over '+_edgeDistWords(cg.dist||(rc&&rc.dist))+(cg.going?' on '+_cleanGoing(_edgePrimaryGoing(cg.going)):'')+(cgWhen?', '+cgWhen:''));
+    // courseWinCount >= 2: the suppressed Course Specialist tag's count is
+    // absorbed into this line (racecards.js writes it onto the evidence).
+    if(cg.courseWinCount>=2) parts.push('C&D+G — '+cg.courseWinCount+' wins at this course'+(_edgeMonYr(cg.courseLatestWinDate)?', latest '+_edgeMonYr(cg.courseLatestWinDate):''));
+    else parts.push('Won here over '+_edgeDistWords(cg.dist||(rc&&rc.dist))+(cg.going?' on '+_cleanGoing(_edgePrimaryGoing(cg.going)):'')+(cgWhen?', '+cgWhen:''));
   } else if(ru.isCandDWinner&&ev.candd){
     var cw=ev.candd,cwWhen=_edgeMonYr(cw.date);
-    parts.push('Won here over '+_edgeDistWords(cw.dist||(rc&&rc.dist))+(cwWhen?', '+cwWhen:''));
+    if(cw.courseWinCount>=2) parts.push('C&D Winner — '+cw.courseWinCount+' wins at this course'+(_edgeMonYr(cw.courseLatestWinDate)?', latest '+_edgeMonYr(cw.courseLatestWinDate):''));
+    else parts.push('Won here over '+_edgeDistWords(cw.dist||(rc&&rc.dist))+(cwWhen?', '+cwWhen:''));
   } else if((ru.isCandDWinner||ru.isCandDGoing)&&rc&&rc.course){
     var ck=_edgeCourseKey(rc.course),dk=_edgeDistKey(rc.dist);
     var cd=hist.filter(function(h){ return String(h.pos)==='1'&&_edgeCourseKey(h.course)===ck&&(!dk||_edgeDistKey(h.dist)===dk); });
