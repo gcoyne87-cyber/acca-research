@@ -12,11 +12,12 @@ const nodemailer = require('nodemailer');
 //    a date is swept only when >=90% of its runners have a form:history key.
 // 2. goingtrip SWEEP of every history-ready date — one form-sections-run-
 //    background ?mode=batch&horseIds= batch per date that has uncovered
-//    horses. Skip rule: a horse whose form-sections:{horse_id} key exists
-//    is never resubmitted, so a normal day submits only late declarations
-//    and the newest date entering the window. (Previously one date per day,
-//    never revisited — every horse declared after that single pass had no
-//    Trip/Going/Track text for good.)
+//    horses. Skip rule: a horse skips only when its form-sections:{horse_id}
+//    record exists AND is still current — formSectionsStale() names the four
+//    resubmit reasons (missing, empty husk, outgrown "no runs" template,
+//    ran since written). A normal day submits late declarations, the newest
+//    date entering the window, and horses that have run since their texts
+//    were generated.
 // 3. trainer-history batch for the whole window (today .. today+3) —
 //    trainer-history-v2-background ?mode=batch&dates=. Its skip rule means
 //    only horses that have run since their record was written are
@@ -38,6 +39,13 @@ module.exports.config = { timeout: 900 };
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const EMAIL_TO = 'gcoyne87@gmail.com';
+
+// One-off repair switch (set in the Netlify env, run once, unset): the sweep
+// DELETES each stale form-sections record it meets (empty husks, and "no
+// runs" templates the horse has outgrown) instead of leaving it to be merged
+// over, so this same run's regeneration starts from a clean key. Every
+// deletion is logged with the horse's name.
+const CLEANUP_STALE_FORMS = process.env.CLEANUP_STALE_FORMS === 'true';
 
 const goingTripEngine = require('./form-sections-run-background.js');
 const trainerEngine = require('./trainer-history-v2-background.js');
@@ -101,18 +109,20 @@ function redisExistsCount(keys) {
   }, Promise.resolve(0));
 }
 
-// Per-key existence, same pipelined EXISTS as redisExistsCount but returning
-// one boolean per key in order. The goingtrip sweep's skip rule: a horse
-// whose form-sections:{horse_id} already exists is never resubmitted. A
-// pipeline failure reports every key in that chunk as present — which can
-// only SKIP horses (caught on the next day's sweep), never double-submit.
-function redisExistsEach(keys) {
+// Pipelined GET returning one parsed JSON value per key, in order: an object
+// for a stored record, null for a missing key. A transport/pipeline failure
+// resolves that chunk's entries to the boolean false sentinel, which the
+// staleness check reads as "assume covered, skip" — the same safe bias the
+// old EXISTS skip had (a horse skipped on a bad day is caught on the next
+// sweep; a failure can never double-submit). Chunked at 50 keys because
+// form-sections records and form:history rows are full values, not booleans.
+function redisMGetJson(keys) {
   const url = new URL(UPSTASH_URL);
-  const chunks = []; for (let i = 0; i < keys.length; i += 150) chunks.push(keys.slice(i, i + 150));
+  const chunks = []; for (let i = 0; i < keys.length; i += 50) chunks.push(keys.slice(i, i + 50));
   return chunks.reduce(function(p, chunk) {
     return p.then(function(acc) {
       return new Promise(function(resolve) {
-        const body = JSON.stringify(chunk.map(function(k) { return ['EXISTS', k]; }));
+        const body = JSON.stringify(chunk.map(function(k) { return ['GET', k]; }));
         const req = https.request({
           hostname: url.hostname, path: '/pipeline', method: 'POST',
           headers: { 'Authorization': 'Bearer ' + UPSTASH_TOKEN, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
@@ -120,14 +130,36 @@ function redisExistsEach(keys) {
           let d = ''; res.on('data', function(c) { d += c; });
           res.on('end', function() {
             let arr = null; try { arr = JSON.parse(d); } catch (e) { arr = null; }
-            resolve(acc.concat(chunk.map(function(k, i) { return Array.isArray(arr) ? !!(arr[i] && arr[i].result) : true; })));
+            resolve(acc.concat(chunk.map(function(k, i) {
+              if (!Array.isArray(arr)) return false;
+              const r = arr[i] && arr[i].result;
+              if (r === null || r === undefined) return null;
+              try { return JSON.parse(r); } catch (e) { return null; }
+            })));
           });
         });
-        req.on('error', function() { resolve(acc.concat(chunk.map(function() { return true; }))); });
+        req.on('error', function() { resolve(acc.concat(chunk.map(function() { return false; }))); });
         req.write(body); req.end();
       });
     });
   }, Promise.resolve([]));
+}
+
+// Used only by the CLEANUP_STALE_FORMS one-off path. A failed delete resolves
+// false and the record is simply merged over by the regeneration instead.
+function redisDel(key) {
+  const url = new URL(UPSTASH_URL);
+  return new Promise(function(resolve) {
+    const req = https.request({
+      hostname: url.hostname, path: '/del/' + encodeURIComponent(key), method: 'POST',
+      headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
+    }, function(res) {
+      let d = ''; res.on('data', function(c) { d += c; });
+      res.on('end', function() { resolve(res.statusCode === 200); });
+    });
+    req.on('error', function() { resolve(false); });
+    req.end();
+  });
 }
 
 // Distinct non-NR horse_ids on a stored racecard — the same eligibility the
@@ -144,6 +176,71 @@ function cardHorseIds(card) {
     });
   });
   return ids;
+}
+
+// horse_id -> name off a stored racecard, for the cleanup log lines.
+function cardHorseNames(card) {
+  const names = {};
+  (card && Array.isArray(card.meetings) ? card.meetings : []).forEach(function(m) {
+    (m.races || []).forEach(function(race) {
+      (race.runners || []).forEach(function(ru) {
+        if (ru && ru.horse_id && !names[ru.horse_id]) names[ru.horse_id] = ru.name || '';
+      });
+    });
+  });
+  return names;
+}
+
+// ── goingtrip staleness check (2026-10-28) ──────────────────────────────────
+// Replaces the bare EXISTS skip: a record no longer skips just by existing, it
+// must also still be current. Returns the resubmit reason, or null to skip.
+// rec is the stored form-sections record — an object, null (missing), or the
+// false sentinel from redisMGetJson (pipeline failure: treated as covered).
+// rows is the stored form:history for the swept date (null/false both read as
+// "no rows", which can only skip). dMs is the swept date at UTC midnight.
+//   'missing'            no record at all — the old rule's only trigger
+//   'empty-husk'         record with no going, trip or track text: metadata-
+//                        only remnants of an older engine version; they can
+//                        never render and the current store cannot produce one
+//   'template-outgrown'  a "no runs" template, but the horse now has a history
+//                        row with a going value inside sectionWindow's own
+//                        18-month pre-race window (same test, same bounds —
+//                        lib/form-sections.js), so regeneration is guaranteed
+//                        to produce real text, never the same template again;
+//                        a genuinely idle horse keeps its honest template and
+//                        skips, with no daily churn
+//   'ran-since-written'  newest history row dated on or after the day the
+//                        texts were generated (calendar >=, the sweep runs
+//                        before racing — the same rule trainer-history's
+//                        lastRunDate check and the old form-summary staleness
+//                        fix use)
+const GOING_TEMPLATE_PREFIXES = ['No runs in the last 18 months', 'No runs in the available record'];
+const SECTION_WINDOW_MS = 548 * 86400000; // lib/form-sections.js sectionWindow — keep in step
+function formSectionsStale(rec, rows, dMs) {
+  if (rec === false) return null;
+  if (!rec || typeof rec !== 'object') return 'missing';
+  if (!rec.going && !rec.trip && !rec.track) return 'empty-husk';
+  const rowList = Array.isArray(rows) ? rows : [];
+  const isTemplate = GOING_TEMPLATE_PREFIXES.some(function(t) { return String(rec.going || '').indexOf(t) === 0; });
+  if (isTemplate) {
+    const nowInWindow = rowList.some(function(r) {
+      if (!r || !r.date || !r.going || !String(r.going).trim()) return false;
+      const t = Date.parse(String(r.date) + 'T00:00:00Z');
+      return !isNaN(t) && t < dMs && t >= dMs - SECTION_WINDOW_MS;
+    });
+    if (nowInWindow) return 'template-outgrown';
+  }
+  const writtenDay = [rec.generatedAt, rec.tripGeneratedAt, rec.trackGeneratedAt]
+    .filter(Boolean).map(function(t) { return String(t).slice(0, 10); }).sort().pop() || null;
+  if (writtenDay) {
+    let newest = null;
+    rowList.forEach(function(r) {
+      const rd = (r && r.date) ? String(r.date).slice(0, 10) : null;
+      if (rd && (!newest || rd > newest)) newest = rd;
+    });
+    if (newest && newest >= writtenDay) return 'ran-since-written';
+  }
+  return null;
 }
 
 // Same transport and recipient as the daily-build report email.
@@ -298,24 +395,49 @@ exports.handler = async function(event) {
   // out — so every horse declared after that first pass (e.g. 10 of 11
   // runners in Roscommon 13:30 on 2026-10-12) permanently had no
   // Trip/Going/Track text. Now, per date: every non-NR runner on
-  // racecards:{date} whose form-sections:{horse_id} key does not yet exist
-  // is submitted (the skip rule — one pipelined EXISTS per date, no model
-  // call for anything already written, templated horses included since
-  // storeTemplates writes the same key); the engine's own batch mode runs
-  // once per date with that horseIds list, so one Message Batch per date
-  // that has anything to do. On a normal day the skip rule leaves only the
-  // late declarations and the newest date entering the window.
+  // racecards:{date} whose form-sections record is missing OR stale — see
+  // formSectionsStale: empty husk, outgrown "no runs" template, or the horse
+  // has run since its texts were written — is submitted; the engine's own
+  // batch mode runs once per date with that horseIds list, so one Message
+  // Batch per date that has anything to do. On a normal day this leaves the
+  // late declarations, the newest date entering the window, and yesterday's
+  // runners. (Until 2026-10-28 the skip was a bare EXISTS check — a record
+  // written on a debutant's card day was never revisited, which froze "no
+  // runs" templates onto horses that had since run, and left five legacy
+  // metadata-only records permanently blank.)
   let gt = { batches: [], eligible: 0, skipped: 0, submitted: 0, templated: 0, failedDate: null };
   try {
     for (const d of goingtripDates) {
-      const ids = cardHorseIds(await redisGet('racecards:' + d));
-      const present = ids.length ? await redisExistsEach(ids.map(function(id) { return 'form-sections:' + id; })) : [];
-      const uncovered = ids.filter(function(id, i) { return !present[i]; });
+      const card = await redisGet('racecards:' + d);
+      const ids = cardHorseIds(card);
+      const recs = ids.length ? await redisMGetJson(ids.map(function(id) { return 'form-sections:' + id; })) : [];
+      // History rows feed the template and ran-since tests, so they are only
+      // fetched for ids whose record exists with some text; a missing record
+      // or empty husk resubmits without needing them.
+      const histIdx = [];
+      ids.forEach(function(id, i) { const r = recs[i]; if (r && typeof r === 'object' && (r.going || r.trip || r.track)) histIdx.push(i); });
+      const histVals = histIdx.length ? await redisMGetJson(histIdx.map(function(i) { return 'form:history:' + ids[i] + ':' + d; })) : [];
+      const rowsByIdx = {}; histIdx.forEach(function(i, j) { rowsByIdx[i] = histVals[j]; });
+      const names = cardHorseNames(card);
+      const dMs = Date.parse(d + 'T00:00:00Z');
+      const uncovered = [];
+      const staleCounts = {};
+      for (let i = 0; i < ids.length; i++) {
+        const reason = formSectionsStale(recs[i], rowsByIdx[i], dMs);
+        if (!reason) continue;
+        staleCounts[reason] = (staleCounts[reason] || 0) + 1;
+        uncovered.push(ids[i]);
+        if (CLEANUP_STALE_FORMS && (reason === 'empty-husk' || reason === 'template-outgrown')) {
+          const deleted = await redisDel('form-sections:' + ids[i]);
+          console.log('[daily-engines-submit] cleanup: ' + (deleted ? 'deleted' : 'DELETE FAILED (will be merged over instead)') + ' form-sections:' + ids[i] + ' (' + (names[ids[i]] || 'unknown') + ') — ' + reason);
+        }
+      }
       gt.eligible += ids.length; gt.skipped += ids.length - uncovered.length;
       if (!uncovered.length) {
-        console.log('[daily-engines-submit] goingtrip ' + d + ': ' + ids.length + ' runners, all already covered — nothing to submit');
+        console.log('[daily-engines-submit] goingtrip ' + d + ': ' + ids.length + ' runners, all current — nothing to submit');
         continue;
       }
+      console.log('[daily-engines-submit] goingtrip ' + d + ' resubmit reasons: ' + JSON.stringify(staleCounts));
       gt.failedDate = d;
       const r = await submitEngine('goingtrip', goingTripEngine.handler, { mode: 'batch', date: d, horseIds: uncovered.join(',') }, 'form-sections:goingtrip:worklist:' + d);
       gt.failedDate = null;
