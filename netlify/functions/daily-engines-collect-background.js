@@ -138,7 +138,7 @@ function completionBody(rec, gtJobs, trJob) {
   const trCost = trJob ? (trJob.totalCostUSD || 0) : 0;
 
   const lines = [
-    'FORM SUMMARIES (Going/Trip/Track) — full 7-day window sweep',
+    'FORM SUMMARIES (Going/Trip/Track) — today + 3 days sweep',
     'Dates swept: ' + gtDates
   ].concat(gtPerDate).concat([
     'Horses checked: ' + (rec.goingtripEligible != null ? rec.goingtripEligible : rec.goingtripSubmitted),
@@ -150,7 +150,7 @@ function completionBody(rec, gtJobs, trJob) {
     'Templated (no recent runs): ' + rec.goingtripTemplated,
     'Cost: ' + money(gtCost),
     '',
-    'TRAINER HISTORY — full 7-day window sweep',
+    'TRAINER HISTORY — today + 3 days sweep',
     'Dates swept: ' + ((rec.trainerDates && rec.trainerDates.length) ? rec.trainerDates.join(', ') : 'none history-ready'),
     'Horses checked: ' + trChecked,
     'Skipped (already up to date): ' + trSkipped,
