@@ -2879,14 +2879,16 @@ function tagEchoFacts(runner, hotYardRow) {
     facts.push('C&D+G: has WON over this exact course and distance'
       + (g.dist ? ' (' + g.dist + ')' : '')
       + (g.date ? ' on ' + String(g.date).slice(0, 10) : '')
-      + (g.going ? ', on ' + g.going + ' going — the same going as today' : ' on the same going as today'));
+      + (g.going ? ', on ' + g.going + ' going — the same going as today' : ' on the same going as today')
+      + (g.courseWinCount >= 2 ? '; ' + g.courseWinCount + ' career wins at this course in total, the latest on ' + String(g.courseLatestWinDate || '').slice(0, 10) : ''));
   }
   if (runner.isCandDWinner === true) {
     const c = ev.candd || {};
     facts.push('C&D Winner: has WON over this exact course and distance'
       + (c.dist ? ' (' + c.dist + ')' : '')
       + (c.date ? ' on ' + String(c.date).slice(0, 10) : '')
-      + (c.going ? ' (going that day: ' + c.going + ')' : ''));
+      + (c.going ? ' (going that day: ' + c.going + ')' : '')
+      + (c.courseWinCount >= 2 ? '; ' + c.courseWinCount + ' career wins at this course in total, the latest on ' + String(c.courseLatestWinDate || '').slice(0, 10) : ''));
   }
   if (runner.isCourseSpecialist === true && ev.courseSpecialist) {
     const cs = ev.courseSpecialist;

@@ -741,13 +741,23 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
   // any distance, any going, counted across the FULL stored history (not the
   // 6-run window the form tags use). Course matching is the C&D tag's own
   // normalisation (stripParens, case-fold) via the courseKey computed above.
-  // Fully standalone: fires alongside C&D+G / C&D Winner or any other tag —
-  // the C&D pair's mutual exclusivity above is untouched.
+  //
+  // SUPPRESSION (2026-10-28): when C&D+G or C&D Winner fired above, the two
+  // pills told overlapping stories, so the Course Specialist tag is NOT
+  // emitted — instead the C&D evidence absorbs the count (courseWinCount +
+  // courseLatestWinDate on tagEvidence.canddGoing/candd), which the C&D
+  // context line renders as "— {N} wins at this course, latest {Mon YYYY}".
+  // With exactly 1 course win (the C&D win itself) nothing is absorbed and
+  // the C&D line is unchanged. tagEvidence.courseSpecialist is still written
+  // whenever the rule passes — useful fact data even with the pill
+  // suppressed. The C&D pair's own mutual exclusivity above is untouched.
   //
   // SAFETY: same honesty guard as Won Fresh — never fires when the card's
   // form string counts more runs than the stored history holds (the Racing
   // API results feed omits some old runs its own form figures count), nor
-  // with fewer than 2 stored rows (2 wins need at least 2 runs).
+  // with fewer than 2 stored rows (2 wins need at least 2 runs). The guard
+  // gates the absorbed count too: blocked here means no count on the C&D
+  // line either.
   {
     const csAll = Array.isArray(history) ? history : [];
     if (csAll.length >= 2 && formStringRuns(runner.form) <= csAll.length) {
@@ -756,13 +766,22 @@ function computeRunnerTags(runner, history, meetingName, raceDist, meetingFlag, 
         .slice()
         .sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
       if (csWins.length >= 2) {
-        runner.isCourseSpecialist = true;
-        setTagEvidence(runner, 'courseSpecialist', {
+        const csEv = {
           course: meetingName || '',
           winCount: csWins.length,
           winDates: csWins.map(function(r) { return String(r.date || '').slice(0, 10); }),
           latestWinDate: String(csWins[0].date || '').slice(0, 10)
-        });
+        };
+        setTagEvidence(runner, 'courseSpecialist', csEv);
+        if (runner.isCandDGoing === true || runner.isCandDWinner === true) {
+          const cdEvKey = runner.isCandDGoing === true ? 'canddGoing' : 'candd';
+          if (runner.tagEvidence && runner.tagEvidence[cdEvKey]) {
+            runner.tagEvidence[cdEvKey].courseWinCount = csEv.winCount;
+            runner.tagEvidence[cdEvKey].courseLatestWinDate = csEv.latestWinDate;
+          }
+        } else {
+          runner.isCourseSpecialist = true;
+        }
       }
     }
   }
