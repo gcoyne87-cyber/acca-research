@@ -2,12 +2,12 @@ const https = require('https');
 const EC = require('./lib/enriched-cache.js');
 
 // Trainer Form table refresh — rewrites trainer-form:table:{today} from live
-// Racing API data twice an evening, so the Trainer Form table and the Hot
-// Yard racecard tag (racecards.js enrichRunnerTags reads this key on every
+// Racing API data each evening, so the Trainer Form table and the Hot Yard
+// racecard tag (racecards.js enrichRunnerTags reads this key on every
 // request) pick up the day's results before the next 10:30 build instead of
-// running a day behind. Fired by trainer-form-refresh-evening-trigger.js
-// (intent 18:30 Irish) and trainer-form-refresh-late-trigger.js (intent
-// 21:30 Irish), which carry the crons and POST here with x-build-secret. No
+// running a day behind. Fired by trainer-form-refresh-late-trigger.js
+// (intent 21:30 Irish), which carries the cron and POSTs here with
+// x-build-secret. No
 // schedule on this file deliberately: a schedule paired directly onto a
 // -background function never actually fires, and a scheduled function
 // rejects external HTTP triggers with a 403 at Netlify's edge (the
@@ -20,14 +20,14 @@ const EC = require('./lib/enriched-cache.js');
 // /v1/trainers/{id}/results loop, same stored row shape. It writes ONLY
 // trainer-form:table:{today} and its own trainer-form-refresh-log:{today}.
 // No Daily Intelligence card is regenerated, no Hot Yard card text changes,
-// daily:report:{date} is never read or written, no Claude call, no email.
+// daily:report:{date} is never read or written, no Claude call.
+// After a successful table write it sends one completion email.
 //
-// Irish windows: both crons are UTC and the Irish offset moves by an hour at
-// the clock changes, so each intent fires at two UTC minutes and this job
-// runs only when Irish time is inside the slot's window — exactly one of the
-// two fires lands in-window on any evening of the year:
-//   evening slot — cron "30 17,18 * * *", window 18:15-19:15 Irish
-//   late slot    — cron "30 20,21 * * *", window 21:15-22:15 Irish
+// Irish window: the cron is UTC and the Irish offset moves by an hour at the
+// clock changes, so the intent fires at two UTC minutes and this job runs
+// only when Irish time is inside the window — exactly one of the two fires
+// lands in-window on any night of the year:
+//   late slot — cron "30 20,21 * * *", window 21:15-22:15 Irish
 // A once-per-slot mark (trainer-form-refresh:ran:{date}:{slot}) is belt and
 // braces against a double landing. ?force=1 (manual, with the secret)
 // bypasses the window and the mark.
@@ -148,10 +148,9 @@ function irishNow(d) {
 }
 
 // Which slot's window the Irish clock is in, or null. Minutes since
-// midnight: evening 18:15-19:15 = 1095-1155, late 21:15-22:15 = 1275-1335.
+// midnight: late 21:15-22:15 = 1275-1335.
 function slotFor(now) {
   const m = now.hour * 60 + now.minute;
-  if (m >= 1095 && m <= 1155) return 'evening';
   if (m >= 1275 && m <= 1335) return 'late';
   return null;
 }
@@ -291,11 +290,11 @@ exports.handler = async function(event) {
   const slot = slotFor(now) || (force ? 'forced' : null);
   const stamp = now.date + ' ' + now.hour + ':' + String(now.minute).padStart(2, '0') + ' Irish';
   if (!slot) {
-    console.log('[trainer-form-refresh] skipped — ' + stamp + ' is outside both windows (18:15-19:15, 21:15-22:15)');
+    console.log('[trainer-form-refresh] skipped — ' + stamp + ' is outside the 21:15-22:15 window');
     return { statusCode: 200, headers, body: JSON.stringify({ skipped: true, reason: 'outside Irish windows', irishNow: now }) };
   }
 
-  // The 10:30 build keys the table by UTC date; at 18:15-22:15 Irish the UTC
+  // The 10:30 build keys the table by UTC date; at 21:15-22:15 Irish the UTC
   // and Irish dates coincide all year (the offset is never more than +1h),
   // so the Irish date here is the same key the build wrote this morning.
   const today = now.date;
@@ -336,8 +335,8 @@ exports.handler = async function(event) {
   }
 
   logEntry.completedAt = new Date().toISOString();
-  // Run log — one entry appended per run, so an evening's two slots (and
-  // any forced reruns) sit side by side under the date.
+  // Run log — one entry appended per run, so any forced reruns sit side by
+  // side with the scheduled run under the date.
   try {
     const log = (await redisGet('trainer-form-refresh-log:' + today)) || [];
     (Array.isArray(log) ? log : []).push(logEntry);
