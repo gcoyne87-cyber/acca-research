@@ -4222,52 +4222,33 @@ exports.handler = async function(event) {
 
     // 7. Send build report email — best-effort, must never crash the build
     try {
-      const SIGNAL_TYPES = ['Tipster Consensus', 'Ground Edge', 'Course and Distance', 'Hot Yard', 'Intelligence'];
-      const intelligenceFailMsg = report.errors.find(function(e) { return e.indexOf('Intelligence parse failed') === 0; });
-
-      const signalLines = SIGNAL_TYPES.map(function(signalType, i) {
-        if (intelligenceFailMsg) {
-          return 'Signal ' + (i + 1) + ' ' + signalType + ': ERROR: ' + intelligenceFailMsg;
-        }
-        const count = (report.intelligence || []).filter(function(item) { return item.signalType === signalType; }).length;
-        return 'Signal ' + (i + 1) + ' ' + signalType + ': ' + (count > 0 ? count + ' card(s) produced' : 'No edge found');
-      });
-
-      const tomorrowDateForEmail = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const tomorrowFailMsg = report.errors.find(function(e) { return e.indexOf('Tomorrow intelligence parse failed') === 0; });
-      let tomorrowLine;
-      if (tomorrowFailMsg) {
-        tomorrowLine = 'Tomorrow Intelligence: ERROR: ' + tomorrowFailMsg;
-      } else {
-        let tomorrowStoredItems = [];
-        try {
-          const tomorrowIntel = await redisGet('intelligence:' + tomorrowDateForEmail);
-          tomorrowStoredItems = (tomorrowIntel && tomorrowIntel.items) || [];
-        } catch (e) { tomorrowStoredItems = []; }
-        tomorrowLine = 'Tomorrow Intelligence: ' + (tomorrowStoredItems.length > 0 ? tomorrowStoredItems.length + ' card(s) produced' : 'No signals fired');
-      }
-
-      // AUDIT-DAILY-INTELLIGENCE.md, finding S4: this used to run its own separate,
-      // hand-rolled cost calculation that intentionally diverged from report.costUSD
-      // (omitted cache cost, priced web search at a stale $0.01 instead of the
-      // correct $0.10) — the emailed number was simply wrong. report.costUSD /
-      // report.costBreakdown are now the one correct, combined-today+tomorrow total
-      // (see step 6 above); the email just reports that figure directly.
-      const cb = report.costBreakdown || {};
-
+      // Email body (2026-10-28 rewrite): NAP/NB and the three INTEL picks, a
+      // tag-echo count, a two-decimal total and warnings. The signal lines,
+      // Tomorrow Intelligence line, picks 6-10, the NAP-screen reasoning and
+      // the cost breakdown no longer appear in the EMAIL — everything they
+      // reported still runs and is still stored on the report; this changes
+      // only what the email shows.
       const emailSubject = (report.errors && report.errors.length)
         ? 'Daily Intelligence FAILED - ' + today
         : 'Daily Intelligence Complete - ' + today;
 
-      // Top 10 selections — ranks 1-2 are NAP/NB, 3-5 INTEL, 6-10 unlabelled.
-      // Ordered by the stored pickRank (the NB reorder step's final order) when
-      // present, falling back to confidenceScore for fallback days and reports
-      // built before pickRank existed — the same rule get-daily-build.js uses,
-      // so the email always shows exactly what the site shows. report.analyses
-      // entries carry the analysis fields spread at the top level ({ race,
-      // confidenceScore, strongestSelection, ... } — see the push in step 4),
-      // NOT nested under .result. Horses with no strongestSelection/horseName
-      // are filtered out before ranking so the top 10 never contains blank rows.
+      // Header date in human form: "Wednesday 28 October 2026".
+      const headerDate = (function(iso) {
+        const d = new Date(iso + 'T12:00:00Z');
+        if (isNaN(d.getTime())) return iso;
+        const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+      })(today);
+
+      // Top 5 only — ranks 1-2 are NAP/NB, 3-5 INTEL. Ordered by the stored
+      // pickRank (the NB reorder step's final order) when present, falling
+      // back to confidenceScore for fallback days and reports built before
+      // pickRank existed — the same rule get-daily-build.js uses, so the
+      // email always shows exactly what the site shows. report.analyses
+      // entries carry the analysis fields spread at the top level, NOT nested
+      // under .result; horses with no strongestSelection/horseName are
+      // filtered out before ranking.
       const rankedSelections = (report.analyses || [])
         .filter(function(a) { return a && a.strongestSelection && a.strongestSelection.horseName; })
         .sort(function(a, b) {
@@ -4276,38 +4257,44 @@ exports.handler = async function(event) {
           if (b.pickRank != null) return 1;
           return (b.confidenceScore || 0) - (a.confidenceScore || 0);
         })
-        .slice(0, 10);
-      const selectionLines = rankedSelections.map(function(a, i) {
-        const label = i === 0 ? 'NAP — ' : i === 1 ? 'NB — ' : i <= 4 ? 'INTEL — ' : '';
-        return (i + 1) + '. ' + label + a.strongestSelection.horseName
+        .slice(0, 5);
+      const pickLine = function(label, a) {
+        return label + a.strongestSelection.horseName
           + ' | ' + (a.race || '')
           + ' | ' + (a.strongestSelection.odds || 'SP')
           + ' | Confidence: ' + (a.confidenceScore != null ? a.confidenceScore : '-');
-      });
-      const selectionsSection = selectionLines.length
-        ? ['🏇 Horse Selections For The Day'].concat(selectionLines, [''])
-        : [];
+      };
+      const pickLines = [];
+      if (rankedSelections[0]) pickLines.push(pickLine('NAP — ', rankedSelections[0]));
+      if (rankedSelections[1]) pickLines.push(pickLine('NB  — ', rankedSelections[1]));
+      const intelLines = rankedSelections.slice(2).map(function(a) { return pickLine('INTEL — ', a); });
 
-      // NAP screen visibility: the status line plus the screen's full order
-      // with its one-sentence reason per horse, so the day's NAP/NB decision
-      // is readable in every build email.
-      const napScreenEmailLines = [napScreenStatusLine].concat(
-        (report.napScreen || []).map(function(r) { return '  ' + r.rank + '. ' + r.horse + ' (' + r.race + ', conf ' + r.confidenceScore + ', ' + r.odds + ') — ' + r.reason; })
-      );
-      const emailBody = selectionsSection.concat(signalLines).concat([
-        tomorrowLine
-      ]).concat(napScreenEmailLines).concat([
-        tagEchoStatusLine,
-        '',
-        'Total Cost: $' + report.costUSD,
-        '  Input: $' + (cb.inputTokenCost || '0.0000') + ' | Output: $' + (cb.outputTokenCost || '0.0000') + ' | Cache write: $' + (cb.cacheWriteCost || '0.0000') + ' | Cache read: $' + (cb.cacheReadCost || '0.0000') + ' | Web search: $' + (cb.webSearchCost || '0.0000') + ' (' + (cb.webSearchCount || 0) + ' searches)',
-        '  Today: $' + (cb.todayCostUSD || '0.0000') + ' | Tomorrow: $' + (cb.tomorrowCostUSD || '0.0000'),
-        '',
-        'Errors: ' + (report.errors.length ? report.errors.join('; ') : 'None'),
-        '',
-        'Warnings:',
-        (report.warnings && report.warnings.length ? report.warnings.map(function(w) { return '- ' + w; }).join('\n') : 'None')
-      ]).join('\n');
+      // Tag-echo: count only — its cost is inside the total; skipped/FAILED/
+      // not run keep their own one-line explanation.
+      const tagEchoEmailLine = (report.tagEcho && report.tagEcho.rewritten != null)
+        ? 'Tag-echo: ' + report.tagEcho.rewritten + ' verdicts rewritten'
+        : tagEchoStatusLine;
+
+      // Warnings: report.warnings verbatim — the NAP screen's skipped and
+      // FAILED statuses already push themselves there, so they surface under
+      // Warnings without a dedicated section; 'not run' is appended here
+      // since nothing else records it. When the screen applied normally, no
+      // NAP-screen line appears anywhere in the email.
+      const emailWarnings = (report.warnings || []).slice();
+      if (napScreenStatusLine === 'NAP screen: not run') emailWarnings.push(napScreenStatusLine);
+
+      const emailBody = ['🏇 Racing Edge — ' + headerDate, '']
+        .concat(pickLines)
+        .concat(intelLines.length ? [''].concat(intelLines) : [])
+        .concat([
+          '',
+          tagEchoEmailLine,
+          '',
+          'Total cost: $' + (Number(report.costUSD) || 0).toFixed(2)
+        ])
+        .concat(report.errors.length ? ['', 'Errors: ' + report.errors.join('; ')] : [])
+        .concat(emailWarnings.length ? ['', 'Warnings:'].concat(emailWarnings.map(function(w) { return '- ' + w; })) : [])
+        .join('\n');
 
       const transporter = nodemailer.createTransport({
         service: 'gmail',

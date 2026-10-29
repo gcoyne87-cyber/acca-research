@@ -114,11 +114,36 @@ function nameOf(job, id) { const h = job && job.horses && job.horses[id]; return
 function failedNames(job) {
   return (job && job.results || []).filter(function(r) { return !r.stored && !r.skipped; }).map(function(r) { return nameOf(job, r.horse_id); });
 }
-function listOrNone(n, names) { return n + (names.length ? ' (' + names.join(', ') + ')' : ''); }
+// Failed: {n} ({names}) — names only when 10 or fewer failed; above 10 the
+// first 10 plus "and {n} more".
+function failedLabel(n, names) {
+  if (!n) return '0';
+  if (!names.length) return String(n);
+  if (n <= 10) return n + ' (' + names.join(', ') + ')';
+  return n + ' (' + names.slice(0, 10).join(', ') + ' and ' + (n - 10) + ' more)';
+}
+function fmtN(n) { return (Number(n) || 0).toLocaleString('en-GB'); }
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// '2026-10-28' -> '28 Oct'
+function shortDate(iso) {
+  const p = String(iso || '').split('-');
+  return p.length === 3 ? parseInt(p[2], 10) + ' ' + (MONTHS_SHORT[parseInt(p[1], 10) - 1] || '') : String(iso || '');
+}
+// '2026-10-28' -> 'Wednesday 28 October 2026'
+function humanDate(iso) {
+  const d = new Date(String(iso) + 'T12:00:00Z');
+  if (isNaN(d.getTime())) return String(iso || '');
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+}
 
 // The one completion email, built from the daily record plus both job records.
 // gtJobs: one batch:job record per goingtrip batch the sweep submitted
 // (array; may be empty on a quiet day). Totals are summed across them.
+// Body format rewritten 2026-10-28: short human dates, per-date "current"
+// counts in place of the standalone skipped lines, thousands commas,
+// conditional Resubmitted/Cleaned lines from the staleness counters.
 function completionBody(rec, gtJobs, trJob) {
   gtJobs = (Array.isArray(gtJobs) ? gtJobs : [gtJobs]).filter(Boolean);
   const gtResults = gtJobs.reduce(function(a, j) { return a.concat(j.results || []); }, []);
@@ -127,44 +152,55 @@ function completionBody(rec, gtJobs, trJob) {
   const gtFailedNames = gtJobs.reduce(function(a, j) { return a.concat(failedNames(j)); }, []);
   const gtFailed = gtJobs.reduce(function(n, j) { return n + ((j.counts && j.counts.failed) || 0) + ((j.counts && j.counts.errored) || 0); }, 0);
   const gtCost = gtJobs.reduce(function(n, j) { return n + (j.totalCostUSD || 0); }, 0);
-  const gtDates = (rec.goingtripDates && rec.goingtripDates.length) ? rec.goingtripDates.join(', ') : (rec.newDate || 'none history-ready');
-  const gtPerDate = (rec.goingtripBatches || []).map(function(b) { return '  ' + b.date + ': ' + b.eligible + ' runners, ' + b.skipped + ' already covered, ' + b.submitted + ' submitted' + (b.templated ? ', ' + b.templated + ' templated' : ''); });
+  const windowLabel = ((rec.windowDates && rec.windowDates.length) ? rec.windowDates : (rec.goingtripDates || [])).map(shortDate).join(' · ');
+  const trWindowLabel = (rec.trainerDates && rec.trainerDates.length) ? rec.trainerDates.map(shortDate).join(' · ') : windowLabel;
+  // One line per date that had work (the sweep only records a batch when a
+  // date had something to submit or template); the skipped count shows as
+  // "current" — records that exist and passed the staleness check.
+  const gtPerDate = (rec.goingtripBatches || []).map(function(b) {
+    return '  ' + shortDate(b.date) + ': ' + fmtN(b.eligible) + ' runners, ' + fmtN(b.skipped) + ' current, ' + fmtN(b.submitted) + ' submitted' + (b.templated ? ', ' + fmtN(b.templated) + ' templated' : '');
+  });
 
   const trFailedNames = failedNames(trJob);
   const trFailed = trJob ? ((trJob.counts && trJob.counts.failed) || 0) + ((trJob.counts && trJob.counts.errored) || 0) : 0;
   const trChecked = (trJob && trJob.submission && trJob.submission.eligible) || (rec.trainerSubmitted + rec.trainerSkipped + rec.trainerNoData);
-  const trSkipped = (trJob && trJob.submission && trJob.submission.skipped != null) ? trJob.submission.skipped : rec.trainerSkipped;
   const trRegenerated = trJob ? ((trJob.counts && trJob.counts.stored) || 0) : 0;
   const trCost = trJob ? (trJob.totalCostUSD || 0) : 0;
 
+  // Staleness-check resubmits (commit a7d69e5): goingtripResubmits holds the
+  // per-reason counts the submit recorded; 'missing' is the ordinary
+  // new/late-declaration path and is already visible in Submitted, so the
+  // Resubmitted line sums only the three stale reasons and shows only when
+  // non-zero. The cleanup line appears only when the one-off
+  // CLEANUP_STALE_FORMS path actually deleted records. A record from before
+  // a7d69e5 has neither field — both read as 0 and neither line appears.
+  const gtRe = rec.goingtripResubmits || {};
+  const gtStale = (gtRe['ran-since-written'] || 0) + (gtRe['empty-husk'] || 0) + (gtRe['template-outgrown'] || 0);
+
   const lines = [
-    'FORM SUMMARIES (Going/Trip/Track) — today + 3 days sweep',
-    'Dates swept: ' + gtDates
-  ].concat(gtPerDate).concat([
-    'Horses checked: ' + (rec.goingtripEligible != null ? rec.goingtripEligible : rec.goingtripSubmitted),
-    'Skipped (already have texts): ' + (rec.goingtripSkipped || 0),
-    'Horses submitted: ' + rec.goingtripSubmitted,
-    'Stored clean: ' + gtClean,
-    'Retried and recovered: ' + gtRecovered,
-    'Failed: ' + listOrNone(gtFailed, gtFailedNames),
-    'Templated (no recent runs): ' + rec.goingtripTemplated,
-    'Cost: ' + money(gtCost),
+    'Racing Edge engines — ' + humanDate(rec.date),
     '',
-    'TRAINER HISTORY — today + 3 days sweep',
-    'Dates swept: ' + ((rec.trainerDates && rec.trainerDates.length) ? rec.trainerDates.join(', ') : 'none history-ready'),
-    'Horses checked: ' + trChecked,
-    'Skipped (already up to date): ' + trSkipped,
-    'Regenerated: ' + trRegenerated,
-    'Failed: ' + listOrNone(trFailed, trFailedNames),
-    'Cost: ' + money(trCost),
-    '',
-    'TOTAL COST TODAY: ' + money(gtCost + trCost),
-    'Everything is live on site.'
-  ]);
-  // lastIndexOf: the trainer block's Cost line is the final "Cost:" line; the
-  // goingtrip block's own Cost line (same text when the two costs match) must
-  // never be the insertion point.
-  if (rec.trainerNoData) lines.splice(lines.lastIndexOf('Cost: ' + money(trCost)), 0, 'No history (no-data marker): ' + rec.trainerNoData);
+    'FORM SUMMARIES — today + 3 days (' + windowLabel + ')',
+    ''
+  ].concat(gtPerDate.length ? gtPerDate.concat(['']) : []).concat([
+    'Checked: ' + fmtN(rec.goingtripEligible != null ? rec.goingtripEligible : rec.goingtripSubmitted) + ' | Submitted: ' + fmtN(rec.goingtripSubmitted) + ' | Stored clean: ' + fmtN(gtClean),
+    'Recovered: ' + fmtN(gtRecovered) + ' | Templated: ' + fmtN(rec.goingtripTemplated) + ' | Failed: ' + failedLabel(gtFailed, gtFailedNames)
+  ]).concat(gtStale ? ['Resubmitted (stale): ' + fmtN(gtStale)] : [])
+    .concat(rec.goingtripCleanupDeleted ? ['Cleaned up (deleted): ' + fmtN(rec.goingtripCleanupDeleted)] : [])
+    .concat([
+      '',
+      'Total cost: ' + money(gtCost),
+      '',
+      'TRAINER HISTORY — today + 3 days (' + trWindowLabel + ')',
+      '',
+      'Checked: ' + fmtN(trChecked) + ' | Regenerated: ' + fmtN(trRegenerated),
+      'Failed: ' + failedLabel(trFailed, trFailedNames),
+      'No data (debutants/point-to-point): ' + fmtN(rec.trainerNoData || 0),
+      '',
+      'Total cost: ' + money(trCost),
+      '',
+      'TOTAL TODAY: ' + money(gtCost + trCost) + ' — everything live on site.'
+    ]);
   return lines.join('\n');
 }
 
