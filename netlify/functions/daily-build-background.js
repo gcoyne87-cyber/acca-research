@@ -3129,6 +3129,47 @@ exports.handler = async function(event) {
       }
     } catch(e) {}
 
+    // 2.6 Class Drop preview self-heal — if the 02:00 nightly job failed or was
+    // killed before writing tomorrow's preview, regenerate it here before any race
+    // analysis so tomorrow's Class Drop is ready for the site by build time.
+    // Adds no cost or delay when the preview is already present.
+    try {
+      const _tomorrowSelfHeal = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const _tomorrowReport = await redisGet('daily:report:' + _tomorrowSelfHeal);
+      if (_tomorrowReport && _tomorrowReport.classDropPreview && (_tomorrowReport.classDropPreview.text || (Array.isArray(_tomorrowReport.classDropPreview.qualifiers) && _tomorrowReport.classDropPreview.qualifiers.length))) {
+        console.log('[daily-build] Class Drop preview for ' + _tomorrowSelfHeal + ' already present — skipping self-heal');
+      } else {
+        console.log('[daily-build] Class Drop preview missing — self-heal running for ' + _tomorrowSelfHeal);
+        try {
+          const _tmRaw = await redisGet('racecards:' + _tomorrowSelfHeal);
+          const _tmMeetings = (_tmRaw && Array.isArray(_tmRaw.meetings)) ? _tmRaw.meetings : [];
+          if (_tmMeetings.length) {
+            const _tmQualifiers = await computeClassDropHorses(_tomorrowSelfHeal, _tmMeetings);
+            const _tmPreview = { text: null, qualifiers: _tmQualifiers, generatedAt: new Date().toISOString(), lastRaceOffTime: maxOffDt(_tmQualifiers) };
+            if (_tmQualifiers.length) {
+              const _tmGen = await generateClassDropCardText(_tmQualifiers, { framing: 'tomorrow' });
+              _tmPreview.text = _tmGen.text;
+              report.inputTokens = (report.inputTokens || 0) + _tmGen.usage.input;
+              report.outputTokens = (report.outputTokens || 0) + _tmGen.usage.output;
+              report.cacheReadTokens = (report.cacheReadTokens || 0) + _tmGen.usage.cacheRead;
+              report.cacheWriteTokens = (report.cacheWriteTokens || 0) + _tmGen.usage.cacheWrite;
+              report.callLog.push({ type: 'classdrop-selfheal', label: 'Class Drop self-heal (tomorrow)', inputTokens: _tmGen.usage.input, outputTokens: _tmGen.usage.output, cacheReadTokens: _tmGen.usage.cacheRead, cacheWriteTokens: _tmGen.usage.cacheWrite });
+            }
+            const _tmExisting = (_tomorrowReport) || {};
+            _tmExisting.classDropPreview = _tmPreview;
+            await redisSet('daily:report:' + _tomorrowSelfHeal, _tmExisting);
+            console.log('[daily-build] Class Drop preview self-heal ran for ' + _tomorrowSelfHeal + ' — ' + _tmQualifiers.length + ' qualifier(s)');
+          } else {
+            console.log('[daily-build] Class Drop self-heal: racecards:' + _tomorrowSelfHeal + ' not in Redis — cannot generate preview');
+          }
+        } catch (eSH) {
+          console.log('[daily-build] Class Drop self-heal failed for ' + _tomorrowSelfHeal + ': ' + eSH.message);
+        }
+      }
+    } catch (eSHOuter) {
+      console.log('[daily-build] Class Drop self-heal check failed: ' + eSHOuter.message);
+    }
+
     // 3. Generate daily intelligence FIRST — tipster consensus is passed into each race analysis
     // Check Redis cache first — if intelligence already ran today, reuse it (prevents second builds wiping morning signals)
     console.log('[daily-build] Generating daily intelligence...');

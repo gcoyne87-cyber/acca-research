@@ -1,4 +1,5 @@
 const https = require('https');
+const nodemailer = require('nodemailer');
 
 // Class Drop nightly job — runs at 02:00 Irish time, fired by
 // class-drop-nightly-trigger.js (which carries the cron and POSTs here with
@@ -73,6 +74,23 @@ function redisSet(key, value) {
   });
 }
 
+async function sendEmail(subject, bodyText) {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    });
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: 'gcoyne87@gmail.com',
+      subject: subject,
+      text: bodyText
+    });
+  } catch (e) {
+    console.log('[class-drop-nightly] email send failed: ' + e.message);
+  }
+}
+
 // Irish wall clock via Intl — calendar date plus hour/minute. Same
 // Europe/Dublin convention as racecards.js's irishTodayStr.
 function irishNow(d) {
@@ -123,12 +141,27 @@ exports.handler = async function(event) {
   }
   console.log('[class-drop-nightly] START ' + new Date().toISOString() + ' today=' + today + ' tomorrow=' + tomorrow + (force ? ' (forced)' : ''));
 
+  const MONTHS_FULL_CD = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTHS_SHORT_CD = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS_E_CD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const PRICE_IN_CD = 3 / 1000000, PRICE_OUT_CD = 15 / 1000000, PRICE_CW_CD = 3.75 / 1000000, PRICE_CR_CD = 0.30 / 1000000;
+
   const result = { date: today, tomorrow: tomorrow, todayCheck: null, tomorrowPreview: null };
+
+  let todayQualifiers = [];
+  let todayUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let todayRegenerated = false;
+  let tomorrowQualifiers = [];
+  let tomorrowUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+
+  try {
 
   // THING 1 — today's late-declaration check.
   try {
     const stored = (await redisGet('daily:report:' + today)) || {};
     const working = JSON.parse(JSON.stringify(stored));
+    const _beforeIn = working.inputTokens || 0, _beforeOut = working.outputTokens || 0;
+    const _beforeCR = working.cacheReadTokens || 0, _beforeCW = working.cacheWriteTokens || 0;
     const summary = await refreshTodayClassDrop(today, working, { label: 'Class Drop Intel Card (02:00 late declaration check)' });
     if (summary.changed || summary.promoted) {
       working.classDropCheckedAt = new Date().toISOString();
@@ -140,6 +173,9 @@ exports.handler = async function(event) {
       console.log('[class-drop-nightly] today ' + today + ': no change' + (summary.promoted ? ' (preview promoted to today\'s card)' : ''));
     }
     result.todayCheck = summary;
+    todayQualifiers = Array.isArray(working.classDropHorses) ? working.classDropHorses : [];
+    todayUsage = { input: (working.inputTokens||0) - _beforeIn, output: (working.outputTokens||0) - _beforeOut, cacheRead: (working.cacheReadTokens||0) - _beforeCR, cacheWrite: (working.cacheWriteTokens||0) - _beforeCW };
+    todayRegenerated = summary.regenerated === true;
   } catch (e) {
     console.log('[class-drop-nightly] today check failed: ' + e.message);
     result.todayCheck = { error: e.message };
@@ -166,6 +202,8 @@ exports.handler = async function(event) {
       const existing = (await redisGet('daily:report:' + tomorrow)) || {};
       existing.classDropPreview = preview;
       await redisSet('daily:report:' + tomorrow, existing);
+      tomorrowQualifiers = qualifiers;
+      tomorrowUsage = usage;
       console.log('[class-drop-nightly] tomorrow ' + tomorrow + ': preview stored — ' + qualifiers.length + ' qualifier(s)' + (preview.text ? '' : ', no card text'));
       result.tomorrowPreview = { stored: true, qualifiers: qualifiers.length, hasText: !!preview.text, lastRaceOffTime: preview.lastRaceOffTime, usage: usage, warning: warning };
     }
@@ -175,6 +213,51 @@ exports.handler = async function(event) {
   }
 
   if (!force) { try { await redisSet(ranKey, { completedAt: new Date().toISOString(), result: result }); } catch (e) {} }
+
+  // Completion email
+  try {
+    const _n = new Date();
+    const subjectDate = DAYS_E_CD[_n.getDay()] + ' ' + _n.getDate() + ' ' + MONTHS_FULL_CD[_n.getMonth()] + ' ' + _n.getFullYear();
+    const fmtDate = function(ds) { const d = new Date(ds + 'T12:00:00Z'); return d.getUTCDate() + ' ' + MONTHS_SHORT_CD[d.getUTCMonth()]; };
+    const fmtQ = function(q) {
+      return q.horseName + ' — ' + (q.time || '') + ' ' + (q.course || '').replace(/ \([A-Z]{2,4}\)$/i, '') + ' | Class ' + q.lastRunClassNum + ' → Class ' + q.todayClassNum + ' | OR ' + q.ratingRank;
+    };
+    const lines = [];
+    lines.push('TODAY (' + fmtDate(today) + ')');
+    if (todayQualifiers.length) {
+      todayQualifiers.forEach(function(q) { lines.push(fmtQ(q)); });
+      if (todayRegenerated) lines.push('— card regenerated');
+    } else { lines.push('No qualifiers today'); }
+    lines.push('');
+    lines.push('TOMORROW (' + fmtDate(tomorrow) + ')');
+    if (tomorrowQualifiers.length) {
+      tomorrowQualifiers.forEach(function(q) { lines.push(fmtQ(q)); });
+    } else { lines.push('No qualifiers tomorrow'); }
+    const totalCost = (todayUsage.input + tomorrowUsage.input) * PRICE_IN_CD +
+                      (todayUsage.output + tomorrowUsage.output) * PRICE_OUT_CD +
+                      (todayUsage.cacheWrite + tomorrowUsage.cacheWrite) * PRICE_CW_CD +
+                      (todayUsage.cacheRead + tomorrowUsage.cacheRead) * PRICE_CR_CD;
+    if (totalCost >= 0.005) lines.push('', 'Cost: $' + totalCost.toFixed(2));
+    await sendEmail('Racing Edge — Class Drop Nightly · ' + subjectDate + ' · 02:00 run', lines.join('\n'));
+  } catch (eEmail) {
+    console.log('[class-drop-nightly] completion email error: ' + eEmail.message);
+  }
+
   console.log('[class-drop-nightly] DONE ' + new Date().toISOString());
   return { statusCode: 200, headers, body: JSON.stringify(result) };
+
+  } catch (e) {
+    console.log('[class-drop-nightly] FATAL: ' + e.message);
+    try {
+      const _n = new Date();
+      const subjectDate = DAYS_E_CD[_n.getDay()] + ' ' + _n.getDate() + ' ' + MONTHS_FULL_CD[_n.getMonth()] + ' ' + _n.getFullYear();
+      await sendEmail(
+        'Racing Edge — Class Drop FAILED · ' + subjectDate + ' · 02:00 run',
+        'Class Drop nightly failed at 02:00.\n\nError: ' + e.message + '\n\nToday\'s Class Drop card may be stale.\nTomorrow\'s Class Drop preview may not have been written.\nThe 09:30 build will attempt to recover tomorrow\'s preview automatically.\nCheck Netlify logs for class-drop-nightly-background.'
+      );
+    } catch (eEmail) {
+      console.log('[class-drop-nightly] failure email error: ' + eEmail.message);
+    }
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
 };
