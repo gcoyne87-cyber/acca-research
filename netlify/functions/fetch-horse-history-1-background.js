@@ -129,6 +129,15 @@ exports.handler = async function(event) {
   let horsesFailed = 0;
 
   try {
+    // Email formatting helpers — shared by all sendNotification calls below.
+    const MONTHS_FULL_H = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const MONTHS_SHORT_H = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAYS_E_H = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const comma = function(n) { return String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
+    const shortDt = function(s) { const d = new Date(s+'T12:00:00Z'); return d.getUTCDate()+' '+MONTHS_SHORT_H[d.getUTCMonth()]; };
+    const _hn = new Date();
+    const emailHeader = 'Racing Edge — Horse History Batch 1 · '+DAYS_E_H[_hn.getDay()]+' '+_hn.getDate()+' '+MONTHS_FULL_H[_hn.getMonth()]+' '+_hn.getFullYear()+' · 23:30 run';
+
     // 1-2. Calculate tomorrow, day after tomorrow, and 3 days from now as YYYY-MM-DD
     const dateStrs = [];
     const base = new Date();
@@ -161,7 +170,16 @@ exports.handler = async function(event) {
       });
     }
 
-    if(missingDates === dateStrs.length){ await sendNotification('Horse History Batch 1 — RACECARDS MISSING', ['Timestamp: '+new Date().toISOString(),'All '+dateStrs.length+' racecard dates were missing from Redis. fetch-future-cards may not have run.','Dates checked: '+dateStrs.join(', '),'Fetched: 0, Skipped: 0, Failed: 0'].join('\n')); return { statusCode: 200, body: JSON.stringify({ error: 'all racecard dates missing' }) }; }
+    if(missingDates === dateStrs.length){
+      await sendNotification('Horse History Batch 1 — RACECARDS MISSING', [
+        emailHeader, '',
+        'Dates: ' + dateStrs.map(shortDt).join(' · '), ''
+      ].concat(dateStrs.map(function(d){ return shortDt(d)+': 0 horses found'; })).concat([
+        '', 'Fetched: 0 | Cached: 0 | Failed: 0',
+        '', 'All '+dateStrs.length+' racecard dates were missing from Redis. fetch-future-cards may not have run.'
+      ]).join('\n'));
+      return { statusCode: 200, body: JSON.stringify({ error: 'all racecard dates missing' }) };
+    }
 
     const uniqueHorseIds = Array.from(horseDates.keys());
 
@@ -194,20 +212,19 @@ exports.handler = async function(event) {
     console.log(`[fetch-horse-history-1] Done. Fetched: ${horsesFetched}, skipped (cached): ${horsesSkippedFromCache}, failed: ${horsesFailed}, dates: ${dateStrs.join(', ')}`);
 
     try {
-      const perDateCounts = dateStrs.map(function(d) {
+      const perDateLines = dateStrs.map(function(d) {
         var count = 0;
         horseDates.forEach(function(dates) { if (dates.indexOf(d) !== -1) count++; });
-        return d + ': ' + count + ' horses found';
+        return shortDt(d) + ': ' + (count === 0 ? '0 horses found' : count + ' horses');
       });
-      await sendNotification((horsesFetched === 0 && horsesSkippedFromCache === 0 ? 'Horse History Batch 1 — WARNING: zero horses processed' : 'Horse History Batch 1'), [
-        'Timestamp: ' + new Date().toISOString(),
-        'Dates covered: ' + dateStrs.join(', '),
-        '',
-        'Horses per date:',
-        perDateCounts.join('\n'),
-        '',
-        'Totals for this run — fetched: ' + horsesFetched + ', skipped (already cached): ' + horsesSkippedFromCache + ', failed: ' + horsesFailed
-      ].join('\n'));
+      const bodyLines = [
+        emailHeader, '',
+        'Dates: ' + dateStrs.map(shortDt).join(' · '), ''
+      ].concat(perDateLines).concat([
+        '', 'Fetched: ' + comma(horsesFetched) + ' | Cached: ' + comma(horsesSkippedFromCache) + ' | Failed: ' + comma(horsesFailed)
+      ]);
+      if (horsesFailed > 0) bodyLines.push('⚠️ ' + comma(horsesFailed) + ' failures — check Netlify logs for fetch-horse-history-1-background');
+      await sendNotification((horsesFetched === 0 && horsesSkippedFromCache === 0 ? 'Horse History Batch 1 — WARNING: zero horses processed' : 'Horse History Batch 1'), bodyLines.join('\n'));
     } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
 
     return {
