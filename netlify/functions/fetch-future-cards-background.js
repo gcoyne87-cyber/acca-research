@@ -380,6 +380,13 @@ function mapRacecards(apiData) {
 }
 
 exports.handler = async function(event) {
+  const MONTHS_SHORT_FC = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS_FULL_FC = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS_E_FC = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const shortDt_FC = function(s) { const d = new Date(s + 'T12:00:00Z'); return d.getUTCDate() + ' ' + MONTHS_SHORT_FC[d.getUTCMonth()]; };
+  const _fcNow = new Date();
+  const fcHeaderDate = DAYS_E_FC[_fcNow.getDay()] + ' ' + _fcNow.getDate() + ' ' + MONTHS_FULL_FC[_fcNow.getMonth()] + ' ' + _fcNow.getFullYear();
+
   try {
     const dates = [];
     const base = new Date();
@@ -454,6 +461,21 @@ exports.handler = async function(event) {
     // enriched cache for every stored date AFTER the registry pass, so the
     // next read rebuilds with both. Best-effort like everything above.
     try { await EC.invalidate(results.filter(function(r) { return r.stored; }).map(function(r) { return r.dateStr; })); } catch (eInv) {}
+    // Capture per-date summary BEFORE deleting meetings from results.
+    const perDateSummary = results.map(function(r) {
+      if (!r.stored || !r.meetings) return { dateStr: r.dateStr, stored: false, error: r.error };
+      let raceCount = 0, horseCount = 0;
+      const courseSet = new Set();
+      r.meetings.forEach(function(m) {
+        (m.races || []).forEach(function(race) {
+          raceCount++;
+          horseCount += (race.runners || []).length;
+        });
+        if (m.name) courseSet.add((m.name).replace(/ \([A-Z]{2,4}\)$/i, ''));
+      });
+      return { dateStr: r.dateStr, stored: true, raceCount: raceCount, horseCount: horseCount, courses: Array.from(courseSet) };
+    });
+
     results.forEach(function(r) { delete r.meetings; });
 
     const stored = results.filter(function(r) { return r.stored; }).length;
@@ -468,20 +490,25 @@ exports.handler = async function(event) {
       // Don't let a debug-write failure mask the real run outcome.
     }
 
+    // Racecard Fetch completion email
     try {
-      const succeededDates = results.filter(function(r) { return r.stored; }).map(function(r) { return r.dateStr; });
-      const failedDates = results.filter(function(r) { return !r.stored; }).map(function(r) { return r.dateStr + (r.error ? ' (' + r.error + ')' : ' (empty)'); });
-      await sendNotification('Racecards', [
-        'Timestamp: ' + new Date().toISOString(),
-        'Dates stored: ' + stored + ' of ' + results.length,
-        '',
-        'Succeeded: ' + (succeededDates.length ? succeededDates.join(', ') : 'none'),
-        'Empty or failed: ' + (failedDates.length ? failedDates.join(', ') : 'none')
-      ].join('\n'));
+      const fetchSubject = 'Racing Edge — Racecard Fetch · ' + fcHeaderDate + ' · 23:00 run';
+      const isFullSweep = !qsDate && dates.length === 7;
+      const fetchLines = [fetchSubject, '', 'Days fetched: ' + dates.length + (isFullSweep ? ' (today+1 through today+7)' : '')];
+      perDateSummary.forEach(function(s) {
+        if (s.stored) {
+          fetchLines.push(shortDt_FC(s.dateStr) + ': ' + s.raceCount + ' races · ' + s.horseCount + ' horses — ' + s.courses.join(' · '));
+        } else {
+          fetchLines.push(shortDt_FC(s.dateStr) + ': failed — ' + (s.error || 'empty response'));
+        }
+      });
+      const failedList = perDateSummary.filter(function(s) { return !s.stored; });
+      fetchLines.push('', 'Failed: ' + (failedList.length ? failedList.map(function(s) { return shortDt_FC(s.dateStr) + ' (' + (s.error || 'empty') + ')'; }).join(' · ') : 'None'));
+      await sendNotification(fetchSubject, fetchLines.join('\n'));
     } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
 
-    // Tomorrow's Daily Intelligence readiness check — separate email, must never
-    // affect this function's own result or the "Racecards" email sent above.
+    // Tomorrow's Daily Intelligence readiness check — only send when ready.
+    // Not Ready case is covered by the Future Cards Watchdog at 23:30.
     try {
       const tmrBase = new Date();
       const td = new Date(tmrBase.getFullYear(), tmrBase.getMonth(), tmrBase.getDate() + 1);
@@ -491,29 +518,33 @@ exports.handler = async function(event) {
       const tomorrowItems = (tomorrowIntel && tomorrowIntel.items) || [];
       const ready = tomorrowItems.length > 0;
 
-      const readySubject = ready
-        ? 'Daily Intelligence Ready - ' + tomorrowDate
-        : 'Daily Intelligence Not Ready - ' + tomorrowDate;
-
-      const readyBodyLines = [
-        'Tomorrow: ' + tomorrowDate,
-        'Cards ready: ' + (ready ? tomorrowItems.length : 'None found'),
-        'Signals: ' + tomorrowItems.map(function(item) { return item.signalType || 'Unknown'; }).join(', ')
-      ];
-      if (!ready) {
-        readyBodyLines.push('Morning build may not have run. Check Netlify logs.');
+      if (ready) {
+        const tmrWeekday = DAYS_E_FC[td.getDay()];
+        const tmrHuman = tmrWeekday + ' ' + td.getDate() + ' ' + MONTHS_FULL_FC[td.getMonth()] + ' ' + td.getFullYear();
+        const tmrSummary = perDateSummary.find(function(s) { return s.dateStr === tomorrowDate; });
+        const tmrCourses = (tmrSummary && tmrSummary.courses) || [];
+        const tmrRaces = tmrSummary ? tmrSummary.raceCount : '?';
+        const signalNames = tomorrowItems.map(function(item) { return item.signalType || 'Unknown'; }).join(', ');
+        const readySubject = 'Racing Edge — Tomorrow Ready · ' + fcHeaderDate + ' · 23:00 run';
+        const readyBody = [
+          readySubject,
+          '',
+          tmrHuman + ' — ' + tmrRaces + ' races across ' + tmrCourses.length + ' courses',
+          'Courses: ' + (tmrCourses.length ? tmrCourses.join(' · ') : 'none'),
+          '',
+          'Signals: ' + (tomorrowItems.length ? signalNames : 'No signals')
+        ].join('\n');
+        const readyTransporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+        });
+        await readyTransporter.sendMail({
+          from: process.env.GMAIL_USER,
+          to: 'gcoyne87@gmail.com',
+          subject: readySubject,
+          text: readyBody
+        });
       }
-
-      const readyTransporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
-      });
-      await readyTransporter.sendMail({
-        from: process.env.GMAIL_USER,
-        to: 'gcoyne87@gmail.com',
-        subject: readySubject,
-        text: readyBodyLines.join('\n')
-      });
     } catch (e) {
       // Swallow — this email must never affect the job's own outcome or the email above.
     }
@@ -524,7 +555,7 @@ exports.handler = async function(event) {
     };
   } catch(e) {
     try {
-      await sendNotification('Racecards', [
+      await sendNotification('Racing Edge — Racecard Fetch · ' + fcHeaderDate + ' · 23:00 run', [
         'Timestamp: ' + new Date().toISOString(),
         'Job failed before completion.',
         'Error: ' + e.message

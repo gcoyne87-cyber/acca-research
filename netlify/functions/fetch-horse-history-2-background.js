@@ -136,7 +136,7 @@ exports.handler = async function(event) {
     const comma = function(n) { return String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
     const shortDt = function(s) { const d = new Date(s+'T12:00:00Z'); return d.getUTCDate()+' '+MONTHS_SHORT_H[d.getUTCMonth()]; };
     const _hn = new Date();
-    const emailHeader = 'Racing Edge — Horse History Batch 2 · '+DAYS_E_H[_hn.getDay()]+' '+_hn.getDate()+' '+MONTHS_FULL_H[_hn.getMonth()]+' '+_hn.getFullYear()+' · 23:50 run';
+    const emailHeader = 'Racing Edge — Form History Far Days · '+DAYS_E_H[_hn.getDay()]+' '+_hn.getDate()+' '+MONTHS_FULL_H[_hn.getMonth()]+' '+_hn.getFullYear()+' · 23:50 run';
 
     // 1-2. Calculate days 4, 5, 6, and 7 ahead as YYYY-MM-DD
     const dateStrs = [];
@@ -171,7 +171,7 @@ exports.handler = async function(event) {
     }
 
     if(missingDates === dateStrs.length){
-      await sendNotification('Horse History Batch 2 — RACECARDS MISSING', [
+      await sendNotification(emailHeader.replace('· 23:50 run', '— RACECARDS MISSING'), [
         emailHeader, '',
         'Dates: ' + dateStrs.map(shortDt).join(' · '), ''
       ].concat(dateStrs.map(function(d){ return shortDt(d)+': 0 horses found'; })).concat([
@@ -224,7 +224,7 @@ exports.handler = async function(event) {
         '', 'Fetched: ' + comma(horsesFetched) + ' | Cached: ' + comma(horsesSkippedFromCache) + ' | Failed: ' + comma(horsesFailed)
       ]);
       if (horsesFailed > 0) bodyLines.push('⚠️ ' + comma(horsesFailed) + ' failures — check Netlify logs for fetch-horse-history-2-background');
-      await sendNotification((horsesFetched === 0 && horsesSkippedFromCache === 0 ? 'Horse History Batch 2 — WARNING: zero horses processed' : 'Horse History Batch 2'), bodyLines.join('\n'));
+      await sendNotification((horsesFetched === 0 && horsesSkippedFromCache === 0 ? emailHeader.replace('· 23:50 run', '— WARNING: zero horses processed') : emailHeader), bodyLines.join('\n'));
     } catch (e) { /* notification errors are swallowed inside sendNotification itself */ }
 
     return {
@@ -235,7 +235,8 @@ exports.handler = async function(event) {
     console.log(`[fetch-horse-history-2] Error: ${e.message}. Fetched: ${horsesFetched}, skipped: ${horsesSkippedFromCache}`);
 
     try {
-      await sendNotification('Horse History Batch 2', [
+      const _fh2n = new Date(); const _fh2d = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_fh2n.getDay()]+' '+_fh2n.getDate()+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][_fh2n.getMonth()]+' '+_fh2n.getFullYear();
+      await sendNotification('Racing Edge — Form History Far Days · ' + _fh2d + ' · 23:50 run', [
         'Timestamp: ' + new Date().toISOString(),
         'Job failed before completion.',
         'Error: ' + e.message,
