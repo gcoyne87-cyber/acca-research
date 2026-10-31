@@ -19913,6 +19913,7 @@ function selectRacingSection(s){
   }
   if(typeof s==='string'&&s.indexOf('trainer:')===0){
     var _trainerName=s.substring('trainer:'.length);
+    _homeRcDay='today';
     selectRacingSection('racecards');
     setTrainerFilter(_trainerName);
     return;
@@ -19953,6 +19954,7 @@ function selectRacingSection(s){
       };
       var _navToday=function(m){
         _ctaSuppressDateStrip=true;
+        _homeRcDay='today';
         selectRacingSection('racecards');
         if(todayOpenMeeting!==m.id) toggleTodayMeeting(m.id);
         var ri=_findRaceIdx(m);
@@ -19974,7 +19976,7 @@ function selectRacingSection(s){
         if(ri!==-1&&tmOpenRace[m.id]!==ri) tomorrowSelectRace(m.id,ri);
         _scrollToRacecardsTop('tomorrow-meetings-list');
       };
-      var _rcList=typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null;
+      var _rcList=typeof RC_TODAY_MEETINGS!=='undefined'?RC_TODAY_MEETINGS:(typeof RC_MEETINGS!=='undefined'?RC_MEETINGS:null);
       var _tmList=typeof TM_MEETINGS!=='undefined'?TM_MEETINGS:null;
       if(_isTomorrowDest){
         var _tmm=_findMeeting(_tmList);
