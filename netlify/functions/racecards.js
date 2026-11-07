@@ -359,6 +359,35 @@ function redisSet(key, value) {
   });
 }
 
+// ── TRAINER INTEL ─────────────────────────────────────────────────────────────
+// trainer-intel:live snapshot cached in warm scope (60 s TTL); no extra
+// external call after the first request each minute.
+let _tiSnap = null;
+let _tiSnapAt = 0;
+const TI_TTL = 60000;
+
+async function getTrainerIntelSnap() {
+  const now = Date.now();
+  if (_tiSnap && now - _tiSnapAt < TI_TTL) return _tiSnap;
+  try {
+    const snap = await redisGet('trainer-intel:live');
+    if (snap && snap.byHorse) { _tiSnap = snap; _tiSnapAt = now; }
+    else _tiSnap = null;
+  } catch (e) { /* leave stale or null */ }
+  return _tiSnap;
+}
+
+// Same strip/collapse as import-trainer-intel.js normalizeName.
+function normTi(s) {
+  return String(s || '').toLowerCase().trim()
+    .replace(/['''\-.]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function tiTrainerMatch(row, runner) {
+  if (row.trainer_id && runner.trainer_id) return row.trainer_id === runner.trainer_id;
+  return normTi(row.trainer_display) === normTi(runner.trainer);
+}
+
 // ── RUNNER TAG FLAGS ─────────────────────────────────────────────────────────
 // Server-computed tag flags embedded on each runner — form history is not
 // available client-side at render time, so tags must be decided here. First
@@ -874,6 +903,68 @@ async function enrichRunnerTags(meetings, date) {
         computeRunnerTags(e.r, history, e.m.name, e.race.dist, e.m.flag, e.race.going, hotYardTrainers, e.race, trainerRegistry);
       } catch (err) { /* per-horse failure never blocks the card */ }
     });
+    // Trainer intel — in-memory lookup against warm-cached snapshot; zero
+    // extra external calls on the hot path after the first request per minute.
+    try {
+      const tiSnap = await getTrainerIntelSnap();
+      if (tiSnap) {
+        const irishDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Dublin' }).format(new Date());
+        const irishToday = new Date(irishDate + 'T00:00:00');
+        const irishMonth = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'Europe/Dublin' }).format(new Date()).toLowerCase();
+        entries.forEach(function(e) {
+          try {
+            const runner = e.r, meeting = e.m, race = e.race;
+            const candidates = [];
+            // byHorse
+            const nh = normTi(runner.name);
+            (tiSnap.byHorse[nh] || []).forEach(function(row) { candidates.push(row); });
+            // byTrainerCourse — key is "trainerKey|courseNorm"; match on course suffix then check trainer
+            const courseLc = normTi(meeting.name);
+            if (tiSnap.byTrainerCourse) {
+              Object.keys(tiSnap.byTrainerCourse).forEach(function(k) {
+                const sep = k.lastIndexOf('|');
+                if (sep < 0 || k.slice(sep + 1) !== courseLc) return;
+                (tiSnap.byTrainerCourse[k] || []).forEach(function(row) {
+                  if (tiTrainerMatch(row, runner)) candidates.push(row);
+                });
+              });
+            }
+            // byTrainerRace — keyword must appear in normalised race name
+            const normRace = normTi(race.name || '');
+            (tiSnap.byTrainerRace || []).forEach(function(entry) {
+              if (!tiTrainerMatch(entry.row, runner)) return;
+              if (normRace.indexOf(normTi(entry.keyword)) === -1) return;
+              if (entry.course && normTi(entry.course) !== courseLc) return;
+              candidates.push(entry.row);
+            });
+            // Filter: skip wrong month; skip expired
+            const filtered = candidates.filter(function(row) {
+              if (row.month && row.month.toLowerCase() !== irishMonth) return false;
+              if (row.valid_until) {
+                try { const vu = new Date(row.valid_until); if (!isNaN(vu.getTime()) && vu < irishToday) return false; } catch (e) {}
+              }
+              return true;
+            });
+            if (!filtered.length) return;
+            // Sort: HIGHER priority wins (1-99, ~90s beat ~40s); tie → most recent source_date; COURSE loses tie
+            filtered.sort(function(a, b) {
+              const pa = Number(a.priority) || 0, pb = Number(b.priority) || 0;
+              if (pa !== pb) return pb - pa;
+              const da = a.source_date ? new Date(a.source_date).getTime() : 0;
+              const db = b.source_date ? new Date(b.source_date).getTime() : 0;
+              if (da !== db) return db - da;
+              const ac = (a.type || '').toUpperCase() === 'COURSE';
+              const bc = (b.type || '').toUpperCase() === 'COURSE';
+              if (ac && !bc) return 1;
+              if (!ac && bc) return -1;
+              return 0;
+            });
+            const best = filtered[0];
+            runner.intel = { rule_id: best.rule_id, text: best.text, source_type: best.source_type, source_date: best.source_date };
+          } catch (eI) { /* per-runner intel never blocks */ }
+        });
+      }
+    } catch (eTI) { /* intel enrichment is best-effort */ }
   } catch (e) { /* enrichment is best-effort by design */ }
   return meetings;
 }

@@ -13969,7 +13969,23 @@ function _runnerExtraHtml(mid,time,mname,ru,ctx){
     +(linkOpen?'Less detail &#9650;':'More detail &#9660;')
   +'</span></div>';
   var marker='<span data-race-key="'+escHtml(key)+'" data-pfx="'+escHtml(pfx)+'" data-horseid="'+hid+'" style="display:none"></span>';
-  return marker+inline+verdictHtml+linkHtml;
+  var intelHtml='';
+  if(ru.intel&&ru.intel.text){
+    var _iSrcMap={TRAINER_DIRECT:'Trainer quote',ASSISTANT:'Assistant',RIDER:'Rider',ANALYST:'Analyst',RESULT:'Result',RECORD:'Record'};
+    var _iSrcLabel=_iSrcMap[String(ru.intel.source_type||'').toUpperCase()]||(ru.intel.source_type||'');
+    var _iDateFmt='';
+    if(ru.intel.source_date){
+      var _dParts=String(ru.intel.source_date).split('-');
+      var _MON_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      if(_dParts.length===3){_iDateFmt=String(parseInt(_dParts[2],10))+' '+(_MON_S[parseInt(_dParts[1],10)-1]||'');}
+    }
+    intelHtml='<div style="margin:4px 12px 0;padding:7px 10px;background:rgba(26,82,118,0.07);border-left:3px solid #1a5276;border-radius:4px">'
+      +'<div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:#1a5276;margin-bottom:3px">INTELLIGENCE</div>'
+      +'<div style="font-size:12.5px;color:#0b1628;line-height:1.5">'+escHtml(ru.intel.text)+'</div>'
+      +'<div style="font-size:10.5px;color:#8c95a8;margin-top:3px">'+escHtml(_iSrcLabel)+(_iDateFmt?' · '+escHtml(_iDateFmt):'')+'</div>'
+      +'</div>';
+  }
+  return marker+inline+intelHtml+verdictHtml+linkHtml;
 }
 function _buildAnalysisTabHtml(a){
   if(!a) return '<div style="padding:16px 14px;text-align:center;color:#9aa3b5;font-size:13px">No analysis yet — run the daily build first.</div>';

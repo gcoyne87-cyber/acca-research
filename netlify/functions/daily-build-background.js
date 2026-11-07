@@ -4163,7 +4163,8 @@ exports.handler = async function(event) {
           taggedByName[normaliseHorseName(ru.name)] = {
             name: ru.name,
             labels: flags.map(function(k) { return TE_FLAG_LABELS[k]; }),
-            facts: tagEchoFacts(ru, hyRow)
+            facts: tagEchoFacts(ru, hyRow),
+            intel: (ru.intel && ru.intel.text) ? ru.intel : null
           };
         }); }); });
 
@@ -4180,22 +4181,26 @@ exports.handler = async function(event) {
           teJobs.push({ row: row, raceLabel: a.race, info: hit });
         }); });
 
-        let teDone = 0, teFailed = 0;
+        let teDone = 0, teFailed = 0, teIntelEcho = 0;
         let teIn = 0, teOut = 0, teCR = 0, teCW = 0;
         const TE_BATCH = 4; // same concurrency as the race analyses
         for (let ti = 0; ti < teJobs.length; ti += TE_BATCH) {
           const tb = teJobs.slice(ti, ti + TE_BATCH);
           await Promise.allSettled(tb.map(async function(job) {
             try {
+              const intelCtx = (job.info.intel && job.info.intel.text)
+                ? '\n\nINTEL: "' + job.info.intel.text + '" (source: ' + (job.info.intel.source_type || '') + ', ' + (job.info.intel.source_date || '') + ')\nThis intelligence may be referenced briefly in the rewrite — in your own words, connecting to today\'s conditions — but do not quote it at length, extend its claims, invent numbers, or change the selection\'s overall stance.'
+                : '';
               const msg = 'HORSE: ' + job.info.name
                 + '\nTAGS: ' + job.info.labels.join('; ')
                 + '\nTAG FACTS:\n' + job.info.facts.map(function(f) { return '- ' + f; }).join('\n')
-                + '\n\nORIGINAL VERDICT:\n"' + job.row.analysis + '"';
+                + '\n\nORIGINAL VERDICT:\n"' + job.row.analysis + '"'
+                + intelCtx;
               const r = await callClaudeSimple(TAG_ECHO_PROMPT, msg, 400);
               teIn += r.inputTokens; teOut += r.outputTokens; teCR += r.cacheReadTokens; teCW += r.cacheWriteTokens;
               report.callLog.push({ type: 'tag-echo', label: job.info.name + ' (' + job.raceLabel + ')', inputTokens: r.inputTokens, outputTokens: r.outputTokens, cacheReadTokens: r.cacheReadTokens, cacheWriteTokens: r.cacheWriteTokens, webSearch: false, webSearchCount: 0 });
               const dv = (r.result && typeof r.result.displayVerdict === 'string') ? r.result.displayVerdict.trim() : '';
-              if (dv) { job.row.displayVerdict = dv; teDone++; } else { teFailed++; }
+              if (dv) { job.row.displayVerdict = dv; teDone++; if (job.info.intel) teIntelEcho++; } else { teFailed++; }
             } catch (e) { teFailed++; }
           }));
         }
@@ -4248,7 +4253,7 @@ exports.handler = async function(event) {
           cbx.totalCacheRead = (cbx.totalCacheRead || 0) + teCR;
           cbx.todayCostUSD = (parseFloat(cbx.todayCostUSD || '0') + teCost).toFixed(4);
         }
-        report.tagEcho = { taggedOnCard: Object.keys(taggedByName).length, rewritten: teDone, failed: teFailed, skippedExisting: teSkippedExisting, costUSD: teCost.toFixed(4) };
+        report.tagEcho = { taggedOnCard: Object.keys(taggedByName).length, rewritten: teDone, failed: teFailed, skippedExisting: teSkippedExisting, intelEcho: teIntelEcho, costUSD: teCost.toFixed(4) };
         tagEchoStatusLine = 'Tag-echo: ' + teDone + ' verdicts rewritten, $' + teCost.toFixed(2);
         console.log('[daily-build] ' + tagEchoStatusLine);
         try { await safeWriteReport(today, report); } catch (re) { report.errors.push('redis-write daily:report:' + today + ' (tag-echo): ' + re.message); }
@@ -4315,6 +4320,9 @@ exports.handler = async function(event) {
       const tagEchoEmailLine = (report.tagEcho && report.tagEcho.rewritten != null)
         ? 'Tag-echo: ' + report.tagEcho.rewritten + ' verdicts rewritten'
         : tagEchoStatusLine;
+      const intelEchoEmailLine = (report.tagEcho && report.tagEcho.intelEcho > 0)
+        ? 'Intel-echo: ' + report.tagEcho.intelEcho + ' verdicts referenced trainer intelligence'
+        : null;
 
       // Warnings: report.warnings verbatim — the NAP screen's skipped and
       // FAILED statuses already push themselves there, so they surface under
@@ -4330,9 +4338,10 @@ exports.handler = async function(event) {
         .concat([
           '',
           tagEchoEmailLine,
+        ].concat(intelEchoEmailLine ? [intelEchoEmailLine] : []).concat([
           '',
           'Total cost: $' + (Number(report.costUSD) || 0).toFixed(2)
-        ])
+        ]))
         .concat(report.errors.length ? ['', 'Errors: ' + report.errors.join('; ')] : [])
         .concat(emailWarnings.length ? ['', 'Warnings:'].concat(emailWarnings.map(function(w) { return '- ' + w; })) : [])
         .join('\n');
