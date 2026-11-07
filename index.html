@@ -13036,6 +13036,8 @@ function renderPopularTrainers(){
     var tEsc=matchName.replace(/'/g,"\\'");
     var n=_ptV2Remaining(t);
     var nm=Number(t.runnersTomorrow)||0;
+    // No runners today and none tomorrow — skip entirely; never show a zero card.
+    if(n===0&&nm===0) return;
     out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:250px;background:#ffffff;border:1px solid #e7ebf3;border-top:3px solid #c9a84c;border-radius:14px;padding:15px;box-shadow:0 4px 12px rgba(11,22,40,0.08);cursor:pointer;display:flex;flex-direction:column;gap:4px">';
     out+='<div style="font-size:16px;font-weight:800;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
     if(n>0){
@@ -13079,23 +13081,31 @@ function loadPopularTrainers(){
 // Self-contained 60s tick — the DI tick's signature only covers the DI lists
 // and lives in shared code, so this owns its own interval. Re-renders only
 // when a card's remaining count has changed (order never changes).
+function _ptV2DoRefetch(){
+  window._ptV2RefetchDone=true;
+  fetch('/.netlify/functions/get-popular-trainers')
+    .then(function(r){return r.json();})
+    .then(function(data){_popularTrainers=Array.isArray(data)?data:[];renderPopularTrainers();})
+    .catch(function(e){console.error('[ptV2] refetch failed',e);renderPopularTrainers();});
+}
 function _ptV2StartTimer(){
   if(window._ptV2Timer) return;
   window._ptV2SigLast=_ptV2Sig();
   window._ptV2RefetchDone=false;
+  // Evening-load path: sig is already all-zeros when the timer starts (page
+  // opened after racing ended). No transition will ever come, so fire the
+  // refetch immediately to pick up current runnersTomorrow from Redis.
+  if(_ptV2Sig().split(',').every(function(s){return s==='0';})){
+    _ptV2DoRefetch();
+  }
   window._ptV2Timer=setInterval(function(){
     var _sig=_ptV2Sig();
     if(_sig===window._ptV2SigLast) return;
     window._ptV2SigLast=_sig;
-    // First transition to all-zeros: refetch so runnersTomorrow reflects
-    // current Redis values — the initial fetch may have run before tomorrow's
-    // cards were populated. Guard fires exactly once per session.
+    // Daytime path: first transition to all-zeros triggers the same one-off
+    // refetch. Guard ensures it fires at most once per session across both paths.
     if(!window._ptV2RefetchDone&&_sig.split(',').every(function(s){return s==='0';})){
-      window._ptV2RefetchDone=true;
-      fetch('/.netlify/functions/get-popular-trainers')
-        .then(function(r){return r.json();})
-        .then(function(data){_popularTrainers=Array.isArray(data)?data:[];renderPopularTrainers();})
-        .catch(function(e){console.error('[ptV2] refetch failed',e);renderPopularTrainers();});
+      _ptV2DoRefetch();
       return;
     }
     renderPopularTrainers();
