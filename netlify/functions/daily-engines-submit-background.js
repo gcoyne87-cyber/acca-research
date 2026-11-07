@@ -383,7 +383,7 @@ exports.handler = async function(event) {
     // [{ date, batchId, status, eligible, skipped, submitted, templated }].
     // goingtripBatchId stays as the FIRST batch's id for anything that still
     // reads the old single-id field; the collector iterates goingtripBatches.
-    goingtripBatches: [], goingtripBatchId: null, goingtripSubmitted: 0, goingtripSkipped: 0, goingtripTemplated: 0, goingtripEligible: 0, goingtripStatus: null,
+    goingtripBatches: [], goingtripBatchId: null, goingtripSubmitted: 0, goingtripSkipped: 0, goingtripTemplated: 0, goingtripEligible: 0, goingtripResubmits: {}, goingtripCleanupDeleted: 0, goingtripStatus: null,
     trainerBatchId: null, trainerSubmitted: 0, trainerSkipped: 0, trainerNoData: 0, trainerStatus: null,
     collected: { goingtrip: false, trainer: false }, error: null
   };
@@ -405,7 +405,7 @@ exports.handler = async function(event) {
   // written on a debutant's card day was never revisited, which froze "no
   // runs" templates onto horses that had since run, and left five legacy
   // metadata-only records permanently blank.)
-  let gt = { batches: [], eligible: 0, skipped: 0, submitted: 0, templated: 0, failedDate: null };
+  let gt = { batches: [], eligible: 0, skipped: 0, submitted: 0, templated: 0, resubmits: {}, cleanupDeleted: 0, failedDate: null };
   try {
     for (const d of goingtripDates) {
       const card = await redisGet('racecards:' + d);
@@ -429,9 +429,11 @@ exports.handler = async function(event) {
         uncovered.push(ids[i]);
         if (CLEANUP_STALE_FORMS && (reason === 'empty-husk' || reason === 'template-outgrown')) {
           const deleted = await redisDel('form-sections:' + ids[i]);
+          if (deleted) gt.cleanupDeleted++;
           console.log('[daily-engines-submit] cleanup: ' + (deleted ? 'deleted' : 'DELETE FAILED (will be merged over instead)') + ' form-sections:' + ids[i] + ' (' + (names[ids[i]] || 'unknown') + ') — ' + reason);
         }
       }
+      Object.keys(staleCounts).forEach(function(k) { gt.resubmits[k] = (gt.resubmits[k] || 0) + staleCounts[k]; });
       gt.eligible += ids.length; gt.skipped += ids.length - uncovered.length;
       if (!uncovered.length) {
         console.log('[daily-engines-submit] goingtrip ' + d + ': ' + ids.length + ' runners, all current — nothing to submit');
@@ -457,6 +459,7 @@ exports.handler = async function(event) {
   const gtWithBatch = gt.batches.filter(function(b) { return b.batchId; });
   record.goingtripBatches = gt.batches; record.goingtripBatchId = gtWithBatch.length ? gtWithBatch[0].batchId : null;
   record.goingtripSubmitted = gt.submitted; record.goingtripSkipped = gt.skipped; record.goingtripTemplated = gt.templated; record.goingtripEligible = gt.eligible;
+  record.goingtripResubmits = gt.resubmits; record.goingtripCleanupDeleted = gt.cleanupDeleted;
   record.goingtripStatus = gtWithBatch.length ? 'submitted' : 'nothing_to_submit';
   if (!gtWithBatch.length) record.collected.goingtrip = true;
   console.log('[daily-engines-submit] goingtrip sweep [' + (goingtripDates.join(',') || 'none') + ']: batches=' + gtWithBatch.length + ' runners=' + gt.eligible + ' skipped=' + gt.skipped + ' submitted=' + gt.submitted + ' templated=' + gt.templated);

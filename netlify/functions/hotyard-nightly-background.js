@@ -1,4 +1,5 @@
 const https = require('https');
+const nodemailer = require('nodemailer');
 
 // Tomorrow's Hot Yard preview — Part 1: generation and storage. Runs at
 // 22:00 Irish time, fired by hotyard-nightly-trigger.js (which carries the
@@ -498,6 +499,19 @@ exports.handler = async function(event) {
       warnings.forEach(function(w) { console.log('[hotyard-nightly] ' + w); });
     }
 
+    // Write trainer-form:table:{tomorrow} — the same table the 21:30 refresh
+    // just wrote for today, made available for tomorrow's racecards from 22:00
+    // tonight so Hot Yard tags show before the 09:30 build. The 09:30 build
+    // unconditionally overwrites this key with a fresh API fetch
+    // (daily-build-background.js :1977), so this write is only an ~11-hour
+    // head start. A write failure here is non-fatal.
+    try {
+      await redisSet('trainer-form:table:' + tomorrow, table);
+      console.log('[hotyard-nightly] trainer-form:table:' + tomorrow + ' written — ' + table.length + ' yards');
+    } catch (eTFT) {
+      console.log('[hotyard-nightly] trainer-form:table:' + tomorrow + ' write failed: ' + eTFT.message);
+    }
+
     // 6. Store — exactly the classDropPreview pattern: read-modify-write of
     // daily:report:{tomorrow}, creating it when it does not exist yet.
     const existing = (await redisGet('daily:report:' + tomorrow)) || {};
@@ -510,6 +524,83 @@ exports.handler = async function(event) {
     result.usage = usage;
     if (warnings.length) result.warnings = warnings;
     console.log('[hotyard-nightly] tomorrow ' + tomorrow + ': preview stored — ' + result.qualifiers + ' qualifier(s), ' + result.survivors + ' with runners tomorrow' + (preview.text ? '' : ', no card text'));
+
+    // Completion email — one message covering tomorrow's DI cards and today's
+    // full trainer form table. Sent after the preview is stored so DI yard
+    // data is always accurate. A send failure is logged and does not throw.
+    try {
+      const DAYS_E = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const MONTHS_E = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const tmDateObj = new Date(tomorrow + 'T12:00:00Z');
+      const tmHuman = DAYS_E[tmDateObj.getUTCDay()] + ' ' + tmDateObj.getUTCDate() + ' ' + MONTHS_E[tmDateObj.getUTCMonth()] + ' ' + tmDateObj.getUTCFullYear();
+      const tdDateObj = new Date(today + 'T12:00:00Z');
+      const tdHuman = tdDateObj.getUTCDate() + ' ' + MONTHS_E[tdDateObj.getUTCMonth()] + ' ' + tdDateObj.getUTCFullYear();
+      const emailSubject = 'Racing Edge — Hot Yard & Trainer Form · ' + tmHuman + ' · 22:00 run';
+
+      // DI yards are those in preview.yards (survived runners-tomorrow filter,
+      // top 2). TAG-only yards met the threshold but were not in preview.yards
+      // — either no runners tomorrow or cut by the cap.
+      const diYardIds = new Set(preview.yards.map(function(y) { return y.trainerId; }));
+      const qualifierIds = new Set(qualifiers.map(function(q) { return q.trainerId; }));
+      const tagOnly = qualifiers.filter(function(q) { return !diYardIds.has(q.trainerId); });
+
+      const emailLines = [];
+
+      emailLines.push('TOMORROW\'S HOT YARD');
+      if (preview.yards.length) {
+        emailLines.push('DI cards: ' + preview.yards.map(function(y) {
+          return y.name + ' — ' + y.runnersTomorrow + ' runner' + (y.runnersTomorrow === 1 ? '' : 's') + ' tomorrow';
+        }).join(' | '));
+      } else {
+        emailLines.push('DI cards: None generated');
+      }
+      if (tagOnly.length) {
+        emailLines.push('TAG only (qualifies but no DI card): ' + tagOnly.map(function(t) {
+          return t.trainerName + ' (' + hyRound(t.strikeRate7d) + '%)';
+        }).join(' | '));
+      }
+
+      emailLines.push('');
+      emailLines.push('TRAINER FORM TABLE — ' + tdHuman + ' · updated 21:30');
+      const C = [25, 10, 7, 4, 6];
+      const lp = function(s, w) { return String(s == null ? '' : s).padEnd(w); };
+      const rp = function(s, w) { return String(s == null ? '' : s).padStart(w); };
+      emailLines.push(lp('Trainer', C[0]) + ' | ' + rp('7d Runners', C[1]) + ' | ' + rp('7d Wins', C[2]) + ' | ' + rp('SR', C[3]) + ' | ' + lp('Status', C[4]));
+      emailLines.push('-'.repeat(C[0]) + '-+-' + '-'.repeat(C[1]) + '-+-' + '-'.repeat(C[2]) + '-+-' + '-'.repeat(C[3]) + '-+-' + '-'.repeat(C[4]));
+
+      const sortedTable = table.slice().sort(function(a, b) {
+        return (hyRound(b.strikeRate7d) - hyRound(a.strikeRate7d))
+          || (Number(b.winners7d) - Number(a.winners7d))
+          || (Number(b.runners7d) - Number(a.runners7d));
+      });
+      sortedTable.forEach(function(row) {
+        const status = diYardIds.has(row.trainerId) ? 'DI' : (qualifierIds.has(row.trainerId) ? 'TAG' : '—');
+        emailLines.push(
+          lp(row.trainerName, C[0]) + ' | ' +
+          rp(String(row.runners7d || 0), C[1]) + ' | ' +
+          rp(String(row.winners7d || 0), C[2]) + ' | ' +
+          rp(hyRound(row.strikeRate7d) + '%', C[3]) + ' | ' +
+          status
+        );
+      });
+      const totalRunners = sortedTable.reduce(function(s, r) { return s + (Number(r.runners7d) || 0); }, 0);
+      emailLines.push('');
+      emailLines.push(sortedTable.length + ' yards tracked · ' + totalRunners + ' total runners in window');
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      });
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: 'gcoyne87@gmail.com',
+        subject: emailSubject,
+        text: emailLines.join('\n')
+      });
+      console.log('[hotyard-nightly] email sent — ' + preview.yards.length + ' DI yard(s), ' + sortedTable.length + ' yards in table');
+    } catch (eEmail) {
+      console.log('[hotyard-nightly] email failed: ' + eEmail.message);
+    }
   } catch (e) {
     console.log('[hotyard-nightly] failed: ' + e.message);
     result.error = e.message;
