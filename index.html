@@ -11998,6 +11998,13 @@ var _tfRaceSel={};        // per-day-per-meeting selected race: key = dayKey+'|'
 function setTrainerFilter(trainerName){
   trainerName=(trainerName||'').trim();
   if(!trainerName){ clearTrainerFilter(); return; }
+  if(window._popularTrainers&&Array.isArray(window._popularTrainers)){
+    var _tn=trainerName.toLowerCase();
+    for(var _pi=0;_pi<window._popularTrainers.length;_pi++){
+      var _pt=window._popularTrainers[_pi];
+      if(_pt.name&&_pt.name.toLowerCase()===_tn&&_pt.matchName){ trainerName=_pt.matchName; break; }
+    }
+  }
   // One filter at a time: a trainer search switches any active edge row off
   // so the toggle visuals match what the list is actually showing.
   if(_edgeChipMode!=='trainer'){ _edgeChipMode='trainer'; _renderEdgeChips(); }
@@ -12011,7 +12018,7 @@ function setTrainerFilter(trainerName){
   var filteredRaces=[];
   meetings.forEach(function(m){
     (m.races||[]).forEach(function(race,ri){
-      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
+      var hasMatch=(race.runners||[]).some(function(ru){ return _normTrainerStr(ru.trainer).indexOf(_normTrainerStr(trainerName))!==-1; });
       if(hasMatch){ filteredRaces.push({meetingId:m.id,raceIndex:ri,raceTime:race.t}); }
     });
   });
@@ -12024,7 +12031,7 @@ function setTrainerFilter(trainerName){
       if(tmMatch) return;
       (m.races||[]).forEach(function(race,ri){
         if(tmMatch) return;
-        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
+        var hasMatch=(race.runners||[]).some(function(ru){ return _normTrainerStr(ru.trainer).indexOf(_normTrainerStr(trainerName))!==-1; });
         if(hasMatch){ tmMatch={meetingId:m.id,raceIndex:ri}; }
       });
     });
@@ -12035,7 +12042,7 @@ function setTrainerFilter(trainerName){
       if(fdMatch) return;
       (m.races||[]).forEach(function(race,ri){
         if(fdMatch) return;
-        var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
+        var hasMatch=(race.runners||[]).some(function(ru){ return _normTrainerStr(ru.trainer).indexOf(_normTrainerStr(trainerName))!==-1; });
         if(hasMatch){ fdMatch={meetingId:m.id,raceIndex:ri}; }
       });
     });
@@ -12101,11 +12108,13 @@ function clearTrainerFilter(){
   }
 }
 
+function _normTrainerStr(s){ return String(s||'').toLowerCase().replace(/[.‘’']/g,'').replace(/\s+/g,' ').trim(); }
+
 function _tfMatchesForDay(meetings,trainerName){
   var out=[];
   (meetings||[]).forEach(function(m){
     (m.races||[]).forEach(function(race,ri){
-      var hasMatch=(race.runners||[]).some(function(ru){ return (ru.trainer||'').toLowerCase().indexOf(trainerName.toLowerCase())!==-1; });
+      var hasMatch=(race.runners||[]).some(function(ru){ return _normTrainerStr(ru.trainer).indexOf(_normTrainerStr(trainerName))!==-1; });
       if(hasMatch){ out.push({meetingId:m.id,meetingName:m.name,meeting:m,raceIndex:ri,raceTime:race.t,race:race}); }
     });
   });
@@ -12481,17 +12490,18 @@ function renderTrainerFilterMultiDay(el,isInitial){
 function _getAllTrainerNames(){
   var seen={};
   var names=[];
-  RC_MEETINGS.forEach(function(m){
-    (m.races||[]).forEach(function(r){
-      (r.runners||[]).forEach(function(ru){
-        var t=(ru.trainer||'').trim();
-        if(t && !seen[t.toLowerCase()]){
-          seen[t.toLowerCase()]=true;
-          names.push(t);
-        }
+  function _addFromMeetings(meetings){
+    (meetings||[]).forEach(function(m){
+      (m.races||[]).forEach(function(r){
+        (r.runners||[]).forEach(function(ru){
+          var t=(ru.trainer||'').trim();
+          if(t&&!seen[_normTrainerStr(t)]){ seen[_normTrainerStr(t)]=true; names.push(t); }
+        });
       });
     });
-  });
+  }
+  _addFromMeetings(RC_MEETINGS);
+  if(window._tmRealDataLoaded===true&&typeof TM_MEETINGS!=='undefined'){ _addFromMeetings(TM_MEETINGS); }
   return names;
 }
 
