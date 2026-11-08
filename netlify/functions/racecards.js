@@ -915,9 +915,12 @@ async function enrichRunnerTags(meetings, date) {
           try {
             const runner = e.r, meeting = e.m, race = e.race;
             const candidates = [];
-            // byHorse
+            // byHorse — when both sides carry horse_id, require exact match; name-only rows always pass
             const nh = normTi(runner.name);
-            (tiSnap.byHorse[nh] || []).forEach(function(row) { candidates.push(row); });
+            (tiSnap.byHorse[nh] || []).forEach(function(row) {
+              if (row.horse_id && runner.horse_id && row.horse_id !== runner.horse_id) return;
+              candidates.push(row);
+            });
             // byTrainerCourse — key is "trainerKey|courseNorm"; match on course suffix then check trainer
             const courseLc = normTi(meeting.name);
             if (tiSnap.byTrainerCourse) {

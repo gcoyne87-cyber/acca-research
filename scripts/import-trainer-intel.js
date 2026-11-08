@@ -240,6 +240,7 @@ function buildSnapshot(active) {
   const byTrainerRace = [];
   const perTrainer    = {};
   const perType       = { HORSE: 0, COURSE: 0, RACE: 0 };
+  let horseWithId     = 0;
 
   for (const r of active) {
     const sheetTrainer = String(r.TRAINER || '').trim();
@@ -264,6 +265,11 @@ function buildSnapshot(active) {
       month:           r.MONTH ? String(r.MONTH).trim() : null,
       valid_until:     parseYMD(r.VALID_UNTIL),
     };
+
+    if (r._type === 'HORSE') {
+      const hid = String(r.HORSE_ID || '').trim();
+      if (hid) { stored.horse_id = hid; horseWithId++; }
+    }
 
     const matchNorm = normalizeName(r.MATCH);
     if (!matchNorm) {
@@ -299,6 +305,7 @@ function buildSnapshot(active) {
 
   return {
     warnings,
+    horseWithId,
     snapshot: {
       meta: {
         imported_at:  irishNowStr(),
@@ -371,10 +378,11 @@ async function main() {
 
   // Steps 3-4: Build snapshot
   console.log('Step 3-4  Building snapshot...');
-  const { warnings, snapshot } = buildSnapshot(active);
+  const { warnings, horseWithId, snapshot } = buildSnapshot(active);
   warnings.forEach(w => console.warn('        WARN: ' + w));
   console.log('        ' + snapshot.meta.total_active + ' rows in snapshot (' +
     Object.entries(snapshot.meta.per_type).map(([t, n]) => n + ' ' + t).join(', ') + ')');
+  console.log('        HORSE rows with horse_id: ' + horseWithId);
 
   // Step 5: Guards and publish
   console.log('Step 5  Loading existing trainer-intel:live for guard check...');
