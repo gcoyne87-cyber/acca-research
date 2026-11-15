@@ -28,6 +28,10 @@ const TRAINER_ALIASES = {
   'Willie Mullins': { api_name: 'W P Mullins', trainer_id: 'trn_13275' }
 };
 
+// Tabs that exist in the workbook but do not follow the trainer-intel schema.
+// They are logged and skipped; their rows never reach validation.
+const SKIP_SHEETS = new Set(['Rubys Tips']);
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -126,9 +130,18 @@ function parseWorkbook() {
   const seenIds      = new Set();
   const archiveSkips = [];
 
+  const perTabCounts  = {};
+  const skippedSheets = [];
+
   for (const sheetName of wb.SheetNames) {
+    if (SKIP_SHEETS.has(sheetName)) {
+      skippedSheets.push(sheetName);
+      console.log('        Skipping non-schema tab: "' + sheetName + '"');
+      continue;
+    }
     const ws   = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    perTabCounts[sheetName] = rows.length;
     for (const rawRow of rows) {
       // Normalise column names to UPPER TRIM so header casing doesn't matter
       const r = { _sheet: sheetName };
@@ -199,7 +212,7 @@ function parseWorkbook() {
 
   // Return only non-archive rows that passed validation (seenIds confirms they did)
   const validated = allRows.filter(r => r._ruleId && r._status !== 'ARCHIVE');
-  return { totalRead: allRows.length, archiveSkips, validated };
+  return { totalRead: allRows.length, archiveSkips, validated, perTabCounts, skippedSheets };
 }
 
 // ============================================================
@@ -365,8 +378,15 @@ async function main() {
 
   // Step 1: Parse and validate
   console.log('Step 1  Parsing ' + XLSX_PATH + ' ...');
-  const { totalRead, archiveSkips, validated } = parseWorkbook();
+  const { totalRead, archiveSkips, validated, perTabCounts, skippedSheets } = parseWorkbook();
   console.log('        ' + totalRead + ' rows read, ' + archiveSkips.length + ' archived (skipped before validation), ' + validated.length + ' passed validation');
+  if (skippedSheets.length) {
+    console.log('        Non-schema tabs skipped: ' + skippedSheets.join(', '));
+  }
+  console.log('        Per-tab row counts:');
+  for (const [tab, cnt] of Object.entries(perTabCounts)) {
+    console.log('          ' + tab + ': ' + cnt + ' rows');
+  }
 
   // Step 2: Select active
   console.log('Step 2  Selecting active rows...');
