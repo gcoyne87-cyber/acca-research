@@ -88,15 +88,17 @@
 [functions."refresh-prices-trigger"]
   schedule = "0 6-21 * * *"
 
-# YouTube racing feed — intent is ONE run daily at 07:00 IRISH time. Cron is
-# UTC and Ireland is UTC in winter / UTC+1 in summer, so it fires at both
-# candidate UTC hours: 06:00 UTC (07:00 Irish in summer) and 07:00 UTC (07:00
-# Irish in winter). youtube-feed-background.js runs only when the Irish hour
-# is 7 and once per slot (youtube-feed:ran), so the other fire exits without
-# spending YouTube quota.
+# YouTube racing feed — TWO runs daily, at 07:00 and 16:00 IRISH time. Cron
+# is UTC and Ireland is UTC in winter / UTC+1 in summer, so it fires at both
+# candidate UTC hours for each slot:
+#   07:00 Irish = 06:00 UTC (summer) / 07:00 UTC (winter)
+#   16:00 Irish = 15:00 UTC (summer) / 16:00 UTC (winter)
+# youtube-feed-background.js runs only when the Irish hour is 7 or 16 and
+# once per slot (youtube-feed:ran), so the other fire of each pair exits
+# without spending YouTube quota.
 # Same cron in youtube-feed-trigger.js's module.exports.config.
 [functions."youtube-feed-trigger"]
-  schedule = "0 6,7 * * *"
+  schedule = "0 6,7,15,16 * * *"
 
 [[headers]]
   for = "/"

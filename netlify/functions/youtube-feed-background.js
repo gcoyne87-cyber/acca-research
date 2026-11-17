@@ -8,18 +8,19 @@ const https = require('https');
 // external HTTP triggers at Netlify's edge. Being unscheduled, this file is
 // also the manual entry point (x-build-secret header, ?force=1).
 //
-// Irish slot: one run daily at 07:00. The trigger's cron is UTC and fires
-// at both candidate UTC hours (06:00 and 07:00); this job runs only when
-// the Irish hour is one of SLOT_HOURS and once per slot
-// (youtube-feed:ran), so the other fire exits before spending any quota.
+// Irish slots: two runs daily, at 07:00 and 16:00. The trigger's cron is UTC
+// and fires at both candidate UTC hours for each slot (06:00/07:00 and
+// 15:00/16:00); this job runs only when the Irish hour is one of SLOT_HOURS
+// and once per slot (youtube-feed:ran), so the other fire of each pair exits
+// before spending any quota.
 // ?force=1 bypasses the window and the once-per-slot mark.
 module.exports.config = { timeout: 300 };
 
 // ── SEARCHES ─────────────────────────────────────────────────────────────────
 // QUOTA RULE: each search.list call costs 100 units of the free 10,000-unit
 // daily allowance. 16 searches = 1,600 units per run, so the hard ceiling is
-// 16 searches at 6 runs/day (9,600 units). The schedule uses 1 run x 1,600
-// units = 1,600/day, leaving room for up to 5 forced manual runs. NEVER add
+// 16 searches at 6 runs/day (9,600 units). The schedule uses 2 runs x 1,600
+// units = 3,200/day, leaving room for ~4 forced manual runs. NEVER add
 // a search without removing one or reducing run frequency.
 // The views + duration lookup (videos.list) costs 1 unit per call of up to
 // 50 ids — at most 20 calls for a full 1,000-video feed, so it is negligible
@@ -175,7 +176,7 @@ const SEARCH_WINDOW_HOURS = 7 * 24;
 const DETAILS_BATCH = 50;
 const CHANNEL_IDS_KEY = 'youtube:channel-ids';
 const SHORT_MAX_SECONDS = 70;
-const SLOT_HOURS = [7];
+const SLOT_HOURS = [7, 16];
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
