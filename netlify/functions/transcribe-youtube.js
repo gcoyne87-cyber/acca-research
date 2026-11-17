@@ -190,6 +190,40 @@ async function fetchTranscript(videoId) {
   return { failure: 'error', detail: lastDetail };
 }
 
+// Retries for YouTube's bot-block refusal ONLY: up to 3 more tries after
+// waits of 2s, 4s and 8s. "no-captions", "unavailable" and "error" are final
+// on the first answer and are never retried. A retry is skipped when the
+// function would not have RETRY_RESERVE_MS left after the wait, so the
+// handler always answers before the platform's time limit kills it.
+const RETRY_WAITS_MS = [2000, 4000, 8000];
+const RETRY_RESERVE_MS = 4000;
+const FALLBACK_BUDGET_MS = 9000;   // used only if the platform does not report time left
+
+function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+
+// fetchTranscript plus the retries. The result always carries `attempts`
+// (1 = first try worked or failed for good) and, when a retry was skipped
+// for lack of time, `outOfTime: true`.
+async function fetchTranscriptWithRetries(videoId, remainingMs, fetchOnce, waits) {
+  const fetchFn = fetchOnce || fetchTranscript;
+  const waitList = waits || RETRY_WAITS_MS;
+  let attempts = 0;
+  let outOfTime = false;
+  let t;
+  for (;;) {
+    attempts++;
+    t = await fetchFn(videoId);
+    if (t.failure !== 'blocked') break;
+    const wait = waitList[attempts - 1];
+    if (wait === undefined) break;
+    if (remainingMs() < wait + RETRY_RESERVE_MS) { outOfTime = true; break; }
+    await sleep(wait);
+  }
+  t.attempts = attempts;
+  if (outOfTime) t.outOfTime = true;
+  return t;
+}
+
 const FAILURE_MESSAGES = {
   'no-captions': 'No captions available for this video',
   'blocked': 'YouTube refused the caption request from the server',
@@ -199,7 +233,12 @@ const FAILURE_MESSAGES = {
 
 function validId(id) { return /^[A-Za-z0-9_-]{11}$/.test(String(id || '')); }
 
-exports.handler = async function(event) {
+exports.handler = async function(event, context) {
+  const started = Date.now();
+  const remainingMs = function() {
+    if (context && typeof context.getRemainingTimeInMillis === 'function') return context.getRemainingTimeInMillis();
+    return FALLBACK_BUDGET_MS - (Date.now() - started);
+  };
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   const reply = function(code, obj) { return { statusCode: code, headers: headers, body: JSON.stringify(obj) }; };
 
@@ -224,10 +263,10 @@ exports.handler = async function(event) {
       return reply(200, { status: 'done', cached: true, videoId: videoId, chars: existing.text.length, title: existing.title || '' });
     }
 
-    const t = await fetchTranscript(videoId);
+    const t = await fetchTranscriptWithRetries(videoId, remainingMs);
     if (t.failure) {
-      console.error('[transcribe-youtube] ' + videoId + ' ' + t.failure + ': ' + t.detail);
-      return reply(t.failure === 'no-captions' || t.failure === 'unavailable' ? 404 : 502, { status: t.failure, error: FAILURE_MESSAGES[t.failure], detail: t.detail });
+      console.error('[transcribe-youtube] ' + videoId + ' ' + t.failure + ' after ' + t.attempts + ' attempt(s)' + (t.outOfTime ? ', out of time' : '') + ': ' + t.detail);
+      return reply(t.failure === 'no-captions' || t.failure === 'unavailable' ? 404 : 502, { status: t.failure, error: FAILURE_MESSAGES[t.failure], detail: t.detail, attempts: t.attempts, outOfTime: !!t.outOfTime });
     }
 
     await redisSet(TRANSCRIPT_PREFIX + videoId, { videoId: videoId, title: t.title, author: t.author, lang: t.lang, kind: t.kind, fetchedAt: new Date().toISOString(), text: t.text });
@@ -241,11 +280,11 @@ exports.handler = async function(event) {
       await redisSet(TRANSCRIBED_KEY, ids.slice(-TRANSCRIBED_CAP));
     }
 
-    console.log('[transcribe-youtube] stored ' + videoId + ' — ' + t.text.length + ' chars, ' + t.lang + ' ' + t.kind);
-    return reply(200, { status: 'done', cached: false, videoId: videoId, chars: t.text.length, title: t.title });
+    console.log('[transcribe-youtube] stored ' + videoId + ' — ' + t.text.length + ' chars, ' + t.lang + ' ' + t.kind + ', ' + t.attempts + ' attempt(s)');
+    return reply(200, { status: 'done', cached: false, videoId: videoId, chars: t.text.length, title: t.title, attempts: t.attempts });
   } catch(e) {
     return reply(500, { status: 'error', error: e.message });
   }
 };
 
-module.exports._test = { pickTrack: pickTrack, flattenCaptions: flattenCaptions, fetchTranscript: fetchTranscript, validId: validId };
+module.exports._test = { pickTrack: pickTrack, flattenCaptions: flattenCaptions, fetchTranscript: fetchTranscript, fetchTranscriptWithRetries: fetchTranscriptWithRetries, RETRY_WAITS_MS: RETRY_WAITS_MS, validId: validId };
