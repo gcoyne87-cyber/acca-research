@@ -8,9 +8,9 @@ const https = require('https');
 // external HTTP triggers at Netlify's edge. Being unscheduled, this file is
 // also the manual entry point (x-build-secret header, ?force=1).
 //
-// Irish slots: 06:00, 10:00, 14:00, 18:00, 22:00. The trigger's cron is UTC
-// and fires at both candidate UTC hours for each slot; this job runs only
-// when the Irish hour is one of SLOT_HOURS and once per slot
+// Irish slot: one run daily at 07:00. The trigger's cron is UTC and fires
+// at both candidate UTC hours (06:00 and 07:00); this job runs only when
+// the Irish hour is one of SLOT_HOURS and once per slot
 // (youtube-feed:ran), so the other fire exits before spending any quota.
 // ?force=1 bypasses the window and the once-per-slot mark.
 module.exports.config = { timeout: 300 };
@@ -18,9 +18,9 @@ module.exports.config = { timeout: 300 };
 // ── SEARCHES ─────────────────────────────────────────────────────────────────
 // QUOTA RULE: each search.list call costs 100 units of the free 10,000-unit
 // daily allowance. 16 searches = 1,600 units per run, so the hard ceiling is
-// 16 searches at 6 runs/day (9,600 units). The schedule uses 5 runs (8,000),
-// leaving room for exactly one manual forced run a day. NEVER add a search
-// without removing one or reducing run frequency.
+// 16 searches at 6 runs/day (9,600 units). The schedule uses 1 run x 1,600
+// units = 1,600/day, leaving room for up to 5 forced manual runs. NEVER add
+// a search without removing one or reducing run frequency.
 const SEARCHES = [
   'horse racing tips',
   'horse racing stable tour',
@@ -99,7 +99,7 @@ const RAN_KEY = 'youtube-feed:ran';
 const FEED_CAP = 300;
 const MAX_AGE_DAYS = 7;
 const SEARCH_WINDOW_HOURS = 48;
-const SLOT_HOURS = [6, 10, 14, 18, 22];
+const SLOT_HOURS = [7];
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
