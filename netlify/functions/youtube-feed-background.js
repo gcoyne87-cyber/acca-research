@@ -24,6 +24,11 @@ module.exports.config = { timeout: 300 };
 // The views + duration lookup (videos.list) costs 1 unit per call of up to
 // 50 ids — at most 6 calls for a full 300-video feed, so it is negligible
 // next to the searches and does not change the ceiling above.
+// Favourite channels: the uploads RSS feed is free (no API, no quota).
+// Resolving a channel NAME to its id costs 101 units (search.list 100 +
+// channels.list 1) but happens ONCE per name — the answer, including "no
+// match", is cached in youtube:channel-ids. Adding a favourite therefore
+// costs 101 units on the next run only.
 const SEARCHES = [
   'horse racing tips',
   'horse racing stable tour',
@@ -46,7 +51,18 @@ const SEARCHES = [
 // ── FAVOURITE CHANNELS ───────────────────────────────────────────────────────
 // Channel names (exact, case-insensitive) the user trusts — videos from these
 // channels ALWAYS pass the keep filter, discard list ignored.
-const FAVOURITE_CHANNELS = [];
+// Each one is also a SOURCE: its public uploads RSS feed is read every run,
+// so its latest uploads land in the feed even when no search finds them
+// (e.g. a short titled only with a horse's name). RSS videos skip the
+// keep/discard filter entirely.
+const FAVOURITE_CHANNELS = [
+  'Sporting Life',
+  'Racing TV',
+  'At The Races',
+  'Sky Sports Racing',
+  'ITV Racing',
+  'Irish Racing'
+];
 
 // ── FILTER WORD LISTS ────────────────────────────────────────────────────────
 // Matched as whole words/phrases (an optional trailing "s" is allowed) against
@@ -108,6 +124,8 @@ const FEED_CAP = 300;
 const MAX_AGE_DAYS = 7;
 const SEARCH_WINDOW_HOURS = 48;
 const DETAILS_BATCH = 50;
+const CHANNEL_IDS_KEY = 'youtube:channel-ids';
+const SHORT_MAX_SECONDS = 70;
 const SLOT_HOURS = [7];
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
@@ -173,6 +191,73 @@ function youtubeVideoDetails(ids) {
     + '&id=' + encodeURIComponent(ids.join(',')));
 }
 
+// Resolve a favourite channel NAME to a channel id: one search.list
+// type=channel (100 units) plus one channels.list for subscriber counts
+// (1 unit). The API exposes no "verified" flag, so the pick is: channels
+// whose title equals the name exactly (case-insensitive) first, and among
+// those — or among all five candidates when none match exactly — the one
+// with the most subscribers. Resolves { channelId, title, subscribers,
+// exact }, { none: true } when the search returns nothing, or { error }.
+async function resolveChannel(name) {
+  const s = await youtubeGet('/youtube/v3/search?part=snippet&type=channel&maxResults=5&q=' + encodeURIComponent(name));
+  if (s.error) return { error: s.error };
+  const candidates = s.items.map(function(it) {
+    const sn = (it && it.snippet) || {};
+    return { channelId: (it && it.id && it.id.channelId) || sn.channelId, title: decodeEntities(sn.channelTitle || sn.title), subscribers: 0 };
+  }).filter(function(c) { return c.channelId; });
+  if (!candidates.length) return { none: true };
+  const st = await youtubeGet('/youtube/v3/channels?part=statistics&maxResults=50&id=' + encodeURIComponent(candidates.map(function(c) { return c.channelId; }).join(',')));
+  if (!st.error) {
+    const subs = {};
+    st.items.forEach(function(it) { if (it && it.id) subs[it.id] = Number(it.statistics && it.statistics.subscriberCount) || 0; });
+    candidates.forEach(function(c) { c.subscribers = subs[c.channelId] || 0; });
+  }
+  const wanted = name.trim().toLowerCase();
+  const exact = candidates.filter(function(c) { return String(c.title || '').trim().toLowerCase() === wanted; });
+  const pool = exact.length ? exact : candidates;
+  const best = pool.slice().sort(function(a, b) { return b.subscribers - a.subscribers; })[0];
+  return { channelId: best.channelId, title: best.title, subscribers: best.subscribers, exact: exact.length > 0 };
+}
+
+// A channel's public uploads RSS feed — free, no API key, no quota. Resolves
+// { xml } or { error: message }. Never retries.
+function fetchChannelRss(channelId) {
+  return new Promise(function(resolve) {
+    const req = https.request({
+      hostname: 'www.youtube.com', path: '/feeds/videos.xml?channel_id=' + encodeURIComponent(channelId), method: 'GET',
+      headers: { Accept: 'application/atom+xml, application/xml' }, timeout: 15000
+    }, function(res) {
+      let d = ''; res.on('data', function(c) { d += c; });
+      res.on('end', function() { resolve(res.statusCode === 200 ? { xml: d } : { error: 'HTTP ' + res.statusCode }); });
+    });
+    req.on('error', function(e) { resolve({ error: e.message }); });
+    req.on('timeout', function() { req.destroy(new Error('request timed out')); });
+    req.end();
+  });
+}
+
+// The <entry> blocks of an uploads feed as { videoId, title, channelTitle,
+// publishedAt }. The feed's own shape is fixed, so a regex read is enough.
+function parseRssEntries(xml) {
+  const out = [];
+  const pick = function(re, s) { const m = re.exec(s); return m ? m[1].trim() : ''; };
+  const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+  let m;
+  while ((m = entryRe.exec(String(xml || '')))) {
+    const e = m[1];
+    const videoId = pick(/<yt:videoId>([^<]+)<\/yt:videoId>/, e);
+    const t = Date.parse(pick(/<published>([^<]+)<\/published>/, e));
+    if (!videoId || isNaN(t)) continue;
+    out.push({
+      videoId: videoId,
+      title: decodeEntities(pick(/<title>([\s\S]*?)<\/title>/, e)),
+      channelTitle: decodeEntities(pick(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>/, e)),
+      publishedAt: new Date(t).toISOString()
+    });
+  }
+  return out;
+}
+
 // One YouTube Data API GET. Never retries. Resolves { items } on success or
 // { error: { status, reason, message } } on any failure.
 function youtubeGet(pathNoKey) {
@@ -202,17 +287,23 @@ function youtubeGet(pathNoKey) {
 function decodeEntities(s) {
   return String(s || '')
     .replace(/&#(\d+);/g, function(m, n) { return String.fromCharCode(parseInt(n, 10)); })
+    .replace(/&#x([0-9a-f]+);/gi, function(m, n) { return String.fromCharCode(parseInt(n, 16)); })
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 }
 
-// The API's ISO 8601 duration ("PT4M5S", "PT1H2M3S") as "mm:ss" or "h:mm:ss".
-// null when it is missing, unparseable or zero (a live or upcoming stream).
-function formatDuration(iso) {
+// The API's ISO 8601 duration ("PT4M5S", "PT1H2M3S") in seconds. null when
+// it is missing, unparseable or zero (a live or upcoming stream).
+function durationSeconds(iso) {
   const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(iso || ''));
   if (!m) return null;
   const total = (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+  return total || null;
+}
+
+// Seconds as "mm:ss" or "h:mm:ss"; null stays null.
+function formatDuration(total) {
   if (!total) return null;
   const h = Math.floor(total / 3600);
   const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
@@ -313,6 +404,10 @@ exports.handler = async function(event) {
     detailCalls: 0,
     detailsFetched: 0,
     detailsError: null,
+    rssChannels: 0,
+    rssFetched: 0,
+    rssFailed: 0,
+    channelsUnresolved: [],
     stoppedEarly: null
   };
 
@@ -354,6 +449,68 @@ exports.handler = async function(event) {
     }
   }
 
+  // Favourite channels as a source. A problem here is logged and counted,
+  // never thrown: the searches' results must still be stored.
+  try {
+    const cached = await redisGet(CHANNEL_IDS_KEY);
+    const channelIds = (cached && typeof cached === 'object' && !Array.isArray(cached)) ? cached : {};
+    let mapChanged = false;
+
+    // 1. Resolve any name not yet in the cache — once ever per name. Skipped
+    // when the searches stopped early (the same quota/key problem applies).
+    for (let i = 0; i < FAVOURITE_CHANNELS.length && !meta.stoppedEarly; i++) {
+      const name = FAVOURITE_CHANNELS[i];
+      const key = name.trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(channelIds, key)) continue;
+      const r = await resolveChannel(name);
+      if (r.error) {
+        console.error('[youtube-feed] could not resolve channel "' + name + '": HTTP ' + r.error.status + ' ' + r.error.reason + ' — ' + r.error.message + ' (will retry next run)');
+        break;
+      }
+      if (r.none) {
+        console.error('[youtube-feed] no channel found for "' + name + '" — cached as no-match; delete it from ' + CHANNEL_IDS_KEY + ' to retry');
+        channelIds[key] = null;
+      } else {
+        console.log('[youtube-feed] resolved "' + name + '" -> ' + r.channelId + ' "' + r.title + '" (' + r.subscribers + ' subscribers' + (r.exact ? '' : ', NOT an exact title match') + ')');
+        channelIds[key] = { channelId: r.channelId, title: r.title, subscribers: r.subscribers, exact: r.exact, resolvedAt: new Date().toISOString() };
+      }
+      mapChanged = true;
+    }
+    if (mapChanged) await redisSet(CHANNEL_IDS_KEY, channelIds);
+
+    // 2. Read each resolved channel's uploads RSS (free) and add anything
+    // inside the same 48-hour window the searches use. No keep/discard.
+    const windowStart = Date.parse(publishedAfter);
+    for (let i = 0; i < FAVOURITE_CHANNELS.length; i++) {
+      const name = FAVOURITE_CHANNELS[i];
+      const entry = channelIds[name.trim().toLowerCase()];
+      if (!entry || !entry.channelId) { meta.channelsUnresolved.push(name); continue; }
+      const rss = await fetchChannelRss(entry.channelId);
+      if (rss.error) {
+        meta.rssFailed++;
+        console.error('[youtube-feed] RSS for "' + name + '" (' + entry.channelId + ') failed: ' + rss.error);
+        continue;
+      }
+      meta.rssChannels++;
+      parseRssEntries(rss.xml).forEach(function(e) {
+        if (Date.parse(e.publishedAt) < windowStart) return;
+        meta.rssFetched++;
+        if (found[e.videoId]) return;
+        found[e.videoId] = {
+          videoId: e.videoId,
+          title: e.title,
+          channelTitle: e.channelTitle || entry.title || name,
+          publishedAt: e.publishedAt,
+          thumbnail: 'https://i.ytimg.com/vi/' + e.videoId + '/mqdefault.jpg',
+          category: categorise(e.title)
+        };
+      });
+    }
+    if (meta.channelsUnresolved.length) console.error('[youtube-feed] favourite channels with no channel id: ' + meta.channelsUnresolved.join(', '));
+  } catch (e) {
+    console.error('[youtube-feed] favourite-channel RSS step failed: ' + e.message);
+  }
+
   try {
     const existing = await redisGet(FEED_KEY);
     const byId = {};
@@ -390,11 +547,22 @@ exports.handler = async function(event) {
           const it = details[v.videoId];
           const views = it && it.statistics && it.statistics.viewCount;
           v.viewCount = (views !== undefined && views !== null && !isNaN(Number(views))) ? Number(views) : null;
-          v.duration = it ? formatDuration(it.contentDetails && it.contentDetails.duration) : null;
+          const secs = it ? durationSeconds(it.contentDetails && it.contentDetails.duration) : null;
+          v.duration = formatDuration(secs);
+          v.isShort = secs !== null && secs <= SHORT_MAX_SECONDS;
           if (it) meta.detailsFetched++;
         });
       }
     }
+
+    // isShort for entries stored before the flag existed: derived from the
+    // stored "mm:ss" / "h:mm:ss". Entries still waiting on the lookup
+    // (duration undefined) are left alone and get it when the lookup fills.
+    feed.forEach(function(v) {
+      if (v.isShort !== undefined || v.duration === undefined) return;
+      const secs = typeof v.duration === 'string' ? v.duration.split(':').reduce(function(t, p) { return t * 60 + (+p || 0); }, 0) : 0;
+      v.isShort = secs > 0 && secs <= SHORT_MAX_SECONDS;
+    });
 
     await redisSet(FEED_KEY, feed);
     await redisSet(META_KEY, meta);
@@ -407,4 +575,4 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+module.exports._test = { durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
