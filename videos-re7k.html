@@ -68,51 +68,55 @@
   .shelf-head .mark { width: 16px; height: 22px; border-radius: 5px; background: var(--gold); position: relative; }
   .shelf-head .mark::after { content: ""; position: absolute; left: 6px; top: 7px; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent #fff; }
   .shelf-row { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 6px; scrollbar-width: thin; }
-  .short { position: relative; flex: 0 0 110px; width: 110px; min-width: 0; scroll-snap-align: start; }
+  .short { position: relative; flex: 0 0 150px; width: 150px; min-width: 0; scroll-snap-align: start; }
   .short .slink { color: inherit; text-decoration: none; display: block; }
   .short .sthumb { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: var(--thumb); }
   .short .sthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .short .stitle { margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .short .stitle { margin-top: 7px; font-size: 14px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .short .sviews { margin-top: 2px; font-size: 12px; color: var(--grey); }
   .short .done-tag { left: 5px; top: 5px; font-size: 10px; padding: 1px 5px; letter-spacing: 0; }
   .short.transcribed .slink { opacity: .62; }
   /* Transcribe icon: bottom-right corner of the 9:16 thumbnail. It sits beside
      the link, not inside it; margin-top % is measured against the card WIDTH,
      so 177.78% is the thumbnail's height. */
-  .short .tbtn { position: absolute; right: 5px; top: 0; margin-top: calc(177.78% - 31px); z-index: 2; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .short .tbtn { position: absolute; right: 6px; top: 0; margin-top: calc(177.78% - 38px); z-index: 2; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 13px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .short .tbtn:hover { background: rgba(11, 22, 40, .95); }
   .short .tbtn.done { background: var(--green); }
-  .short .tbtn.star { font-size: 15px; }
+  .short .tbtn.star { font-size: 18px; }
   .short .tbtn.star.on { color: var(--gold); }
   .short .tbtn .spin { margin: 0; }
   .short .tbtn:disabled { cursor: default; }
   .tnote { margin-top: 4px; font-size: 12px; font-weight: 600; color: #a3352b; }
 
   /* ── Main grid: borderless YouTube-style cards ── */
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px 16px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 14px; }
   .card { min-width: 0; cursor: pointer; }
   .thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--thumb); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(11, 22, 40, .86); color: #fff; font-size: 12px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
   .done-tag { position: absolute; left: 8px; top: 8px; background: var(--green); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
-  /* Hide ✕: top-right of every grid card and shelf card */
-  .hide { position: absolute; top: 6px; right: 6px; z-index: 2; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .74); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  /* Hide ✕: top-LEFT of a grid thumbnail (the star has the top-right), and
+     top-right of a shelf card (its star is in the bottom corner). */
+  .hide { position: absolute; top: 6px; left: 6px; z-index: 2; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .74); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .hide:hover { background: rgba(11, 22, 40, .95); }
-  .short .hide { top: 5px; right: 5px; width: 26px; height: 26px; font-size: 12px; }
-  .info { display: flex; align-items: flex-start; gap: 10px; padding: 10px 2px 0; }
+  .short .hide { top: 6px; left: auto; right: 6px; font-size: 12px; }
+  /* Star on the grid thumbnail, top-right: ☆ white = not queued, ★ gold =
+     queued for the laptop to transcribe. Same dark backing as the shelf star. */
+  .thumb .star-btn { position: absolute; top: 6px; right: 6px; z-index: 2; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 19px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .thumb .star-btn:hover { background: rgba(11, 22, 40, .95); }
+  .thumb .star-btn.on { color: var(--gold); }
+  /* A transcribed grid card has no star, so its tag takes the top-right. */
+  .thumb .done-tag { left: auto; right: 8px; top: 10px; }
+  .info { display: flex; align-items: flex-start; gap: 10px; padding: 7px 2px 0; }
   .text { flex: 1 1 auto; min-width: 0; }
-  .title { font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .meta { margin-top: 4px; color: var(--grey); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+  .title { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .meta { margin-top: 2px; color: var(--grey); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
   .tag { display: inline-block; vertical-align: 1px; margin-right: 6px; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; line-height: 1.4; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
   .tag.tips { background: #e7f5ef; color: #15724d; }
   .tag.stable-tour { background: #fdf4df; color: #8a6a14; }
   .tag.interview { background: #ebf0fa; color: #33508e; }
   .btn { flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 700; color: var(--green); background: transparent; border: 1.5px solid var(--green); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
   .btn:disabled { opacity: .75; cursor: default; }
-  /* Star: ☆ = not queued, gold ★ = queued for the laptop to transcribe */
-  .star-btn { flex: 0 0 auto; width: 40px; height: 40px; margin: -6px -6px 0 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--grey); font: inherit; font-size: 24px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .star-btn:hover { background: rgba(11, 22, 40, .06); }
-  .star-btn.on { color: var(--gold); }
   /* Transcribed cards go grey, but their Transcript button stays full strength. */
   .card.transcribed .thumb, .card.transcribed .text { opacity: .62; }
   .card.transcribed .btn { background: var(--green); color: #fff; }
@@ -155,6 +159,13 @@
   .install-text { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.35; }
   .install-go { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 700; color: var(--navy); background: var(--gold); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
   .install-x { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; }
+  /* Manual install steps, shown when the browser offers no install dialog */
+  .install-help { position: fixed; inset: 0; z-index: 65; background: rgba(5, 10, 20, .7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .install-help[hidden] { display: none; }
+  .install-help-box { width: min(100%, 360px); background: var(--card); color: var(--navy); border-radius: 14px; padding: 20px 18px 16px; text-align: center; }
+  .install-help-box h2 { margin: 0 0 8px; font-size: 17px; font-weight: 800; }
+  .install-help-box p { margin: 0 0 16px; font-size: 15px; line-height: 1.5; }
+  .install-help-box .btn { font-size: 14px; padding: 8px 22px; background: var(--green); color: #fff; }
 
   .state { text-align: center; color: var(--grey); padding: 64px 16px; font-size: 15px; }
   .state button { display: block; margin: 14px auto 0; }
@@ -162,19 +173,19 @@
   a:focus-visible, button:focus-visible, .paste-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
   @media (min-width: 600px) {
-    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 18px; }
-    .short { flex-basis: 136px; width: 136px; }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+    .short { flex-basis: 170px; width: 170px; }
   }
   @media (min-width: 900px) {
     body { font-size: 16px; }
     .top { padding-top: 24px; }
     .sub h1 { font-size: 32px; }
     .paste { max-width: 560px; }
-    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 20px; }
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; }
     .title { font-size: 16px; }
     .shelf-row { gap: 14px; }
-    .short { flex-basis: 160px; width: 160px; }
-    .short .stitle { font-size: 14px; }
+    .short { flex-basis: 200px; width: 200px; }
+    .short .stitle { font-size: 15px; }
   }
 </style>
 </head>
@@ -249,6 +260,14 @@
   <div class="install-text" id="installText"></div>
   <button class="install-go" id="installGo" type="button" hidden>Install</button>
   <button class="install-x" id="installClose" type="button" aria-label="Dismiss">✕</button>
+</div>
+
+<div class="install-help" id="installHelp" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle" hidden>
+  <div class="install-help-box">
+    <h2 id="installHelpTitle">Add to your home screen</h2>
+    <p>Tap the ⋮ menu top-right, then ‘Add to Home screen’ or ‘Install app’</p>
+    <button class="btn" id="installHelpClose" type="button">Got it</button>
+  </div>
 </div>
 
 <script>
@@ -698,21 +717,23 @@
     text.appendChild(meta);
     info.appendChild(text);
 
-    // Not transcribed: a star (☆ / gold ★) that queues or un-queues the
-    // video. Transcribed: a "Transcript" button that opens the panel. Neither
-    // tap opens the player (the card's click handler ignores buttons).
+    // Not transcribed: a star (☆ / gold ★) on the thumbnail's top-right
+    // corner that queues or un-queues the video. Transcribed: a "Transcript"
+    // button in the text row that opens the panel. Neither tap opens the
+    // player (the card's click handler ignores buttons).
     var btn;
     if (isDone) {
       btn = el('button', 'btn', 'Transcript');
       btn.addEventListener('click', function () { openTranscript(v); });
+      info.appendChild(btn);
     } else {
       btn = el('button', 'star-btn');
       paintStar(btn, v);
       btn.addEventListener('click', function () { toggleStar(v, btn, card, buildCard, text); });
+      thumb.appendChild(btn);
     }
     btn.type = 'button';
     btn.setAttribute('data-video-id', v.videoId);
-    info.appendChild(btn);
     card.appendChild(info);
 
     card.addEventListener('click', function (e) {
@@ -859,60 +880,73 @@
   });
 
   // ── Add to home screen ──
-  // Android/Chrome: the browser fires beforeinstallprompt when the page can
-  // be installed; a banner then offers an Install button that opens the
-  // browser's own install dialog. iPhone/iPad Safari has no such event, so
-  // it gets a one-time hint instead. Once installed or dismissed (Android),
-  // or once shown (iPhone), the banner never appears again — remembered in
-  // localStorage, which may be unavailable, hence the try/catch.
+  // The banner shows 2 seconds after load on every first visit, on every
+  // platform, unless the page is already running installed. It does NOT wait
+  // for the browser's beforeinstallprompt event, which Chrome may fire late
+  // or not at all.
+  //   iPhone/iPad: the banner is the instruction (Share, Add to Home Screen).
+  //   Elsewhere:   an Install button. If the browser has offered its install
+  //                dialog (beforeinstallprompt captured) the button opens it;
+  //                if not, it shows the manual steps instead.
+  // Installing or dismissing is remembered in localStorage and the banner
+  // never appears again. localStorage may be unavailable, hence the try/catch.
   var INSTALL_FLAG = 'reVideosInstallBanner';
+  var INSTALL_DELAY_MS = 2000;
   var install = document.getElementById('install');
   var installText = document.getElementById('installText');
   var installGo = document.getElementById('installGo');
   var installClose = document.getElementById('installClose');
+  var installHelp = document.getElementById('installHelp');
+  var installHelpClose = document.getElementById('installHelpClose');
   var installEvent = null;
 
   function installSeen() { try { return localStorage.getItem(INSTALL_FLAG) === 'done'; } catch (e) { return false; } }
   function installDone() {
     try { localStorage.setItem(INSTALL_FLAG, 'done'); } catch (e) {}
     install.hidden = true;
+    installHelp.hidden = true;
     installEvent = null;
   }
   function isStandalone() {
     return navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   }
-  function isIosSafari() {
+  function isIos() {
     var ua = navigator.userAgent || '';
-    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-    return ios && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
+    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   }
 
+  // Captured whenever the browser offers it, banner or no banner, so the
+  // Install button can use it if it has arrived by the time it is tapped.
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();   // keep the browser's own mini-bar away; ours has the button
-    if (installSeen() || isStandalone()) return;
     installEvent = e;
-    installText.textContent = 'Add Racing Edge Videos to your home screen';
-    installGo.hidden = false;
-    install.hidden = false;
   });
   window.addEventListener('appinstalled', installDone);
 
   installGo.addEventListener('click', function () {
     var ev = installEvent;
-    if (!ev) { installDone(); return; }
     install.hidden = true;
+    if (!ev) { installHelp.hidden = false; installHelpClose.focus(); return; }   // no native dialog: manual steps
     ev.prompt();
     // Accepted or dismissed in the browser's dialog: either way, never again.
     Promise.resolve(ev.userChoice).then(installDone, installDone);
   });
   installClose.addEventListener('click', installDone);
+  installHelpClose.addEventListener('click', installDone);
+  installHelp.addEventListener('click', function (e) { if (e.target === installHelp) installDone(); });
 
-  if (isIosSafari() && !isStandalone() && !installSeen()) {
-    installText.textContent = 'Tap Share, then ‘Add to Home Screen’';
-    installGo.hidden = true;
-    install.hidden = false;
-    // Shown once: flagged now, so it does not come back on the next visit.
-    try { localStorage.setItem(INSTALL_FLAG, 'done'); } catch (e) {}
+  if (!isStandalone() && !installSeen()) {
+    setTimeout(function () {
+      if (isStandalone() || installSeen()) return;
+      if (isIos()) {
+        installText.textContent = 'Tap Share, then ‘Add to Home Screen’';
+        installGo.hidden = true;
+      } else {
+        installText.textContent = 'Add Racing Edge Videos to your home screen';
+        installGo.hidden = false;
+      }
+      install.hidden = false;
+    }, INSTALL_DELAY_MS);
   }
 
   load();

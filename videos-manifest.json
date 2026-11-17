@@ -3,7 +3,7 @@
   "short_name": "RE Videos",
   "id": "/videos-re7k.html",
   "start_url": "/videos-re7k.html",
-  "scope": "/videos-re7k.html",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7fb",
   "theme_color": "#0b1628",
