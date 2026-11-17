@@ -1,0 +1,14 @@
+{
+  "name": "Racing Edge Videos",
+  "short_name": "RE Videos",
+  "id": "/videos-re7k.html",
+  "start_url": "/videos-re7k.html",
+  "scope": "/videos-re7k.html",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0b1628",
+  "icons": [
+    { "src": "/videos-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/videos-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
