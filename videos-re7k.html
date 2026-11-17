@@ -33,14 +33,13 @@
   }
   .wrap { max-width: 1280px; margin: 0 auto; }
 
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 0 6px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0 10px; }
   .brand { display: flex; align-items: center; gap: 10px; }
-  .wordmark { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
+  /* The wordmark is the page title now: there is no separate heading line. */
+  .wordmark { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
   .wordmark span { color: var(--gold); }
-  .pill-research { background: var(--navy); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .1em; padding: 4px 9px; border-radius: 999px; }
+  .pill-research { background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .1em; padding: 5px 11px; border-radius: 999px; }
 
-  .sub { padding: 14px 0 12px; }
-  .sub h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 
   /* ── Paste-any-link row ── */
   .paste { display: flex; gap: 8px; align-items: stretch; }
@@ -57,7 +56,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 
-  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 18px; scrollbar-width: none; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 12px; scrollbar-width: none; }
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 600; color: var(--navy); background: var(--card); border: 1px solid #cfd5de; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
   .chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
@@ -74,15 +73,14 @@
   .short .sthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .short .stitle { margin-top: 7px; font-size: 14px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .short .sviews { margin-top: 2px; font-size: 12px; color: var(--grey); }
-  .short .done-tag { left: 5px; top: 5px; font-size: 10px; padding: 1px 5px; letter-spacing: 0; }
+  .short .done-tag { left: 6px; bottom: 6px; font-size: 11px; padding: 1px 6px; letter-spacing: 0; }
   .short.transcribed .slink { opacity: .62; }
-  /* Transcribe icon: bottom-right corner of the 9:16 thumbnail. It sits beside
-     the link, not inside it; margin-top % is measured against the card WIDTH,
-     so 177.78% is the thumbnail's height. */
-  .short .tbtn { position: absolute; right: 6px; top: 0; margin-top: calc(177.78% - 38px); z-index: 2; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 13px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  /* Shelf star (or green "T" once transcribed): top-right corner of the
+     thumbnail, matching the grid cards. It sits beside the link, not inside it. */
+  .short .tbtn { position: absolute; right: 6px; top: 6px; z-index: 2; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 13px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .short .tbtn:hover { background: rgba(11, 22, 40, .95); }
   .short .tbtn.done { background: var(--green); }
-  .short .tbtn.star { font-size: 18px; }
+  .short .tbtn.star { font-size: 21px; }
   .short .tbtn.star.on { color: var(--gold); }
   .short .tbtn .spin { margin: 0; }
   .short .tbtn:disabled { cursor: default; }
@@ -94,19 +92,18 @@
   .thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--thumb); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(11, 22, 40, .86); color: #fff; font-size: 12px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
-  .done-tag { position: absolute; left: 8px; top: 8px; background: var(--green); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
-  /* Hide ✕: top-LEFT of a grid thumbnail (the star has the top-right), and
-     top-right of a shelf card (its star is in the bottom corner). */
-  .hide { position: absolute; top: 6px; left: 6px; z-index: 2; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .74); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  /* TRANSCRIBED tag: bottom-left of the thumbnail on both card types, clear
+     of the ✕ (top-left), the star (top-right) and the duration (bottom-right). */
+  .done-tag { position: absolute; left: 8px; bottom: 8px; background: var(--green); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
+  /* Hide ✕: top-LEFT of the thumbnail on grid cards and shelf cards alike
+     (the star has the top-right). */
+  .hide { position: absolute; top: 6px; left: 6px; z-index: 2; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .74); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .hide:hover { background: rgba(11, 22, 40, .95); }
-  .short .hide { top: 6px; left: auto; right: 6px; font-size: 12px; }
   /* Star on the grid thumbnail, top-right: ☆ white = not queued, ★ gold =
      queued for the laptop to transcribe. Same dark backing as the shelf star. */
-  .thumb .star-btn { position: absolute; top: 6px; right: 6px; z-index: 2; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 19px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .thumb .star-btn { position: absolute; top: 6px; right: 6px; z-index: 2; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 22px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .thumb .star-btn:hover { background: rgba(11, 22, 40, .95); }
   .thumb .star-btn.on { color: var(--gold); }
-  /* A transcribed grid card has no star, so its tag takes the top-right. */
-  .thumb .done-tag { left: auto; right: 8px; top: 10px; }
   .info { display: flex; align-items: flex-start; gap: 10px; padding: 7px 2px 0; }
   .text { flex: 1 1 auto; min-width: 0; }
   .title { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -178,8 +175,9 @@
   }
   @media (min-width: 900px) {
     body { font-size: 16px; }
-    .top { padding-top: 24px; }
-    .sub h1 { font-size: 32px; }
+    .top { padding-top: 18px; }
+    .wordmark { font-size: 36px; }
+    .pill-research { font-size: 13px; }
     .paste { max-width: 560px; }
     .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; }
     .title { font-size: 16px; }
@@ -193,14 +191,10 @@
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <div class="wordmark">Racing<span>Edge</span></div>
+      <h1 class="wordmark">Racing<span>Edge</span></h1>
       <div class="pill-research">RESEARCH</div>
     </div>
   </header>
-
-  <section class="sub">
-    <h1>Video Feed</h1>
-  </section>
 
   <form class="paste" id="pasteForm" novalidate>
     <input class="paste-input" id="pasteInput" type="url" inputmode="url" placeholder="Paste any YouTube link" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Paste any YouTube link to transcribe">
@@ -771,7 +765,7 @@
     wrap.appendChild(a);
     wrap.appendChild(hideButton(v, wrap));
 
-    // Bottom corner of the thumbnail, beside the link so a tap never opens
+    // Top-right corner of the thumbnail, beside the link so a tap never opens
     // the player. Not transcribed: the star (☆ / gold ★). Transcribed: a
     // green "T" that opens the transcript panel.
     var tb;
