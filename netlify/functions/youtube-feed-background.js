@@ -21,6 +21,9 @@ module.exports.config = { timeout: 300 };
 // 16 searches at 6 runs/day (9,600 units). The schedule uses 1 run x 1,600
 // units = 1,600/day, leaving room for up to 5 forced manual runs. NEVER add
 // a search without removing one or reducing run frequency.
+// The views + duration lookup (videos.list) costs 1 unit per call of up to
+// 50 ids — at most 6 calls for a full 300-video feed, so it is negligible
+// next to the searches and does not change the ceiling above.
 const SEARCHES = [
   'horse racing tips',
   'horse racing stable tour',
@@ -39,6 +42,11 @@ const SEARCHES = [
   'dan skelton OR paul nicholls OR henry de bromhead',
   'ITV racing OR racing tv OR sky sports racing'
 ];
+
+// ── FAVOURITE CHANNELS ───────────────────────────────────────────────────────
+// Channel names (exact, case-insensitive) the user trusts — videos from these
+// channels ALWAYS pass the keep filter, discard list ignored.
+const FAVOURITE_CHANNELS = [];
 
 // ── FILTER WORD LISTS ────────────────────────────────────────────────────────
 // Matched as whole words/phrases (an optional trailing "s" is allowed) against
@@ -99,6 +107,7 @@ const RAN_KEY = 'youtube-feed:ran';
 const FEED_CAP = 300;
 const MAX_AGE_DAYS = 7;
 const SEARCH_WINDOW_HOURS = 48;
+const DETAILS_BATCH = 50;
 const SLOT_HOURS = [7];
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
@@ -151,13 +160,23 @@ function irishNow(d) {
 
 // ── YOUTUBE ──────────────────────────────────────────────────────────────────
 
-// One search.list call. Never retries. Resolves { items } on success or
-// { error: { status, reason, message } } on any failure.
+// One search.list call (100 quota units).
 function youtubeSearch(query, publishedAfter) {
-  const path = '/youtube/v3/search?part=snippet&type=video&order=date&maxResults=25'
+  return youtubeGet('/youtube/v3/search?part=snippet&type=video&order=date&maxResults=25'
     + '&publishedAfter=' + encodeURIComponent(publishedAfter)
-    + '&q=' + encodeURIComponent(query)
-    + '&key=' + encodeURIComponent(YOUTUBE_KEY);
+    + '&q=' + encodeURIComponent(query));
+}
+
+// One videos.list call (1 quota unit) for up to DETAILS_BATCH video ids.
+function youtubeVideoDetails(ids) {
+  return youtubeGet('/youtube/v3/videos?part=statistics,contentDetails&maxResults=50'
+    + '&id=' + encodeURIComponent(ids.join(',')));
+}
+
+// One YouTube Data API GET. Never retries. Resolves { items } on success or
+// { error: { status, reason, message } } on any failure.
+function youtubeGet(pathNoKey) {
+  const path = pathNoKey + '&key=' + encodeURIComponent(YOUTUBE_KEY);
   return new Promise(function(resolve) {
     const req = https.request({
       hostname: 'www.googleapis.com', path: path, method: 'GET',
@@ -188,6 +207,19 @@ function decodeEntities(s) {
     .replace(/&amp;/g, '&');
 }
 
+// The API's ISO 8601 duration ("PT4M5S", "PT1H2M3S") as "mm:ss" or "h:mm:ss".
+// null when it is missing, unparseable or zero (a live or upcoming stream).
+function formatDuration(iso) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(iso || ''));
+  if (!m) return null;
+  const total = (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+  if (!total) return null;
+  const h = Math.floor(total / 3600);
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const ss = String(total % 60).padStart(2, '0');
+  return h ? h + ':' + mm + ':' + ss : mm + ':' + ss;
+}
+
 // ── FILTER ───────────────────────────────────────────────────────────────────
 
 function normalise(s) {
@@ -201,6 +233,7 @@ const STRONG_NORM = [].concat(KEEP_NAMES, KEEP_TERMS).map(normalise);
 const WEAK_NORM = KEEP_COURSES.map(normalise);
 const CONTEXT_NORM = RACING_CONTEXT.map(normalise);
 const DISCARD_NORM = DISCARD_WORDS.map(normalise);
+const FAVOURITE_LOWER = FAVOURITE_CHANNELS.map(function(c) { return String(c).trim().toLowerCase(); });
 
 function hitsAny(paddedText, terms) {
   for (let i = 0; i < terms.length; i++) {
@@ -210,6 +243,7 @@ function hitsAny(paddedText, terms) {
 }
 
 function isRacingVideo(title, channelTitle, description) {
+  if (FAVOURITE_LOWER.indexOf(String(channelTitle || '').trim().toLowerCase()) !== -1) return true;
   const text = ' ' + normalise(title + ' ' + channelTitle + ' ' + description) + ' ';
   if (hitsAny(text, DISCARD_NORM)) return false;
   if (hitsAny(text, STRONG_NORM)) return true;
@@ -276,6 +310,9 @@ exports.handler = async function(event) {
     discarded: 0,
     newVideos: 0,
     feedSize: 0,
+    detailCalls: 0,
+    detailsFetched: 0,
+    detailsError: null,
     stoppedEarly: null
   };
 
@@ -330,6 +367,35 @@ exports.handler = async function(event) {
       .slice(0, FEED_CAP);
     meta.feedSize = feed.length;
 
+    // Views + duration for every entry that has never had them (duration
+    // undefined): this run's new videos, plus any an earlier failed lookup
+    // left bare. Entries that already carry values keep them untouched. A
+    // video the API no longer returns gets nulls so it is never asked for
+    // again. Skipped when the searches stopped early — the same quota or key
+    // problem would fail this call too, and the next run picks them up.
+    if (!meta.stoppedEarly) {
+      const need = feed.filter(function(v) { return v.duration === undefined; });
+      for (let i = 0; i < need.length; i += DETAILS_BATCH) {
+        const chunk = need.slice(i, i + DETAILS_BATCH);
+        const r = await youtubeVideoDetails(chunk.map(function(v) { return v.videoId; }));
+        meta.detailCalls++;
+        if (r.error) {
+          meta.detailsError = r.error.reason || ('HTTP ' + r.error.status);
+          console.error('[youtube-feed] videos.list failed: HTTP ' + r.error.status + ' ' + r.error.reason + ' — ' + r.error.message);
+          break;
+        }
+        const details = {};
+        r.items.forEach(function(it) { if (it && it.id) details[it.id] = it; });
+        chunk.forEach(function(v) {
+          const it = details[v.videoId];
+          const views = it && it.statistics && it.statistics.viewCount;
+          v.viewCount = (views !== undefined && views !== null && !isNaN(Number(views))) ? Number(views) : null;
+          v.duration = it ? formatDuration(it.contentDetails && it.contentDetails.duration) : null;
+          if (it) meta.detailsFetched++;
+        });
+      }
+    }
+
     await redisSet(FEED_KEY, feed);
     await redisSet(META_KEY, meta);
   } catch (e) {
@@ -341,4 +407,4 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+module.exports._test = { formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };

@@ -30,11 +30,12 @@ function redisGet(key) {
 exports.handler = async function() {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   try {
-    const [feed, meta] = await Promise.all([redisGet('youtube:feed'), redisGet('youtube:feed:meta')]);
+    const [feed, meta, transcribed] = await Promise.all([redisGet('youtube:feed'), redisGet('youtube:feed:meta'), redisGet('youtube:transcribed')]);
+    const transcribedIds = Array.isArray(transcribed) ? transcribed : [];
     if (!Array.isArray(feed)) {
-      return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading', videos: [], meta: meta || null }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading', videos: [], meta: meta || null, transcribedIds }) };
     }
-    return { statusCode: 200, headers, body: JSON.stringify({ status: 'done', count: feed.length, videos: feed, meta: meta || null }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ status: 'done', count: feed.length, videos: feed, meta: meta || null, transcribedIds }) };
   } catch(e) {
     return { statusCode: 500, headers, body: JSON.stringify({ status: 'error', error: e.message }) };
   }
