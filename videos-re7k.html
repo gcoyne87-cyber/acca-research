@@ -55,7 +55,8 @@
   .shelf-head .mark { width: 16px; height: 22px; border-radius: 5px; background: var(--gold); position: relative; }
   .shelf-head .mark::after { content: ""; position: absolute; left: 6px; top: 7px; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent #fff; }
   .shelf-row { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 6px; scrollbar-width: thin; }
-  .short { flex: 0 0 110px; width: 110px; min-width: 0; scroll-snap-align: start; color: inherit; text-decoration: none; display: block; }
+  .short { position: relative; flex: 0 0 110px; width: 110px; min-width: 0; scroll-snap-align: start; }
+  .short .slink { color: inherit; text-decoration: none; display: block; }
   .short .sthumb { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: var(--thumb); }
   .short .sthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .short .stitle { margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -70,6 +71,10 @@
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(11, 22, 40, .86); color: #fff; font-size: 12px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
   .done-tag { position: absolute; left: 8px; top: 8px; background: var(--green); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
+  /* Hide ✕: top-right of every grid card and shelf card */
+  .hide { position: absolute; top: 6px; right: 6px; z-index: 2; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .74); color: #fff; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .hide:hover { background: rgba(11, 22, 40, .95); }
+  .short .hide { top: 5px; right: 5px; width: 26px; height: 26px; font-size: 12px; }
   .info { display: flex; align-items: flex-start; gap: 10px; padding: 10px 2px 0; }
   .text { flex: 1 1 auto; min-width: 0; }
   .title { font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -172,10 +177,12 @@
   'use strict';
 
   var FEED_URL = '/.netlify/functions/get-youtube-feed';
+  var HIDE_URL = '/.netlify/functions/hide-youtube-video';
   var TAG_LABELS = { 'tips': 'TIPS', 'stable-tour': 'STABLE TOUR', 'interview': 'INTERVIEW' };
 
   var videos = [];
   var transcribed = {};
+  var hidden = {};
   var activeFilter = 'all';
   var query = '';
 
@@ -281,12 +288,72 @@
   // keeps its normal "open YouTube in a new tab" behaviour.
   function isPlainClick(e) { return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey; }
 
-  function thumbImg(v) {
-    if (typeof v.thumbnail !== 'string' || !/^https:\/\//.test(v.thumbnail)) return null;
+  // sharp = true (grid cards): try the 1280px maxresdefault image first and
+  // fall back to the stored thumbnail. YouTube answers a missing maxres with
+  // a tiny 120px grey placeholder that still "loads", so the fallback is
+  // triggered by the image's size as well as by a load error.
+  function thumbImg(v, sharp) {
+    var stored = (typeof v.thumbnail === 'string' && /^https:\/\//.test(v.thumbnail)) ? v.thumbnail : null;
+    if (!stored && !sharp) return null;
     var img = el('img');
-    img.src = v.thumbnail; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
+    if (sharp) {
+      var fellBack = false;
+      var fallback = function () {
+        if (fellBack) { img.remove(); return; }
+        fellBack = true;
+        if (stored) img.src = stored; else img.remove();
+      };
+      img.addEventListener('error', fallback);
+      img.addEventListener('load', function () { if (!fellBack && img.naturalWidth <= 120) fallback(); });
+      img.src = 'https://i.ytimg.com/vi/' + encodeURIComponent(v.videoId) + '/maxresdefault.jpg';
+    } else {
+      img.src = stored;
+    }
     return img;
+  }
+
+  // Hide ✕: removes the card at once and tells the server, which keeps the
+  // id in youtube:hidden so the video never comes back. If the save fails
+  // the video is put back, so the page never shows something as hidden
+  // that will reappear on the next load.
+  function hideVideo(v, node) {
+    hidden[v.videoId] = true;
+    videos = videos.filter(function (x) { return x.videoId !== v.videoId; });
+    node.remove();
+    setCount();
+    if (!shelfRow.children.length) shelf.hidden = true;
+    if (!shelfRow.children.length && !grid.children.length) render();
+
+    fetch(HIDE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoId: v.videoId }), keepalive: true })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); })
+      .catch(function () {
+        delete hidden[v.videoId];
+        videos.push(v);
+        videos.sort(byNewest);
+        render();
+        countLine.textContent = 'Couldn’t hide that video — it has been put back. Try again.';
+      });
+  }
+
+  function hideButton(v, node) {
+    var b = el('button', 'hide', '✕');
+    b.type = 'button';
+    b.title = 'Hide this video';
+    b.setAttribute('aria-label', 'Hide: ' + (v.title || 'video'));
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      hideVideo(v, node);
+    });
+    return b;
+  }
+
+  function byNewest(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); }
+
+  function setCount() {
+    countLine.textContent = plural(videos.length, 'racing video') + ' from the last 7 days · refreshes daily at 7am';
   }
 
   function buildCard(v) {
@@ -294,10 +361,11 @@
     var card = el('article', 'card' + (isDone ? ' transcribed' : ''));
 
     var thumb = el('div', 'thumb');
-    var img = thumbImg(v);
+    var img = thumbImg(v, true);
     if (img) thumb.appendChild(img);
     if (v.duration) thumb.appendChild(el('span', 'dur', v.duration));
     if (isDone) thumb.appendChild(el('span', 'done-tag', 'TRANSCRIBED ✓'));
+    thumb.appendChild(hideButton(v, card));
     card.appendChild(thumb);
 
     var info = el('div', 'info');
@@ -338,10 +406,12 @@
   }
 
   // A Shorts shelf card: one link (so it is keyboard-reachable and can be
-  // opened in a new tab), but a plain tap plays it in the overlay.
+  // opened in a new tab), but a plain tap plays it in the overlay. The hide
+  // ✕ sits beside the link, not inside it.
   function buildShort(v) {
     var isDone = !!transcribed[v.videoId];
-    var a = el('a', 'short' + (isDone ? ' transcribed' : ''));
+    var wrap = el('div', 'short' + (isDone ? ' transcribed' : ''));
+    var a = el('a', 'slink');
     a.href = watchUrl(v.videoId); a.target = '_blank'; a.rel = 'noopener';
     a.addEventListener('click', function (e) {
       if (!isPlainClick(e)) return;
@@ -358,7 +428,9 @@
     a.appendChild(el('div', 'stitle', v.title || 'Untitled video'));
     var views = formatViews(v.viewCount);
     if (views) a.appendChild(el('div', 'sviews', views));
-    return a;
+    wrap.appendChild(a);
+    wrap.appendChild(hideButton(v, wrap));
+    return wrap;
   }
 
   function matches(v) {
@@ -417,13 +489,16 @@
     fetch(FEED_URL, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (data) {
+        // Hidden ids never render: they are dropped here, before anything is built.
+        hidden = {};
+        (Array.isArray(data.hiddenIds) ? data.hiddenIds : []).forEach(function (id) { hidden[id] = true; });
         videos = (Array.isArray(data.videos) ? data.videos : [])
-          .filter(function (v) { return v && typeof v.videoId === 'string' && v.videoId; })
-          .sort(function (a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); });
+          .filter(function (v) { return v && typeof v.videoId === 'string' && v.videoId && !hidden[v.videoId]; })
+          .sort(byNewest);
         transcribed = {};
         (Array.isArray(data.transcribedIds) ? data.transcribedIds : []).forEach(function (id) { transcribed[id] = true; });
 
-        countLine.textContent = plural(videos.length, 'racing video') + ' from the last 7 days · refreshes daily at 7am';
+        setCount();
 
         var meta = data.meta || {};
         var ago = agoShort(meta.lastRunAt || meta.lastRun);

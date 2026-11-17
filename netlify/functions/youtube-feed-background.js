@@ -113,13 +113,16 @@ const DISCARD_WORDS = [
   'virtual racing', 'virtual horse racing',
   // toys / games
   'toy', 'horse game', 'racing game', 'video game', 'gameplay',
-  'Minecraft', 'Roblox'
+  'Minecraft', 'Roblox',
+  // greyhound racing
+  'greyhound', 'greyhounds', 'greyhound racing'
 ];
 
 // ── STORAGE LIMITS ───────────────────────────────────────────────────────────
 const FEED_KEY = 'youtube:feed';
 const META_KEY = 'youtube:feed:meta';
 const RAN_KEY = 'youtube-feed:ran';
+const HIDDEN_KEY = 'youtube:hidden';
 const FEED_CAP = 300;
 const MAX_AGE_DAYS = 7;
 const SEARCH_WINDOW_HOURS = 48;
@@ -293,6 +296,23 @@ function decodeEntities(s) {
     .replace(/&amp;/g, '&');
 }
 
+// hqdefault (480px) exists for every video, so it can be built from the id
+// alone — used for RSS videos and to upgrade older stored entries.
+function hqThumbnail(videoId) {
+  return 'https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg';
+}
+
+// The sharpest thumbnail the API response offers: maxres, then standard,
+// then high, then medium. Falls back to the built hqdefault URL.
+function bestThumbnail(thumbs, videoId) {
+  const t = thumbs || {};
+  const sizes = ['maxres', 'standard', 'high', 'medium'];
+  for (let i = 0; i < sizes.length; i++) {
+    if (t[sizes[i]] && t[sizes[i]].url) return t[sizes[i]].url;
+  }
+  return hqThumbnail(videoId);
+}
+
 // The API's ISO 8601 duration ("PT4M5S", "PT1H2M3S") in seconds. null when
 // it is missing, unparseable or zero (a live or upcoming stream).
 function durationSeconds(iso) {
@@ -404,6 +424,7 @@ exports.handler = async function(event) {
     detailCalls: 0,
     detailsFetched: 0,
     detailsError: null,
+    hiddenDropped: 0,
     rssChannels: 0,
     rssFetched: 0,
     rssFailed: 0,
@@ -437,13 +458,12 @@ exports.handler = async function(event) {
       if (!isRacingVideo(title, channelTitle, decodeEntities(sn.description))) { meta.discarded++; continue; }
       meta.kept++;
       if (found[videoId]) continue;
-      const thumbs = sn.thumbnails || {};
       found[videoId] = {
         videoId: videoId,
         title: title,
         channelTitle: channelTitle,
         publishedAt: sn.publishedAt,
-        thumbnail: (thumbs.medium && thumbs.medium.url) || (thumbs.default && thumbs.default.url) || null,
+        thumbnail: bestThumbnail(sn.thumbnails, videoId),
         category: categorise(title)
       };
     }
@@ -501,7 +521,7 @@ exports.handler = async function(event) {
           title: e.title,
           channelTitle: e.channelTitle || entry.title || name,
           publishedAt: e.publishedAt,
-          thumbnail: 'https://i.ytimg.com/vi/' + e.videoId + '/mqdefault.jpg',
+          thumbnail: hqThumbnail(e.videoId),
           category: categorise(e.title)
         };
       });
@@ -514,8 +534,28 @@ exports.handler = async function(event) {
   try {
     const existing = await redisGet(FEED_KEY);
     const byId = {};
-    (Array.isArray(existing) ? existing : []).forEach(function(v) { if (v && v.videoId) byId[v.videoId] = v; });
-    Object.keys(found).forEach(function(id) { if (!byId[id]) { byId[id] = found[id]; meta.newVideos++; } });
+    // Videos the user hid on the page (youtube:hidden, written by
+    // hide-youtube-video.js) are dropped here — stored ones are removed and
+    // newly found ones never enter — so they never come back.
+    const hiddenList = await redisGet(HIDDEN_KEY);
+    const hidden = {};
+    (Array.isArray(hiddenList) ? hiddenList : []).forEach(function(id) { hidden[id] = true; });
+    (Array.isArray(existing) ? existing : []).forEach(function(v) {
+      if (!v || !v.videoId) return;
+      if (hidden[v.videoId]) { meta.hiddenDropped++; return; }
+      byId[v.videoId] = v;
+    });
+    Object.keys(found).forEach(function(id) {
+      if (hidden[id]) { meta.hiddenDropped++; return; }
+      if (!byId[id]) { byId[id] = found[id]; meta.newVideos++; }
+    });
+
+    // Older stored entries carry the blurry 320px (mqdefault) or 120px
+    // thumbnail: upgrade them to hqdefault, built from the id, no API call.
+    Object.keys(byId).forEach(function(id) {
+      const v = byId[id];
+      if (!v.thumbnail || /\/(mqdefault|default)\.jpg/.test(v.thumbnail)) v.thumbnail = hqThumbnail(id);
+    });
 
     const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 3600 * 1000;
     const feed = Object.keys(byId).map(function(id) { return byId[id]; })
@@ -575,4 +615,4 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+module.exports._test = { bestThumbnail: bestThumbnail, hqThumbnail: hqThumbnail, durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };

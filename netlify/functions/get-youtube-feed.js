@@ -30,12 +30,13 @@ function redisGet(key) {
 exports.handler = async function() {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
   try {
-    const [feed, meta, transcribed] = await Promise.all([redisGet('youtube:feed'), redisGet('youtube:feed:meta'), redisGet('youtube:transcribed')]);
+    const [feed, meta, transcribed, hidden] = await Promise.all([redisGet('youtube:feed'), redisGet('youtube:feed:meta'), redisGet('youtube:transcribed'), redisGet('youtube:hidden')]);
     const transcribedIds = Array.isArray(transcribed) ? transcribed : [];
+    const hiddenIds = Array.isArray(hidden) ? hidden : [];
     if (!Array.isArray(feed)) {
-      return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading', videos: [], meta: meta || null, transcribedIds }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ status: 'loading', videos: [], meta: meta || null, transcribedIds, hiddenIds }) };
     }
-    return { statusCode: 200, headers, body: JSON.stringify({ status: 'done', count: feed.length, videos: feed, meta: meta || null, transcribedIds }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ status: 'done', count: feed.length, videos: feed, meta: meta || null, transcribedIds, hiddenIds }) };
   } catch(e) {
     return { statusCode: 500, headers, body: JSON.stringify({ status: 'error', error: e.message }) };
   }
