@@ -3,3 +3,10 @@
 
 # Function dependencies (installed at build/deploy time from package.json)
 netlify/functions/node_modules
+
+# Local credentials - never commit
+.env
+
+# Local transcribe worker run files
+scripts/transcribe-worker.log
+scripts/transcribe-worker.lock
