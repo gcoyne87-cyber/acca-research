@@ -61,7 +61,24 @@ const FAVOURITE_CHANNELS = [
   'At The Races',
   // Sky Sports Racing has no own YouTube channel — its content is on At The Races, already listed
   'ITV Racing',
-  'Irish Racing'
+  'Irish Racing',
+  'Racing Post',
+  'The Racing Life',
+  'GJSports',
+  'The Jumps Show',
+  'William Hill Racing',
+  'AK BETS',
+  'BensBets',
+  'oddschecker',
+  'The Jockey Club',
+  'Coral Racing Club',
+  'DigiRacing',
+  'GBpointing',
+  'Unibet',
+  'The Overround',
+  'Star Sports',
+  "Racing's Inside Track tv",
+  "Jockey's"
 ];
 
 // ── FILTER WORD LISTS ────────────────────────────────────────────────────────
