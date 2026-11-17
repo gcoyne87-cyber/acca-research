@@ -22,7 +22,7 @@ module.exports.config = { timeout: 300 };
 // units = 1,600/day, leaving room for up to 5 forced manual runs. NEVER add
 // a search without removing one or reducing run frequency.
 // The views + duration lookup (videos.list) costs 1 unit per call of up to
-// 50 ids — at most 6 calls for a full 300-video feed, so it is negligible
+// 50 ids — at most 20 calls for a full 1,000-video feed, so it is negligible
 // next to the searches and does not change the ceiling above.
 // Favourite channels: the uploads RSS feed is free (no API, no quota).
 // Resolving a channel NAME to its id costs 101 units (search.list 100 +
@@ -140,9 +140,12 @@ const FEED_KEY = 'youtube:feed';
 const META_KEY = 'youtube:feed:meta';
 const RAN_KEY = 'youtube-feed:ran';
 const HIDDEN_KEY = 'youtube:hidden';
-const FEED_CAP = 300;
-const MAX_AGE_DAYS = 7;
-const SEARCH_WINDOW_HOURS = 48;
+// Rolling 30-day archive: each run takes in anything published in the last
+// 7 days (searches and favourite-channel RSS alike), and stored videos are
+// kept for 30 days, newest first, up to 1,000.
+const FEED_CAP = 1000;
+const MAX_AGE_DAYS = 30;
+const SEARCH_WINDOW_HOURS = 7 * 24;
 const DETAILS_BATCH = 50;
 const CHANNEL_IDS_KEY = 'youtube:channel-ids';
 const SHORT_MAX_SECONDS = 70;
@@ -518,7 +521,7 @@ exports.handler = async function(event) {
     if (mapChanged) await redisSet(CHANNEL_IDS_KEY, channelIds);
 
     // 2. Read each resolved channel's uploads RSS (free) and add anything
-    // inside the same 48-hour window the searches use. No keep/discard.
+    // inside the same 7-day intake window the searches use. No keep/discard.
     const windowStart = Date.parse(publishedAfter);
     for (let i = 0; i < FAVOURITE_CHANNELS.length; i++) {
       const name = FAVOURITE_CHANNELS[i];
