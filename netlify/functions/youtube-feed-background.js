@@ -59,7 +59,7 @@ const FAVOURITE_CHANNELS = [
   'Sporting Life',
   'Racing TV',
   'At The Races',
-  'Sky Sports Racing',
+  // Sky Sports Racing has no own YouTube channel — its content is on At The Races, already listed
   'ITV Racing',
   'Irish Racing'
 ];
@@ -196,11 +196,14 @@ function youtubeVideoDetails(ids) {
 
 // Resolve a favourite channel NAME to a channel id: one search.list
 // type=channel (100 units) plus one channels.list for subscriber counts
-// (1 unit). The API exposes no "verified" flag, so the pick is: channels
-// whose title equals the name exactly (case-insensitive) first, and among
-// those — or among all five candidates when none match exactly — the one
-// with the most subscribers. Resolves { channelId, title, subscribers,
-// exact }, { none: true } when the search returns nothing, or { error }.
+// (1 unit). ONLY a channel whose title equals the name exactly
+// (case-insensitive) is accepted; if several share that exact title, the
+// one with the most subscribers. There is deliberately no fallback to a
+// near match: favourite channels bypass the keep/discard filter, so a wrong
+// guess injects a whole unrelated channel ("Sky Sports Racing" once resolved
+// to Sky Sports F1 this way). Resolves { channelId, title, subscribers,
+// exact: true }, { none: true, candidates } when nothing matches exactly,
+// or { error }. A no-match is fixed by hand in youtube:channel-ids.
 async function resolveChannel(name) {
   const s = await youtubeGet('/youtube/v3/search?part=snippet&type=channel&maxResults=5&q=' + encodeURIComponent(name));
   if (s.error) return { error: s.error };
@@ -208,18 +211,17 @@ async function resolveChannel(name) {
     const sn = (it && it.snippet) || {};
     return { channelId: (it && it.id && it.id.channelId) || sn.channelId, title: decodeEntities(sn.channelTitle || sn.title), subscribers: 0 };
   }).filter(function(c) { return c.channelId; });
-  if (!candidates.length) return { none: true };
-  const st = await youtubeGet('/youtube/v3/channels?part=statistics&maxResults=50&id=' + encodeURIComponent(candidates.map(function(c) { return c.channelId; }).join(',')));
+  const wanted = name.trim().toLowerCase();
+  const exact = candidates.filter(function(c) { return String(c.title || '').trim().toLowerCase() === wanted; });
+  if (!exact.length) return { none: true, candidates: candidates.map(function(c) { return c.title; }) };
+  const st = await youtubeGet('/youtube/v3/channels?part=statistics&maxResults=50&id=' + encodeURIComponent(exact.map(function(c) { return c.channelId; }).join(',')));
   if (!st.error) {
     const subs = {};
     st.items.forEach(function(it) { if (it && it.id) subs[it.id] = Number(it.statistics && it.statistics.subscriberCount) || 0; });
-    candidates.forEach(function(c) { c.subscribers = subs[c.channelId] || 0; });
+    exact.forEach(function(c) { c.subscribers = subs[c.channelId] || 0; });
   }
-  const wanted = name.trim().toLowerCase();
-  const exact = candidates.filter(function(c) { return String(c.title || '').trim().toLowerCase() === wanted; });
-  const pool = exact.length ? exact : candidates;
-  const best = pool.slice().sort(function(a, b) { return b.subscribers - a.subscribers; })[0];
-  return { channelId: best.channelId, title: best.title, subscribers: best.subscribers, exact: exact.length > 0 };
+  const best = exact.slice().sort(function(a, b) { return b.subscribers - a.subscribers; })[0];
+  return { channelId: best.channelId, title: best.title, subscribers: best.subscribers, exact: true };
 }
 
 // A channel's public uploads RSS feed — free, no API key, no quota. Resolves
@@ -488,10 +490,10 @@ exports.handler = async function(event) {
         break;
       }
       if (r.none) {
-        console.error('[youtube-feed] no channel found for "' + name + '" — cached as no-match; delete it from ' + CHANNEL_IDS_KEY + ' to retry');
+        console.error('[youtube-feed] no channel titled exactly "' + name + '" (search offered: ' + ((r.candidates || []).join(', ') || 'nothing') + ') — cached as unresolved, nothing fetched for it; set the entry by hand in ' + CHANNEL_IDS_KEY + ' or delete it to retry');
         channelIds[key] = null;
       } else {
-        console.log('[youtube-feed] resolved "' + name + '" -> ' + r.channelId + ' "' + r.title + '" (' + r.subscribers + ' subscribers' + (r.exact ? '' : ', NOT an exact title match') + ')');
+        console.log('[youtube-feed] resolved "' + name + '" -> ' + r.channelId + ' "' + r.title + '" (' + r.subscribers + ' subscribers, exact title match)');
         channelIds[key] = { channelId: r.channelId, title: r.title, subscribers: r.subscribers, exact: r.exact, resolvedAt: new Date().toISOString() };
       }
       mapChanged = true;
@@ -504,7 +506,9 @@ exports.handler = async function(event) {
     for (let i = 0; i < FAVOURITE_CHANNELS.length; i++) {
       const name = FAVOURITE_CHANNELS[i];
       const entry = channelIds[name.trim().toLowerCase()];
-      if (!entry || !entry.channelId) { meta.channelsUnresolved.push(name); continue; }
+      // No entry, a cached no-match, or an older non-exact guess that was
+      // never verified by hand: unresolved, and nothing is fetched for it.
+      if (!entry || !entry.channelId || (entry.exact === false && !entry.manuallyVerified)) { meta.channelsUnresolved.push(name); continue; }
       const rss = await fetchChannelRss(entry.channelId);
       if (rss.error) {
         meta.rssFailed++;
