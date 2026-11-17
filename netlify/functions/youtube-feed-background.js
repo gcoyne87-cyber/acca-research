@@ -76,9 +76,22 @@ const FAVOURITE_CHANNELS = [
   'GBpointing',
   'Unibet',
   'The Overround',
-  'Star Sports',
+  // Star Sports removed: the exact-title match is the Indian cricket broadcaster, not the bookmaker — re-add only with the bookmaker's verified exact channel title
   "Racing's Inside Track tv",
   "Jockey's"
+];
+
+// ── BLOCKED CHANNELS ─────────────────────────────────────────────────────────
+// Channel names (case-insensitive) whose videos are ALWAYS discarded — beats
+// keep words, beats favourites, beats everything. For auto-generated junk
+// channels.
+const BLOCKED_CHANNELS = [
+  'DAXANALYTICS',
+  'Elite Racing HQ',
+  'Horse Racing Stories',
+  'The Cheltenham Countdown',
+  'MCL Horse Racing Insights',
+  'HRSE PWR'
 ];
 
 // ── FILTER WORD LISTS ────────────────────────────────────────────────────────
@@ -119,6 +132,21 @@ const RACING_CONTEXT = [
   'jockey', 'trainer', 'odds', 'each-way', 'NAP', 'going'
 ];
 
+// The discard words that apply to EVERY video, favourite channels included:
+// greyhounds and other sports. A trusted multi-sport channel's football or
+// NFL upload is still not wanted.
+// ("Boxing Day" is exempt from 'boxing': see isDiscarded)
+const FAVOURITE_DISCARD_WORDS = [
+  // greyhound racing
+  'greyhound', 'greyhounds', 'greyhound racing',
+  // other sports
+  'cricket', 'football', 'soccer', 'NFL', 'premier league', 'rugby', 'darts',
+  'snooker', 'tennis', 'boxing', 'UFC', 'formula 1'
+];
+
+// The full discard list, for everything that is NOT from a favourite channel:
+// the words below plus FAVOURITE_DISCARD_WORDS. The words below do NOT apply
+// to favourites — a trusted channel's bloodstock or US-coverage video stays.
 const DISCARD_WORDS = [
   // US / AUS / HK racing
   'Kentucky', 'Breeders Cup', 'Santa Anita', 'Churchill Downs',
@@ -130,10 +158,8 @@ const DISCARD_WORDS = [
   'virtual racing', 'virtual horse racing',
   // toys / games
   'toy', 'horse game', 'racing game', 'video game', 'gameplay',
-  'Minecraft', 'Roblox',
-  // greyhound racing
-  'greyhound', 'greyhounds', 'greyhound racing'
-];
+  'Minecraft', 'Roblox'
+].concat(FAVOURITE_DISCARD_WORDS);
 
 // ── STORAGE LIMITS ───────────────────────────────────────────────────────────
 const FEED_KEY = 'youtube:feed';
@@ -366,6 +392,7 @@ const STRONG_NORM = [].concat(KEEP_NAMES, KEEP_TERMS).map(normalise);
 const WEAK_NORM = KEEP_COURSES.map(normalise);
 const CONTEXT_NORM = RACING_CONTEXT.map(normalise);
 const DISCARD_NORM = DISCARD_WORDS.map(normalise);
+const FAVOURITE_DISCARD_NORM = FAVOURITE_DISCARD_WORDS.map(normalise);
 const FAVOURITE_LOWER = FAVOURITE_CHANNELS.map(function(c) { return String(c).trim().toLowerCase(); });
 
 function hitsAny(paddedText, terms) {
@@ -375,10 +402,36 @@ function hitsAny(paddedText, terms) {
   return false;
 }
 
+const BLOCKED_LOWER = BLOCKED_CHANNELS.map(function(c) { return String(c).trim().toLowerCase(); });
+
+function isBlockedChannel(channelTitle) {
+  return BLOCKED_LOWER.indexOf(String(channelTitle || '').trim().toLowerCase()) !== -1;
+}
+
+function isFavouriteChannel(channelTitle) {
+  return FAVOURITE_LOWER.indexOf(String(channelTitle || '').trim().toLowerCase()) !== -1;
+}
+
+// True when a video must be thrown away whatever else is true of it: it is
+// from a blocked channel, or its title/channel/description hits the discard
+// list. A favourite channel is checked against the greyhound and other-sport
+// words only (FAVOURITE_DISCARD_WORDS); everything else against the full
+// list. "Boxing Day" is taken out first so the 'boxing' discard word cannot
+// remove the Christmas racing (King George, Leopardstown) coverage.
+function isDiscarded(title, channelTitle, description) {
+  if (isBlockedChannel(channelTitle)) return true;
+  const text = (' ' + normalise((title || '') + ' ' + (channelTitle || '') + ' ' + (description || '')) + ' ').replace(/ boxing day /g, ' ');
+  return hitsAny(text, isFavouriteChannel(channelTitle) ? FAVOURITE_DISCARD_NORM : DISCARD_NORM);
+}
+
+// Order: blocked channel / discard list first (beats everything), then
+// favourite channels (which skip the KEEP requirement — their purpose is
+// titles that are just a horse's name — and the US-racing and other general
+// discard words), then the keep words.
 function isRacingVideo(title, channelTitle, description) {
-  if (FAVOURITE_LOWER.indexOf(String(channelTitle || '').trim().toLowerCase()) !== -1) return true;
+  if (isDiscarded(title, channelTitle, description)) return false;
+  if (isFavouriteChannel(channelTitle)) return true;
   const text = ' ' + normalise(title + ' ' + channelTitle + ' ' + description) + ' ';
-  if (hitsAny(text, DISCARD_NORM)) return false;
   if (hitsAny(text, STRONG_NORM)) return true;
   return hitsAny(text, WEAK_NORM) && hitsAny(text, CONTEXT_NORM);
 }
@@ -447,6 +500,9 @@ exports.handler = async function(event) {
     detailsFetched: 0,
     detailsError: null,
     hiddenDropped: 0,
+    blockedDropped: 0,
+    discardDropped: 0,
+    rssDiscarded: 0,
     rssChannels: 0,
     rssFetched: 0,
     rssFailed: 0,
@@ -521,7 +577,8 @@ exports.handler = async function(event) {
     if (mapChanged) await redisSet(CHANNEL_IDS_KEY, channelIds);
 
     // 2. Read each resolved channel's uploads RSS (free) and add anything
-    // inside the same 7-day intake window the searches use. No keep/discard.
+    // inside the same 7-day intake window the searches use. No KEEP words are
+    // required, but blocked channels and the discard list still apply.
     const windowStart = Date.parse(publishedAfter);
     for (let i = 0; i < FAVOURITE_CHANNELS.length; i++) {
       const name = FAVOURITE_CHANNELS[i];
@@ -540,6 +597,7 @@ exports.handler = async function(event) {
         if (Date.parse(e.publishedAt) < windowStart) return;
         meta.rssFetched++;
         if (found[e.videoId]) return;
+        if (isDiscarded(e.title, e.channelTitle || entry.title || name, '')) { meta.rssDiscarded++; return; }
         found[e.videoId] = {
           videoId: e.videoId,
           title: e.title,
@@ -567,10 +625,18 @@ exports.handler = async function(event) {
     (Array.isArray(existing) ? existing : []).forEach(function(v) {
       if (!v || !v.videoId) return;
       if (hidden[v.videoId]) { meta.hiddenDropped++; return; }
+      // Already-stored videos from a blocked channel are removed, so adding
+      // a name to BLOCKED_CHANNELS clears that channel out on the next run.
+      if (isBlockedChannel(v.channelTitle)) { meta.blockedDropped++; return; }
+      // Likewise for the discard list: a stored video that now fails it
+      // (a new discard word, or a favourite's off-topic upload) leaves.
+      if (isDiscarded(v.title, v.channelTitle, '')) { meta.discardDropped++; return; }
       byId[v.videoId] = v;
     });
     Object.keys(found).forEach(function(id) {
       if (hidden[id]) { meta.hiddenDropped++; return; }
+      // Also covers the favourite-channel RSS path, which skips isRacingVideo.
+      if (isBlockedChannel(found[id].channelTitle)) { meta.blockedDropped++; return; }
       if (!byId[id]) { byId[id] = found[id]; meta.newVideos++; }
     });
 
@@ -639,4 +705,4 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { bestThumbnail: bestThumbnail, hqThumbnail: hqThumbnail, durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+module.exports._test = { BLOCKED_CHANNELS: BLOCKED_CHANNELS, isBlockedChannel: isBlockedChannel, isDiscarded: isDiscarded, bestThumbnail: bestThumbnail, hqThumbnail: hqThumbnail, durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };

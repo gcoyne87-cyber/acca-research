@@ -288,29 +288,31 @@
   // keeps its normal "open YouTube in a new tab" behaviour.
   function isPlainClick(e) { return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey; }
 
-  // sharp = true (grid cards): try the 1280px maxresdefault image first and
-  // fall back to the stored thumbnail. YouTube answers a missing maxres with
-  // a tiny 120px grey placeholder that still "loads", so the fallback is
-  // triggered by the image's size as well as by a load error.
-  function thumbImg(v, sharp) {
+  // Tries the sharpest thumbnail first and walks down a list until one loads:
+  //   grid cards  — maxresdefault (1280px 16:9), then the stored thumbnail
+  //   shelf cards — oar2 (YouTube's own vertical Shorts thumbnail), then
+  //                 maxresdefault, then the stored thumbnail
+  // YouTube answers a missing image with a tiny 120px grey placeholder that
+  // still "loads", so a step is skipped on the image's size as well as on a
+  // load error. The stored thumbnail is last and is accepted as it is.
+  function thumbImg(v, kind) {
     var stored = (typeof v.thumbnail === 'string' && /^https:\/\//.test(v.thumbnail)) ? v.thumbnail : null;
-    if (!stored && !sharp) return null;
+    var base = 'https://i.ytimg.com/vi/' + encodeURIComponent(v.videoId) + '/';
+    var sources = (kind === 'short' ? [base + 'oar2.jpg', base + 'maxresdefault.jpg'] : [base + 'maxresdefault.jpg']);
+    if (stored) sources.push(stored);
     var img = el('img');
     img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
-    if (sharp) {
-      var fellBack = false;
-      var fallback = function () {
-        if (fellBack) { img.remove(); return; }
-        fellBack = true;
-        if (stored) img.src = stored; else img.remove();
-      };
-      img.addEventListener('error', fallback);
-      img.addEventListener('load', function () { if (!fellBack && img.naturalWidth <= 120) fallback(); });
-      img.src = 'https://i.ytimg.com/vi/' + encodeURIComponent(v.videoId) + '/maxresdefault.jpg';
-    } else {
-      img.src = stored;
-    }
+    var i = 0;
+    var next = function () {
+      i++;
+      if (i < sources.length) img.src = sources[i]; else img.remove();
+    };
+    img.addEventListener('error', next);
+    img.addEventListener('load', function () {
+      if (i < sources.length - 1 && img.naturalWidth <= 120) next();
+    });
+    img.src = sources[0];
     return img;
   }
 
@@ -353,7 +355,7 @@
   function byNewest(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); }
 
   function setCount() {
-    countLine.textContent = plural(videos.length, 'racing video') + ' from the last 7 days · refreshes daily at 7am';
+    countLine.textContent = plural(videos.length, 'racing video') + ' from the last 30 days · refreshes daily at 7am';
   }
 
   function buildCard(v) {
@@ -361,7 +363,7 @@
     var card = el('article', 'card' + (isDone ? ' transcribed' : ''));
 
     var thumb = el('div', 'thumb');
-    var img = thumbImg(v, true);
+    var img = thumbImg(v, 'card');
     if (img) thumb.appendChild(img);
     if (v.duration) thumb.appendChild(el('span', 'dur', v.duration));
     if (isDone) thumb.appendChild(el('span', 'done-tag', 'TRANSCRIBED ✓'));
@@ -420,7 +422,7 @@
     });
 
     var thumb = el('div', 'sthumb');
-    var img = thumbImg(v);
+    var img = thumbImg(v, 'short');
     if (img) thumb.appendChild(img);
     if (isDone) { var tag = el('span', 'done-tag', '✓'); tag.title = 'Transcribed'; thumb.appendChild(tag); }
     a.appendChild(thumb);
