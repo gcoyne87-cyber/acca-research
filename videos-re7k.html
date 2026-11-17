@@ -29,24 +29,24 @@
     margin: 0; background: var(--bg); color: var(--navy);
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 15px; line-height: 1.4;
-    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   }
   .wrap { max-width: 1280px; margin: 0 auto; }
 
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0 10px; }
-  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
   /* The wordmark is the page title now: there is no separate heading line. */
-  .wordmark { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
+  .wordmark { margin: 0; font-size: 24px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
   .wordmark span { color: var(--gold); }
-  .pill-research { background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .1em; padding: 5px 11px; border-radius: 999px; }
+  .pill-research { background: var(--navy); color: #fff; font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: .1em; padding: 3px 9px; border-radius: 999px; }
 
 
   /* ── Paste-any-link row ── */
   .paste { display: flex; gap: 8px; align-items: stretch; }
-  .paste-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 16px; color: var(--navy); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; outline: none; }
+  .paste-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; color: var(--navy); background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; outline: none; }
   .paste-input::placeholder { color: var(--grey-light); }
   .paste-input:focus { border-color: var(--navy); }
-  .paste-btn { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: var(--green); border: 0; border-radius: 999px; padding: 0 16px; cursor: pointer; white-space: nowrap; }
+  .paste-btn { flex: 0 0 auto; font: inherit; font-size: 12.5px; font-weight: 700; color: #fff; background: var(--navy); border: 0; border-radius: 9px; padding: 9px 13px; cursor: pointer; white-space: nowrap; }
   .paste-btn:disabled { opacity: .7; cursor: default; }
   .paste-status { margin: 6px 4px 0; font-size: 13px; color: #a3352b; }
   .paste-status.ok { color: var(--green); font-weight: 600; }
@@ -56,23 +56,23 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 
-  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 12px; scrollbar-width: none; }
+  .chips { display: flex; gap: 7px; overflow-x: auto; padding: 10px 0 12px; scrollbar-width: none; }
   .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 600; color: var(--navy); background: var(--card); border: 1px solid #cfd5de; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  .chip { flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--navy); background: var(--card); border: 1px solid #cfd5de; border-radius: 999px; padding: 6px 13px; cursor: pointer; }
   .chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
 
   /* ── Shorts shelf ── */
-  .shelf { padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
-  .shelf-head { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
-  .shelf-head .mark { width: 16px; height: 22px; border-radius: 5px; background: var(--gold); position: relative; }
-  .shelf-head .mark::after { content: ""; position: absolute; left: 6px; top: 7px; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent #fff; }
-  .shelf-row { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 6px; scrollbar-width: thin; }
+  .shelf { margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .shelf-head { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 15px; line-height: 1.3; font-weight: 800; letter-spacing: -0.01em; }
+  /* Small gold play glyph before "Shorts" */
+  .shelf-head .mark { width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent var(--gold); }
+  .shelf-row { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 14px; scrollbar-width: thin; }
   .short { position: relative; flex: 0 0 150px; width: 150px; min-width: 0; scroll-snap-align: start; }
   .short .slink { color: inherit; text-decoration: none; display: block; }
   .short .sthumb { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: var(--thumb); }
   .short .sthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .short .stitle { margin-top: 7px; font-size: 14px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .short .sviews { margin-top: 2px; font-size: 12px; color: var(--grey); }
+  .short .stitle { margin-top: 6px; font-size: 12px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .short .sviews { margin-top: 2px; font-size: 11px; color: var(--grey); }
   .short .done-tag { left: 6px; bottom: 6px; font-size: 11px; padding: 1px 6px; letter-spacing: 0; }
   .short.transcribed .slink { opacity: .62; }
   /* Shelf star (or green "T" once transcribed): top-right corner of the
@@ -87,9 +87,9 @@
   .tnote { margin-top: 4px; font-size: 12px; font-weight: 600; color: #a3352b; }
 
   /* ── Main grid: borderless YouTube-style cards ── */
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 14px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .card { min-width: 0; cursor: pointer; }
-  .thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--thumb); }
+  .thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 11px; overflow: hidden; background: var(--thumb); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(11, 22, 40, .86); color: #fff; font-size: 12px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
   /* TRANSCRIBED tag: bottom-left of the thumbnail on both card types, clear
@@ -104,10 +104,10 @@
   .thumb .star-btn { position: absolute; top: 6px; right: 6px; z-index: 2; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 22px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .thumb .star-btn:hover { background: rgba(11, 22, 40, .95); }
   .thumb .star-btn.on { color: var(--gold); }
-  .info { display: flex; align-items: flex-start; gap: 10px; padding: 7px 2px 0; }
+  .info { display: flex; align-items: flex-start; gap: 10px; padding: 8px 2px 0; }
   .text { flex: 1 1 auto; min-width: 0; }
-  .title { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .meta { margin-top: 2px; color: var(--grey); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+  .title { font-size: 14.5px; font-weight: 700; line-height: 1.3; color: var(--navy); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .meta { margin-top: 4px; color: var(--grey); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
   .tag { display: inline-block; vertical-align: 1px; margin-right: 6px; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; line-height: 1.4; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
   .tag.tips { background: #e7f5ef; color: #15724d; }
   .tag.stable-tour { background: #fdf4df; color: #8a6a14; }
@@ -170,20 +170,20 @@
   a:focus-visible, button:focus-visible, .paste-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
   @media (min-width: 600px) {
-    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 14px; }
     .short { flex-basis: 170px; width: 170px; }
   }
   @media (min-width: 900px) {
-    body { font-size: 16px; }
-    .top { padding-top: 18px; }
-    .wordmark { font-size: 36px; }
-    .pill-research { font-size: 13px; }
+    body { font-size: 16px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+    .wordmark { font-size: 30px; }
+    .pill-research { font-size: 11px; padding: 4px 10px; }
     .paste { max-width: 560px; }
-    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; }
-    .title { font-size: 16px; }
-    .shelf-row { gap: 14px; }
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    .title { font-size: 15px; }
+    .meta { font-size: 13px; }
     .short { flex-basis: 200px; width: 200px; }
-    .short .stitle { font-size: 15px; }
+    .short .stitle { font-size: 13px; }
+    .short .sviews { font-size: 12px; }
   }
 </style>
 </head>
