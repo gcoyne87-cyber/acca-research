@@ -26,7 +26,7 @@ const SEARCHES = [
   'horse racing stable tour',
   'horse racing trainer interview',
   'irish horse racing',
-  'cheltenham',
+  'cheltenham racing',
   'horse racing preview',
   'national hunt racing',
   'jump racing',
@@ -34,7 +34,7 @@ const SEARCHES = [
   'horse racing gallops',
   'cheltenham festival',
   'horse racing results reaction',
-  'punchestown OR leopardstown OR fairyhouse',
+  'punchestown racing OR leopardstown racing OR fairyhouse racing',
   'willie mullins OR gordon elliott OR nicky henderson',
   'dan skelton OR paul nicholls OR henry de bromhead',
   'ITV racing OR racing tv OR sky sports racing'
@@ -44,8 +44,13 @@ const SEARCHES = [
 // Matched as whole words/phrases (an optional trailing "s" is allowed) against
 // title + channel name + description, case-insensitive, with apostrophes
 // removed and other punctuation treated as spaces — so "each-way" matches
-// "each way" and "O'Neill" matches "ONeill". A video is kept when it hits at
-// least one KEEP term and no DISCARD term: discard always wins.
+// "each way" and "O'Neill" matches "ONeill".
+//
+// Two-tier keep rule, and discard always wins:
+//  - STRONG (KEEP_NAMES, KEEP_TERMS): one hit keeps the video on its own.
+//  - WEAK (KEEP_COURSES): a course name is also a town, so it keeps the video
+//    only when a RACING_CONTEXT word appears too. A course name alone let a
+//    Cheltenham pizza shop and a #fairyhouse hashtag into the first live run.
 
 const KEEP_COURSES = [
   'Cheltenham', 'Aintree', 'Punchestown', 'Leopardstown', 'Naas', 'Fairyhouse',
@@ -67,7 +72,11 @@ const KEEP_TERMS = [
   'going'
 ];
 
-const KEEP_WORDS = [].concat(KEEP_COURSES, KEEP_NAMES, KEEP_TERMS);
+const RACING_CONTEXT = [
+  'racing', 'races', 'raceday', 'racecourse', 'racecard', 'horse', 'horses',
+  'tips', 'preview', 'runners', 'declarations', 'hurdle', 'chase', 'bumper',
+  'jockey', 'trainer', 'odds', 'each-way', 'NAP', 'going'
+];
 
 const DISCARD_WORDS = [
   // US / AUS / HK racing
@@ -188,7 +197,9 @@ function normalise(s) {
     .trim();
 }
 
-const KEEP_NORM = KEEP_WORDS.map(normalise);
+const STRONG_NORM = [].concat(KEEP_NAMES, KEEP_TERMS).map(normalise);
+const WEAK_NORM = KEEP_COURSES.map(normalise);
+const CONTEXT_NORM = RACING_CONTEXT.map(normalise);
 const DISCARD_NORM = DISCARD_WORDS.map(normalise);
 
 function hitsAny(paddedText, terms) {
@@ -201,7 +212,8 @@ function hitsAny(paddedText, terms) {
 function isRacingVideo(title, channelTitle, description) {
   const text = ' ' + normalise(title + ' ' + channelTitle + ' ' + description) + ' ';
   if (hitsAny(text, DISCARD_NORM)) return false;
-  return hitsAny(text, KEEP_NORM);
+  if (hitsAny(text, STRONG_NORM)) return true;
+  return hitsAny(text, WEAK_NORM) && hitsAny(text, CONTEXT_NORM);
 }
 
 function categorise(title) {
@@ -329,4 +341,4 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_WORDS: KEEP_WORDS, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+module.exports._test = { isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
