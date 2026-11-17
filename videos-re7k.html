@@ -84,6 +84,21 @@
   .card.transcribed { opacity: .62; }
   .card.transcribed .btn { background: var(--green); color: #fff; }
 
+  /* ── In-page player overlay ── */
+  html.player-open, html.player-open body { overflow: hidden; }
+  .player { position: fixed; inset: 0; z-index: 50; background: rgba(5, 10, 20, .94); display: flex; flex-direction: column; align-items: center; justify-content: center; overscroll-behavior: contain;
+    padding: calc(56px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .player-close { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .14); color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
+  .player-close:hover { background: rgba(255, 255, 255, .24); }
+  .player-box { width: min(100%, 1100px, calc((100vh - 170px) * 16 / 9)); width: min(100%, 1100px, calc((100dvh - 170px) * 16 / 9)); }
+  .player.is-short .player-box { width: min(100%, calc((100vh - 170px) * 9 / 16)); width: min(100%, calc((100dvh - 170px) * 9 / 16)); }
+  .player-frame { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
+  .player.is-short .player-frame { aspect-ratio: 9 / 16; }
+  .player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .player-info { padding-top: 12px; color: #fff; }
+  .player-title { font-size: 15px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .player-link { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--gold); }
+
   .state { text-align: center; color: var(--grey); padding: 64px 16px; font-size: 15px; }
   .state button { display: block; margin: 14px auto 0; }
 
@@ -139,6 +154,17 @@
     <div class="grid" id="grid"></div>
     <div class="state" id="state" hidden></div>
   </main>
+</div>
+
+<div class="player" id="player" role="dialog" aria-modal="true" aria-labelledby="playerTitle" hidden>
+  <button class="player-close" id="playerClose" type="button" aria-label="Close player">✕</button>
+  <div class="player-box">
+    <div class="player-frame" id="playerFrame"></div>
+    <div class="player-info">
+      <div class="player-title" id="playerTitle"></div>
+      <a class="player-link" id="playerLink" target="_blank" rel="noopener">Open on YouTube</a>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -208,6 +234,53 @@
 
   function watchUrl(id) { return 'https://www.youtube.com/watch?v=' + encodeURIComponent(id); }
 
+  // ── In-page player ──
+  // The iframe exists only while the overlay is open: closing removes it,
+  // which is what stops playback. Nothing is embedded on page load.
+  var player = document.getElementById('player');
+  var playerFrame = document.getElementById('playerFrame');
+  var playerTitle = document.getElementById('playerTitle');
+  var playerLink = document.getElementById('playerLink');
+  var playerClose = document.getElementById('playerClose');
+  var lastFocus = null;
+
+  function openPlayer(v) {
+    lastFocus = document.activeElement;
+    playerFrame.textContent = '';
+    var frame = document.createElement('iframe');
+    frame.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(v.videoId) + '?autoplay=1&playsinline=1&rel=0';
+    frame.title = v.title || 'YouTube video';
+    frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    frame.allowFullscreen = true;
+    // YouTube refuses to play an embed that arrives with no referrer.
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    playerFrame.appendChild(frame);
+    playerTitle.textContent = v.title || 'Untitled video';
+    playerLink.href = watchUrl(v.videoId);
+    player.classList.toggle('is-short', v.isShort === true);
+    player.hidden = false;
+    document.documentElement.classList.add('player-open');
+    playerClose.focus();
+  }
+
+  function closePlayer() {
+    if (player.hidden) return;
+    playerFrame.textContent = '';
+    player.hidden = true;
+    document.documentElement.classList.remove('player-open');
+    if (lastFocus && document.contains(lastFocus) && lastFocus.focus) lastFocus.focus();
+    lastFocus = null;
+  }
+
+  playerClose.addEventListener('click', closePlayer);
+  // Backdrop only: a tap on the player, title or link must not close it.
+  player.addEventListener('click', function (e) { if (e.target === player) closePlayer(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePlayer(); });
+
+  // A plain tap plays in the overlay; ctrl/cmd/shift/middle-click on a link
+  // keeps its normal "open YouTube in a new tab" behaviour.
+  function isPlainClick(e) { return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey; }
+
   function thumbImg(v) {
     if (typeof v.thumbnail !== 'string' || !/^https:\/\//.test(v.thumbnail)) return null;
     var img = el('img');
@@ -241,7 +314,7 @@
     info.appendChild(text);
 
     // Part 3 wires both buttons. Until then "Transcribe" is disabled, and
-    // "Transcript" only stops the tap from opening YouTube.
+    // "Transcript" only stops the tap from opening the player.
     var btn = el('button', 'btn');
     btn.type = 'button';
     btn.setAttribute('data-video-id', v.videoId);
@@ -256,17 +329,25 @@
     card.appendChild(info);
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('a, button')) return;
-      window.open(watchUrl(v.videoId), '_blank', 'noopener');
+      if (e.target.closest('button')) return;
+      if (e.target.closest('a') && !isPlainClick(e)) return;
+      e.preventDefault();
+      openPlayer(v);
     });
     return card;
   }
 
-  // A Shorts shelf card: the whole card is one link to YouTube.
+  // A Shorts shelf card: one link (so it is keyboard-reachable and can be
+  // opened in a new tab), but a plain tap plays it in the overlay.
   function buildShort(v) {
     var isDone = !!transcribed[v.videoId];
     var a = el('a', 'short' + (isDone ? ' transcribed' : ''));
     a.href = watchUrl(v.videoId); a.target = '_blank'; a.rel = 'noopener';
+    a.addEventListener('click', function (e) {
+      if (!isPlainClick(e)) return;
+      e.preventDefault();
+      openPlayer(v);
+    });
 
     var thumb = el('div', 'sthumb');
     var img = thumbImg(v);
