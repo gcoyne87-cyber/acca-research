@@ -32,17 +32,23 @@
   .wordmark { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
   .wordmark span { color: var(--gold); }
   .pill-research { background: var(--navy); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .1em; padding: 4px 9px; border-radius: 999px; }
-  .updated { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--green); }
-  .updated .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .updated.stale { color: var(--grey-light); }
 
-  .sub { padding: 14px 0 14px; }
+  .sub { padding: 14px 0 12px; }
   .sub h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
-  .sub p { margin: 4px 0 0; color: var(--grey); font-size: 14px; }
 
-  .search { width: 100%; font: inherit; font-size: 16px; color: var(--navy); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 12px 18px; outline: none; }
-  .search::placeholder { color: var(--grey-light); }
-  .search:focus { border-color: var(--navy); }
+  /* ── Paste-any-link row ── */
+  .paste { display: flex; gap: 8px; align-items: stretch; }
+  .paste-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 16px; color: var(--navy); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; outline: none; }
+  .paste-input::placeholder { color: var(--grey-light); }
+  .paste-input:focus { border-color: var(--navy); }
+  .paste-btn { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: var(--green); border: 0; border-radius: 999px; padding: 0 16px; cursor: pointer; white-space: nowrap; }
+  .paste-btn:disabled { opacity: .7; cursor: default; }
+  .paste-status { margin: 6px 4px 0; font-size: 13px; color: #a3352b; }
+
+  /* Spinner used by every "Transcribing…" state */
+  .spin { display: inline-block; width: 11px; height: 11px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; margin-right: 6px; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 
   .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 18px; scrollbar-width: none; }
   .chips::-webkit-scrollbar { display: none; }
@@ -62,7 +68,16 @@
   .short .stitle { margin-top: 7px; font-size: 13px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .short .sviews { margin-top: 2px; font-size: 12px; color: var(--grey); }
   .short .done-tag { left: 5px; top: 5px; font-size: 10px; padding: 1px 5px; letter-spacing: 0; }
-  .short.transcribed { opacity: .62; }
+  .short.transcribed .slink { opacity: .62; }
+  /* Transcribe icon: bottom-right corner of the 9:16 thumbnail. It sits beside
+     the link, not inside it; margin-top % is measured against the card WIDTH,
+     so 177.78% is the thumbnail's height. */
+  .short .tbtn { position: absolute; right: 5px; top: 0; margin-top: calc(177.78% - 31px); z-index: 2; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .short .tbtn:hover { background: rgba(11, 22, 40, .95); }
+  .short .tbtn.done { background: var(--green); }
+  .short .tbtn .spin { margin: 0; }
+  .short .tbtn:disabled { cursor: default; }
+  .tnote { margin-top: 4px; font-size: 12px; font-weight: 600; color: #a3352b; }
 
   /* ── Main grid: borderless YouTube-style cards ── */
   .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px 16px; }
@@ -84,10 +99,26 @@
   .tag.stable-tour { background: #fdf4df; color: #8a6a14; }
   .tag.interview { background: #ebf0fa; color: #33508e; }
   .btn { flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 700; color: var(--green); background: transparent; border: 1.5px solid var(--green); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
-  .btn small { font-size: 10px; font-weight: 600; opacity: .8; margin-left: 4px; }
-  .btn:disabled { opacity: .55; cursor: default; }
-  .card.transcribed { opacity: .62; }
+  .btn:disabled { opacity: .75; cursor: default; }
+  /* Transcribed cards go grey, but their Transcript button stays full strength. */
+  .card.transcribed .thumb, .card.transcribed .text { opacity: .62; }
   .card.transcribed .btn { background: var(--green); color: #fff; }
+
+  /* ── Transcript panel (same overlay pattern as the player) ── */
+  .tpanel { position: fixed; inset: 0; z-index: 60; background: rgba(5, 10, 20, .94); display: flex; align-items: center; justify-content: center; overscroll-behavior: contain;
+    padding: calc(56px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .tpanel-box { width: min(100%, 760px); max-height: 100%; display: flex; flex-direction: column; background: var(--card); color: var(--navy); border-radius: 14px; overflow: hidden; }
+  .tpanel-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+  .tpanel-title { margin: 0; font-size: 16px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+  .tpanel-meta { margin-top: 3px; font-size: 12px; color: var(--grey); }
+  .tpanel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .tpanel-actions .btn { font-size: 13px; padding: 7px 16px; }
+  .tpanel-actions .btn.primary { background: var(--green); color: #fff; }
+  .tpanel-text { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 20px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+  .tpanel-text.muted { color: var(--grey); }
+
+  /* Small message bar for things that have no card to sit in */
+  .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 70; max-width: calc(100% - 32px); background: var(--navy); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(11, 22, 40, .3); }
 
   /* ── In-page player overlay ── */
   html.player-open, html.player-open body { overflow: hidden; }
@@ -107,7 +138,7 @@
   .state { text-align: center; color: var(--grey); padding: 64px 16px; font-size: 15px; }
   .state button { display: block; margin: 14px auto 0; }
 
-  a:focus-visible, button:focus-visible, .search:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  a:focus-visible, button:focus-visible, .paste-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
   @media (min-width: 600px) {
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 18px; }
@@ -117,7 +148,7 @@
     body { font-size: 16px; }
     .top { padding-top: 24px; }
     .sub h1 { font-size: 32px; }
-    .search { max-width: 520px; }
+    .paste { max-width: 560px; }
     .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 20px; }
     .title { font-size: 16px; }
     .shelf-row { gap: 14px; }
@@ -133,15 +164,17 @@
       <div class="wordmark">Racing<span>Edge</span></div>
       <div class="pill-research">RESEARCH</div>
     </div>
-    <div class="updated stale" id="updated" hidden><span class="dot"></span><span id="updatedText"></span></div>
   </header>
 
   <section class="sub">
     <h1>Video Feed</h1>
-    <p id="countLine">Loading videos…</p>
   </section>
 
-  <input class="search" id="search" type="search" placeholder="Search a horse, trainer or course…" autocomplete="off" aria-label="Search videos">
+  <form class="paste" id="pasteForm" novalidate>
+    <input class="paste-input" id="pasteInput" type="url" inputmode="url" placeholder="Paste any YouTube link" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Paste any YouTube link to transcribe">
+    <button class="paste-btn" id="pasteBtn" type="submit">Transcribe</button>
+  </form>
+  <div class="paste-status" id="pasteStatus" role="status" hidden></div>
 
   <div class="chips" id="chips" role="group" aria-label="Filter videos">
     <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
@@ -172,29 +205,53 @@
   </div>
 </div>
 
+<div class="tpanel" id="tpanel" role="dialog" aria-modal="true" aria-labelledby="tpanelTitle" hidden>
+  <button class="player-close" id="tpanelClose" type="button" aria-label="Close transcript">✕</button>
+  <div class="tpanel-box">
+    <div class="tpanel-head">
+      <h2 class="tpanel-title" id="tpanelTitle"></h2>
+      <div class="tpanel-meta" id="tpanelMeta"></div>
+      <div class="tpanel-actions">
+        <button class="btn primary" id="tpanelCopy" type="button" disabled>Copy</button>
+        <button class="btn" id="tpanelDownload" type="button" disabled>Download .txt</button>
+      </div>
+    </div>
+    <div class="tpanel-text" id="tpanelText" tabindex="0"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
 <script>
 (function () {
   'use strict';
 
   var FEED_URL = '/.netlify/functions/get-youtube-feed';
   var HIDE_URL = '/.netlify/functions/hide-youtube-video';
+  var TRANSCRIBE_URL = '/.netlify/functions/transcribe-youtube';
   var TAG_LABELS = { 'tips': 'TIPS', 'stable-tour': 'STABLE TOUR', 'interview': 'INTERVIEW' };
 
   var videos = [];
   var transcribed = {};
   var hidden = {};
   var activeFilter = 'all';
-  var query = '';
 
   var grid = document.getElementById('grid');
   var shelf = document.getElementById('shelf');
   var shelfRow = document.getElementById('shelfRow');
   var state = document.getElementById('state');
-  var countLine = document.getElementById('countLine');
-  var updated = document.getElementById('updated');
-  var updatedText = document.getElementById('updatedText');
-  var searchBox = document.getElementById('search');
   var chips = document.getElementById('chips');
+  var toast = document.getElementById('toast');
+  var toastTimer = null;
+
+  // A short message at the bottom of the screen, for things that have no
+  // card to sit in (a hide that failed to save, a copy that failed).
+  function showToast(text) {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.hidden = true; }, 4500);
+  }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -204,18 +261,6 @@
   }
 
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
-
-  // "12 min ago", "3 hours ago" — used for the header's last-run time.
-  function agoShort(iso) {
-    var t = Date.parse(iso);
-    if (isNaN(t)) return null;
-    var mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
-    if (mins < 1) return 'just now';
-    if (mins < 60) return mins + ' min ago';
-    var hours = Math.floor(mins / 60);
-    if (hours < 48) return plural(hours, 'hour') + ' ago';
-    return plural(Math.floor(hours / 24), 'day') + ' ago';
-  }
 
   // "12 min ago" / "12 hr ago" / "Yesterday" / "3 days ago" — card meta line.
   function agoCard(iso) {
@@ -282,7 +327,10 @@
   playerClose.addEventListener('click', closePlayer);
   // Backdrop only: a tap on the player, title or link must not close it.
   player.addEventListener('click', function (e) { if (e.target === player) closePlayer(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePlayer(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!tpanel.hidden) closeTranscript(); else closePlayer();
+  });
 
   // A plain tap plays in the overlay; ctrl/cmd/shift/middle-click on a link
   // keeps its normal "open YouTube in a new tab" behaviour.
@@ -324,7 +372,6 @@
     hidden[v.videoId] = true;
     videos = videos.filter(function (x) { return x.videoId !== v.videoId; });
     node.remove();
-    setCount();
     if (!shelfRow.children.length) shelf.hidden = true;
     if (!shelfRow.children.length && !grid.children.length) render();
 
@@ -335,7 +382,7 @@
         videos.push(v);
         videos.sort(byNewest);
         render();
-        countLine.textContent = 'Couldn’t hide that video — it has been put back. Try again.';
+        showToast('Couldn’t hide that video — it has been put back. Try again.');
       });
   }
 
@@ -354,9 +401,207 @@
 
   function byNewest(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); }
 
-  function setCount() {
-    countLine.textContent = plural(videos.length, 'racing video') + ' from the last 30 days · refreshes daily at 7am';
+  // ── Transcribing ──
+  // Raw captions only, fetched and stored by the transcribe-youtube function.
+  // POST starts (or finds) a transcript; GET returns the stored text.
+  var transcriptCache = {};
+
+  // Resolves { chars, title }. Rejects with an Error whose .code is the
+  // server's status ("no-captions", "blocked", "unavailable", "error").
+  function requestTranscribe(videoId) {
+    return fetch(TRANSCRIBE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoId: videoId }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j.status === 'done') return res.j;
+        var err = new Error(res.j.error || 'Transcribe failed');
+        err.code = res.j.status || 'error';
+        throw err;
+      });
   }
+
+  function fetchTranscript(videoId) {
+    if (transcriptCache[videoId]) return Promise.resolve(transcriptCache[videoId]);
+    return fetch(TRANSCRIBE_URL + '?videoId=' + encodeURIComponent(videoId), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (typeof j.text !== 'string') throw new Error('No transcript text');
+        transcriptCache[videoId] = j;
+        return j;
+      });
+  }
+
+  function failureText(err) {
+    if (err && (err.code === 'no-captions')) return 'No captions for this one';
+    if (err && err.code === 'unavailable') return 'Video unavailable';
+    if (err && err.code === 'blocked') return 'YouTube blocked the request — try again later';
+    return 'Couldn’t transcribe — try again';
+  }
+
+  // A short inline message under a card's text; it clears itself.
+  function cardNote(host, text) {
+    var old = host.querySelector('.tnote');
+    if (old) old.remove();
+    var n = el('div', 'tnote', text);
+    n.setAttribute('role', 'status');
+    host.appendChild(n);
+    setTimeout(function () { n.remove(); }, 6000);
+  }
+
+  // Marks a video transcribed and redraws its card in place (grid or shelf).
+  function markTranscribed(v, node, build) {
+    transcribed[v.videoId] = true;
+    if (activeFilter === 'not-transcribed') { render(); return; }
+    if (node && node.parentNode) node.parentNode.replaceChild(build(v), node);
+  }
+
+  // ── Transcript panel ──
+  var tpanel = document.getElementById('tpanel');
+  var tpanelTitle = document.getElementById('tpanelTitle');
+  var tpanelMeta = document.getElementById('tpanelMeta');
+  var tpanelText = document.getElementById('tpanelText');
+  var tpanelCopy = document.getElementById('tpanelCopy');
+  var tpanelDownload = document.getElementById('tpanelDownload');
+  var tpanelClose = document.getElementById('tpanelClose');
+  var tpanelFocus = null;
+  var tpanelCurrent = null;   // { videoId, title, date, text }
+
+  // "Title of the video - 2026-11-17.txt": the video's upload date when the
+  // feed knows it, otherwise the date the transcript was fetched.
+  function transcriptFileName(title, date) {
+    var name = String(title || 'YouTube transcript').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80).trim() || 'YouTube transcript';
+    var t = Date.parse(date);
+    var d = isNaN(t) ? new Date() : new Date(t);
+    return name + ' - ' + d.toISOString().slice(0, 10) + '.txt';
+  }
+
+  function openTranscript(v) {
+    tpanelFocus = document.activeElement;
+    tpanelCurrent = null;
+    tpanelTitle.textContent = v.title || 'Transcript';
+    tpanelMeta.textContent = '';
+    tpanelText.textContent = 'Loading transcript…';
+    tpanelText.classList.add('muted');
+    tpanelCopy.disabled = true; tpanelCopy.textContent = 'Copy';
+    tpanelDownload.disabled = true;
+    tpanel.hidden = false;
+    document.documentElement.classList.add('player-open');
+    tpanelClose.focus();
+
+    var id = v.videoId;
+    fetchTranscript(id).then(function (j) {
+      if (tpanel.hidden) return;
+      var title = v.title || j.title || 'YouTube video';
+      tpanelCurrent = { videoId: id, title: title, date: v.publishedAt || j.fetchedAt, text: j.text };
+      tpanelTitle.textContent = title;
+      tpanelMeta.textContent = j.text.length.toLocaleString() + ' characters' + (j.kind === 'auto' ? ' · auto-generated captions' : j.kind === 'manual' ? ' · uploader’s captions' : '');
+      tpanelText.textContent = j.text;
+      tpanelText.classList.remove('muted');
+      tpanelText.scrollTop = 0;
+      tpanelCopy.disabled = false;
+      tpanelDownload.disabled = false;
+    }).catch(function () {
+      if (tpanel.hidden) return;
+      tpanelText.textContent = 'Couldn’t load this transcript. Close and try again.';
+    });
+  }
+
+  function closeTranscript() {
+    if (tpanel.hidden) return;
+    tpanel.hidden = true;
+    tpanelCurrent = null;
+    tpanelText.textContent = '';
+    document.documentElement.classList.remove('player-open');
+    if (tpanelFocus && document.contains(tpanelFocus) && tpanelFocus.focus) tpanelFocus.focus();
+    tpanelFocus = null;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      if (ok) resolve(); else reject(new Error('copy failed'));
+    });
+  }
+
+  tpanelCopy.addEventListener('click', function () {
+    if (!tpanelCurrent) return;
+    copyText(tpanelCurrent.text).then(function () {
+      tpanelCopy.textContent = 'Copied ✓';
+      setTimeout(function () { tpanelCopy.textContent = 'Copy'; }, 2000);
+    }).catch(function () { showToast('Couldn’t copy — select the text and copy it by hand.'); });
+  });
+
+  tpanelDownload.addEventListener('click', function () {
+    if (!tpanelCurrent) return;
+    var blob = new Blob([tpanelCurrent.title + '\n' + watchUrl(tpanelCurrent.videoId) + '\n\n' + tpanelCurrent.text + '\n'], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = transcriptFileName(tpanelCurrent.title, tpanelCurrent.date);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  tpanelClose.addEventListener('click', closeTranscript);
+  // Backdrop only: a tap inside the panel must not close it.
+  tpanel.addEventListener('click', function (e) { if (e.target === tpanel) closeTranscript(); });
+
+  // ── Paste any YouTube link ──
+  var pasteForm = document.getElementById('pasteForm');
+  var pasteInput = document.getElementById('pasteInput');
+  var pasteBtn = document.getElementById('pasteBtn');
+  var pasteStatus = document.getElementById('pasteStatus');
+
+  // The 11-character video id from a watch, shorts or youtu.be link (also
+  // embed/live links and a bare id). null when there is none.
+  function parseVideoId(input) {
+    var s = String(input || '').trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+    var u;
+    try { u = new URL(s); } catch (e) { return null; }
+    var host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
+    var id = null;
+    if (host === 'youtu.be') id = u.pathname.split('/')[1];
+    else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      if (u.pathname === '/watch') id = u.searchParams.get('v');
+      else { var m = /^\/(?:shorts|embed|live|v)\/([^/?#]+)/.exec(u.pathname); if (m) id = m[1]; }
+    }
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  }
+
+  function pasteMessage(text) {
+    pasteStatus.textContent = text || '';
+    pasteStatus.hidden = !text;
+  }
+
+  pasteForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (pasteBtn.disabled) return;
+    var id = parseVideoId(pasteInput.value);
+    if (!id) { pasteMessage('That doesn’t look like a YouTube video link.'); return; }
+    pasteMessage('');
+    pasteBtn.disabled = true;
+    pasteBtn.textContent = '';
+    pasteBtn.appendChild(el('span', 'spin'));
+    pasteBtn.appendChild(document.createTextNode('Transcribing…'));
+    var inFeed = videos.filter(function (x) { return x.videoId === id; })[0];
+    requestTranscribe(id).then(function (j) {
+      pasteInput.value = '';
+      if (inFeed && !transcribed[id]) { transcribed[id] = true; render(); }
+      else transcribed[id] = true;
+      openTranscript(inFeed || { videoId: id, title: j.title || '' });
+    }).catch(function (err) {
+      pasteMessage(failureText(err));
+    }).then(function () {
+      pasteBtn.disabled = false;
+      pasteBtn.textContent = 'Transcribe';
+    });
+  });
+  pasteInput.addEventListener('input', function () { pasteMessage(''); });
 
   function buildCard(v) {
     var isDone = !!transcribed[v.videoId];
@@ -383,18 +628,26 @@
     text.appendChild(meta);
     info.appendChild(text);
 
-    // Part 3 wires both buttons. Until then "Transcribe" is disabled, and
-    // "Transcript" only stops the tap from opening the player.
-    var btn = el('button', 'btn');
+    // "Transcribe" fetches and stores the captions, then the card flips to
+    // its transcribed state; "Transcript" opens the panel. Neither tap opens
+    // the player (the card's click handler ignores buttons).
+    var btn = el('button', 'btn', isDone ? 'Transcript' : 'Transcribe');
     btn.type = 'button';
     btn.setAttribute('data-video-id', v.videoId);
-    if (isDone) {
-      btn.textContent = 'Transcript';
-    } else {
-      btn.textContent = 'Transcribe';
-      btn.appendChild(el('small', null, 'soon'));
+    btn.addEventListener('click', function () {
+      if (transcribed[v.videoId]) { openTranscript(v); return; }
       btn.disabled = true;
-    }
+      btn.textContent = '';
+      btn.appendChild(el('span', 'spin'));
+      btn.appendChild(document.createTextNode('Transcribing…'));
+      requestTranscribe(v.videoId).then(function () {
+        markTranscribed(v, card, buildCard);
+      }).catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Transcribe';
+        cardNote(text, failureText(err));
+      });
+    });
     info.appendChild(btn);
     card.appendChild(info);
 
@@ -432,16 +685,36 @@
     if (views) a.appendChild(el('div', 'sviews', views));
     wrap.appendChild(a);
     wrap.appendChild(hideButton(v, wrap));
+
+    // Transcribe icon, bottom corner of the thumbnail: beside the link, so a
+    // tap never opens the player. Green once transcribed, when it opens the
+    // transcript panel instead.
+    var tb = el('button', 'tbtn' + (isDone ? ' done' : ''), 'T');
+    tb.type = 'button';
+    tb.title = isDone ? 'Open transcript' : 'Transcribe this short';
+    tb.setAttribute('aria-label', (isDone ? 'Open transcript: ' : 'Transcribe: ') + (v.title || 'video'));
+    tb.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (transcribed[v.videoId]) { openTranscript(v); return; }
+      tb.disabled = true;
+      tb.textContent = '';
+      tb.appendChild(el('span', 'spin'));
+      requestTranscribe(v.videoId).then(function () {
+        markTranscribed(v, wrap, buildShort);
+      }).catch(function (err) {
+        tb.disabled = false;
+        tb.textContent = 'T';
+        cardNote(wrap, failureText(err));
+      });
+    });
+    wrap.appendChild(tb);
     return wrap;
   }
 
   function matches(v) {
     if (activeFilter === 'not-transcribed') { if (transcribed[v.videoId]) return false; }
     else if (activeFilter !== 'all' && v.category !== activeFilter) return false;
-    if (query) {
-      var hay = ((v.title || '') + ' ' + (v.channelTitle || '')).toLowerCase();
-      if (hay.indexOf(query) === -1) return false;
-    }
     return true;
   }
 
@@ -468,7 +741,7 @@
     state.hidden = true;
     if (!videos.length) { showState('No videos yet — the feed fills at 7am'); return; }
     var shown = videos.filter(matches);
-    if (!shown.length) { showState('No videos match that search or filter'); return; }
+    if (!shown.length) { showState('No videos match that filter'); return; }
 
     var shorts = shown.filter(function (v) { return v.isShort === true; });
     var normal = shown.filter(function (v) { return v.isShort !== true; });
@@ -486,8 +759,8 @@
   }
 
   function load() {
-    state.hidden = true;
-    countLine.textContent = 'Loading videos…';
+    clearLists();
+    showState('Loading videos…');
     fetch(FEED_URL, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (data) {
@@ -500,27 +773,13 @@
         transcribed = {};
         (Array.isArray(data.transcribedIds) ? data.transcribedIds : []).forEach(function (id) { transcribed[id] = true; });
 
-        setCount();
-
-        var meta = data.meta || {};
-        var ago = agoShort(meta.lastRunAt || meta.lastRun);
-        updated.hidden = false;
-        if (ago) { updated.classList.remove('stale'); updatedText.textContent = 'Updated ' + ago; }
-        else { updated.classList.add('stale'); updatedText.textContent = 'Not updated yet'; }
-
         render();
       })
       .catch(function () {
         clearLists();
-        countLine.textContent = 'Feed unavailable';
         showState('Couldn’t load the feed. Check your connection and try again.', true);
       });
   }
-
-  searchBox.addEventListener('input', function () {
-    query = searchBox.value.trim().toLowerCase();
-    if (videos.length) render();
-  });
 
   chips.addEventListener('click', function (e) {
     var chip = e.target.closest('.chip');
