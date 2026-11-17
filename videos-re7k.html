@@ -44,8 +44,9 @@
   .paste-btn { flex: 0 0 auto; font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: var(--green); border: 0; border-radius: 999px; padding: 0 16px; cursor: pointer; white-space: nowrap; }
   .paste-btn:disabled { opacity: .7; cursor: default; }
   .paste-status { margin: 6px 4px 0; font-size: 13px; color: #a3352b; }
+  .paste-status.ok { color: var(--green); font-weight: 600; }
 
-  /* Spinner used by every "Transcribing…" state */
+  /* Spinner shown in the paste row's button while a link is being queued */
   .spin { display: inline-block; width: 11px; height: 11px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; margin-right: 6px; animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
@@ -75,6 +76,8 @@
   .short .tbtn { position: absolute; right: 5px; top: 0; margin-top: calc(177.78% - 31px); z-index: 2; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(11, 22, 40, .78); color: #fff; font: inherit; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .short .tbtn:hover { background: rgba(11, 22, 40, .95); }
   .short .tbtn.done { background: var(--green); }
+  .short .tbtn.star { font-size: 15px; }
+  .short .tbtn.star.on { color: var(--gold); }
   .short .tbtn .spin { margin: 0; }
   .short .tbtn:disabled { cursor: default; }
   .tnote { margin-top: 4px; font-size: 12px; font-weight: 600; color: #a3352b; }
@@ -100,6 +103,10 @@
   .tag.interview { background: #ebf0fa; color: #33508e; }
   .btn { flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 700; color: var(--green); background: transparent; border: 1.5px solid var(--green); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
   .btn:disabled { opacity: .75; cursor: default; }
+  /* Star: ☆ = not queued, gold ★ = queued for the laptop to transcribe */
+  .star-btn { flex: 0 0 auto; width: 40px; height: 40px; margin: -6px -6px 0 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--grey); font: inherit; font-size: 24px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .star-btn:hover { background: rgba(11, 22, 40, .06); }
+  .star-btn.on { color: var(--gold); }
   /* Transcribed cards go grey, but their Transcript button stays full strength. */
   .card.transcribed .thumb, .card.transcribed .text { opacity: .62; }
   .card.transcribed .btn { background: var(--green); color: #fff; }
@@ -172,7 +179,7 @@
 
   <form class="paste" id="pasteForm" novalidate>
     <input class="paste-input" id="pasteInput" type="url" inputmode="url" placeholder="Paste any YouTube link" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Paste any YouTube link to transcribe">
-    <button class="paste-btn" id="pasteBtn" type="submit">Transcribe</button>
+    <button class="paste-btn" id="pasteBtn" type="submit">★ Queue</button>
   </form>
   <div class="paste-status" id="pasteStatus" role="status" hidden></div>
 
@@ -181,6 +188,7 @@
     <button class="chip" type="button" data-filter="tips" aria-pressed="false">Tips</button>
     <button class="chip" type="button" data-filter="stable-tour" aria-pressed="false">Stable tours</button>
     <button class="chip" type="button" data-filter="interview" aria-pressed="false">Interviews</button>
+    <button class="chip" type="button" data-filter="starred" aria-pressed="false">★ Starred</button>
     <button class="chip" type="button" data-filter="not-transcribed" aria-pressed="false">Not transcribed</button>
   </div>
 
@@ -233,6 +241,7 @@
 
   var videos = [];
   var transcribed = {};
+  var starred = {};   // ids waiting in the transcribe queue
   var hidden = {};
   var activeFilter = 'all';
 
@@ -401,22 +410,60 @@
 
   function byNewest(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); }
 
-  // ── Transcribing ──
-  // Raw captions only, fetched and stored by the transcribe-youtube function.
-  // POST starts (or finds) a transcript; GET returns the stored text.
+  // ── Star to queue ──
+  // A star puts the video in the transcribe queue (transcribe-youtube). The
+  // laptop's worker drains the queue and stores the transcript; this page
+  // never fetches captions itself. A card flips to "transcribed" when
+  // get-youtube-feed reports its id in transcribedIds, on the next load.
   var transcriptCache = {};
 
-  // Resolves { chars, title }. Rejects with an Error whose .code is the
-  // server's status ("no-captions", "blocked", "unavailable", "error").
-  function requestTranscribe(videoId) {
-    return fetch(TRANSCRIBE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoId: videoId }) })
+  // POST to the queue. remove=true un-stars. Resolves the server's JSON
+  // ({ status: 'queued' | 'removed' | 'done', ... }); rejects on any failure.
+  function queueRequest(videoId, remove) {
+    var body = remove ? { videoId: videoId, remove: true } : { videoId: videoId };
+    return fetch(TRANSCRIBE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
-        if (res.ok && res.j.status === 'done') return res.j;
-        var err = new Error(res.j.error || 'Transcribe failed');
-        err.code = res.j.status || 'error';
-        throw err;
+        if (res.ok && (res.j.status === 'queued' || res.j.status === 'removed' || res.j.status === 'done')) return res.j;
+        throw new Error(res.j.error || 'Queue request failed');
       });
+  }
+
+  // The ids currently queued — how stars survive a reload. A failure here
+  // only means the stars are not shown; the feed still loads.
+  function fetchQueue() {
+    return fetch(TRANSCRIBE_URL, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { return Array.isArray(j.queuedIds) ? j.queuedIds : []; })
+      .catch(function () { return []; });
+  }
+
+  function paintStar(b, v) {
+    var on = !!starred[v.videoId];
+    b.textContent = on ? '★' : '☆';
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.title = on ? 'Starred — waiting for your laptop. Tap to un-star.' : 'Star to transcribe';
+    b.setAttribute('aria-label', (on ? 'Un-star: ' : 'Star to transcribe: ') + (v.title || 'video'));
+  }
+
+  // Tap a star: the change shows at once and is then saved. If the save
+  // fails the star goes back to how it was, so the page never shows a star
+  // the queue does not have. `host` takes the inline failure note.
+  function toggleStar(v, b, node, build, host) {
+    var id = v.videoId;
+    var turningOn = !starred[id];
+    if (turningOn) starred[id] = true; else delete starred[id];
+    paintStar(b, v);
+    if (!turningOn && activeFilter === 'starred') render();
+    queueRequest(id, !turningOn).then(function (j) {
+      // Already transcribed (the worker got there first): flip the card.
+      if (j.status === 'done') { delete starred[id]; markTranscribed(v, node, build); }
+    }).catch(function () {
+      if (turningOn) delete starred[id]; else starred[id] = true;
+      if (document.contains(b)) { paintStar(b, v); cardNote(host, turningOn ? 'Couldn’t star — try again' : 'Couldn’t un-star — try again'); }
+      else render();
+    });
   }
 
   function fetchTranscript(videoId) {
@@ -428,13 +475,6 @@
         transcriptCache[videoId] = j;
         return j;
       });
-  }
-
-  function failureText(err) {
-    if (err && (err.code === 'no-captions')) return 'No captions for this one';
-    if (err && err.code === 'unavailable') return 'Video unavailable';
-    if (err && err.code === 'blocked') return 'YouTube blocked the request — try again later';
-    return 'Couldn’t transcribe — try again';
   }
 
   // A short inline message under a card's text; it clears itself.
@@ -450,7 +490,7 @@
   // Marks a video transcribed and redraws its card in place (grid or shelf).
   function markTranscribed(v, node, build) {
     transcribed[v.videoId] = true;
-    if (activeFilter === 'not-transcribed') { render(); return; }
+    if (activeFilter === 'not-transcribed' || activeFilter === 'starred') { render(); return; }
     if (node && node.parentNode) node.parentNode.replaceChild(build(v), node);
   }
 
@@ -573,8 +613,9 @@
     return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
   }
 
-  function pasteMessage(text) {
+  function pasteMessage(text, ok) {
     pasteStatus.textContent = text || '';
+    pasteStatus.classList.toggle('ok', !!ok);
     pasteStatus.hidden = !text;
   }
 
@@ -587,18 +628,26 @@
     pasteBtn.disabled = true;
     pasteBtn.textContent = '';
     pasteBtn.appendChild(el('span', 'spin'));
-    pasteBtn.appendChild(document.createTextNode('Transcribing…'));
+    pasteBtn.appendChild(document.createTextNode('Queuing…'));
     var inFeed = videos.filter(function (x) { return x.videoId === id; })[0];
-    requestTranscribe(id).then(function (j) {
+    queueRequest(id, false).then(function (j) {
       pasteInput.value = '';
-      if (inFeed && !transcribed[id]) { transcribed[id] = true; render(); }
-      else transcribed[id] = true;
-      openTranscript(inFeed || { videoId: id, title: j.title || '' });
-    }).catch(function (err) {
-      pasteMessage(failureText(err));
+      if (j.status === 'done') {
+        // A transcript is already stored for this link: show it.
+        delete starred[id];
+        if (inFeed && !transcribed[id]) { transcribed[id] = true; render(); }
+        else transcribed[id] = true;
+        openTranscript(inFeed || { videoId: id, title: j.title || '' });
+        return;
+      }
+      starred[id] = true;
+      if (inFeed) render();
+      pasteMessage('Queued — ready after your laptop next checks in.', true);
+    }).catch(function () {
+      pasteMessage('Couldn’t queue that link — try again.');
     }).then(function () {
       pasteBtn.disabled = false;
-      pasteBtn.textContent = 'Transcribe';
+      pasteBtn.textContent = '★ Queue';
     });
   });
   pasteInput.addEventListener('input', function () { pasteMessage(''); });
@@ -628,26 +677,20 @@
     text.appendChild(meta);
     info.appendChild(text);
 
-    // "Transcribe" fetches and stores the captions, then the card flips to
-    // its transcribed state; "Transcript" opens the panel. Neither tap opens
-    // the player (the card's click handler ignores buttons).
-    var btn = el('button', 'btn', isDone ? 'Transcript' : 'Transcribe');
+    // Not transcribed: a star (☆ / gold ★) that queues or un-queues the
+    // video. Transcribed: a "Transcript" button that opens the panel. Neither
+    // tap opens the player (the card's click handler ignores buttons).
+    var btn;
+    if (isDone) {
+      btn = el('button', 'btn', 'Transcript');
+      btn.addEventListener('click', function () { openTranscript(v); });
+    } else {
+      btn = el('button', 'star-btn');
+      paintStar(btn, v);
+      btn.addEventListener('click', function () { toggleStar(v, btn, card, buildCard, text); });
+    }
     btn.type = 'button';
     btn.setAttribute('data-video-id', v.videoId);
-    btn.addEventListener('click', function () {
-      if (transcribed[v.videoId]) { openTranscript(v); return; }
-      btn.disabled = true;
-      btn.textContent = '';
-      btn.appendChild(el('span', 'spin'));
-      btn.appendChild(document.createTextNode('Transcribing…'));
-      requestTranscribe(v.videoId).then(function () {
-        markTranscribed(v, card, buildCard);
-      }).catch(function (err) {
-        btn.disabled = false;
-        btn.textContent = 'Transcribe';
-        cardNote(text, failureText(err));
-      });
-    });
     info.appendChild(btn);
     card.appendChild(info);
 
@@ -686,27 +729,24 @@
     wrap.appendChild(a);
     wrap.appendChild(hideButton(v, wrap));
 
-    // Transcribe icon, bottom corner of the thumbnail: beside the link, so a
-    // tap never opens the player. Green once transcribed, when it opens the
-    // transcript panel instead.
-    var tb = el('button', 'tbtn' + (isDone ? ' done' : ''), 'T');
+    // Bottom corner of the thumbnail, beside the link so a tap never opens
+    // the player. Not transcribed: the star (☆ / gold ★). Transcribed: a
+    // green "T" that opens the transcript panel.
+    var tb;
+    if (isDone) {
+      tb = el('button', 'tbtn done', 'T');
+      tb.title = 'Open transcript';
+      tb.setAttribute('aria-label', 'Open transcript: ' + (v.title || 'video'));
+    } else {
+      tb = el('button', 'tbtn star');
+      paintStar(tb, v);
+    }
     tb.type = 'button';
-    tb.title = isDone ? 'Open transcript' : 'Transcribe this short';
-    tb.setAttribute('aria-label', (isDone ? 'Open transcript: ' : 'Transcribe: ') + (v.title || 'video'));
     tb.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (transcribed[v.videoId]) { openTranscript(v); return; }
-      tb.disabled = true;
-      tb.textContent = '';
-      tb.appendChild(el('span', 'spin'));
-      requestTranscribe(v.videoId).then(function () {
-        markTranscribed(v, wrap, buildShort);
-      }).catch(function (err) {
-        tb.disabled = false;
-        tb.textContent = 'T';
-        cardNote(wrap, failureText(err));
-      });
+      if (transcribed[v.videoId]) openTranscript(v);
+      else toggleStar(v, tb, wrap, buildShort, wrap);
     });
     wrap.appendChild(tb);
     return wrap;
@@ -714,6 +754,7 @@
 
   function matches(v) {
     if (activeFilter === 'not-transcribed') { if (transcribed[v.videoId]) return false; }
+    else if (activeFilter === 'starred') { if (!starred[v.videoId] || transcribed[v.videoId]) return false; }
     else if (activeFilter !== 'all' && v.category !== activeFilter) return false;
     return true;
   }
@@ -741,7 +782,7 @@
     state.hidden = true;
     if (!videos.length) { showState('No videos yet — the feed fills at 7am'); return; }
     var shown = videos.filter(matches);
-    if (!shown.length) { showState('No videos match that filter'); return; }
+    if (!shown.length) { showState(activeFilter === 'starred' ? 'Nothing starred — tap ☆ on a video to queue it for transcribing' : 'No videos match that filter'); return; }
 
     var shorts = shown.filter(function (v) { return v.isShort === true; });
     var normal = shown.filter(function (v) { return v.isShort !== true; });
@@ -761,9 +802,14 @@
   function load() {
     clearLists();
     showState('Loading videos…');
-    fetch(FEED_URL, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (data) {
+    var feed = fetch(FEED_URL, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    // The feed and the queue load together; fetchQueue never rejects.
+    Promise.all([feed, fetchQueue()])
+      .then(function (both) {
+        var data = both[0];
+        starred = {};
+        both[1].forEach(function (id) { starred[id] = true; });
         // Hidden ids never render: they are dropped here, before anything is built.
         hidden = {};
         (Array.isArray(data.hiddenIds) ? data.hiddenIds : []).forEach(function (id) { hidden[id] = true; });
