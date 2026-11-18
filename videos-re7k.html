@@ -211,7 +211,6 @@
     <button class="chip" type="button" data-filter="interview" aria-pressed="false">Interviews</button>
     <button class="chip" type="button" data-filter="starred" aria-pressed="false">★ Starred</button>
     <button class="chip" type="button" data-filter="transcripts" aria-pressed="false">Transcripts</button>
-    <button class="chip" type="button" data-filter="not-transcribed" aria-pressed="false">Not transcribed</button>
   </div>
 
   <main>
@@ -536,7 +535,7 @@
   // Marks a video transcribed and redraws its card in place (grid or shelf).
   function markTranscribed(v, node, build) {
     transcribed[v.videoId] = true;
-    if (activeFilter === 'not-transcribed' || activeFilter === 'starred') { render(); return; }
+    if (activeFilter === 'starred') { render(); return; }
     if (node && node.parentNode) node.parentNode.replaceChild(build(v), node);
   }
 
@@ -827,8 +826,7 @@
   }
 
   function matches(v) {
-    if (activeFilter === 'not-transcribed') { if (transcribed[v.videoId]) return false; }
-    else if (activeFilter === 'starred') { if (!starred[v.videoId] || transcribed[v.videoId]) return false; }
+    if (activeFilter === 'starred') { if (!starred[v.videoId] || transcribed[v.videoId]) return false; }
     else if (activeFilter !== 'all' && v.category !== activeFilter) return false;
     return true;
   }
