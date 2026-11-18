@@ -16031,11 +16031,7 @@ function nrLoadForm(pfx,horseId,silent){
       out+=_sc('Prize',_przStr);
       out+='</div>';
 
-      // 4. Trip/Going/Track — stacked blocks, no inner tabs (Compact/Detail
-      // racecard redesign). Replaces the old tabbed Form Summary strip.
-      out+='<div style="padding:10px 12px 0">';
-      out+=_renderFormSectionsStacked(_fsum||{});
-      out+='</div>';
+      // 4. (Trip/Going/Track moved under the form table — see "The full read" below.)
 
       // 5. Form table — run rows only, first 8 visible
       if(hist.length){
@@ -16072,92 +16068,22 @@ function nrLoadForm(pfx,horseId,silent){
         if(hist.length>8)out+='<div id="nrh-fm-'+pfx+'" style="padding:8px 12px;text-align:center"><span onclick="nrFmExpand(\''+pfx+'\',this)" style="font-size:12px;font-weight:500;color:#1e9e6b;cursor:pointer">View '+(hist.length-8)+' more '+((hist.length-8)===1?'race':'races')+'</span></div>';
       }
 
-      // 6. Trainer History timeline
-      (function(){
-        var _runs=hist.filter(function(h){return h.trainer&&h.date;}).slice();
-        _runs.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
-        if(!_runs.length)return;
-        // ONE grouping rule (Build 4) — identical to the block above and to
-        // the engine's: trainer_id equality when both rows carry ids, the
-        // canonicaliser's name bridging otherwise. Newest row's form displays.
-        var _ta={'john harrington':'jessica harrington','j harrington':'jessica harrington','nigel willy twistondavies':'nigel twistondavies','kim bailey mat nicholls':'kim bailey','philip hobbs johnson white':'philip hobbs','donnacha aidan obrien':'donnacha obrien'};
-        var _normT=function(t){var n=String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim().replace(/^(mr|mrs|ms|miss|sir|dr)\s+/,'');return _ta[n]||n;};
-        var _sameT=function(a,b){
-          var na=_normT(a),nb=_normT(b);
-          if(!na||!nb)return false;
-          if(na===nb)return true;
-          var ta=na.split(' '),tb=nb.split(' ');
-          if(ta.length<2||tb.length<2)return false;
-          if(ta[ta.length-1]!==tb[tb.length-1])return false;
-          var fa=ta.slice(0,-1),fb=tb.slice(0,-1);
-          var _ini=function(arr){for(var k=0;k<arr.length;k++){if(arr[k].length!==1)return false;}return true;};
-          if(!_ini(fa)&&!_ini(fb))return false;
-          var sh=fa.length<=fb.length?fa:fb,lo=fa.length<=fb.length?fb:fa;
-          for(var k=0;k<sh.length;k++){if(sh[k].charAt(0)!==lo[k].charAt(0))return false;}
-          return true;
-        };
-        var _per=[];
-        _runs.forEach(function(h){
-          var _t=String(h.trainer).trim();
-          var _last=_per[_per.length-1];
-          var _same=_last&&((h.trainer_id&&_last.id)?h.trainer_id===_last.id:_sameT(_last.name,_t));
-          if(_same){_last.to=h.date;_last.runs++;_last.name=_t;if(h.trainer_id)_last.id=h.trainer_id;}
-          else _per.push({name:_t,id:h.trainer_id||'',from:h.date,to:h.date,runs:1});
-        });
-        var _cardTr=(_ru2&&_ru2.trainer)?String(_ru2.trainer).trim():'';
-        var _cardTid=(_ru2&&_ru2.trainer_id)?String(_ru2.trainer_id):'';
-        var _lastSp=_per[_per.length-1];
-        if(_cardTr&&!((_cardTid&&_lastSp.id)?_cardTid===_lastSp.id:_sameT(_lastSp.name,_cardTr)))_per.push({name:_cardTr,id:_cardTid,from:'',to:'',runs:0});
-        _per.reverse();
-        var _mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var _my=function(d){var p=String(d||'').split('-');return p.length>=2?(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _dmy=function(d){var p=String(d||'').split('-');return p.length===3?parseInt(p[2],10)+' '+(_mon[parseInt(p[1],10)-1]||'')+' '+p[0]:'';};
-        var _noteSp=(data.trainerHistory&&Array.isArray(data.trainerHistory.spells))?data.trainerHistory.spells:[];
-        var _noteFor=function(nm){for(var k=0;k<_noteSp.length;k++){var s=_noteSp[k];if(s&&s.text&&_sameT(s.trainer,nm))return s.text;}return '';};
-        out+='<div style="padding:10px 12px 12px">';
-        out+=_shdr('Trainer History');
-        // Tiered spells, most recent first: spell 1 in a green-bordered card (13px
-        // text), spell 2 in a hairline card (12px), spells 3+ as a single line each
-        // (bold name, muted dates, 11px text). The dot/connector timeline runs down
-        // the left of all tiers.
-        // Date label per spell: 'since Aug 2025' for the current spell, 'Mar–Aug 2025'
-        // for a past one (year shown once when both ends share it).
-        var _span=function(p,cur){
-          if(cur) return p.from?'since '+_my(p.from):'no runs yet';
-          var a=String(p.from||'').split('-'),b=String(p.to||'').split('-');
-          var am=a.length>=2?(_mon[parseInt(a[1],10)-1]||''):'',bm=b.length>=2?(_mon[parseInt(b[1],10)-1]||''):'';
-          if(a[0]&&a[0]===b[0]) return (am===bm?am:am+'–'+bm)+' '+a[0];
-          return _my(p.from)+'–'+_my(p.to);
-        };
-        _per.forEach(function(p,i){
-          var cur=i===0;
-          var last=i===_per.length-1;
-          var tier=i===0?1:i===1?2:3;
-          var dateStr=_span(p,cur);
-          var note=_thTidy(_noteFor(p.name)||'');
-          var dot=cur?'#1e9e6b':'#cbd5e1';
-          out+='<div style="display:flex;gap:10px">';
-          out+='<div style="display:flex;flex-direction:column;align-items:center;width:8px;flex-shrink:0;padding-top:'+(tier===3?'4px':'12px')+'">';
-          out+='<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></div>';
-          if(!last)out+='<div style="width:1px;flex:1;background:#d9efe4;margin-top:2px"></div>';
-          out+='</div>';
-          out+='<div style="flex:1;min-width:0;padding-bottom:'+(last?'2px':(tier===3?'6px':'10px'))+'">';
-          if(tier===3){
-            out+='<div style="font-size:11px;line-height:1.25;letter-spacing:-0.01em;color:#6b7280"><span style="font-weight:700;color:#0b1628">'+escHtml(p.name)+'</span><span style="color:#9ca3af"> · '+escHtml(dateStr)+'</span>'+(note?' '+escHtml(note):'')+'</div>';
-          } else {
-            var cardB=tier===1?'1px solid #1e9e6b':'0.5px solid #d9efe4';
-            var cardP=tier===1?'10px 12px':'8px 12px';
-            var txtS=tier===1?'13px':'12px';
-            out+='<div style="background:#ffffff;border:'+cardB+';border-radius:8px;padding:'+cardP+'">';
-            out+='<div style="font-size:10px;font-weight:600;color:#0b1628;margin-bottom:4px">'+escHtml(p.name)+'<span style="color:#9ca3af;font-weight:400"> · '+escHtml(dateStr)+'</span></div>';
-            if(note)out+='<div style="font-size:'+txtS+';line-height:1.25;letter-spacing:-0.01em;color:#374151">'+escHtml(note)+'</div>';
-            else out+='<div style="font-size:'+txtS+';line-height:1.5;color:#9ca3af;font-style:italic">Trainer analysis coming soon.</div>';
-            out+='</div>';
-          }
-          out+='</div></div>';
-        });
-        out+='</div>';
-      })();
+      // 6. "The full read" — Trip/Going/Track, moved from above the form table
+      // to a collapsed tap-row directly under it. The row is the same quiet
+      // link pattern as the card's "More detail"/"Less detail" row; the three
+      // blocks are the unchanged _renderFormSectionsStacked output in its
+      // original wrapper, hidden until tapped (nrFullReadToggle). No ids: the
+      // toggle finds its body by position, because this html is also mirrored
+      // into nrh-pft-{pfx}.
+      out+='<div style="padding:8px 12px 10px"><span onclick="nrFullReadToggle(this)" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:500;color:#1a7a4a;cursor:pointer">The full read &#9662;</span></div>';
+      out+='<div style="display:none">';
+      out+='<div style="padding:10px 12px 0">';
+      out+=_renderFormSectionsStacked(_fsum||{});
+      out+='</div>';
+      out+='</div>';
+
+      // Trainer History is no longer rendered on the racecard: it lives in the
+      // horse chevron only (nrLoadProfile's timeline, same trainerHistory data).
 
       if(!out) out='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">No form data available.</div>';
 
@@ -16174,6 +16100,15 @@ function nrLoadForm(pfx,horseId,silent){
       var _pft3=document.getElementById('nrh-pft-'+pfx);
       if(_pft3)_pft3.innerHTML='<div style="padding:8px 12px;font-size:11px;color:#9aa3b5">Could not load form data.</div>';
     });
+}
+// "The full read" tap-row under the form table: shows/hides the Trip/Going/
+// Track blocks that follow it and flips the chevron. Collapsed by default.
+function nrFullReadToggle(el){
+  var body=el&&el.parentNode?el.parentNode.nextElementSibling:null;
+  if(!body)return;
+  var open=body.style.display==='none';
+  body.style.display=open?'':'none';
+  el.innerHTML='The full read '+(open?'&#9650;':'&#9662;');
 }
 // The control (#nrh-fm-{pfx}) is a div in normal flow beneath the table, not a table
 // row, so expand/collapse only toggle the hidden tbody and rewrite the div's text.
