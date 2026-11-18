@@ -205,10 +205,9 @@
 
   <div class="chips" id="chips" role="group" aria-label="Filter videos">
     <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
-    <button class="chip" type="button" data-filter="tips" aria-pressed="false">Tips</button>
-    <button class="chip" type="button" data-filter="stable-tour" aria-pressed="false">Stable tours</button>
     <button class="chip" type="button" data-filter="interview" aria-pressed="false">Interviews</button>
-    <button class="chip" type="button" data-filter="starred" aria-pressed="false">★ Starred</button>
+    <!-- Trainer chips are inserted here by the script (see TRAINERS). -->
+    <button class="chip" type="button" data-filter="starred" id="chipStarred" aria-pressed="false">★ Starred</button>
     <button class="chip" type="button" data-filter="transcripts" aria-pressed="false">Transcripts</button>
   </div>
 
@@ -272,6 +271,20 @@
   var FEED_URL = '/.netlify/functions/get-youtube-feed';
   var HIDE_URL = '/.netlify/functions/hide-youtube-video';
   var TRANSCRIBE_URL = '/.netlify/functions/transcribe-youtube';
+  // ── TRAINER SECTIONS — edit here ──
+  // One chip per trainer, in this order. A video belongs to a section when
+  // its title, channel name or description contains any of the terms as
+  // whole words (case, accents, punctuation and a trailing 's are ignored).
+  // A video can sit in several sections. A chip with no videos is hidden.
+  var TRAINERS = [
+    { key: 'mullins',     label: 'Mullins',     terms: ['mullins', 'willie mullins', 'w p mullins', 'patrick mullins', 'closutton'] },
+    { key: 'henderson',   label: 'Henderson',   terms: ['henderson', 'nicky henderson', 'seven barrows'] },
+    { key: 'elliott',     label: 'Elliott',     terms: ['elliott', 'gordon elliott', 'cullentra'] },
+    { key: 'nicholls',    label: 'Nicholls',    terms: ['nicholls', 'paul nicholls', 'ditcheat', 'harry cobden'] },
+    { key: 'skelton',     label: 'Skelton',     terms: ['skelton', 'dan skelton', 'harry skelton'] },
+    { key: 'de-bromhead', label: 'de Bromhead', terms: ['de bromhead', 'henry de bromhead', 'rachael blackmore'] }
+  ];
+
   var TAG_LABELS = { 'tips': 'TIPS', 'stable-tour': 'STABLE TOUR', 'interview': 'INTERVIEW' };
 
   var videos = [];
@@ -347,7 +360,7 @@
     var frame = document.createElement('iframe');
     frame.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(v.videoId) + '?autoplay=1&playsinline=1&rel=0';
     frame.title = v.title || 'YouTube video';
-    frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    frame.allow = 'fullscreen; autoplay; encrypted-media; picture-in-picture';
     frame.allowFullscreen = true;
     // YouTube refuses to play an embed that arrives with no referrer.
     frame.referrerPolicy = 'strict-origin-when-cross-origin';
@@ -830,10 +843,61 @@
       });
   }
 
+  // ── Trainer sections ──
+  function matchText(s) {
+    return ' ' + String(s || '').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/['‘’`]s/g, '').replace(/['‘’`]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+  }
+  var TRAINER_TERMS = {};
+  TRAINERS.forEach(function (t) { TRAINER_TERMS[t.key] = t.terms.map(matchText); });
+  var trainerCache = {};   // videoId -> { trainerKey: true }
+
+  function trainersOf(v) {
+    var hit = trainerCache[v.videoId];
+    if (hit) return hit;
+    var text = matchText([v.title, v.channelTitle, v.description].join(' | '));
+    hit = {};
+    TRAINERS.forEach(function (t) {
+      if (TRAINER_TERMS[t.key].some(function (term) { return text.indexOf(term) !== -1; })) hit[t.key] = true;
+    });
+    return (trainerCache[v.videoId] = hit);
+  }
+
+  // Chips are built once, before ★ Starred, and shown only while at least
+  // one video in the feed belongs to that trainer.
+  var trainerChips = {};
+  TRAINERS.forEach(function (t) {
+    var b = el('button', 'chip', t.label);
+    b.type = 'button';
+    b.setAttribute('data-filter', 'trainer:' + t.key);
+    b.setAttribute('aria-pressed', 'false');
+    b.hidden = true;
+    chips.insertBefore(b, document.getElementById('chipStarred'));
+    trainerChips[t.key] = b;
+  });
+
+  function pressChip(filter) {
+    activeFilter = filter;
+    Array.prototype.forEach.call(chips.querySelectorAll('.chip'), function (c) {
+      c.setAttribute('aria-pressed', c.getAttribute('data-filter') === filter ? 'true' : 'false');
+    });
+  }
+
+  function updateTrainerChips() {
+    var counts = {};
+    videos.forEach(function (v) { Object.keys(trainersOf(v)).forEach(function (k) { counts[k] = (counts[k] || 0) + 1; }); });
+    TRAINERS.forEach(function (t) { trainerChips[t.key].hidden = !counts[t.key]; });
+    // The open section just lost its last video (it was hidden): back to All.
+    if (activeFilter.indexOf('trainer:') === 0 && !counts[activeFilter.slice(8)]) pressChip('all');
+  }
+
   function matches(v) {
-    if (activeFilter === 'starred') { if (!starred[v.videoId] || transcribed[v.videoId]) return false; }
-    else if (activeFilter !== 'all' && v.category !== activeFilter) return false;
-    return true;
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'starred') return !!starred[v.videoId] && !transcribed[v.videoId];
+    if (activeFilter.indexOf('trainer:') === 0) return trainersOf(v)[activeFilter.slice(8)] === true;
+    return v.category === activeFilter;
   }
 
   function showState(text, withRetry) {
@@ -857,6 +921,7 @@
   function render() {
     clearLists();
     state.hidden = true;
+    updateTrainerChips();
     if (activeFilter === 'transcripts') {
       var items = transcriptItems();
       if (!items.length) { showState('No transcripts yet — star a video and it appears here once your laptop has fetched it'); return; }
@@ -917,10 +982,7 @@
   chips.addEventListener('click', function (e) {
     var chip = e.target.closest('.chip');
     if (!chip) return;
-    activeFilter = chip.getAttribute('data-filter');
-    Array.prototype.forEach.call(chips.querySelectorAll('.chip'), function (c) {
-      c.setAttribute('aria-pressed', c === chip ? 'true' : 'false');
-    });
+    pressChip(chip.getAttribute('data-filter'));
     if (videos.length || library.length) render();
   });
 
