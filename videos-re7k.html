@@ -117,6 +117,8 @@
   /* Transcribed cards go grey, but their Transcript button stays full strength. */
   .card.transcribed .thumb, .card.transcribed .text { opacity: .62; }
   .card.transcribed .btn { background: var(--green); color: #fff; }
+  /* In the Transcripts view every card is transcribed, so nothing is greyed. */
+  .view-transcripts .card.transcribed .thumb, .view-transcripts .card.transcribed .text { opacity: 1; }
 
   /* ── Transcript panel (same overlay pattern as the player) ── */
   .tpanel { position: fixed; inset: 0; z-index: 60; background: rgba(5, 10, 20, .94); display: flex; align-items: center; justify-content: center; overscroll-behavior: contain;
@@ -208,6 +210,7 @@
     <button class="chip" type="button" data-filter="stable-tour" aria-pressed="false">Stable tours</button>
     <button class="chip" type="button" data-filter="interview" aria-pressed="false">Interviews</button>
     <button class="chip" type="button" data-filter="starred" aria-pressed="false">★ Starred</button>
+    <button class="chip" type="button" data-filter="transcripts" aria-pressed="false">Transcripts</button>
     <button class="chip" type="button" data-filter="not-transcribed" aria-pressed="false">Not transcribed</button>
   </div>
 
@@ -276,6 +279,7 @@
   var videos = [];
   var transcribed = {};
   var starred = {};   // ids waiting in the transcribe queue
+  var library = [];   // every stored transcript: { videoId, title, author, chars, fetchedAt }
   var hidden = {};
   var activeFilter = 'all';
 
@@ -422,8 +426,7 @@
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); })
       .catch(function () {
         delete hidden[v.videoId];
-        videos.push(v);
-        videos.sort(byNewest);
+        if (!v.transcriptOnly) { videos.push(v); videos.sort(byNewest); }
         render();
         showToast('Couldn’t hide that video — it has been put back. Try again.');
       });
@@ -469,6 +472,15 @@
     return fetch(TRANSCRIBE_URL, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (j) { return Array.isArray(j.queuedIds) ? j.queuedIds : []; })
+      .catch(function () { return []; });
+  }
+
+  // Every stored transcript (id, title, channel, when; no text), for the
+  // "Transcripts" view. A failure only means that view is empty.
+  function fetchLibrary() {
+    return fetch(TRANSCRIBE_URL + '?list=1', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { return (Array.isArray(j.transcripts) ? j.transcripts : []).filter(function (e) { return e && typeof e.videoId === 'string'; }); })
       .catch(function () { return []; });
   }
 
@@ -706,7 +718,11 @@
 
     var meta = el('div', 'meta');
     if (TAG_LABELS[v.category]) meta.appendChild(el('span', 'tag ' + v.category, TAG_LABELS[v.category]));
-    var parts = [v.channelTitle || '', formatViews(v.viewCount), agoCard(v.publishedAt)].filter(Boolean);
+    // A transcript with no feed card (pasted link, or a video that has left
+    // the feed) has no views or upload date: say when it was transcribed.
+    var parts = v.transcriptOnly
+      ? [v.channelTitle || '', v.transcribedAt ? 'Transcribed ' + agoCard(v.transcribedAt).toLowerCase() : ''].filter(Boolean)
+      : [v.channelTitle || '', formatViews(v.viewCount), agoCard(v.publishedAt)].filter(Boolean);
     meta.appendChild(document.createTextNode(parts.join(' · ')));
     text.appendChild(meta);
     info.appendChild(text);
@@ -788,6 +804,20 @@
     return wrap;
   }
 
+  // The "Transcripts" view: every stored transcript, newest first — feed
+  // videos as their normal card, anything else (a pasted link, a video that
+  // has left the 30-day feed) as a card built from the transcript index.
+  function transcriptItems() {
+    var byId = {};
+    videos.forEach(function (v) { byId[v.videoId] = v; });
+    return library
+      .filter(function (e) { return !hidden[e.videoId]; })
+      .sort(function (a, b) { return (Date.parse(b.fetchedAt) || 0) - (Date.parse(a.fetchedAt) || 0); })
+      .map(function (e) {
+        return byId[e.videoId] || { videoId: e.videoId, title: e.title || 'YouTube video', channelTitle: e.author || '', transcribedAt: e.fetchedAt, transcriptOnly: true };
+      });
+  }
+
   function matches(v) {
     if (activeFilter === 'not-transcribed') { if (transcribed[v.videoId]) return false; }
     else if (activeFilter === 'starred') { if (!starred[v.videoId] || transcribed[v.videoId]) return false; }
@@ -816,7 +846,16 @@
   function render() {
     clearLists();
     state.hidden = true;
-    if (!videos.length) { showState('No videos yet — the feed fills at 7am'); return; }
+    document.body.classList.toggle('view-transcripts', activeFilter === 'transcripts');
+    if (activeFilter === 'transcripts') {
+      var items = transcriptItems();
+      if (!items.length) { showState('No transcripts yet — star a video and it appears here once your laptop has fetched it'); return; }
+      var tfrag = document.createDocumentFragment();
+      items.forEach(function (v) { tfrag.appendChild(buildCard(v)); });
+      grid.appendChild(tfrag);
+      return;
+    }
+    if (!videos.length) { showState('No videos yet — the feed fills at 7am and 4pm'); return; }
     var shown = videos.filter(matches);
     if (!shown.length) { showState(activeFilter === 'starred' ? 'Nothing starred — tap ☆ on a video to queue it for transcribing' : 'No videos match that filter'); return; }
 
@@ -841,7 +880,7 @@
     var feed = fetch(FEED_URL, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
     // The feed and the queue load together; fetchQueue never rejects.
-    Promise.all([feed, fetchQueue()])
+    Promise.all([feed, fetchQueue(), fetchLibrary()])
       .then(function (both) {
         var data = both[0];
         starred = {};
@@ -854,6 +893,8 @@
           .sort(byNewest);
         transcribed = {};
         (Array.isArray(data.transcribedIds) ? data.transcribedIds : []).forEach(function (id) { transcribed[id] = true; });
+        library = both[2];
+        library.forEach(function (e) { transcribed[e.videoId] = true; });
 
         render();
       })
@@ -870,7 +911,7 @@
     Array.prototype.forEach.call(chips.querySelectorAll('.chip'), function (c) {
       c.setAttribute('aria-pressed', c === chip ? 'true' : 'false');
     });
-    if (videos.length) render();
+    if (videos.length || library.length) render();
   });
 
   // ── Add to home screen ──

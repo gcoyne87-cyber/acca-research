@@ -23,6 +23,11 @@
 //   id -> { attempts, lastError, at, removed }. Starring the video again
 //   gives it a fresh start.
 //
+// If YouTube refuses this machine ("sign in to confirm you're not a bot"),
+// that is NOT counted against the video: the run stops at once, the video
+// stays starred, and the worker makes no YouTube requests for 3 hours
+// (youtube:transcribe-cooldown, which expires by itself).
+//
 // An empty queue exits silently. One line per video is appended to
 // scripts/transcribe-worker.log (capped at 500 lines). A lock file stops two
 // runs overlapping.
@@ -47,6 +52,16 @@ const QUEUE_KEY = 'youtube:transcribe-queue';
 const TRANSCRIPT_PREFIX = 'youtube:transcript:';
 const TRANSCRIBED_KEY = 'youtube:transcribed';
 const FAILED_KEY = 'youtube:transcribe-failed';
+// Set (with an expiry) when YouTube refuses this machine with its bot check.
+// While it exists the worker makes no YouTube requests at all.
+const COOLDOWN_KEY = 'youtube:transcribe-cooldown';
+const COOLDOWN_SECONDS = 3 * 60 * 60;
+// A small index of every stored transcript (no text): JSON array of
+// { videoId, title, author, lang, kind, chars, fetchedAt }, oldest first.
+// The page's "Transcripts" view lists from this, so transcripts of pasted
+// links and of videos that have left the 30-day feed can still be found.
+const INDEX_KEY = 'youtube:transcript-index';
+const INDEX_CAP = 2000;
 
 const TRANSCRIBED_CAP = 2000;
 const FAILED_CAP = 500;
@@ -259,10 +274,16 @@ async function processVideo(videoId, failed, saveFailed) {
   // just make sure it is listed and take it out of the queue.
   const existingRaw = await redis(['GET', TRANSCRIPT_PREFIX + videoId]);
   let t = null;
-  if (existingRaw) { try { const ex = JSON.parse(existingRaw); if (ex && typeof ex.text === 'string' && ex.text) t = { text: ex.text, stored: true }; } catch (e) {} }
+  if (existingRaw) { try { const ex = JSON.parse(existingRaw); if (ex && typeof ex.text === 'string' && ex.text) t = { text: ex.text, stored: true, title: ex.title || '', author: ex.author || '', lang: ex.lang || '', kind: ex.kind || '', fetchedAt: ex.fetchedAt }; } catch (e) {} }
 
   if (!t) {
     const r = await fetchTranscript(videoId);
+    // A bot-check refusal is about this machine, not this video: it is not a
+    // strike against the video. The caller stops the run and starts a pause.
+    if (r.failure === 'blocked') {
+      log(videoId, 'YOUTUBE REFUSED THIS MACHINE - run stopped, video stays starred', 0, r.detail);
+      return 'blocked';
+    }
     if (r.failure) {
       const prev = failed[videoId] && !failed[videoId].removed ? failed[videoId] : { attempts: 0 };
       const attempts = (Number(prev.attempts) || 0) + 1;
@@ -278,8 +299,15 @@ async function processVideo(videoId, failed, saveFailed) {
       return;
     }
     t = r;
-    await setJson(TRANSCRIPT_PREFIX + videoId, { videoId: videoId, title: t.title, author: t.author, lang: t.lang, kind: t.kind, fetchedAt: new Date().toISOString(), text: t.text });
+    t.fetchedAt = new Date().toISOString();
+    await setJson(TRANSCRIPT_PREFIX + videoId, { videoId: videoId, title: t.title, author: t.author, lang: t.lang, kind: t.kind, fetchedAt: t.fetchedAt, text: t.text });
   }
+
+  // List it in the transcript index (replacing any older entry for this id).
+  const indexRaw = await getJson(INDEX_KEY);
+  const index = (Array.isArray(indexRaw) ? indexRaw : []).filter(function(e) { return e && e.videoId !== videoId; });
+  index.push({ videoId: videoId, title: t.title || '', author: t.author || '', lang: t.lang || '', kind: t.kind || '', chars: t.text.length, fetchedAt: t.fetchedAt || new Date().toISOString() });
+  await setJson(INDEX_KEY, index.slice(-INDEX_CAP));
 
   const list = await getJson(TRANSCRIBED_KEY);
   const ids = Array.isArray(list) ? list : [];
@@ -304,6 +332,9 @@ async function main() {
     const queue = (Array.isArray(raw) ? raw : []).filter(function(id, i, a) { return a.indexOf(id) === i; });
     if (!queue.length) return;  // nothing starred: exit silently
 
+    // Paused after a refusal from YouTube: make no requests until it expires.
+    if (await redis(['GET', COOLDOWN_KEY])) return;
+
     const failedRaw = await getJson(FAILED_KEY);
     const failed = failedRaw && typeof failedRaw === 'object' && !Array.isArray(failedRaw) ? failedRaw : {};
     const saveFailed = function() {
@@ -322,8 +353,15 @@ async function main() {
       if (!validId(id)) { await redis(['LREM', QUEUE_KEY, '0', id]); log(String(id).slice(0, 20), 'INVALID ID - removed from queue', 0, ''); continue; }
       // Starred again after being given up on: a fresh start.
       if (failed[id] && failed[id].removed) delete failed[id];
-      try { await processVideo(id, failed, saveFailed); }
+      let outcome;
+      try { outcome = await processVideo(id, failed, saveFailed); }
       catch (e) { log(id, 'worker error - left in queue', 0, e.message); }
+      if (outcome === 'blocked') {
+        // Stop at the first refusal and stay quiet for a while; the key
+        // expires by itself and the next run after that tries again.
+        await redis(['SET', COOLDOWN_KEY, new Date().toISOString(), 'EX', String(COOLDOWN_SECONDS)]);
+        break;
+      }
     }
   } finally {
     releaseLock();

@@ -19,6 +19,10 @@ const https = require('https');
 //                                   { status: 'none' }.
 //   GET (no videoId)                { status: 'queue', queuedIds: [...] } —
 //                                   how the page restores its stars on load.
+//   GET ?list=1                     { status: 'list', transcripts: [...] } —
+//                                   every stored transcript (id, title,
+//                                   author, chars, fetchedAt; no text), from
+//                                   youtube:transcript-index.
 //
 // What the worker reads and writes:
 //   youtube:transcribe-queue        Redis list of video ids, oldest first
@@ -39,6 +43,7 @@ const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const TRANSCRIPT_PREFIX = 'youtube:transcript:';
 const QUEUE_KEY = 'youtube:transcribe-queue';
 const QUEUE_CAP = 200;
+const INDEX_KEY = 'youtube:transcript-index';
 
 // One call to the Upstash REST API. `path` is '' for a single command (body
 // is the command as an array) or '/multi-exec' for an atomic transaction
@@ -107,6 +112,13 @@ exports.handler = async function(event) {
   try {
     if (event.httpMethod === 'GET') {
       const raw = (event.queryStringParameters || {}).videoId;
+      // ?list=1 — every stored transcript (no text), for the page's
+      // "Transcripts" view. The index is maintained by the laptop worker.
+      if ((event.queryStringParameters || {}).list) {
+        let index = [];
+        try { const rawIndex = await redisCmd(['GET', INDEX_KEY]); const parsed = rawIndex ? JSON.parse(rawIndex) : []; if (Array.isArray(parsed)) index = parsed; } catch(e) {}
+        return reply(200, { status: 'list', transcripts: index.filter(function(e) { return e && validId(e.videoId); }) });
+      }
       if (raw === undefined || raw === null || raw === '') {
         return reply(200, { status: 'queue', queuedIds: await queuedIds() });
       }
