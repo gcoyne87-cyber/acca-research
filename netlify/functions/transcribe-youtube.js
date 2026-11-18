@@ -11,6 +11,12 @@ const https = require('https');
 //                                   Returns { status: 'queued' }. If a
 //                                   transcript is already stored the queue is
 //                                   skipped: { status: 'done', chars, title }.
+//                                   Either way, a video with no card in
+//                                   youtube:feed (a pasted link) is looked up
+//                                   and added to the feed as a permanent
+//                                   manual entry; the reply carries
+//                                   feed: 'present' | 'added' | 'failed'
+//                                   (+ feedEntry / feedReason).
 //   POST { videoId, remove: true }  un-star: take the id back out of the
 //                                   queue. Returns { status: 'removed' }.
 //   GET ?videoId=...                { status: 'done', ..., text } when a
@@ -36,6 +42,9 @@ const https = require('https');
 // Deliberately NO secret, like hide-youtube-video.js: the caller is a static
 // page. All this endpoint can do is add or remove a YouTube video id in the
 // queue and read back stored transcripts.
+
+// The collector's YouTube GET, entry builder and feed key (shared, not copied).
+const collector = require('./youtube-feed-background.js').manual;
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -105,6 +114,36 @@ function dequeue(videoId) {
 
 function validId(id) { return /^[A-Za-z0-9_-]{11}$/.test(String(id || '')); }
 
+// A starred or pasted video that has no card in youtube:feed is looked up
+// once (YouTube Data API videos.list, 1 quota unit) and added to the feed as
+// a full entry with manual: true. Manual entries skip the collector's filter
+// and never age out (see youtube-feed-background.js); they leave only via
+// the Hide ✕. Never throws: a failure here must not stop the queueing.
+// Returns { feed: 'present' | 'added' | 'failed', feedEntry?, feedReason? }.
+async function addToFeedIfMissing(videoId) {
+  try {
+    const raw = await redisCmd(['GET', collector.FEED_KEY]);
+    let feed = [];
+    if (raw) { feed = JSON.parse(raw); if (!Array.isArray(feed)) throw new Error('stored feed is not a list'); }
+    const present = feed.filter(function(v) { return v && v.videoId === videoId; })[0];
+    if (present) return { feed: 'present' };
+
+    if (!process.env.YOUTUBE_API_KEY) return { feed: 'failed', feedReason: 'YOUTUBE_API_KEY not set' };
+    const r = await collector.youtubeGet('/youtube/v3/videos?part=snippet,statistics,contentDetails&id=' + encodeURIComponent(videoId));
+    if (r.error) return { feed: 'failed', feedReason: 'YouTube lookup failed: ' + (r.error.reason || 'HTTP ' + r.error.status) };
+    const item = r.items.filter(function(it) { return it && it.id === videoId; })[0];
+    if (!item) return { feed: 'failed', feedReason: 'not found on YouTube' };
+
+    const entry = collector.manualEntryFromItem(item);
+    feed.push(entry);
+    feed.sort(function(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); });
+    await redisCmd(['SET', collector.FEED_KEY, JSON.stringify(feed)]);
+    return { feed: 'added', feedEntry: entry };
+  } catch(e) {
+    return { feed: 'failed', feedReason: e.message };
+  }
+}
+
 exports.handler = async function(event) {
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
   const reply = function(code, obj) { return { statusCode: code, headers: headers, body: JSON.stringify(obj) }; };
@@ -144,10 +183,14 @@ exports.handler = async function(event) {
       return reply(200, { status: 'removed', videoId: videoId, wasQueued: removed > 0 });
     }
 
+    // No card in the feed yet (a pasted link): add one. Queueing below is
+    // unchanged whatever happens here.
+    const fed = await addToFeedIfMissing(videoId);
+
     // Already transcribed: return it and leave the queue alone.
     const existing = await getTranscript(videoId);
     if (existing) {
-      return reply(200, { status: 'done', cached: true, videoId: videoId, chars: existing.text.length, title: existing.title || '' });
+      return reply(200, Object.assign({ status: 'done', cached: true, videoId: videoId, chars: existing.text.length, title: existing.title || '' }, fed));
     }
 
     const length = await redisCmd(['LLEN', QUEUE_KEY]);
@@ -156,7 +199,7 @@ exports.handler = async function(event) {
       if (pos === null || pos === undefined) return reply(429, { status: 'error', error: 'The queue is full (' + QUEUE_CAP + ') — let the laptop catch up first' });
     }
     const queueLength = await enqueue(videoId);
-    return reply(200, { status: 'queued', videoId: videoId, queueLength: queueLength });
+    return reply(200, Object.assign({ status: 'queued', videoId: videoId, queueLength: queueLength }, fed));
   } catch(e) {
     return reply(500, { status: 'error', error: e.message });
   }

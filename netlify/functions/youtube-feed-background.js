@@ -380,6 +380,30 @@ function formatDuration(total) {
   return h ? h + ':' + mm + ':' + ss : mm + ':' + ss;
 }
 
+// A full feed entry for a link the user pasted, built from one videos.list
+// item (part=snippet,statistics,contentDetails). Used by transcribe-youtube.js.
+// manual: true keeps it out of the keep/discard filter, the 30-day retention
+// and the cap for good — see the merge in the handler.
+function manualEntryFromItem(item) {
+  const sn = item.snippet || {};
+  const views = item.statistics && item.statistics.viewCount;
+  const secs = durationSeconds(item.contentDetails && item.contentDetails.duration);
+  const title = String(sn.title || '');
+  return {
+    videoId: item.id,
+    title: title,
+    channelTitle: String(sn.channelTitle || ''),
+    publishedAt: sn.publishedAt || new Date().toISOString(),
+    thumbnail: bestThumbnail(sn.thumbnails, item.id),
+    category: categorise(title),
+    viewCount: (views !== undefined && views !== null && !isNaN(Number(views))) ? Number(views) : null,
+    duration: formatDuration(secs),
+    isShort: secs !== null && secs <= SHORT_MAX_SECONDS,
+    manual: true,
+    addedAt: new Date().toISOString()
+  };
+}
+
 // ── FILTER ───────────────────────────────────────────────────────────────────
 
 function normalise(s) {
@@ -626,6 +650,11 @@ exports.handler = async function(event) {
     (Array.isArray(existing) ? existing : []).forEach(function(v) {
       if (!v || !v.videoId) return;
       if (hidden[v.videoId]) { meta.hiddenDropped++; return; }
+      // Manual entries (links the user pasted; added by transcribe-youtube.js
+      // with manual: true) were chosen by hand: they skip the blocked-channel
+      // and discard checks, and below they skip the 30-day cutoff and the
+      // cap. They leave only via the Hide ✕.
+      if (v.manual === true) { byId[v.videoId] = v; return; }
       // Already-stored videos from a blocked channel are removed, so adding
       // a name to BLOCKED_CHANNELS clears that channel out on the next run.
       if (isBlockedChannel(v.channelTitle)) { meta.blockedDropped++; return; }
@@ -649,11 +678,19 @@ exports.handler = async function(event) {
     });
 
     const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 3600 * 1000;
-    const feed = Object.keys(byId).map(function(id) { return byId[id]; })
+    const newestFirst = function(a, b) { return (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0); };
+    const everything = Object.keys(byId).map(function(id) { return byId[id]; });
+    // Retention (30 days) and the cap apply to collected videos only; manual
+    // entries are added back afterwards, whatever their age.
+    const collected = everything
+      .filter(function(v) { return v.manual !== true; })
       .filter(function(v) { const t = Date.parse(v.publishedAt); return !isNaN(t) && t >= cutoff; })
-      .sort(function(a, b) { return Date.parse(b.publishedAt) - Date.parse(a.publishedAt); })
+      .sort(newestFirst)
       .slice(0, FEED_CAP);
+    const manualKept = everything.filter(function(v) { return v.manual === true; });
+    const feed = collected.concat(manualKept).sort(newestFirst);
     meta.feedSize = feed.length;
+    meta.manualKept = manualKept.length;
 
     // Views + duration for every entry that has never had them (duration
     // undefined): this run's new videos, plus any an earlier failed lookup
@@ -706,4 +743,7 @@ exports.handler = async function(event) {
   return { statusCode: 200, headers, body: JSON.stringify(meta) };
 };
 
-module.exports._test = { BLOCKED_CHANNELS: BLOCKED_CHANNELS, isBlockedChannel: isBlockedChannel, isDiscarded: isDiscarded, bestThumbnail: bestThumbnail, hqThumbnail: hqThumbnail, durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };
+// Shared with transcribe-youtube.js (pasted links become manual feed entries).
+module.exports.manual = { youtubeGet: youtubeGet, manualEntryFromItem: manualEntryFromItem, FEED_KEY: FEED_KEY, HIDDEN_KEY: HIDDEN_KEY };
+
+module.exports._test = { manualEntryFromItem: manualEntryFromItem, BLOCKED_CHANNELS: BLOCKED_CHANNELS, isBlockedChannel: isBlockedChannel, isDiscarded: isDiscarded, bestThumbnail: bestThumbnail, hqThumbnail: hqThumbnail, durationSeconds: durationSeconds, parseRssEntries: parseRssEntries, fetchChannelRss: fetchChannelRss, formatDuration: formatDuration, FAVOURITE_CHANNELS: FAVOURITE_CHANNELS, isRacingVideo: isRacingVideo, categorise: categorise, normalise: normalise, decodeEntities: decodeEntities, KEEP_COURSES: KEEP_COURSES, KEEP_NAMES: KEEP_NAMES, KEEP_TERMS: KEEP_TERMS, RACING_CONTEXT: RACING_CONTEXT, DISCARD_WORDS: DISCARD_WORDS, SEARCHES: SEARCHES };

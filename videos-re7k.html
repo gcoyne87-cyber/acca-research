@@ -678,6 +678,14 @@
     var inFeed = videos.filter(function (x) { return x.videoId === id; })[0];
     queueRequest(id, false).then(function (j) {
       pasteInput.value = '';
+      // The server added this link to the feed as a card: show it now.
+      if (!inFeed && j.feedEntry && j.feedEntry.videoId === id && !hidden[id]) {
+        inFeed = j.feedEntry;
+        videos.push(inFeed);
+        videos.sort(byNewest);
+        if (j.status !== 'done') starred[id] = true;
+        render();
+      }
       if (j.status === 'done') {
         // A transcript is already stored for this link: show it.
         delete starred[id];
@@ -688,7 +696,7 @@
       }
       starred[id] = true;
       if (inFeed) render();
-      pasteMessage('Queued — ready after your laptop next checks in.', true);
+      pasteMessage(j.feed === 'failed' ? 'Queued for transcript — couldn’t add it to your feed.' : 'Added to your feed and queued for transcript.', true);
     }).catch(function () {
       pasteMessage('Couldn’t queue that link — try again.');
     }).then(function () {
