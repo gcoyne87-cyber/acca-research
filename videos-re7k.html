@@ -60,6 +60,13 @@
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: 0 0 auto; font: inherit; font-size: 12px; font-weight: 600; color: var(--navy); background: var(--card); border: 1px solid #cfd5de; border-radius: 999px; padding: 6px 13px; cursor: pointer; }
   .chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+  /* Trainer row: directly under the main tabs, smaller and lighter. While it
+     is showing, the main row gives up most of its bottom padding so the two
+     rows sit close and the Shorts shelf barely moves down. */
+  .chips.has-sub { padding-bottom: 6px; }
+  .chips-sub { gap: 6px; padding: 0 0 10px; }
+  .chips-sub .chip { font-size: 11px; font-weight: 600; padding: 3px 10px; background: transparent; border-color: #e1e5ec; color: var(--grey); }
+  .chips-sub .chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
 
   /* ── Shorts shelf ── */
   .shelf { margin-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -206,10 +213,11 @@
   <div class="chips" id="chips" role="group" aria-label="Filter videos">
     <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
     <button class="chip" type="button" data-filter="interview" aria-pressed="false">Interviews</button>
-    <!-- Trainer chips are inserted here by the script (see TRAINERS). -->
-    <button class="chip" type="button" data-filter="starred" id="chipStarred" aria-pressed="false">★ Starred</button>
+    <button class="chip" type="button" data-filter="starred" aria-pressed="false">★ Starred</button>
     <button class="chip" type="button" data-filter="transcripts" aria-pressed="false">Transcripts</button>
   </div>
+  <!-- Trainer chips are inserted here by the script (see TRAINERS). -->
+  <div class="chips chips-sub" id="trainerRow" role="group" aria-label="Filter by trainer" hidden></div>
 
   <main>
     <section class="shelf" id="shelf" aria-labelledby="shelfTitle" hidden>
@@ -865,8 +873,9 @@
     return (trainerCache[v.videoId] = hit);
   }
 
-  // Chips are built once, before ★ Starred, and shown only while at least
-  // one video in the feed belongs to that trainer.
+  // Chips are built once, in their own row under the main tabs, and shown
+  // only while at least one video in the feed belongs to that trainer.
+  var trainerRow = document.getElementById('trainerRow');
   var trainerChips = {};
   TRAINERS.forEach(function (t) {
     var b = el('button', 'chip', t.label);
@@ -874,13 +883,19 @@
     b.setAttribute('data-filter', 'trainer:' + t.key);
     b.setAttribute('aria-pressed', 'false');
     b.hidden = true;
-    chips.insertBefore(b, document.getElementById('chipStarred'));
+    trainerRow.appendChild(b);
     trainerChips[t.key] = b;
   });
 
+  // One filter is active at a time. A trainer filter lights its own chip and
+  // leaves All lit as the main tab; any main tab clears the trainer.
   function pressChip(filter) {
     activeFilter = filter;
+    var mainTab = filter.indexOf('trainer:') === 0 ? 'all' : filter;
     Array.prototype.forEach.call(chips.querySelectorAll('.chip'), function (c) {
+      c.setAttribute('aria-pressed', c.getAttribute('data-filter') === mainTab ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call(trainerRow.querySelectorAll('.chip'), function (c) {
       c.setAttribute('aria-pressed', c.getAttribute('data-filter') === filter ? 'true' : 'false');
     });
   }
@@ -889,6 +904,9 @@
     var counts = {};
     videos.forEach(function (v) { Object.keys(trainersOf(v)).forEach(function (k) { counts[k] = (counts[k] || 0) + 1; }); });
     TRAINERS.forEach(function (t) { trainerChips[t.key].hidden = !counts[t.key]; });
+    var any = TRAINERS.some(function (t) { return !!counts[t.key]; });
+    trainerRow.hidden = !any;
+    chips.classList.toggle('has-sub', any);
     // The open section just lost its last video (it was hidden): back to All.
     if (activeFilter.indexOf('trainer:') === 0 && !counts[activeFilter.slice(8)]) pressChip('all');
   }
@@ -979,12 +997,16 @@
       });
   }
 
-  chips.addEventListener('click', function (e) {
+  function chipTap(e) {
     var chip = e.target.closest('.chip');
     if (!chip) return;
-    pressChip(chip.getAttribute('data-filter'));
+    var filter = chip.getAttribute('data-filter');
+    // Tapping the lit trainer chip again clears it (back to All).
+    pressChip(filter === activeFilter && filter.indexOf('trainer:') === 0 ? 'all' : filter);
     if (videos.length || library.length) render();
-  });
+  }
+  chips.addEventListener('click', chipTap);
+  trainerRow.addEventListener('click', chipTap);
 
   // ── Add to home screen ──
   // The banner shows 2 seconds after load on every first visit, on every
