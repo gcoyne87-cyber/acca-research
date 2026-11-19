@@ -6,16 +6,17 @@ const https = require('https');
 // -background function never fires and a scheduled function rejects
 // external HTTP triggers at the edge.
 //
-// Intent: TWO runs daily, at 07:00 and 16:00 IRISH time. Netlify cron is UTC
-// and Ireland is UTC in winter / UTC+1 in summer, so it fires at both
-// candidate UTC hours for each slot:
+// Intent: THREE runs daily, at 07:00, 16:00 and 22:00 IRISH time. Netlify
+// cron is UTC and Ireland is UTC in winter / UTC+1 in summer, so it fires at
+// both candidate UTC hours for each slot:
 //   07:00 Irish = 06:00 UTC (summer) / 07:00 UTC (winter)
 //   16:00 Irish = 15:00 UTC (summer) / 16:00 UTC (winter)
+//   22:00 Irish = 21:00 UTC (summer) / 22:00 UTC (winter)
 // The background job re-checks Irish time on entry and runs only when the
-// Irish hour is 7 or 16, once per slot, so the off-season fire of each pair
-// exits before spending any YouTube quota. Same cron in netlify.toml — both
-// places.
-module.exports.config = { schedule: '0 6,7,15,16 * * *' };
+// Irish hour is 7, 16 or 22, once per slot, so the off-season fire of each
+// pair exits before spending any YouTube quota. Same cron in netlify.toml —
+// both places.
+module.exports.config = { schedule: '0 6,7,15,16,21,22 * * *' };
 
 function triggerFeed() {
   return new Promise((resolve, reject) => {
