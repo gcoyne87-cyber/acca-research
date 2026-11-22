@@ -125,6 +125,15 @@
   .card.transcribed .btn { background: var(--green); color: #fff; }
   /* The gold star on a transcribed card is a marker, not a control. */
   .thumb .star-btn.kept { cursor: inherit; }
+  /* Used: a transcript that has been copied out and used. The card gets a
+     "Used" toggle under the Transcript button; once on, the thumbnail fades
+     and the tag turns navy "USED ✓" so used and unused are told apart at a glance. */
+  .acts { flex: 0 0 auto; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+  .card.transcribed .btn.used-btn { background: transparent; color: var(--grey); border-color: #cfd5de; }
+  .card.transcribed.used .btn.used-btn { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .card.used .thumb img, .short.used .sthumb img { opacity: .4; }
+  .card.used .done-tag, .short.used .done-tag { background: var(--navy); }
+  .short.used .tbtn.done { background: rgba(11, 22, 40, .78); }
 
   /* ── Transcript panel (same overlay pattern as the player) ── */
   .tpanel { position: fixed; inset: 0; z-index: 60; background: rgba(5, 10, 20, .94); display: flex; align-items: center; justify-content: center; overscroll-behavior: contain;
@@ -136,6 +145,7 @@
   .tpanel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .tpanel-actions .btn { font-size: 13px; padding: 7px 16px; }
   .tpanel-actions .btn.primary { background: var(--green); color: #fff; }
+  .tpanel-actions .btn.used-on { background: var(--navy); border-color: var(--navy); color: #fff; }
   .tpanel-text { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 20px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
   .tpanel-text.muted { color: var(--grey); }
 
@@ -249,6 +259,7 @@
       <div class="tpanel-actions">
         <button class="btn primary" id="tpanelCopy" type="button" disabled>Copy</button>
         <button class="btn" id="tpanelDownload" type="button" disabled>Download .txt</button>
+        <button class="btn" id="tpanelUsed" type="button" aria-pressed="false" disabled>Mark as used</button>
       </div>
     </div>
     <div class="tpanel-text" id="tpanelText" tabindex="0"></div>
@@ -298,6 +309,7 @@
   var videos = [];
   var transcribed = {};
   var starred = {};   // ids waiting in the transcribe queue
+  var used = {};      // transcribed ids marked "used" (saved on the server)
   var library = [];   // every stored transcript: { videoId, title, author, chars, fetchedAt }
   var hidden = {};
   var activeFilter = 'all';
@@ -495,12 +507,18 @@
   }
 
   // Every stored transcript (id, title, channel, when; no text), for the
-  // "Transcripts" view. A failure only means that view is empty.
+  // "Transcripts" view, plus the ids marked used. A failure only means that
+  // view is empty and no card shows as used.
   function fetchLibrary() {
     return fetch(TRANSCRIBE_URL + '?list=1', { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (j) { return (Array.isArray(j.transcripts) ? j.transcripts : []).filter(function (e) { return e && typeof e.videoId === 'string'; }); })
-      .catch(function () { return []; });
+      .then(function (j) {
+        return {
+          transcripts: (Array.isArray(j.transcripts) ? j.transcripts : []).filter(function (e) { return e && typeof e.videoId === 'string'; }),
+          usedIds: Array.isArray(j.usedIds) ? j.usedIds : []
+        };
+      })
+      .catch(function () { return { transcripts: [], usedIds: [] }; });
   }
 
   function paintStar(b, v) {
@@ -567,8 +585,48 @@
   var tpanelCopy = document.getElementById('tpanelCopy');
   var tpanelDownload = document.getElementById('tpanelDownload');
   var tpanelClose = document.getElementById('tpanelClose');
+  var tpanelUsed = document.getElementById('tpanelUsed');
   var tpanelFocus = null;
   var tpanelCurrent = null;   // { videoId, title, date, text }
+
+  // ── Used ──
+  // A transcript can be marked "used" from its card or from the panel. The
+  // mark is saved on the server (youtube:used), so it shows on every device.
+  function paintPanelUsed() {
+    var on = !!(tpanelCurrent && used[tpanelCurrent.videoId]);
+    tpanelUsed.textContent = on ? 'Used ✓' : 'Mark as used';
+    tpanelUsed.classList.toggle('used-on', on);
+    tpanelUsed.setAttribute('aria-pressed', on ? 'true' : 'false');
+    tpanelUsed.title = on ? 'Marked as used. Tap to undo.' : 'Mark this transcript as used';
+  }
+
+  // Repaints every card for this video (it can be in the grid and the shelf)
+  // and the panel button, without rebuilding anything.
+  function paintUsed(id) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-vid]'), function (n) {
+      if (n.getAttribute('data-vid') === id && n._paintUsed) n._paintUsed();
+    });
+    paintPanelUsed();
+  }
+
+  // The change shows at once and is then saved. If the save fails it goes
+  // back, so the page never shows a mark the server does not have.
+  function setUsed(id, on) {
+    if (on) used[id] = true; else delete used[id];
+    paintUsed(id);
+    fetch(TRANSCRIBE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoId: id, used: on }), keepalive: true })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); })
+      .catch(function () {
+        if (on) delete used[id]; else used[id] = true;
+        paintUsed(id);
+        showToast(on ? 'Couldn’t mark that as used — try again.' : 'Couldn’t un-mark that — try again.');
+      });
+  }
+
+  tpanelUsed.addEventListener('click', function () {
+    if (!tpanelCurrent) return;
+    setUsed(tpanelCurrent.videoId, !used[tpanelCurrent.videoId]);
+  });
 
   // "Title of the video - 2026-11-17.txt": the video's upload date when the
   // feed knows it, otherwise the date the transcript was fetched.
@@ -588,6 +646,7 @@
     tpanelText.classList.add('muted');
     tpanelCopy.disabled = true; tpanelCopy.textContent = 'Copy';
     tpanelDownload.disabled = true;
+    tpanelUsed.disabled = true; paintPanelUsed();
     tpanel.hidden = false;
     document.documentElement.classList.add('player-open');
     tpanelClose.focus();
@@ -604,6 +663,7 @@
       tpanelText.scrollTop = 0;
       tpanelCopy.disabled = false;
       tpanelDownload.disabled = false;
+      tpanelUsed.disabled = false; paintPanelUsed();
     }).catch(function () {
       if (tpanel.hidden) return;
       tpanelText.textContent = 'Couldn’t load this transcript. Close and try again.';
@@ -733,7 +793,8 @@
     var img = thumbImg(v, 'card');
     if (img) thumb.appendChild(img);
     if (v.duration) thumb.appendChild(el('span', 'dur', v.duration));
-    if (isDone) thumb.appendChild(el('span', 'done-tag', 'TRANSCRIBED ✓'));
+    var doneTag = null, usedBtn = null;
+    if (isDone) { doneTag = el('span', 'done-tag', 'TRANSCRIBED ✓'); thumb.appendChild(doneTag); }
     thumb.appendChild(hideButton(v, card));
     card.appendChild(thumb);
 
@@ -760,9 +821,16 @@
     // player (the card's click handler ignores buttons).
     var btn;
     if (isDone) {
+      var acts = el('div', 'acts');
       btn = el('button', 'btn', 'Transcript');
       btn.addEventListener('click', function () { openTranscript(v); });
-      info.appendChild(btn);
+      acts.appendChild(btn);
+      // "Used" toggle under the Transcript button.
+      usedBtn = el('button', 'btn used-btn');
+      usedBtn.type = 'button';
+      usedBtn.addEventListener('click', function () { setUsed(v.videoId, !used[v.videoId]); });
+      acts.appendChild(usedBtn);
+      info.appendChild(acts);
       // The star stays gold once the transcript has arrived (a marker only:
       // a tap on it plays the video like the rest of the thumbnail).
       var kept = el('span', 'star-btn on kept', '★');
@@ -778,6 +846,20 @@
     btn.type = 'button';
     btn.setAttribute('data-video-id', v.videoId);
     card.appendChild(info);
+
+    card.setAttribute('data-vid', v.videoId);
+    card._paintUsed = function () {
+      var on = isDone && !!used[v.videoId];
+      card.classList.toggle('used', on);
+      if (doneTag) doneTag.textContent = on ? 'USED ✓' : 'TRANSCRIBED ✓';
+      if (usedBtn) {
+        usedBtn.textContent = on ? 'Used ✓' : 'Mark used';
+        usedBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        usedBtn.title = on ? 'Marked as used. Tap to undo.' : 'Mark this transcript as used';
+        usedBtn.setAttribute('aria-label', (on ? 'Un-mark as used: ' : 'Mark as used: ') + (v.title || 'video'));
+      }
+    };
+    card._paintUsed();
 
     card.addEventListener('click', function (e) {
       if (e.target.closest('button')) return;
@@ -805,7 +887,8 @@
     var thumb = el('div', 'sthumb');
     var img = thumbImg(v, 'short');
     if (img) thumb.appendChild(img);
-    if (isDone) { var tag = el('span', 'done-tag', '✓'); tag.title = 'Transcribed'; thumb.appendChild(tag); }
+    var tag = null;
+    if (isDone) { tag = el('span', 'done-tag', '✓'); thumb.appendChild(tag); }
     a.appendChild(thumb);
 
     a.appendChild(el('div', 'stitle', v.title || 'Untitled video'));
@@ -834,6 +917,16 @@
       else toggleStar(v, tb, wrap, buildShort, wrap);
     });
     wrap.appendChild(tb);
+
+    // Shorts are marked used from the transcript panel; the shelf card only
+    // shows it (faded thumbnail, navy "USED ✓" tag).
+    wrap.setAttribute('data-vid', v.videoId);
+    wrap._paintUsed = function () {
+      var on = isDone && !!used[v.videoId];
+      wrap.classList.toggle('used', on);
+      if (tag) { tag.textContent = on ? 'USED ✓' : '✓'; tag.title = on ? 'Transcribed and used' : 'Transcribed'; }
+    };
+    wrap._paintUsed();
     return wrap;
   }
 
@@ -986,8 +1079,10 @@
           .sort(byNewest);
         transcribed = {};
         (Array.isArray(data.transcribedIds) ? data.transcribedIds : []).forEach(function (id) { transcribed[id] = true; });
-        library = both[2];
+        library = both[2].transcripts;
         library.forEach(function (e) { transcribed[e.videoId] = true; });
+        used = {};
+        both[2].usedIds.forEach(function (id) { used[id] = true; });
 
         render();
       })

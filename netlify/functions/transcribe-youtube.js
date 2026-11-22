@@ -19,6 +19,11 @@ const https = require('https');
 //                                   (+ feedEntry / feedReason).
 //   POST { videoId, remove: true }  un-star: take the id back out of the
 //                                   queue. Returns { status: 'removed' }.
+//   POST { videoId, used: bool }    mark (true) or un-mark (false) a transcript
+//                                   as used: SADD / SREM on the Redis SET
+//                                   youtube:used. Returns { status: 'used' |
+//                                   'unused' }. GET ?list=1 returns the set
+//                                   as usedIds.
 //   GET ?videoId=...                { status: 'done', ..., text } when a
 //                                   transcript is stored, { status: 'pending' }
 //                                   when the id is queued, else
@@ -53,6 +58,7 @@ const TRANSCRIPT_PREFIX = 'youtube:transcript:';
 const QUEUE_KEY = 'youtube:transcribe-queue';
 const QUEUE_CAP = 200;
 const INDEX_KEY = 'youtube:transcript-index';
+const USED_KEY = 'youtube:used';
 
 // One call to the Upstash REST API. `path` is '' for a single command (body
 // is the command as an array) or '/multi-exec' for an atomic transaction
@@ -156,7 +162,9 @@ exports.handler = async function(event) {
       if ((event.queryStringParameters || {}).list) {
         let index = [];
         try { const rawIndex = await redisCmd(['GET', INDEX_KEY]); const parsed = rawIndex ? JSON.parse(rawIndex) : []; if (Array.isArray(parsed)) index = parsed; } catch(e) {}
-        return reply(200, { status: 'list', transcripts: index.filter(function(e) { return e && validId(e.videoId); }) });
+        let usedIds = [];
+        try { const members = await redisCmd(['SMEMBERS', USED_KEY]); if (Array.isArray(members)) usedIds = members.filter(validId); } catch(e) {}
+        return reply(200, { status: 'list', transcripts: index.filter(function(e) { return e && validId(e.videoId); }), usedIds: usedIds });
       }
       if (raw === undefined || raw === null || raw === '') {
         return reply(200, { status: 'queue', queuedIds: await queuedIds() });
@@ -177,6 +185,12 @@ exports.handler = async function(event) {
     try { body = JSON.parse(event.body || '{}') || {}; } catch(e) {}
     const videoId = String(body.videoId || '');
     if (!validId(videoId)) return reply(400, { status: 'error', error: 'Invalid videoId' });
+
+    // Mark / un-mark a transcript as used. Touches nothing but the used set.
+    if (typeof body.used === 'boolean') {
+      await redisCmd([body.used ? 'SADD' : 'SREM', USED_KEY, videoId]);
+      return reply(200, { status: body.used ? 'used' : 'unused', videoId: videoId });
+    }
 
     if (body.remove === true) {
       const removed = await dequeue(videoId);
