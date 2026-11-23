@@ -930,18 +930,28 @@
     return wrap;
   }
 
-  // The "Transcripts" view: every stored transcript, newest first — feed
-  // videos as their normal card, anything else (a pasted link, a video that
-  // has left the 30-day feed) as a card built from the transcript index.
+  // The "Transcripts" view: every stored transcript, ordered by when the
+  // video was uploaded to YouTube (newest upload first), never by when it was
+  // starred or transcribed. Feed videos show as their normal card, anything
+  // else (a video that has left the 30-day feed) as a card built from the
+  // transcript index. The upload date comes from the feed card, or from the
+  // index once the video has left the feed. A transcript with no known upload
+  // date is an old one: those go last, most recently transcribed first.
   function transcriptItems() {
     var byId = {};
     videos.forEach(function (v) { byId[v.videoId] = v; });
     return library
       .filter(function (e) { return !hidden[e.videoId]; })
-      .sort(function (a, b) { return (Date.parse(b.fetchedAt) || 0) - (Date.parse(a.fetchedAt) || 0); })
       .map(function (e) {
-        return byId[e.videoId] || { videoId: e.videoId, title: e.title || 'YouTube video', channelTitle: e.author || '', transcribedAt: e.fetchedAt, transcriptOnly: true };
-      });
+        var v = byId[e.videoId];
+        return {
+          item: v || { videoId: e.videoId, title: e.title || 'YouTube video', channelTitle: e.author || '', transcribedAt: e.fetchedAt, transcriptOnly: true },
+          published: Date.parse((v && v.publishedAt) || e.publishedAt) || 0,
+          fetched: Date.parse(e.fetchedAt) || 0
+        };
+      })
+      .sort(function (a, b) { return (b.published - a.published) || (b.fetched - a.fetched); })
+      .map(function (x) { return x.item; });
   }
 
   // ── Trainer sections ──

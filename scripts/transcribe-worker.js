@@ -62,6 +62,7 @@ const COOLDOWN_SECONDS = 3 * 60 * 60;
 // links and of videos that have left the 30-day feed can still be found.
 const INDEX_KEY = 'youtube:transcript-index';
 const INDEX_CAP = 2000;
+const FEED_KEY = 'youtube:feed';
 
 const TRANSCRIBED_CAP = 2000;
 const FAILED_CAP = 500;
@@ -304,9 +305,21 @@ async function processVideo(videoId, failed, saveFailed) {
   }
 
   // List it in the transcript index (replacing any older entry for this id).
+  // Each entry also keeps the video's YouTube upload date (publishedAt), copied
+  // from its feed card, so the page can order transcripts by upload date even
+  // after the video has left the 30-day feed. Older entries that lack it are
+  // filled in here while their card is still in the feed. A feed read that
+  // fails only means no dates are added this time.
   const indexRaw = await getJson(INDEX_KEY);
+  const published = {};
+  try {
+    const feed = await getJson(FEED_KEY);
+    (Array.isArray(feed) ? feed : []).forEach(function(v) { if (v && v.videoId && v.publishedAt) published[v.videoId] = v.publishedAt; });
+  } catch (e) {}
+  const previous = (Array.isArray(indexRaw) ? indexRaw : []).filter(function(e) { return e && e.videoId === videoId; })[0];
   const index = (Array.isArray(indexRaw) ? indexRaw : []).filter(function(e) { return e && e.videoId !== videoId; });
-  index.push({ videoId: videoId, title: t.title || '', author: t.author || '', lang: t.lang || '', kind: t.kind || '', chars: t.text.length, fetchedAt: t.fetchedAt || new Date().toISOString() });
+  index.forEach(function(e) { if (!e.publishedAt && published[e.videoId]) e.publishedAt = published[e.videoId]; });
+  index.push({ videoId: videoId, title: t.title || '', author: t.author || '', lang: t.lang || '', kind: t.kind || '', chars: t.text.length, fetchedAt: t.fetchedAt || new Date().toISOString(), publishedAt: published[videoId] || (previous && previous.publishedAt) || null });
   await setJson(INDEX_KEY, index.slice(-INDEX_CAP));
 
   const list = await getJson(TRANSCRIBED_KEY);
