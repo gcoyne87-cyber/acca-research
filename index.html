@@ -17440,36 +17440,40 @@ function renderAIIntelligence(){
       +'</div>'
     +'</div>';
   };
+  // Carousel render order (display only — the build order above is unchanged):
+  // Hot Yard first, then Big Race, C&D+G, Ground Lover, Class Drop, then the
+  // cards still labelled "Tomorrow's" in their existing relative order. A
+  // preview that has flipped to today's label after midnight ranks as a today
+  // card. Any other item keeps its place ahead of Big Race. The dots are built
+  // from the same _items array, so they follow automatically.
+  var _diRank=function(it){
+    if(it.isHotYardCard) return (it.hyPreview&&!it.hyFlipped)?10:0;
+    if(it.isBigRace) return /^TOMORROW/.test(it.signalType||'')?10:2;
+    if(it.isCandDG) return 3;
+    if(it.isGroundLover) return 4;
+    if(it.isClassDrop) return (!it.cdToday&&!it.cdFlipped)?10:5;
+    return 1;
+  };
+  _items=_items.map(function(it,i){return {it:it,i:i,r:_diRank(it)};})
+    .sort(function(a,b){return (a.r-b.r)||(a.i-b.i);})
+    .map(function(x){return x.it;});
+
+
   // Keep the reader's place across the 5-minute refresh re-render: with
   // mandatory snapping, a rebuilt list otherwise jumps back to the first card.
   var _aiKeepX=el.scrollLeft;
   el.innerHTML=_items.map(function(item){
     if(item.isHotYardCard){
       var _hyNameJs=String(item.trainerName||'').replace(/'/g,"\\'");
-      // One template for today's card and the tomorrow preview — identical
-      // dimensions, fonts and CTA; only the label (signalType, set by the
-      // builder) and the CTA's day word differ, same split as Class Drop's.
-      var _hyDay=(item.hyPreview&&!item.hyFlipped)?'tomorrow':'today';
-      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
-        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
-          +'<div style="min-height:104px">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:0px">'
-            +'<div style="display:flex;align-items:center;gap:6px">'
-              +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
-            +'</div>'
-            +'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:15px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.strikeLabel)+'</div>'
-          +'</div>'
-          +'<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+escHtml(item.trainerName)+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">7-day record &middot; '+item.winners7d+' wins from '+item.runners7d+' runners</div>'
-          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
-          +'</div>'
-          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:8px">'
-            +'<button class="ai-cta-light" onclick="selectRacingSection(\'trainer:'+_hyNameJs+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> View '+escHtml(item.trainerName)+'\'s runners '+_hyDay+' &rarr;</button>'
-          +'</div>'
-        +'</div>'
-      +'</div>';
+      // One template for today's card and the tomorrow preview — only the
+      // label (signalType) and count caption (diLabel), both set by the
+      // builder, differ. Title = trainer name + strike rate suffix.
+      var _hySur=_edgeSurname(item.trainerName);
+      var _hyCta=_hySur?('View '+escHtml(_hySur)+(/s$/i.test(_hySur)?'&#39;':'&#39;s')+' Runners'):'View Runners';
+      return _diCardV2(item,'0 4px 18px rgba(0,0,0,0.22)',
+        escHtml(item.trainerName)+' <span style="font-size:17px;font-weight:800;color:#10b981">'+escHtml(item.strikeLabel)+'</span>',
+        item.winners7d+' wins from '+item.runners7d+' runners &middot; last 7 days',
+        'selectRacingSection(\'trainer:'+_hyNameJs+'\')',_hyCta);
     }
     if(item.isCandDG){
       return _diCardV2(item,'0 4px 18px rgba(0,0,0,0.22)','Course, Distance &amp; Ground Winners','Winners at today\'s exact course, distance and going','_activateEdgeFilterFromCta(\'cdg\')','View C&amp;D+G Runners');
@@ -17478,56 +17482,33 @@ function renderAIIntelligence(){
       return _diCardV2(item,'0 4px 14px rgba(13,27,62,0.25)','Ground Lovers',item.subLine,'_activateEdgeFilterFromCta(\'ground\')','View Ground Lover Runners');
     }
     if(item.isClassDrop){
-      // One template for today's card and the tomorrow preview — identical
-      // dimensions, fonts and CTA; only the day word, the label and (on
-      // today's card) the fade hook differ. data-ai-classdrop="today" is what
-      // the 60-second timer targets to fade the card before re-rendering.
-      var _cdIsToday=item.cdToday||item.cdFlipped;
-      var _cdDay=_cdIsToday?'today':'tomorrow';
-      var _cdTitle=_cdIsToday?'Class Drop':"Tomorrow's Class Drop";
-      return '<div'+(item.cdToday?' data-ai-classdrop="today"':'')+' style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 14px rgba(13,27,62,0.25);display:flex;flex-direction:column;transition:opacity .5s">'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
-        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
-          +'<div style="min-height:104px">'
-          +'<div style="display:flex;align-items:center;justify-content:flex-start;min-height:28px;margin-bottom:0px">'
-            +'<div style="display:flex;align-items:center;gap:6px">'
-              +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
-            +'</div>'
-          +'</div>'
-          +'<div style="font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_cdTitle+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">Dropping one class, proven at the higher level and rated among '+_cdDay+'\'s best</div>'
-          +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px"><span style="font-size:26px;font-weight:700;color:#fff;line-height:1">'+item.diCount+'</span><span style="font-size:12px;color:rgba(255,255,255,0.7)">'+item.diLabel+'</span></div>'
-          +'</div>'
-          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:8px">'
-            +'<button class="ai-cta-light" onclick="_activateEdgeFilterFromCta(\'classdrop\')" style="width:100%;padding:11px"><span>&#x2756;</span> See '+_cdDay+'\'s Class Drop runners &rarr;</button>'
-          +'</div>'
-        +'</div>'
-      +'</div>';
+      // One template for today's card and the tomorrow preview — only the
+      // label (signalType) and count caption (diLabel), both set by the
+      // builder, differ. Today's card also carries the fade hook:
+      // data-ai-classdrop="today" is what the 60-second timer targets to fade
+      // the card before re-rendering, so it is added to the template's outer
+      // div here together with the opacity transition.
+      var _cdHtml=_diCardV2(item,'0 4px 14px rgba(13,27,62,0.25)','Class Droppers','Dropping one class, proven at the higher level','_activateEdgeFilterFromCta(\'classdrop\')','View Class Droppers');
+      return _cdHtml.replace('<div style="','<div'+(item.cdToday?' data-ai-classdrop="today"':'')+' style="transition:opacity .5s;');
     }
     if(item.isBigRace){
-      return '<div style="flex-shrink:0;width:88vw;min-height:220px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.97) 45%,rgba(13,27,62,0.90) 70%,rgba(13,27,62,0.75) 100%)"></div>'
-        +'<div style="position:relative;z-index:2;padding:16px 14px 14px;display:flex;flex-direction:column;flex:1">'
-          +'<div style="min-height:104px">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:0px">'
-            +'<div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
-            +(item.prize?'<div style="background:#fff;border-radius:7px;padding:4px 10px;font-size:13px;font-weight:800;color:#0D1B3E;flex-shrink:0">'+escHtml(item.prize)+'</div>':'')
-          +'</div>'
+      // Interim restyle to match the 152px template shell — its own content
+      // stack (name, prize, time/venue/date, race details), so not _diCardV2.
+      return '<div style="flex-shrink:0;width:88vw;height:152px;border-radius:14px;overflow:hidden;position:relative;scroll-snap-align:start;scroll-snap-stop:always;background:#0D1B3E;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;flex-direction:column">'
+        +'<div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(13,27,62,0.99) 0%,rgba(13,27,62,0.95) 42%,rgba(13,27,62,0.72) 66%,rgba(13,27,62,0.42) 100%)"></div>'
+        +'<div style="position:relative;z-index:2;padding:10px 14px 11px;display:flex;flex-direction:column;flex:1;min-height:0;box-sizing:border-box">'
+          +'<div style="font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:'+item.sigColor+'">'+item.signalType+'</div>'
           +(function(){
             var _rn=escHtml(item.raceNameShort||item.raceName||'');
             var _gr='';
             var _grm=_rn.match(/\s*\(((Group|Grade|Gr|G)\s*\d+|Listed)\s*\)\s*$/i);
             if(_grm){_gr=_grm[0].trim();_rn=_rn.slice(0,_rn.length-_grm[0].length).trim();}
-            return '<div style="font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.4px;line-height:1.1;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_rn+(_gr?'<span style="font-size:14px;font-weight:400;color:#fff"> '+_gr+'</span>':'')+'</div>';
+            return '<div style="font-size:19px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_rn+(_gr?'<span style="font-size:13px;font-weight:400;color:#fff"> '+_gr+'</span>':'')+'</div>';
           })()
-          +'<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">'+escHtml((item.time+' '+item.course).trim())+(item.dateLabel?' <span style="font-weight:500;color:rgba(255,255,255,0.7)">&middot; '+escHtml(item.dateLabel)+'</span>':'')+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">'+escHtml([_nrAbDist(item.distance), _goingClean(item.going), item.runners?(item.runners+' runners'):''].filter(Boolean).join(' · '))+'</div>'
-          +'</div>'
-          +'<div style="font-size:12px;color:#fff;line-height:1.65;margin-bottom:14px;flex:1">'+item.intelligenceText+'</div>'
-          +'<div style="display:flex;flex-direction:column;gap:8px">'
-            +'<button class="ai-cta-light" onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="width:100%;padding:11px"><span>&#x2756;</span> Go to '+escHtml(item.course)+' '+escHtml(item.time)+' &rarr;</button>'
-          +'</div>'
+          +(item.prize?'<div style="font-size:13px;font-weight:800;color:#d4af37">'+escHtml(item.prize)+'</div>':'')
+          +'<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml((item.time+' '+item.course).trim())+(item.dateLabel?' &middot; '+escHtml(item.dateLabel):'')+'</div>'
+          +'<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml([_nrAbDist(item.distance), _goingClean(item.going), item.runners?(item.runners+' runners'):''].filter(Boolean).join(' · '))+'</div>'
+          +'<button onclick="selectRacingSection(\''+item.ctaDestination+'\')" style="margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:5px;background:#fff;color:#0D1B3E;border:1.5px solid #d4af37;border-radius:99px;padding:8px 13px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer;font-family:inherit"><span style="color:#d4af37;font-size:11px">&#x2756;</span>View Full Analysis &rarr;</button>'
         +'</div>'
       +'</div>';
     }
