@@ -5727,15 +5727,15 @@ function unlockCorkAnalysis(){
 
     <div id="today-racecards-title" style="display:none;background:#f5f7fb;padding:9px 14px 0">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:1px">
-        <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
-        <div id="today-racecards-heading" style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
+        <div style="width:4px;height:20px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+        <div id="today-racecards-heading" style="font-size:18px;font-weight:800;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Today's Racecards</div>
         <button id="rc-filter-btn" onclick="_rcFilterToggle()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #c9a84c;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;color:#0b1628;cursor:pointer;margin:-4px 0 -4px 0;flex-shrink:0;font-family:inherit">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"/></svg>
           <span>Filter</span>
           <span id="rc-filter-badge" style="display:none;background:#c9a84c;color:#fff;border-radius:10px;min-width:16px;height:16px;font-size:10px;font-weight:700;align-items:center;justify-content:center;padding:0 4px">1</span>
         </button>
       </div>
-      <div id="today-racecards-subheading" style="font-size:12px;color:#9aa3b5;margin:0 0 6px;padding-left:13px">Race analysis and form guide for today's meetings</div>
+      <div id="today-racecards-subheading" style="font-size:12px;font-weight:600;color:#3a4259;margin:0 0 6px;padding-left:13px">Race analysis and form guide for today's meetings</div>
     </div>
     <!-- Filter panel — trainer search only. Opened by #rc-filter-btn. The
          manual edge toggle rows that used to live here were removed — DI
@@ -13253,8 +13253,8 @@ function selectHomeRcDay(d){
   _homeRcDay=d;
   _rcDayUserChosen=true;
   _trainerFilterSelected=null;
-  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
-  var inactiveStyle='background:none;color:#9aa3b5;border:none;border-bottom:2px solid transparent;padding:5px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var activeStyle='background:none;color:#0D1B3E;border:none;border-bottom:2px solid #10b981;padding:5px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
+  var inactiveStyle='background:none;color:#3a4259;border:none;border-bottom:2px solid transparent;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s';
   document.querySelectorAll('#home-date-strip button').forEach(function(btn){
     btn.style.cssText=btn.getAttribute('data-date')===d?activeStyle:inactiveStyle;
   });
@@ -13311,7 +13311,7 @@ function buildDateStrip(){
     // with the .subbtn rows beside it in the sticky topnav subbar; the
     // filtered view's tabs set their own via _twoLine. selectHomeRcDay's
     // tap re-style carries the same 5px so a tap can't snap it back.
-    var homeStyle=(dateVal===_homeRcDay?activeStyle:inactiveStyle)+';padding:5px 16px';
+    var homeStyle=(dateVal===_homeRcDay?(activeStyle+';padding:5px 16px;font-weight:800'):(inactiveStyle+';padding:5px 16px;color:#3a4259;font-weight:700'));
     var cardsStyle=i===0?activeStyle:inactiveStyle;
     // After the evening AUTO-switch to tomorrow (never on a manual choice),
     // today's racing is done — a tappable Today pill leading to an emptied
@@ -13343,9 +13343,8 @@ function _meetingInfoLine(m){
   var jumps=0;
   races.forEach(function(r){ if(jumpsRe.test((r.name||'')+' '+(r.type||''))) jumps++; });
   var disc=jumps===0?'Flat':(jumps===races.length?'Jumps':'Mixed');
-  var parts=[races.length+(races.length===1?' race':' races'),escHtml(minR.t||'')+' - '+escHtml(maxR.t||'')];
-  parts.push(disc);
-  return '<div style="font-size:11px;color:#9aa3b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+parts.join(' &middot; ')+'</div>';
+  var parts=[disc,races.length+(races.length===1?' race':' races'),escHtml(minR.t||'')+' &ndash; '+escHtml(maxR.t||'')];
+  return '<div style="font-size:11px;font-weight:600;color:#3a4259;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+parts.join(' | ')+'</div>';
 }
 
 var futureDateOpenRace={};
@@ -13405,15 +13404,15 @@ function renderFutureDateContent(dateStr,targetEl){
       var hasRace=rcOpenRace[m.id]!=null;
       var selRace=rcOpenRace[m.id];
       var isLast=idx===meetings.length-1;
-      out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-      out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+      out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #e4e8f0;')+'overflow:hidden">';
+      out+='<div style="display:flex;align-items:center;padding:5px 12px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:14px;font-weight:800;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #0D1B3E;border-bottom:2px solid #0D1B3E;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
       out+='</div>';
       out+='</div>';
@@ -13496,7 +13495,7 @@ function renderTodayMeetingsList(isInitial){
   }
   var _pillSave=_capturePillScrolls();
   if(_homeRcDay==='tomorrow'){
-    el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
+    el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#3a4259;font-size:14px;font-weight:500">Tomorrow\'s race cards are not available yet.</div>';
     var cnt=document.getElementById('today-meetings-count');
     if(cnt) cnt.style.display='none';
     return;
@@ -13505,7 +13504,7 @@ function renderTodayMeetingsList(isInitial){
     var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var fd=new Date(_homeRcDay+'T12:00:00');
     var fdName=days[fd.getDay()];
-    el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#9aa3b5;font-size:14px;font-weight:500">'+fdName+'\'s race cards will be available on the morning.</div>';
+    el.innerHTML='<div style="padding:32px 20px;text-align:center;color:#3a4259;font-size:14px;font-weight:500">'+fdName+'\'s race cards will be available on the morning.</div>';
     var cnt=document.getElementById('today-meetings-count');
     if(cnt) cnt.style.display='none';
     return;
@@ -13594,26 +13593,26 @@ function renderTodayMeetingsList(isInitial){
     var firstTime=m.races.length?m.races[0].t:'';
     var isLast=idx===filteredMeetings.length-1;
     // Single row: name+subtitle left | CTA + arrow right
-    out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
+    out+='<div id="rc-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #e4e8f0;')+'overflow:hidden">';
     if(_rcListForCards){
       out+='<div style="display:flex;align-items:center;padding:10px 12px 4px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:14px;font-weight:800;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #0D1B3E;border-bottom:2px solid #0D1B3E;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
       out+='</div>';
     }else{
-      out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+      out+='<div style="display:flex;align-items:center;padding:5px 12px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:14px;font-weight:800;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
       out+='<div onclick="toggleTodayMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #0D1B3E;border-bottom:2px solid #0D1B3E;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
       out+='</div>';
       out+='</div>';
@@ -20429,15 +20428,15 @@ function renderTomorrowMeetingsList(targetEl){
       var hasRace=tmOpenRace[m.id]!=null;
       var selRace=tmOpenRace[m.id];
       var isLast=idx===meetings.length-1;
-      out+='<div id="tm-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #f0f2f7;')+'overflow:hidden">';
-      out+='<div style="display:flex;align-items:center;padding:6px 12px">';
+      out+='<div id="tm-meeting-'+m.id+'" style="background:#fff;'+(isLast?'':'border-bottom:1px solid #e4e8f0;')+'overflow:hidden">';
+      out+='<div style="display:flex;align-items:center;padding:5px 12px">';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:15px;font-weight:700;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
+      out+='<div style="font-size:14px;font-weight:800;color:#0D1B3E;letter-spacing:-0.3px;line-height:1.1">'+escHtml(m.name)+'</div>';
       out+=_meetingInfoLine(m);
       out+='</div>';
       out+='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">';
       out+='<div onclick="toggleTomorrowMeeting(\''+m.id+'\')" style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:4px;flex-shrink:0">';
-      out+='<div style="width:9px;height:9px;border-right:2px solid #9aa3b5;border-bottom:2px solid #9aa3b5;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
+      out+='<div style="width:9px;height:9px;border-right:2px solid #0D1B3E;border-bottom:2px solid #0D1B3E;transform:'+(isOpen?'rotate(-135deg) translateY(3px)':'rotate(45deg)')+';transition:transform 0.2s"></div>';
       out+='</div>';
       out+='</div>';
       out+='</div>';
