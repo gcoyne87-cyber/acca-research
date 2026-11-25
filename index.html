@@ -5778,10 +5778,10 @@ function unlockCorkAnalysis(){
     <div id="popular-trainers-v2-section" style="display:none">
       <div style="background:#f5f7fb;padding:10px 14px 0">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:3px;height:18px;background:#c9a84c;border-radius:2px;flex-shrink:0"></div>
-          <div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px">Popular Trainers</div>
+          <div style="width:4px;height:20px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>
+          <div style="font-size:18px;font-weight:800;color:#0D1B3E;letter-spacing:-0.1px">Popular Trainers</div>
         </div>
-        <div style="font-size:12px;color:#9aa3b5;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
+        <div style="font-size:12px;font-weight:600;color:#3a4259;padding-left:13px;margin-bottom:10px">Tap any trainer to view their runners today</div>
       </div>
       <!-- Jumps / Flat toggle — same pill pattern as the Racecards day pills.
            Jumps first and active by default (jump season, 2026-10-25).
@@ -5791,10 +5791,13 @@ function unlockCorkAnalysis(){
         <button id="pt-v2-toggle-jumps" onclick="_ptV2SetSection('jumps')" style="background:#0D1B3E;color:#fff;border:1px solid #0D1B3E;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Jumps</button>
         <button id="pt-v2-toggle-flat" onclick="_ptV2SetSection('flat')" style="background:#fff;color:#9aa3b5;border:1px solid #e4e8f0;border-radius:99px;padding:6px 14px;font-size:12px;font-weight:400;cursor:pointer;font-family:inherit;transition:background .15s,color .15s">Flat</button>
       </div>
-      <!-- One white panel holds the carousel strip and the search bar together. -->
-      <style>#popular-trainers-v2-search::placeholder{color:#b8bfcc}</style>
+      <!-- Tile carousel — full-bleed row: 14px left padding, no right padding,
+           so a third tile is cut off at the screen edge to show it scrolls.
+           The bottom padding leaves room for the tiles' shadow. The white
+           panel below now holds the search bar only. -->
+      <style>#popular-trainers-v2-search::placeholder{color:#b8bfcc}#popular-trainers-v2-strip::-webkit-scrollbar{display:none}</style>
+      <div id="popular-trainers-v2-strip" style="display:flex;gap:8px;padding:2px 0 14px 14px;background:#f5f7fb;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:14px;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch"></div>
       <div style="margin:0 14px;background:#fff;border:0.5px solid #e4e8f0;border-radius:16px;padding:13px 0;box-shadow:0 1px 6px rgba(13,27,62,0.05)">
-      <div id="popular-trainers-v2-strip" style="display:flex;gap:10px;padding:0 13px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
       <!-- Popular Trainers search — filters _popularTrainers by display name, top 5. -->
       <div style="padding:11px 13px 0;position:relative">
         <div style="background:#f5f7fb;border-radius:12px;border:0.5px solid #e4e8f0;display:flex;align-items:center;gap:10px;padding:0 13px;height:44px">
@@ -13054,22 +13057,30 @@ function renderPopularTrainers(){
     var nm=Number(t.runnersTomorrow)||0;
     // No runners today and none tomorrow — skip entirely; never show a zero card.
     if(n===0&&nm===0) return;
-    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:250px;background:#ffffff;border:1px solid #e7ebf3;border-top:3px solid #c9a84c;border-radius:14px;padding:15px;box-shadow:0 4px 12px rgba(11,22,40,0.08);cursor:pointer;display:flex;flex-direction:column;gap:4px">';
-    out+='<div style="font-size:16px;font-weight:800;color:#0b1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
+    // Tile: navy placeholder background on its own layer (a licensed trainer
+    // photo slots in later as that layer's background-image — it is already
+    // set to cover), a bottom fade over it, and the text block on top. The
+    // whole tile is the tap target; "View runners" is visual only.
+    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="flex-shrink:0;width:164px;height:208px;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(13,27,62,0.25);position:relative;cursor:pointer;scroll-snap-align:start">';
+    out+='<div data-pt-photo style="position:absolute;inset:0;background:linear-gradient(135deg,#16294f 0%,#0D1B3E 100%);background-size:cover;background-position:center top"></div>';
+    out+='<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,27,62,0.95) 0%,rgba(13,27,62,0.78) 38%,rgba(13,27,62,0) 68%)"></div>';
+    out+='<div style="position:absolute;left:0;right:0;bottom:0;padding:11px 12px">';
+    out+='<div style="font-size:15.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(t.name)+'</div>';
     if(n>0){
-      out+='<div style="font-size:13px;font-weight:700;color:#15724d">'+n+(n===1?' runner today':' runners today')+'</div>';
+      out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:2px">'+n+(n===1?' runner today':' runners today')+'</div>';
     }else if(nm>0){
-      out+='<div style="font-size:13px;font-weight:700;color:#15724d">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</div>';
+      out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:2px">'+nm+(nm===1?' runner tomorrow':' runners tomorrow')+'</div>';
     }else{
-      out+='<div style="font-size:13px;font-weight:700;color:#15724d">0 runners today</div>';
+      out+='<div style="font-size:11px;font-weight:700;color:#10b981;margin-top:2px">0 runners today</div>';
     }
     var _w7=Number(t.winners7d)||0,_r7=Number(t.runners7d)||0,_sr=Number(t.strikeRate7d)||0;
     if(_w7>0){
-      out+='<div style="font-size:11px;font-weight:600;color:#65718a">'+_w7+'W &middot; '+_r7+'R &middot; <span style="color:#15724d;font-weight:700">'+_sr+'%</span> last 7 days</div>';
+      out+='<div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_w7+'W &middot; '+_r7+'R &middot; <span style="color:#10b981;font-weight:800">'+_sr+'%</span> last 7 days</div>';
     }else{
-      out+='<div style="font-size:11px;font-weight:600;color:#9aa5ba">0W &middot; '+_r7+'R &middot; quiet last 7 days</div>';
+      out+='<div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">0W &middot; '+_r7+'R &middot; quiet last 7 days</div>';
     }
-    out+='<div onclick="_ptV2Open(\''+tEsc+'\')" style="display:inline-flex;align-items:center;gap:7px;margin-top:8px;border:1.5px solid #1e9e6b;background:#ffffff;color:#1e9e6b;font-size:12px;font-weight:700;padding:9px 16px;border-radius:999px;cursor:pointer;align-self:flex-start"><span>View runners</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="#1e9e6b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>';
+    out+='<div style="font-size:11px;font-weight:700;color:#d4af37;margin-top:6px">View runners &rarr;</div>';
+    out+='</div>';
     out+='</div>';
   });
   strip.innerHTML=out;
