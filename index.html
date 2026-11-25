@@ -12832,12 +12832,12 @@ function renderTrainerFormTable(trainers){
   if(!el) return;
   _trainerFormData=trainers||[];
   var header='<div style="display:flex;align-items:center;gap:10px;margin-bottom:1px">'
-    +'<div style="width:3px;height:18px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
-    +'<div style="font-size:16px;font-weight:700;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
+    +'<div style="width:4px;height:20px;background:#d4af37;border-radius:2px;flex-shrink:0"></div>'
+    +'<div style="font-size:18px;font-weight:800;color:#0D1B3E;letter-spacing:-0.1px;line-height:1">Trainer Form</div>'
   +'</div>'
-  +'<div style="font-size:12px;color:#9aa3b5;margin:0 0 6px;padding-left:13px">In-form yards over the last 7 days — tap any trainer to see their runners today</div>';
+  +'<div style="font-size:12px;font-weight:600;color:#3a4259;margin:0 0 6px;padding-left:13px">In-form yards over the last 7 days — tap any trainer to see their runners today</div>';
   if(!trainers||!trainers.length){
-    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
+    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#3a4259;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">Trainer form data updates daily</div>';
     return;
   }
   // 7-day figures only. The 14-day fields stay in the data (the Hot Yard
@@ -12849,13 +12849,13 @@ function renderTrainerFormTable(trainers){
     return (Number(t.runners7d)||0)>=5 && (Number(t.winners7d)||0)>=3;
   }).sort(function(a,b){ return (b.strikeRate7d||0)-(a.strikeRate7d||0); }).slice(0,15);
   if(!allRows.length){
-    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No yards with 5+ runs and 3+ wins in the last 7 days today</div>';
+    el.innerHTML=header+'<div style="padding:18px 12px;text-align:center;color:#3a4259;font-size:13px;font-weight:500;background:#fff;border:1px solid #f0f2f7;border-radius:12px">No yards with 5+ runs and 3+ wins in the last 7 days today</div>';
     return;
   }
   var hasMore=allRows.length>8;
   var visibleCount=_trainerFormExpanded?allRows.length:Math.min(8,allRows.length);
   var rows=allRows.slice(0,visibleCount);
-  var colHeadStyle='font-size:9px;font-weight:700;color:#9aa3b5;text-transform:uppercase;letter-spacing:.03em';
+  var colHeadStyle='font-size:11px;font-weight:700;color:#5a6478;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap';
   var out=header+'<div style="background:#fff;border:1px solid #f0f2f7;border-radius:12px;overflow:hidden">';
   out+='<div style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid #f0f2f7;background:#fafbfc">';
   out+='<div style="flex:1;min-width:0;text-align:left;'+colHeadStyle+'">Trainer</div>';
@@ -12872,15 +12872,15 @@ function renderTrainerFormTable(trainers){
     var sr7=Math.round(t.strikeRate7d||0);
     // Trend arrow — display only, compares 7d vs 14d strike rate. The
     // 14-day figure itself is never shown, only used for this comparison.
-    var trendHtml='<span style="color:#9aa3b5;font-weight:800">&mdash;</span>';
+    var trendHtml='<span style="color:#3a4259;font-weight:800">&mdash;</span>';
     if(t.strikeRate14d!=null){
       var sr14=Math.round(t.strikeRate14d||0);
       if(sr7>sr14) trendHtml='<span style="color:#1e9e6b;font-weight:800">&uarr;</span>';
       else if(sr7<sr14) trendHtml='<span style="color:#e53e3e;font-weight:800">&darr;</span>';
     }
     var isLastVisible=(i===rows.length-1)&&!hasMore;
-    out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
-    out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
+    out+='<div onclick="setTrainerFilter(\''+nameEsc+'\')" style="display:flex;align-items:center;gap:6px;padding:8px 12px;cursor:pointer;'+(isLastVisible?'':'border-bottom:1px solid #f0f2f7;')+'">';
+    out+='<div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#0D1B3E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(name)+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(winsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:36px;text-align:center;font-size:12px;font-weight:600;color:#5a6478">'+escHtml(String(runsVal))+'</div>';
     out+='<div style="flex-shrink:0;width:44px;text-align:center;font-size:13px;font-weight:800;color:'+_trainerFormSrColor(sr7)+'">'+sr7+'%</div>';
@@ -12888,7 +12888,7 @@ function renderTrainerFormTable(trainers){
     out+='</div>';
   });
   if(hasMore){
-    out+='<div onclick="_toggleTrainerFormExpand()" style="text-align:center;padding:10px 12px;font-size:12px;font-weight:700;color:#10b981;cursor:pointer;background:#fafbfc">'+(_trainerFormExpanded?'Show less ↑':'Show more ↓')+'</div>';
+    out+='<div onclick="_toggleTrainerFormExpand()" style="text-align:center;padding:10px 12px;font-size:13px;font-weight:800;color:#10b981;cursor:pointer;background:#fafbfc">'+(_trainerFormExpanded?'Show less ↑':'Show more ↓')+'</div>';
   }
   out+='</div>';
   el.innerHTML=out;
@@ -12897,7 +12897,7 @@ function renderTrainerFormTable(trainers){
 function loadTrainerFormTable(){
   var el=document.getElementById('trainer-form-section');
   if(!el) return;
-  el.innerHTML='<div style="padding:14px 12px;text-align:center;color:#9aa3b5;font-size:13px;font-weight:500">Loading trainer form&hellip;</div>';
+  el.innerHTML='<div style="padding:14px 12px;text-align:center;color:#3a4259;font-size:13px;font-weight:500">Loading trainer form&hellip;</div>';
   fetch('/.netlify/functions/get-trainer-form')
     .then(function(r){ return r.json(); })
     .then(function(data){ renderTrainerFormTable(Array.isArray(data)?data:[]); })
